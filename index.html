@@ -2178,9 +2178,381 @@ function liveStripCSS(){
     '.aibo-strip .as-dir{text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:var(--muted,#8A93A5);'+
       'border:1px solid var(--hair,#2A3647);border-radius:6px;padding:2px 6px}'+
     '.aibo-strip .as-gap{font-style:italic;font-weight:600;font-size:11px;color:var(--muted,#8A93A5)}'+
+    '.aibo-strip .as-spark{display:inline-block;vertical-align:-3px;margin:0 2px;flex:none}'+
     '.aibo-strip .as-t{margin-left:auto;font-size:10px;letter-spacing:.4px;color:#39d07f}'+
-    '.aibo-strip .as-t.st{color:#d4870f}';
+    '.aibo-strip .as-t.st{color:#d4870f}'+
+    /* Stage 19: D/W/M TBO minis in the strip + the expandable technicals window */
+    '.aibo-strip .as-tbo{display:inline-flex;align-items:center;gap:2px;flex:none}'+
+    '.aibo-strip .as-tbo i{font-style:normal;font-size:8px;font-weight:800;letter-spacing:.4px;color:var(--muted,#8A93A5);opacity:.75}'+
+    '.aibo-strip .as-tbo svg{display:block}'+
+    '.aibo-strip .as-tbo-gap{color:#5A6678;font-weight:700;font-size:10px}'+
+    '.aibo-tech{margin:10px 4px 2px;border:1px solid var(--hair,#2A3647);border-radius:12px;background:rgba(9,14,20,.55)}'+
+    '.aibo-tech summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:8px;padding:9px 12px;'+
+      'font:800 12px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink,#EAEEF5)}'+
+    '.aibo-tech summary::-webkit-details-marker{display:none}'+
+    '.aibo-tech summary:after{content:"\\25B8";margin-left:auto;color:#5A6678}'+
+    '.aibo-tech[open] summary:after{content:"\\25BE"}'+
+    '.aibo-tech summary span{font:600 10px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#5A6678;letter-spacing:.3px}'+
+    '.aibo-tech .tp-grid{display:grid;grid-template-columns:62px repeat(3,1fr);gap:5px;padding:0 10px 10px;align-items:center}'+
+    '.aibo-tech .tp-hd{font:700 8.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;color:#5A6678;text-align:center}'+
+    '.aibo-tech .tp-met{font:700 8.5px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.03em;color:var(--muted,#8A93A5)}'+
+    '.aibo-tech .tp-cell{background:rgba(14,21,32,.8);border:1px solid var(--hair,#2A3647);border-radius:7px;padding:3px 4px;min-height:24px;display:flex;align-items:center;justify-content:center}'+
+    '.aibo-tech .tp-cell svg{width:100%;height:auto;display:block}'+
+    '.aibo-tech .tp-gap{font:600 9px/1 ui-monospace,Menlo,monospace;color:#5A6678}';
   document.head.appendChild(st);
+}
+/* ---- lo-fi week sparkline (Stage 18; Stage 19 adds the tf technicals window below) ----
+   5 points for equities (one trading week), 7 for crypto (calendar week) — the real
+   shape of the curve, straight from tech.spark. Renders nothing when the backend
+   didn't send a full, trustworthy week (gaps, split-guard, pre-v2.7 feed). */
+function sparkSVG(sp){
+  if(!Array.isArray(sp) || sp.length < 2) return '';   /* scalar/object payloads must degrade, not throw */
+  for(var i=0;i<sp.length;i++){ if(typeof sp[i]!=='number' || !isFinite(sp[i])) return ''; }
+  var w=54, h=16, pad=1.5, n=sp.length;
+  var mn=Math.min.apply(null,sp), mx=Math.max.apply(null,sp), rng=mx-mn;
+  var last=sp[n-1], col = last>sp[0] ? '#39d07f' : (last<sp[0] ? '#f0685f' : '#8A93A5');
+  function Y(v){ return rng ? ((h-pad)-(v-mn)*(h-2*pad)/rng) : h/2; }
+  var pts=[];
+  for(var j=0;j<n;j++){ pts.push((pad+j*(w-2*pad)/(n-1)).toFixed(1)+','+Y(sp[j]).toFixed(1)); }
+  return '<svg class="as-spark" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" aria-hidden="true">'
+       + '<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+col+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+       + '<circle cx="'+(w-pad)+'" cy="'+Y(last).toFixed(1)+'" r="1.8" fill="'+col+'"/>'
+       + '</svg>';
+}
+/* ---- Stage 19: technicals window (tf frames) ----
+   Backend v2.9 ships tech.tf = {d,w,m}: string-encoded bar frames, ';' between bars,
+   oldest->newest; an OHLC bar is 'o,h,l,c', a close-only bar (crypto, light path) is
+   bare 'c'. Renders the four locked panes (candles+55EMA, TBO-style clouds, RSI
+   divergence hybrid, Bollinger ±2σ) × D/W/M inside the deep-dive sheet, plus small
+   D/W/M TBO strips in the live strip. Everything degrades to '' when the payload is
+   absent or malformed — cached pre-v2.9 payloads must render the Stage 18 experience
+   byte-for-byte, never throw. */
+var TF_UP='#39d07f', TF_DN='#f0685f', TF_FL='#8A93A5', TF_CY='#1FC6DC', TF_AM='#d4870f', TF_DIM='#5A6678';
+var TF_NUM=/^-?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/;   /* strict decimal: bare unary + would
+   coerce '' to 0 and '0x10' to 16, turning a truncated cached frame into a confidently
+   wrong chart instead of a refused one */
+function tfNum(x){ return TF_NUM.test(x) ? +x : NaN; }
+function tfSvg(w,h){ return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" aria-hidden="true">'; }
+function tfParse(tf){
+  if(!tf || typeof tf!=='object' || Array.isArray(tf)) return null;
+  var out={}, ks=['d','w','m'], any=false;
+  for(var i=0;i<ks.length;i++){
+    var k=ks[i], s=tf[k], bars=null;
+    if(typeof s==='string' && s){
+      bars=[];
+      var parts=s.split(';');
+      for(var j=0;j<parts.length;j++){
+        var f=parts[j].split(','), b=null;
+        if(f.length===4){
+          b={o:tfNum(f[0]),h:tfNum(f[1]),l:tfNum(f[2]),c:tfNum(f[3])};
+          if(!isFinite(b.o)||!isFinite(b.h)||!isFinite(b.l)||!isFinite(b.c)){bars=null;break}
+        }else if(f.length===1){
+          b={c:tfNum(f[0])};
+          if(!isFinite(b.c)){bars=null;break}
+        }else{bars=null;break}
+        bars.push(b);
+      }
+      if(bars && bars.length<2) bars=null;
+    }
+    out[k]=bars||null;
+    if(out[k]) any=true;
+  }
+  return any?out:null;
+}
+function tfCloses(bars){ var o=[]; for(var i=0;i<bars.length;i++)o.push(bars[i].c); return o; }
+function tfEma(a,p){
+  var k=2/(p+1), o=[], prev=null, s=0;
+  for(var i=0;i<a.length;i++){
+    if(i<p-1){s+=a[i];o.push(null);continue}
+    if(i===p-1){s+=a[i];prev=s/p;o.push(prev);continue}
+    prev=a[i]*k+prev*(1-k);o.push(prev);
+  }
+  return o;
+}
+function tfRsi(a,p){
+  p=p||14;
+  var o=[null],g=0,l=0;
+  for(var i=1;i<a.length;i++){
+    var ch=a[i]-a[i-1],up=Math.max(ch,0),dn=Math.max(-ch,0);
+    if(i<=p){ g+=up;l+=dn;o.push(null);
+      if(i===p){g/=p;l/=p;o[i]=100-100/(1+(l?g/l:99));} }
+    else{ g=(g*(p-1)+up)/p;l=(l*(p-1)+dn)/p;o.push(100-100/(1+(l?g/l:99))); }
+  }
+  return o;
+}
+function tfExt(arr){
+  var mn=Infinity,mx=-Infinity;
+  for(var i=0;i<arr.length;i++){ var v=arr[i]; if(v==null)continue; if(v<mn)mn=v; if(v>mx)mx=v; }
+  return (mx>mn)?[mn,mx]:(isFinite(mn)?[mn-1,mx+1]:null);
+}
+
+/* pane 1 — candles + 55 EMA (close-line + EMA when the frame is close-only) */
+function tfCandleSVG(bars,w,h){
+  if(!bars || bars.length<20) return '';
+  var closes=tfCloses(bars), e55=tfEma(closes,55);
+  var tail=Math.max(20,Math.min(bars.length,Math.floor(w/4.5)));
+  var B=bars.slice(-tail), M=e55.slice(-tail);
+  var ohlc=0;
+  for(var i=0;i<B.length;i++){ if(B[i].o!=null&&B[i].h!=null&&B[i].l!=null)ohlc++; }
+  var candle=ohlc>=B.length*0.8;
+  var lo=Infinity,hi=-Infinity;
+  for(var i2=0;i2<B.length;i2++){
+    var b=B[i2];
+    var bl=candle&&b.l!=null?b.l:b.c, bh2=candle&&b.h!=null?b.h:b.c;
+    if(bl<lo)lo=bl; if(bh2>hi)hi=bh2;
+    if(M[i2]!=null){ if(M[i2]<lo)lo=M[i2]; if(M[i2]>hi)hi=M[i2]; }
+  }
+  var rg=hi-lo||1,p=1,n=B.length,slot=(w-2*p)/n;
+  function Y(v){ return (h-p)-(v-lo)*(h-2*p)/rg; }
+  var s='',mp='';
+  for(var q=0;q<n;q++){ if(M[q]==null)continue; mp+=(mp?' ':'')+(p+q*slot+slot/2).toFixed(1)+','+Y(M[q]).toFixed(1); }
+  if(mp)s+='<polyline points="'+mp+'" fill="none" stroke="'+TF_AM+'" stroke-width="1.2" opacity=".95"/>';
+  if(candle){
+    var bw=Math.max(1.6,slot*0.62);
+    for(var j=0;j<n;j++){
+      var b2=B[j];
+      var x=p+j*slot+slot/2;
+      if(b2.o==null||b2.h==null||b2.l==null){
+        /* mixed frame (an FMP /light day amid full days): the close exists — draw it as
+           a neutral tick rather than leaving a hole that reads as missing data */
+        s+='<line x1="'+(x-Math.max(0.8,slot*0.31)).toFixed(1)+'" y1="'+Y(b2.c).toFixed(1)+'" x2="'+(x+Math.max(0.8,slot*0.31)).toFixed(1)+'" y2="'+Y(b2.c).toFixed(1)+'" stroke="'+TF_FL+'" stroke-width="1"/>';
+        continue;
+      }
+      var col=b2.c>=b2.o?TF_UP:TF_DN;
+      var yo=Y(b2.o),yc=Y(b2.c),top=Math.min(yo,yc),bh=Math.max(1,Math.abs(yo-yc));
+      s+='<line x1="'+x.toFixed(1)+'" y1="'+Y(b2.h).toFixed(1)+'" x2="'+x.toFixed(1)+'" y2="'+Y(b2.l).toFixed(1)+'" stroke="'+col+'" stroke-width="1"/>';
+      s+='<rect x="'+(x-bw/2).toFixed(1)+'" y="'+top.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="'+col+'"/>';
+    }
+  }else{
+    var col2=B[n-1].c>=B[0].c?TF_UP:TF_DN,pts='';
+    for(var j2=0;j2<n;j2++){ pts+=(pts?' ':'')+(p+j2*slot+slot/2).toFixed(1)+','+Y(B[j2].c).toFixed(1); }
+    s+='<polyline points="'+pts+'" fill="none" stroke="'+col2+'" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
+  }
+  return tfSvg(w,h)+s+'</svg>';
+}
+
+/* pane 2 — TBO-style clouds (homage approximation: fast EMA8, mid cloud EMA13/21,
+   long cloud EMA21/40; ▲ = close breaks above the long cloud, ○ = breakdown below —
+   the circles-for-breakdowns convention). Close-based, so crypto renders too. */
+function tfCloudQuads(X,Y,a,b,alB,alD){
+  var s='';
+  for(var i=1;i<a.length;i++){
+    if(a[i-1]==null||b[i-1]==null||a[i]==null||b[i]==null)continue;
+    var bull=a[i]>=b[i];
+    s+='<path d="M'+X(i-1).toFixed(1)+','+Y(a[i-1]).toFixed(1)+' L'+X(i).toFixed(1)+','+Y(a[i]).toFixed(1)
+      +' L'+X(i).toFixed(1)+','+Y(b[i]).toFixed(1)+' L'+X(i-1).toFixed(1)+','+Y(b[i-1]).toFixed(1)
+      +' Z" fill="'+(bull?TF_UP:TF_DN)+'" opacity="'+(bull?alB:alD)+'"/>';
+  }
+  return s;
+}
+function tfTboSVG(bars,w,h){
+  if(!bars || bars.length<45) return '';
+  var call=tfCloses(bars);
+  var e8=tfEma(call,8),e13=tfEma(call,13),e21=tfEma(call,21),e40=tfEma(call,40);
+  var tail=Math.min(50,call.length);
+  var c=call.slice(-tail);
+  var s8=e8.slice(-tail),s13=e13.slice(-tail),s21=e21.slice(-tail),s40=e40.slice(-tail);
+  var e=tfExt(c.concat(s8,s13,s21,s40));
+  if(!e) return '';
+  var rg=e[1]-e[0]||1,p=2,n=tail;
+  function X(i){ return p+i*(w-2*p)/(n-1); }
+  function Y(v){ return (h-p)-(v-e[0])*(h-2*p)/rg; }
+  var s=tfCloudQuads(X,Y,s21,s40,'.30','.26')+tfCloudQuads(X,Y,s13,s21,'.18','.15');
+  var fp='';
+  for(var i=0;i<n;i++){ if(s8[i]==null)continue; fp+=(fp?' ':'')+X(i).toFixed(1)+','+Y(s8[i]).toFixed(1); }
+  if(fp)s+='<polyline points="'+fp+'" fill="none" stroke="'+TF_CY+'" stroke-width="1" opacity=".9"/>';
+  var col=c[n-1]>=c[0]?TF_UP:TF_DN,pts='';
+  for(var j=0;j<n;j++){ pts+=(pts?' ':'')+X(j).toFixed(1)+','+Y(c[j]).toFixed(1); }
+  s+='<polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
+  s+='<circle cx="'+(w-p)+'" cy="'+Y(c[n-1]).toFixed(1)+'" r="1.7" fill="'+col+'"/>';
+  var top=[],bot=[];
+  for(var k2=0;k2<n;k2++){
+    if(s21[k2]==null||s40[k2]==null){top.push(null);bot.push(null);continue}
+    top.push(Math.max(s21[k2],s40[k2]));bot.push(Math.min(s21[k2],s40[k2]));
+  }
+  function mode(i){ if(top[i]==null)return null; return c[i]>top[i]?1:(c[i]<bot[i]?-1:0); }
+  var evs=[];
+  for(var k3=1;k3<n;k3++){
+    var m0=mode(k3-1),m1=mode(k3);
+    if(m0==null||m1==null)continue;
+    if(m1===1&&m0<1)evs.push({i:k3,t:1});
+    if(m1===-1&&m0>-1)evs.push({i:k3,t:-1});
+  }
+  evs=evs.slice(-2);
+  for(var k4=0;k4<evs.length;k4++){
+    var v=evs[k4],x=X(v.i),y=Y(c[v.i]);
+    if(v.t===1){
+      var ay=Math.max(4,y-5);
+      s+='<path d="M'+(x-2.4).toFixed(1)+','+ay.toFixed(1)+' L'+(x+2.4).toFixed(1)+','+ay.toFixed(1)+' L'+x.toFixed(1)+','+(ay-3.8).toFixed(1)+' Z" fill="'+TF_UP+'"/>';
+    }else{
+      s+='<circle cx="'+x.toFixed(1)+'" cy="'+Math.min(h-4,y+5).toFixed(1)+'" r="2" fill="none" stroke="'+TF_DN+'" stroke-width="1.2"/>';
+    }
+  }
+  return tfSvg(w,h)+s+'</svg>';
+}
+
+/* pane 3 — divergence hybrid: RSI(14) pivot divergence drawn as a wedge on the price
+   line (solid price trendline + dashed RSI-slope ghost + ▲/▼ badge), with a single
+   composite pressure lane below — the strongest price-vs-RSI slope disagreement across
+   ~fast/mid/slow horizons (k=4/8/14 bars), blended into one grade. */
+function tfDivergences(closes,r){
+  var L=3,Rt=3,minGap=5,maxGap=60;
+  var hi=[],lo=[],i,j;
+  for(i=L;i<r.length-Rt;i++){
+    if(r[i]==null)continue;
+    var isH=true,isL=true;
+    for(j=i-L;j<=i+Rt;j++){
+      if(j===i||r[j]==null)continue;
+      if(r[j]>=r[i])isH=false;
+      if(r[j]<=r[i])isL=false;
+      if(!isH&&!isL)break;
+    }
+    if(isH)hi.push(i);
+    if(isL)lo.push(i);
+  }
+  var out=[];
+  for(i=1;i<hi.length;i++){
+    var a=hi[i-1],b=hi[i],g=b-a;
+    if(g>=minGap&&g<=maxGap&&closes[b]>closes[a]&&r[b]<r[a])out.push({type:'bear',i1:a,i2:b});
+  }
+  for(i=1;i<lo.length;i++){
+    var a2=lo[i-1],b2=lo[i],g2=b2-a2;
+    if(g2>=minGap&&g2<=maxGap&&closes[b2]<closes[a2]&&r[b2]>r[a2])out.push({type:'bull',i1:a2,i2:b2});
+  }
+  out.sort(function(x,y){return x.i2-y.i2});
+  return out;
+}
+function tfDivSVG(bars,w,h){
+  if(!bars || bars.length<30) return '';
+  var call=tfCloses(bars), r=tfRsi(call,14), evs=tfDivergences(call,r);
+  var tail=Math.min(60,call.length), off=call.length-tail;
+  var c=call.slice(-tail), rr=r.slice(-tail), n=tail, p=2;
+  var stripH=Math.max(4,Math.round(h*0.24)), ph=h-stripH-2;
+  var e=tfExt(c);
+  if(!e) return '';
+  var rg=e[1]-e[0]||1;
+  function X(i){ return p+i*(w-2*p)/(n-1); }
+  function Y(v){ return (ph-p)-(v-e[0])*(ph-2*p)/rg; }
+  var live=[];
+  for(var q=0;q<evs.length;q++){ if(evs[q].i1>=off)live.push(evs[q]); }
+  var col=c[n-1]>=c[0]?TF_UP:TF_DN,pts='';
+  for(var i=0;i<n;i++){ pts+=(pts?' ':'')+X(i).toFixed(1)+','+Y(c[i]).toFixed(1); }
+  var s='<polyline points="'+pts+'" fill="none" stroke="'+(live.length?TF_FL:col)+'" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"'+(live.length?' opacity=".75"':'')+'/>';
+  if(live.length){
+    var v=live[live.length-1],a=v.i1-off,b=v.i2-off,cc=v.type==='bear'?TF_DN:TF_UP;
+    var x1=X(a),y1=Y(c[a]),x2=X(b),y2=Y(c[b]);
+    s+='<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+cc+'" stroke-width="1.4"/>';
+    var rs1=r[v.i1],rs2=r[v.i2];
+    if(rs1!=null&&rs2!=null){
+      var dy=(rs1-rs2)/100*(ph-2*p);
+      s+='<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+(y1+dy).toFixed(1)+'" stroke="'+cc+'" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".75"/>';
+    }
+    var by=v.type==='bear'?Math.max(4,y2-5):Math.min(ph-2,y2+5);
+    s+='<path d="M'+(x2-2.8).toFixed(1)+','+by.toFixed(1)+' L'+(x2+2.8).toFixed(1)+','+by.toFixed(1)+' L'+x2.toFixed(1)+','+(v.type==='bear'?by+4.2:by-4.2).toFixed(1)+' Z" fill="'+cc+'"/>';
+  }
+  var Ks=[4,8,14],bwv=(w-2*p)/n,y0=h-stripH;
+  for(var i2=0;i2<n;i2++){
+    var best=0;
+    for(var L2=0;L2<Ks.length;L2++){
+      var k=Ks[L2];
+      if(i2<k||rr[i2]==null||rr[i2-k]==null||!c[i2-k])continue;
+      var a2=(c[i2]-c[i2-k])/c[i2-k],b3=(rr[i2]-rr[i2-k])/50,dis=0;
+      if(a2>0.003&&b3<-0.015)dis=Math.min(1,(a2*45)*(-b3*9));
+      else if(a2<-0.003&&b3>0.015)dis=-Math.min(1,(-a2*45)*(b3*9));
+      if(Math.abs(dis)>Math.abs(best))best=dis;
+    }
+    var fill='rgba(90,102,120,.18)';
+    if(best>0)fill='rgba(240,104,95,'+(0.2+best*0.72).toFixed(2)+')';
+    else if(best<0)fill='rgba(57,208,127,'+(0.2-best*0.72).toFixed(2)+')';
+    s+='<rect x="'+(p+i2*bwv).toFixed(1)+'" y="'+y0+'" width="'+(bwv+0.3).toFixed(1)+'" height="'+stripH+'" fill="'+fill+'"/>';
+  }
+  return tfSvg(w,h)+s+'</svg>';
+}
+
+/* pane 4 — Bollinger ±2σ squeeze ribbon (20-bar window) */
+function tfBbSVG(bars,w,h){
+  if(!bars || bars.length<21) return '';
+  var call=tfCloses(bars),tail=Math.min(45,call.length);
+  var c=call.slice(-tail),n=tail,p=2,win=20;
+  var up=[],dn=[];
+  for(var i=0;i<n;i++){
+    var gi=call.length-tail+i;
+    if(gi<win-1){up.push(null);dn.push(null);continue}
+    var s0=0,j;
+    for(j=gi-win+1;j<=gi;j++)s0+=call[j];
+    var m=s0/win,v2=0;
+    for(j=gi-win+1;j<=gi;j++)v2+=(call[j]-m)*(call[j]-m);
+    var sd=Math.sqrt(v2/win);
+    up.push(m+2*sd);dn.push(m-2*sd);
+  }
+  var e=tfExt(c.concat(up,dn));
+  if(!e) return '';
+  var rg=e[1]-e[0]||1;
+  function X(i){ return p+i*(w-2*p)/(n-1); }
+  function Y(v){ return (h-p)-(v-e[0])*(h-2*p)/rg; }
+  var band='';
+  for(var k=0;k<n;k++){ if(up[k]==null)continue; band+=(band?' L':'M')+X(k).toFixed(1)+','+Y(up[k]).toFixed(1); }
+  for(var k2=n-1;k2>=0;k2--){ if(dn[k2]==null)continue; band+=' L'+X(k2).toFixed(1)+','+Y(dn[k2]).toFixed(1); }
+  var col=c[n-1]>=c[0]?TF_UP:TF_DN,pts='';
+  for(var q=0;q<n;q++){ pts+=(pts?' ':'')+X(q).toFixed(1)+','+Y(c[q]).toFixed(1); }
+  var s='';
+  if(band)s+='<path d="'+band+' Z" fill="'+TF_CY+'" opacity=".13"/><path d="'+band+' Z" fill="none" stroke="'+TF_CY+'" stroke-width=".7" opacity=".35"/>';
+  s+='<polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
+  s+='<circle cx="'+(w-p)+'" cy="'+Y(c[n-1]).toFixed(1)+'" r="1.7" fill="'+col+'"/>';
+  return tfSvg(w,h)+s+'</svg>';
+}
+
+/* strip minis: three small D/W/M TBO strips; a frame too short for clouds shows an
+   honest dash instead of a fake. Renders nothing at all when no frame can draw. */
+function tboMiniRow(tf){
+  var P=tfParse(tf);
+  if(!P) return '';
+  var defs=[['d','D'],['w','W'],['m','M']],s='',any=false;
+  for(var i=0;i<defs.length;i++){
+    var svg=P[defs[i][0]]?tfTboSVG(P[defs[i][0]],64,20):'';
+    if(svg)any=true;
+    s+='<span class="as-tbo"><i>'+defs[i][1]+'</i>'+(svg||'<b class="as-tbo-gap">–</b>')+'</span>';
+  }
+  return any?s:'';
+}
+
+/* the expandable technicals window: 4 locked metrics × D/W/M = 12 panes.
+   kind 'eq' reads DATA[tk].live; 'cr' bridges the display key ('$AI' -> 'AI') into
+   window.AIBO_CRYPTO_LIVE — the same bridge liveStripCrypto uses. */
+function techPanel(tk,kind){
+  var tf=null;
+  if(kind==='cr'){
+    var toks=window.AIBO_CRYPTO_LIVE;
+    if(!toks) return '';
+    var key=(tk.charAt(0)==='$')?tk.slice(1):tk;
+    var v=toks[key];
+    if(!v||v.pretoken||v.usd==null) return '';   /* same guard as liveStripCrypto: no
+      price strip means no technicals window under it */
+    tf=v.tech&&v.tech.tf;
+  }else{
+    var d=(typeof DATA!=='undefined'&&DATA[tk])?DATA[tk].live:null;
+    tf=d&&d.tech&&d.tech.tf;
+  }
+  var P=tfParse(tf);
+  if(!P) return '';
+  liveStripCSS();
+  var METS=[
+    {l:'CANDLES·55EMA', fn:tfCandleSVG},
+    {l:'TBO CLOUD',     fn:tfTboSVG},
+    {l:'DIVERGENCE',    fn:tfDivSVG},
+    {l:'BOLLINGER',     fn:tfBbSVG}
+  ];
+  var out='<div class="tp-hd"></div><div class="tp-hd">DAILY</div><div class="tp-hd">WEEKLY</div><div class="tp-hd">MONTHLY</div>';
+  var frames=[P.d,P.w,P.m];
+  for(var i=0;i<METS.length;i++){
+    out+='<div class="tp-met">'+METS[i].l+'</div>';
+    for(var j=0;j<3;j++){
+      var svg=frames[j]?METS[i].fn(frames[j],150,40):'';
+      out+='<div class="tp-cell">'+(svg||'<span class="tp-gap">short history</span>')+'</div>';
+    }
+  }
+  return '<details class="aibo-tech"><summary>Technicals <span>candles · TBO · divergence · Bollinger — D/W/M</span></summary>'
+       + '<div class="tp-grid">'+out+'</div></details>';
 }
 function liveStrip(tk){
   var v = (typeof DATA!=='undefined' && DATA[tk]) ? DATA[tk].live : null;
@@ -2213,6 +2585,8 @@ function liveStrip(tk){
   return '<div class="aibo-strip">'
        + '<span class="as-px">'+num(px.last,2)+'</span>'
        + '<span class="as-chg '+chCls+'">'+chTxt+'</span>'
+       + sparkSVG(tech && tech.spark)
+       + tboMiniRow(tech && tech.tf)
        + mas
        + '<span class="as-t'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
        + '</div>';
@@ -2256,6 +2630,8 @@ function liveStripCrypto(tk){
   return '<div class="aibo-strip">'
        + '<span class="as-px">'+pxTxt+'</span>'
        + '<span class="as-chg '+chCls+'">'+chTxt+'</span>'
+       + sparkSVG(tech && tech.spark)
+       + tboMiniRow(tech && tech.tf)
        + mas
        + '<span class="as-t'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
        + '</div>';
@@ -2280,7 +2656,7 @@ function coSheet(r){
       </div>
     </div>
 
-    ${liveStrip(r.ticker)}
+    ${liveStrip(r.ticker)}${techPanel(r.ticker,'eq')}
 
     ${r.choke ? `<div class="sh-choke t-${r.chokeT||'key'}">
       <span class="ck-lbl">${chokeLabel(r.chokeT)}</span>
@@ -3854,7 +4230,7 @@ TIERS.forEach(t=>t.ts.forEach(tk=>{
             ${tokBlock}
           </div>
         </div>
-        ${liveStripCrypto(tk)}
+        ${liveStripCrypto(tk)}${techPanel(tk,'cr')}
         <div class="cr-mbody">
           <div class="cr-d-is">${d.is}</div>
           <div class="cr-drow"><span class="cr-k">Solves</span><span class="cr-v">${d.solves}</span></div>
@@ -7217,7 +7593,8 @@ try{
   function apply(payload, src){
     if(!payload || !payload.equity || !payload.equity.tickers) return false;
     var t = payload.equity.tickers, n=0, fresh=0;
-    for(var tk in t){ if(!DATA[tk]) continue;
+    for(var tk in t){ if(tk==='__proto__'||tk==='constructor'||tk==='prototype') continue;
+      if(!Object.prototype.hasOwnProperty.call(DATA,tk)) continue;
       DATA[tk].live = t[tk]; n++;
       if(t[tk].px && t[tk].px.stale===false) fresh++;
     }
@@ -7343,7 +7720,9 @@ try{
       '<span class="ch '+cls+'">'+(ch==null?'—':(arr+' '+num(Math.abs(ch),2)+'%'))+'</span>'+
       '<span class="ma">'+ma+'</span></div>'+
       (nn ? '<div class="lp-news" data-nk="'+tk+'">'+ v.news.items.slice(0,4).map(function(it){
-          return '<a href="'+it.url+'" target="_blank" rel="noopener">'+ (it.headline||'').replace(/</g,'&lt;') +'</a>';
+          var _u = String(it.url||''); if(!/^https?:\/\//i.test(_u)) _u = '#';   /* payload data: never let a non-http scheme into href */
+          _u = _u.replace(/"/g,'&quot;').replace(/</g,'&lt;');
+          return '<a href="'+_u+'" target="_blank" rel="noopener">'+ (it.headline||'').replace(/</g,'&lt;') +'</a>';
         }).join('') +'</div>' : '');
   }
   function paintPanel(){
