@@ -178,6 +178,28 @@ html,body{margin:0;background:
   padding:13px 15px;background:rgba(18,28,44,.5);}
 .sh-val .vbody{min-width:0;}
 .sh-val .vf{font-size:11px;color:var(--muted);line-height:1.5;margin-top:7px;}
+.sh-desc{margin:14px 0 2px;padding:13px 15px;border:1px solid var(--hair);border-radius:12px;background:rgba(255,255,255,.022);}
+.sh-desc summary{cursor:pointer;list-style:none;position:relative;}
+.sh-desc summary::-webkit-details-marker{display:none;}
+.sh-desc .sd-car{position:absolute;right:2px;top:2px;color:#5A6678;font-size:12px;transition:transform .15s;}
+.sh-desc[open] .sd-car{transform:rotate(90deg);}
+.sh-desc .sh-about-why{margin-top:12px;}
+.sh-note-in{margin:12px 0 2px;}
+.sh-grades{margin:16px 4px 4px;border:1px solid var(--hair);border-radius:12px;padding:0 10px 2px;background:rgba(255,255,255,.015);}
+.sh-grades summary{cursor:pointer;list-style:none;padding:4px 0 8px;}
+.sh-grades summary::-webkit-details-marker{display:none;}
+.sh-grades .sh-rolls{margin:12px 0 6px;}
+.sh-grades .sg-hint{display:flex;align-items:center;justify-content:center;gap:6px;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);}
+.sh-grades .sg-hint .sd-car{font-style:normal;color:#5A6678;transition:transform .15s;}
+.sh-grades[open] .sg-hint .sd-car{transform:rotate(90deg);}
+.sg-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0 4px;}
+.sg-col{display:flex;flex-direction:column;gap:8px;}
+.sg-col .sh-sech{margin:8px 0 2px;}
+@media(max-width:430px){.sg-cols{grid-template-columns:1fr;}}
+@media(min-width:768px){
+  #sheet{width:100%;max-width:none;border-radius:0;}
+  #sheet .sh{max-width:1080px;margin:0 auto;}
+}
 .sh-note{margin:18px 4px 2px;font-size:12.5px;color:var(--ink);line-height:1.6;
   border-left:3px solid #2f6fb0;background:rgba(47,111,176,.07);padding:11px 14px;border-radius:0 9px 9px 0;}
 .sh-note b{color:#fff;}
@@ -601,6 +623,13 @@ body.uni-crypto .lensLab{display:none;}
 .cr-dlbody{display:flex;gap:12px;align-items:flex-start;margin-top:11px;}
 .cr-dmpie{flex:none;width:76px;}
 .cr-dmpie svg{width:76px;height:76px;display:block;}
+.cr-bodyd{margin:4px 0 0;}
+.cr-bodyd summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:8px;padding:10px 2px 8px;
+  font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--ink);}
+.cr-bodyd summary::-webkit-details-marker{display:none;}
+.cr-bodyd summary span{font-weight:600;font-size:10px;letter-spacing:.3px;text-transform:none;color:#5A6678;}
+.cr-bodyd summary .sd-car{margin-left:auto;font-style:normal;color:#5A6678;transition:transform .15s;}
+.cr-bodyd[open] summary .sd-car{transform:rotate(90deg);}
 .cr-dmctr{font-size:33px;font-weight:850;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
 .cr-dlchips{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0;align-content:flex-start;}
 .cr-dfoot{max-width:760px;margin:18px auto 0;padding:14px 16px 0;border-top:1px solid var(--hair,#2A3647);font-size:11px;color:var(--muted2,rgba(234,238,245,.4));line-height:1.55;}
@@ -2198,7 +2227,18 @@ function liveStripCSS(){
     '.aibo-tech .tp-met{font:700 8.5px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.03em;color:var(--muted,#8A93A5)}'+
     '.aibo-tech .tp-cell{background:rgba(14,21,32,.8);border:1px solid var(--hair,#2A3647);border-radius:7px;padding:3px 4px;min-height:24px;display:flex;align-items:center;justify-content:center}'+
     '.aibo-tech .tp-cell svg{width:100%;height:auto;display:block}'+
-    '.aibo-tech .tp-gap{font:600 9px/1 ui-monospace,Menlo,monospace;color:#5A6678}';
+    '.aibo-tech .tp-gap{font:600 9px/1 ui-monospace,Menlo,monospace;color:#5A6678}'+
+    /* Stage 20: left-anchored stamp, right-anchored vertical bullet, iPad scale-up */
+    '.aibo-strip .as-t.as-tl{margin-left:0}'+
+    '.aibo-strip .as-vb{margin-left:auto;flex:none;display:inline-flex;align-items:center}'+
+    '.aibo-strip .as-vb svg{display:block}'+
+    '@media(min-width:768px){'+
+      '.aibo-strip .as-tbo svg{width:96px;height:30px}'+
+      '.aibo-strip .as-vb svg{width:20px;height:46px}'+
+      '.aibo-tech .tp-grid{grid-template-columns:84px repeat(3,1fr);gap:8px}'+
+      '.aibo-tech .tp-met{font-size:10px}'+
+      '.aibo-tech .tp-hd{font-size:10px}'+
+    '}';
   document.head.appendChild(st);
 }
 /* ---- lo-fi week sparkline (Stage 18; Stage 19 adds the tf technicals window below) ----
@@ -2361,7 +2401,8 @@ function tfTboSVG(bars,w,h){
   var fp='';
   for(var i=0;i<n;i++){ if(s8[i]==null)continue; fp+=(fp?' ':'')+X(i).toFixed(1)+','+Y(s8[i]).toFixed(1); }
   if(fp)s+='<polyline points="'+fp+'" fill="none" stroke="'+TF_CY+'" stroke-width="1" opacity=".9"/>';
-  var col=c[n-1]>=c[0]?TF_UP:TF_DN,pts='';
+  /* Stage 20: price rides the clouds in neutral gray — the clouds carry the color */
+  var col=TF_FL,pts='';
   for(var j=0;j<n;j++){ pts+=(pts?' ':'')+X(j).toFixed(1)+','+Y(c[j]).toFixed(1); }
   s+='<polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
   s+='<circle cx="'+(w-p)+'" cy="'+Y(c[n-1]).toFixed(1)+'" r="1.7" fill="'+col+'"/>';
@@ -2427,7 +2468,7 @@ function tfDivSVG(bars,w,h){
   var call=tfCloses(bars), r=tfRsi(call,14), evs=tfDivergences(call,r);
   var tail=Math.min(60,call.length), off=call.length-tail;
   var c=call.slice(-tail), rr=r.slice(-tail), n=tail, p=2;
-  var stripH=Math.max(4,Math.round(h*0.24)), ph=h-stripH-2;
+  var stripH=Math.max(3,Math.round(h*0.15)), ph=h-stripH-2;
   var e=tfExt(c);
   if(!e) return '';
   var rg=e[1]-e[0]||1;
@@ -2435,9 +2476,30 @@ function tfDivSVG(bars,w,h){
   function Y(v){ return (ph-p)-(v-e[0])*(ph-2*p)/rg; }
   var live=[];
   for(var q=0;q<evs.length;q++){ if(evs[q].i1>=off)live.push(evs[q]); }
-  var col=c[n-1]>=c[0]?TF_UP:TF_DN,pts='';
+  /* Stage 20: compute the composite pressure lane FIRST — the price line inherits its
+     verdict per bar (gray when momentum agrees, red/green while it leaks), so the lane
+     below and the line above always tell the same story. */
+  var Ks=[4,8,14],lane=[];
+  for(var li=0;li<n;li++){
+    var best=0;
+    for(var L2=0;L2<Ks.length;L2++){
+      var k=Ks[L2];
+      if(li<k||rr[li]==null||rr[li-k]==null||!c[li-k])continue;
+      var a2=(c[li]-c[li-k])/c[li-k],b3=(rr[li]-rr[li-k])/50,dis=0;
+      if(a2>0.003&&b3<-0.015)dis=Math.min(1,(a2*45)*(-b3*9));
+      else if(a2<-0.003&&b3>0.015)dis=-Math.min(1,(-a2*45)*(b3*9));
+      if(Math.abs(dis)>Math.abs(best))best=dis;
+    }
+    lane.push(best);
+  }
+  var pts='';
   for(var i=0;i<n;i++){ pts+=(pts?' ':'')+X(i).toFixed(1)+','+Y(c[i]).toFixed(1); }
-  var s='<polyline points="'+pts+'" fill="none" stroke="'+(live.length?TF_FL:col)+'" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"'+(live.length?' opacity=".75"':'')+'/>';
+  var s='<polyline points="'+pts+'" fill="none" stroke="'+TF_FL+'" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>';
+  for(var sg=1;sg<n;sg++){
+    var lv=Math.abs(lane[sg])>=0.12?lane[sg]:0;
+    if(!lv)continue;
+    s+='<line x1="'+X(sg-1).toFixed(1)+'" y1="'+Y(c[sg-1]).toFixed(1)+'" x2="'+X(sg).toFixed(1)+'" y2="'+Y(c[sg]).toFixed(1)+'" stroke="'+(lv>0?TF_DN:TF_UP)+'" stroke-width="1.5" stroke-linecap="round"/>';
+  }
   if(live.length){
     var v=live[live.length-1],a=v.i1-off,b=v.i2-off,cc=v.type==='bear'?TF_DN:TF_UP;
     var x1=X(a),y1=Y(c[a]),x2=X(b),y2=Y(c[b]);
@@ -2450,17 +2512,9 @@ function tfDivSVG(bars,w,h){
     var by=v.type==='bear'?Math.max(4,y2-5):Math.min(ph-2,y2+5);
     s+='<path d="M'+(x2-2.8).toFixed(1)+','+by.toFixed(1)+' L'+(x2+2.8).toFixed(1)+','+by.toFixed(1)+' L'+x2.toFixed(1)+','+(v.type==='bear'?by+4.2:by-4.2).toFixed(1)+' Z" fill="'+cc+'"/>';
   }
-  var Ks=[4,8,14],bwv=(w-2*p)/n,y0=h-stripH;
+  var bwv=(w-2*p)/n,y0=h-stripH;
   for(var i2=0;i2<n;i2++){
-    var best=0;
-    for(var L2=0;L2<Ks.length;L2++){
-      var k=Ks[L2];
-      if(i2<k||rr[i2]==null||rr[i2-k]==null||!c[i2-k])continue;
-      var a2=(c[i2]-c[i2-k])/c[i2-k],b3=(rr[i2]-rr[i2-k])/50,dis=0;
-      if(a2>0.003&&b3<-0.015)dis=Math.min(1,(a2*45)*(-b3*9));
-      else if(a2<-0.003&&b3>0.015)dis=-Math.min(1,(-a2*45)*(b3*9));
-      if(Math.abs(dis)>Math.abs(best))best=dis;
-    }
+    var best=lane[i2];
     var fill='rgba(90,102,120,.18)';
     if(best>0)fill='rgba(240,104,95,'+(0.2+best*0.72).toFixed(2)+')';
     else if(best<0)fill='rgba(57,208,127,'+(0.2-best*0.72).toFixed(2)+')';
@@ -2474,16 +2528,16 @@ function tfBbSVG(bars,w,h){
   if(!bars || bars.length<21) return '';
   var call=tfCloses(bars),tail=Math.min(45,call.length);
   var c=call.slice(-tail),n=tail,p=2,win=20;
-  var up=[],dn=[];
+  var up=[],dn=[],mid=[];
   for(var i=0;i<n;i++){
     var gi=call.length-tail+i;
-    if(gi<win-1){up.push(null);dn.push(null);continue}
+    if(gi<win-1){up.push(null);dn.push(null);mid.push(null);continue}
     var s0=0,j;
     for(j=gi-win+1;j<=gi;j++)s0+=call[j];
     var m=s0/win,v2=0;
     for(j=gi-win+1;j<=gi;j++)v2+=(call[j]-m)*(call[j]-m);
     var sd=Math.sqrt(v2/win);
-    up.push(m+2*sd);dn.push(m-2*sd);
+    up.push(m+2*sd);dn.push(m-2*sd);mid.push(m);
   }
   var e=tfExt(c.concat(up,dn));
   if(!e) return '';
@@ -2497,6 +2551,9 @@ function tfBbSVG(bars,w,h){
   for(var q=0;q<n;q++){ pts+=(pts?' ':'')+X(q).toFixed(1)+','+Y(c[q]).toFixed(1); }
   var s='';
   if(band)s+='<path d="'+band+' Z" fill="'+TF_CY+'" opacity=".13"/><path d="'+band+' Z" fill="none" stroke="'+TF_CY+'" stroke-width=".7" opacity=".35"/>';
+  var mp='';
+  for(var mi=0;mi<n;mi++){ if(mid[mi]==null)continue; mp+=(mp?' ':'')+X(mi).toFixed(1)+','+Y(mid[mi]).toFixed(1); }
+  if(mp)s+='<polyline points="'+mp+'" fill="none" stroke="'+TF_FL+'" stroke-width=".9" stroke-dasharray="3 2.5" opacity=".7"/>';
   s+='<polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
   s+='<circle cx="'+(w-p)+'" cy="'+Y(c[n-1]).toFixed(1)+'" r="1.7" fill="'+col+'"/>';
   return tfSvg(w,h)+s+'</svg>';
@@ -2514,6 +2571,49 @@ function tboMiniRow(tf){
     s+='<span class="as-tbo"><i>'+defs[i][1]+'</i>'+(svg||'<b class="as-tbo-gap">–</b>')+'</span>';
   }
   return any?s:'';
+}
+
+/* Stage 20: strip refit — equity minis are candles+55EMA (crypto keeps the cloud
+   minis; no OHLC there), the Stage 18 sparkline is retired, and a vertical range
+   bullet anchors the strip's right edge. */
+function tfMiniRow(tf,kind){
+  var P=tfParse(tf);
+  if(!P) return '';
+  var defs=[['d','D'],['w','W'],['m','M']],s='',any=false;
+  for(var i=0;i<defs.length;i++){
+    var bars=P[defs[i][0]],svg='';
+    if(bars) svg=(kind==='eq')?tfCandleSVG(bars,64,20):tfTboSVG(bars,64,20);
+    if(svg)any=true;
+    s+='<span class="as-tbo"><i>'+defs[i][1]+'</i>'+(svg||'<b class="as-tbo-gap">–</b>')+'</span>';
+  }
+  return any?s:'';
+}
+function vbulletSVG(tf,pxLast){
+  var P=tfParse(tf);
+  if(!P||!P.d||P.d.length<21) return '';
+  var bars=P.d,c=tfCloses(bars);
+  var e=tfExt(c);
+  if(!e) return '';
+  var lo=e[0],hi=e[1];
+  var last=(pxLast!=null&&isFinite(pxLast))?pxLast:c[c.length-1];
+  if(last<lo)lo=last;
+  if(last>hi)hi=last;
+  var s20=0;
+  for(var i=c.length-20;i<c.length;i++)s20+=c[i];
+  var ma=s20/20;
+  var day=bars[bars.length-1];
+  var W=16,H=36,cx=W/2,rg=hi-lo||1;
+  function Yv(v){ return 3+(H-6)*(1-(v-lo)/rg); }
+  var s='<rect x="'+(cx-2)+'" y="3" width="4" height="'+(H-6)+'" rx="2" fill="var(--hair,#2A3647)"/>';
+  if(day.h!=null&&day.l!=null){
+    var yh=Yv(Math.min(hi,day.h)),yl=Yv(Math.max(lo,day.l));
+    s+='<rect x="'+(cx-2)+'" y="'+yh.toFixed(1)+'" width="4" height="'+Math.max(2,yl-yh).toFixed(1)+'" rx="2" fill="'+TF_DIM+'"/>';
+  }
+  if(ma>=lo&&ma<=hi)s+='<line x1="'+(cx-5)+'" y1="'+Yv(ma).toFixed(1)+'" x2="'+(cx+5)+'" y2="'+Yv(ma).toFixed(1)+'" stroke="'+TF_CY+'" stroke-width="1.3"/>';
+  var prev=c.length>=2?c[c.length-2]:last;
+  var col=last>prev?TF_UP:(last<prev?TF_DN:TF_FL);
+  s+='<circle cx="'+cx+'" cy="'+Yv(last).toFixed(1)+'" r="2.8" fill="'+col+'" stroke="#0D1320" stroke-width="1.1"/>';
+  return '<span class="as-vb">'+tfSvg(W,H)+s+'</svg></span>';
 }
 
 /* the expandable technicals window: 4 locked metrics × D/W/M = 12 panes.
@@ -2585,10 +2685,10 @@ function liveStrip(tk){
   return '<div class="aibo-strip">'
        + '<span class="as-px">'+num(px.last,2)+'</span>'
        + '<span class="as-chg '+chCls+'">'+chTxt+'</span>'
-       + sparkSVG(tech && tech.spark)
-       + tboMiniRow(tech && tech.tf)
+       + tfMiniRow(tech && tech.tf,'eq')
+       + '<span class="as-t as-tl'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
        + mas
-       + '<span class="as-t'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
+       + vbulletSVG(tech && tech.tf, px.last)
        + '</div>';
 }
 
@@ -2630,10 +2730,10 @@ function liveStripCrypto(tk){
   return '<div class="aibo-strip">'
        + '<span class="as-px">'+pxTxt+'</span>'
        + '<span class="as-chg '+chCls+'">'+chTxt+'</span>'
-       + sparkSVG(tech && tech.spark)
-       + tboMiniRow(tech && tech.tf)
+       + tfMiniRow(tech && tech.tf,'cr')
+       + '<span class="as-t as-tl'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
        + mas
-       + '<span class="as-t'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
+       + vbulletSVG(tech && tech.tf, v.usd)
        + '</div>';
 }
 
@@ -2670,43 +2770,43 @@ function coSheet(r){
 
     ${r.tt ? `<div class="tt-tag"><span class="ttb">TT</span> Traveling Trader pick</div>` : ''}
 
-    ${(typeof INFO!=='undefined'&&INFO[r.ticker]) ? `<div class="sh-about">
+    ${(typeof INFO!=='undefined'&&INFO[r.ticker]) ? `<details class="sh-desc"><summary>
       <div class="sh-about-top">${countryChip(INFO[r.ticker].c)}</div>
       <div class="sh-about-does">${esc(INFO[r.ticker].does)}</div>
+      <span class="sd-car">\u25B8</span></summary>
       ${INFO[r.ticker].why ? `<div class="sh-about-why"><span class="wl">Why it matters</span> ${esc(INFO[r.ticker].why)}</div>` : ''}
-    </div>` : ''}
+      ${r.note ? `<div class="sh-note sh-note-in">${esc(r.note)}</div>` : ''}
+    </details>` : (r.note ? `<div class="sh-note">${esc(r.note)}</div>` : '')}
 
-    <div class="sh-rolls">
-      <div class="roll">
-        <div class="rl">Expansion grade</div>
-        <div class="rg"><span class="big ${expC}">${r.exp}</span></div>
-        <div class="rd">Rolls the four growth-phase pillars \u2014 Growth, Profitability, Moat, Financial Health.</div>
+    <details class="sh-grades"><summary>
+      <div class="sh-rolls">
+        <div class="roll">
+          <div class="rl">Expansion grade</div>
+          <div class="rg"><span class="big ${expC}">${r.exp}</span></div>
+        </div>
+        <div class="roll">
+          <div class="rl">Recession grade</div>
+          <div class="rg"><span class="big ${recC}">${r.rec}</span></div>
+        </div>
       </div>
-      <div class="roll">
-        <div class="rl">Recession grade</div>
-        <div class="rg"><span class="big ${recC}">${r.rec}</span></div>
-        <div class="rd">Adds the three discipline pillars \u2014 Cash Flow, Capital Allocation, Business Quality.</div>
+      <span class="sg-hint">pillars \u00b7 valuation &amp; confidence <b class="sd-car">\u25B8</b></span></summary>
+      <div class="sg-cols">
+        <div class="sg-col">
+          <div class="sh-sech">Growth-phase pillars</div>
+          ${pillCell(r,'G')}${pillCell(r,'P')}${pillCell(r,'M')}${pillCell(r,'F')}
+        </div>
+        <div class="sg-col">
+          <div class="sh-sech">Discipline pillars</div>
+          ${pillCell(r,'C')}${pillCell(r,'A')}${pillCell(r,'B')}
+        </div>
       </div>
-    </div>
-
-    <div class="sh-sech">Growth-phase pillars (Expansion)</div>
-    <div class="pgrid">
-      ${pillCell(r,'G')}${pillCell(r,'P')}${pillCell(r,'M')}${pillCell(r,'F')}
-    </div>
-
-    <div class="sh-sech">Discipline pillars (added for Recession)</div>
-    <div class="pgrid">
-      ${pillCell(r,'C')}${pillCell(r,'A')}${pillCell(r,'B')}
-    </div>
-
-    <div class="sh-sech">Valuation &amp; confidence</div>
-    <div class="sh-val">
-      ${valPill}
-      <span class="conf c-${r.conf}">${r.conf}</span>
-      <div class="vbody"><div class="vf">${vi.sentence}<br>Confidence: ${CONF[r.conf]||r.conf}. Valuation is reported separately and never folded into the quality grade.</div></div>
-    </div>
-
-    ${r.note ? `<div class="sh-note">${esc(r.note)}</div>` : ''}
+      <div class="sh-sech">Valuation &amp; confidence</div>
+      <div class="sh-val">
+        ${valPill}
+        <span class="conf c-${r.conf}">${r.conf}</span>
+        <div class="vbody"><div class="vf">${vi.sentence}<br>Confidence: ${CONF[r.conf]||r.conf}. Valuation is reported separately and never folded into the quality grade.</div></div>
+      </div>
+    </details>
     ${DISC}
   `;
 }
@@ -4231,7 +4331,7 @@ TIERS.forEach(t=>t.ts.forEach(tk=>{
           </div>
         </div>
         ${liveStripCrypto(tk)}${techPanel(tk,'cr')}
-        <div class="cr-mbody">
+        <details class="cr-bodyd"><summary>Dossier <span>solves \u00b7 token \u00b7 traction \u00b7 risk</span><b class="sd-car">\u25B8</b></summary><div class="cr-mbody">
           <div class="cr-d-is">${d.is}</div>
           <div class="cr-drow"><span class="cr-k">Solves</span><span class="cr-v">${d.solves}</span></div>
           <div class="cr-drow"><span class="cr-k">Token</span><span class="cr-v">${d.token}</span></div>
@@ -4240,7 +4340,7 @@ TIERS.forEach(t=>t.ts.forEach(tk=>{
           <div class="cr-driskline"><span class="cr-rk">Key risk</span>${d.risk}</div>
           <div class="cr-mfoot">Mid-2026 snapshot. Tokenomics is scored on its own axis \u2014 value capture, supply discipline, dilution \u2014 ${q?'never blended into quantum-resistance':'never blended into narrative fit'}. ${DISC}</div>
         </div>
-      </div>`;
+      </div></details>`;
   }
   function openSheet(tk, srcEl){
     const body=document.getElementById('sheetBody');
