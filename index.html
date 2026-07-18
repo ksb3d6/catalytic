@@ -2228,6 +2228,8 @@ function liveStripCSS(){
     '.aibo-tech .tp-cell{background:rgba(14,21,32,.8);border:1px solid var(--hair,#2A3647);border-radius:7px;padding:3px 4px;min-height:24px;display:flex;align-items:center;justify-content:center}'+
     '.aibo-tech .tp-cell svg{width:100%;height:auto;display:block}'+
     '.aibo-tech .tp-gap{font:600 9px/1 ui-monospace,Menlo,monospace;color:#5A6678}'+
+    '.aibo-tech .tp-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 10px 10px}'+
+    '.aibo-tech .tp-grid.tp-grid4{grid-template-columns:62px repeat(4,minmax(138px,1fr));padding:0;min-width:640px}'+
     /* Stage 20: left-anchored stamp, right-anchored vertical bullet, iPad scale-up */
     '.aibo-strip .as-t.as-tl{margin-left:0}'+
     '.aibo-strip .as-vb{margin-left:auto;flex:none;display:inline-flex;align-items:center}'+
@@ -2235,7 +2237,7 @@ function liveStripCSS(){
     '@media(min-width:768px){'+
       '.aibo-strip .as-tbo svg{width:96px;height:30px}'+
       '.aibo-strip .as-vb svg{width:20px;height:46px}'+
-      '.aibo-tech .tp-grid{grid-template-columns:84px repeat(3,1fr);gap:8px}'+
+      '.aibo-tech .tp-grid.tp-grid4{grid-template-columns:84px repeat(4,1fr);min-width:0}'+
       '.aibo-tech .tp-met{font-size:10px}'+
       '.aibo-tech .tp-hd{font-size:10px}'+
     '}';
@@ -2275,7 +2277,7 @@ function tfNum(x){ return TF_NUM.test(x) ? +x : NaN; }
 function tfSvg(w,h){ return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" aria-hidden="true">'; }
 function tfParse(tf){
   if(!tf || typeof tf!=='object' || Array.isArray(tf)) return null;
-  var out={}, ks=['d','w','m'], any=false;
+  var out={}, ks=['d','w','m','h'], any=false;
   for(var i=0;i<ks.length;i++){
     var k=ks[i], s=tf[k], bars=null;
     if(typeof s==='string' && s){
@@ -2327,10 +2329,13 @@ function tfExt(arr){
 }
 
 /* pane 1 — candles + 55 EMA (close-line + EMA when the frame is close-only) */
-function tfCandleSVG(bars,w,h){
-  if(!bars || bars.length<20) return '';
+function tfCandleSVG(bars,w,h,tailN){
+  /* tailN (Stage 21): the panes pass a shared window so all four rows align bar-for-bar;
+     minis omit it and stay width-density-driven. Min lowered to 8 bars so a short frame
+     (crypto monthly at the public 365d cap) still draws an honest close line. */
+  if(!bars || bars.length<8) return '';
   var closes=tfCloses(bars), e55=tfEma(closes,55);
-  var tail=Math.max(20,Math.min(bars.length,Math.floor(w/4.5)));
+  var tail=tailN?Math.min(bars.length,tailN):Math.max(20,Math.min(bars.length,Math.floor(w/4.5)));
   var B=bars.slice(-tail), M=e55.slice(-tail);
   var ohlc=0;
   for(var i=0;i<B.length;i++){ if(B[i].o!=null&&B[i].h!=null&&B[i].l!=null)ohlc++; }
@@ -2385,11 +2390,11 @@ function tfCloudQuads(X,Y,a,b,alB,alD){
   }
   return s;
 }
-function tfTboSVG(bars,w,h){
+function tfTboSVG(bars,w,h,tailN){
   if(!bars || bars.length<45) return '';
   var call=tfCloses(bars);
   var e8=tfEma(call,8),e13=tfEma(call,13),e21=tfEma(call,21),e40=tfEma(call,40);
-  var tail=Math.min(50,call.length);
+  var tail=Math.min(tailN||50,call.length);
   var c=call.slice(-tail);
   var s8=e8.slice(-tail),s13=e13.slice(-tail),s21=e21.slice(-tail),s40=e40.slice(-tail);
   var e=tfExt(c.concat(s8,s13,s21,s40));
@@ -2463,10 +2468,10 @@ function tfDivergences(closes,r){
   out.sort(function(x,y){return x.i2-y.i2});
   return out;
 }
-function tfDivSVG(bars,w,h){
+function tfDivSVG(bars,w,h,tailN){
   if(!bars || bars.length<30) return '';
   var call=tfCloses(bars), r=tfRsi(call,14), evs=tfDivergences(call,r);
-  var tail=Math.min(60,call.length), off=call.length-tail;
+  var tail=Math.min(tailN||60,call.length), off=call.length-tail;
   var c=call.slice(-tail), rr=r.slice(-tail), n=tail, p=2;
   var stripH=Math.max(3,Math.round(h*0.15)), ph=h-stripH-2;
   var e=tfExt(c);
@@ -2524,9 +2529,9 @@ function tfDivSVG(bars,w,h){
 }
 
 /* pane 4 — Bollinger ±2σ squeeze ribbon (20-bar window) */
-function tfBbSVG(bars,w,h){
+function tfBbSVG(bars,w,h,tailN){
   if(!bars || bars.length<21) return '';
-  var call=tfCloses(bars),tail=Math.min(45,call.length);
+  var call=tfCloses(bars),tail=Math.min(tailN||45,call.length);
   var c=call.slice(-tail),n=tail,p=2,win=20;
   var up=[],dn=[],mid=[];
   for(var i=0;i<n;i++){
@@ -2577,12 +2582,14 @@ function tboMiniRow(tf){
    minis; no OHLC there), the Stage 18 sparkline is retired, and a vertical range
    bullet anchors the strip's right edge. */
 function tfMiniRow(tf,kind){
+  /* Stage 21: coarse->fine left-to-right (M W D H), and both universes draw the same
+     mini — candles+55EMA where OHLC exists, close line+55EMA where it doesn't. */
   var P=tfParse(tf);
   if(!P) return '';
-  var defs=[['d','D'],['w','W'],['m','M']],s='',any=false;
+  var defs=[['m','M'],['w','W'],['d','D'],['h','H']],s='',any=false;
   for(var i=0;i<defs.length;i++){
     var bars=P[defs[i][0]],svg='';
-    if(bars) svg=(kind==='eq')?tfCandleSVG(bars,64,20):tfTboSVG(bars,64,20);
+    if(bars) svg=tfCandleSVG(bars,64,20);
     if(svg)any=true;
     s+='<span class="as-tbo"><i>'+defs[i][1]+'</i>'+(svg||'<b class="as-tbo-gap">–</b>')+'</span>';
   }
@@ -2642,17 +2649,21 @@ function techPanel(tk,kind){
     {l:'DIVERGENCE',    fn:tfDivSVG},
     {l:'BOLLINGER',     fn:tfBbSVG}
   ];
-  var out='<div class="tp-hd"></div><div class="tp-hd">DAILY</div><div class="tp-hd">WEEKLY</div><div class="tp-hd">MONTHLY</div>';
-  var frames=[P.d,P.w,P.m];
+  /* Stage 21: coarse->fine columns (M W D + scrollable H), and ONE shared 45-bar
+     window across all four metric rows so the same spike sits at the same x in every
+     pane of a column — the congruence fix. */
+  var TP_TAIL=45;
+  var out='<div class="tp-hd"></div><div class="tp-hd">MONTHLY</div><div class="tp-hd">WEEKLY</div><div class="tp-hd">DAILY</div><div class="tp-hd">HOURLY</div>';
+  var frames=[P.m,P.w,P.d,P.h];
   for(var i=0;i<METS.length;i++){
     out+='<div class="tp-met">'+METS[i].l+'</div>';
-    for(var j=0;j<3;j++){
-      var svg=frames[j]?METS[i].fn(frames[j],150,40):'';
-      out+='<div class="tp-cell">'+(svg||'<span class="tp-gap">short history</span>')+'</div>';
+    for(var j=0;j<4;j++){
+      var svg=frames[j]?METS[i].fn(frames[j],150,40,TP_TAIL):'';
+      out+='<div class="tp-cell">'+(svg||'<span class="tp-gap">'+(j===3?'no hourly yet':'short history')+'</span>')+'</div>';
     }
   }
-  return '<details class="aibo-tech"><summary>Technicals <span>candles · TBO · divergence · Bollinger — D/W/M</span></summary>'
-       + '<div class="tp-grid">'+out+'</div></details>';
+  return '<details class="aibo-tech"><summary>Technicals <span>candles · TBO · divergence · Bollinger — M/W/D/H</span></summary>'
+       + '<div class="tp-scroll"><div class="tp-grid tp-grid4">'+out+'</div></div></details>';
 }
 function liveStrip(tk){
   var v = (typeof DATA!=='undefined' && DATA[tk]) ? DATA[tk].live : null;
