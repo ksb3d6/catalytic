@@ -2626,9 +2626,56 @@ function vbulletSVG(tf,pxLast){
 /* the expandable technicals window: 4 locked metrics × D/W/M = 12 panes.
    kind 'eq' reads DATA[tk].live; 'cr' bridges the display key ('$AI' -> 'AI') into
    window.AIBO_CRYPTO_LIVE — the same bridge liveStripCrypto uses. */
+/* Stage 22: ETF/index strip — same schema as the equity strip (px.last/chg1d_pct,
+   full tech sidecar), fed from payload.funds. No grades by design; honest '' when
+   the payload predates v3.1. */
+function liveStripFund(tk){
+  var toks=window.AIBO_FUNDS_LIVE;
+  if(!toks) return '';
+  var v=toks[tk];
+  if(!v || !v.px || v.px.last==null) return '';
+  var L=window.AIBO_LIVE;
+  if(!L || !L.num || !L.dayChg || !L.fmtT) return '';
+  var num=L.num, dayChg=L.dayChg, fmtT=L.fmtT;
+  liveStripCSS();
+  var px=v.px, tech=v.tech;
+  var chg=dayChg(v);
+  var chCls = chg==null ? 'fl' : (chg>0.049 ? 'up' : (chg<-0.049 ? 'dn' : 'fl'));
+  var arr   = chg==null ? '' : (chg>0.049 ? '\u25b2' : (chg<-0.049 ? '\u25bc' : '\u2022'));
+  var chTxt = chg==null ? '\u2014' : (arr+' '+num(Math.abs(chg),2)+'%');
+  var mas;
+  if(tech && (tech.dist_ma20_pct!=null || tech.dist_ma50_pct!=null || tech.dist_ma200_pct!=null)){
+    var cell=function(lbl,val){
+      if(val==null) return '';
+      var c = val>=0 ? 'up' : 'dn', sg = val>=0 ? '+' : '';
+      return '<span class="as-ma"><i>'+lbl+'</i><b class="'+c+'">'+sg+num(val,1)+'%</b></span>';
+    };
+    mas = '<span class="as-mas">'+cell('MA20',tech.dist_ma20_pct)+cell('MA50',tech.dist_ma50_pct)+cell('MA200',tech.dist_ma200_pct);
+    if(tech.direction) mas += '<span class="as-dir">'+esc(String(tech.direction))+'</span>';
+    mas += '</span>';
+  } else {
+    mas = '<span class="as-gap">history gap</span>';
+  }
+  var src=(L.state&&L.state.src)||null;
+  var cached=src==='cache';
+  var when=fmtT(px.asOf);
+  return '<div class="aibo-strip">'
+       + '<span class="as-px">'+num(px.last,2)+'</span>'
+       + '<span class="as-chg '+chCls+'">'+chTxt+'</span>'
+       + tfMiniRow(tech && tech.tf,'eq')
+       + '<span class="as-t as-tl'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
+       + mas
+       + vbulletSVG(tech && tech.tf, px.last)
+       + '</div>';
+}
+
 function techPanel(tk,kind){
   var tf=null;
-  if(kind==='cr'){
+  if(kind==='fund'){
+    var fv=window.AIBO_FUNDS_LIVE&&window.AIBO_FUNDS_LIVE[tk];
+    if(!fv) return '';
+    tf=fv.tech&&fv.tech.tf;
+  }else if(kind==='cr'){
     var toks=window.AIBO_CRYPTO_LIVE;
     if(!toks) return '';
     var key=(tk.charAt(0)==='$')?tk.slice(1):tk;
@@ -2831,6 +2878,7 @@ function fundSheet(r){
         <div class="sh-tags"><span class="tag">ETF / basket</span><span class="tag">Cataloged, not graded</span></div>
       </div>
     </div>
+    ${liveStripFund(r.ticker)}${techPanel(r.ticker,'fund')}
     <div class="sh-simple"><b>${esc(r.role||'Basket')}.</b> ${esc(r.note||'')}</div>
     <div class="sh-simple">A basket holds many names at once, so a single seven-pillar grade wouldn't be meaningful \u2014 it's carried here as a map landmark, with the look-through exposure living in its underlying holdings.</div>
     ${DISC}
@@ -7711,6 +7759,7 @@ try{
     }
     S.tokens = (payload.crypto && payload.crypto.tokens) || null;
     window.AIBO_CRYPTO_LIVE = S.tokens;
+    window.AIBO_FUNDS_LIVE = (payload.funds && payload.funds.tickers) || null;   /* Stage 22 */
     S.at = payload.generatedAt || null; S.src = src; S.n = n; S.fresh = fresh;
     paintChip(); if(S.open) paintPanel();
     return true;
