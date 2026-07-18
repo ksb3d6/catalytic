@@ -2233,11 +2233,12 @@ function liveStripCSS(){
     '.aibo-strip .as-t.as-tr{margin-left:0;opacity:.8}'+
     /* Stage 20: left-anchored stamp, right-anchored vertical bullet, iPad scale-up */
     '.aibo-strip .as-t.as-tl{margin-left:0}'+
-    '.aibo-strip .as-vb{margin-left:auto;flex:none;display:inline-flex;align-items:center}'+
-    '.aibo-strip .as-vb svg{display:block}'+
+    '.aibo-strip{position:relative;padding-right:44px}'+
+    '.aibo-strip .as-vb{position:absolute;right:8px;top:6px;bottom:6px;display:flex;align-items:stretch}'+
+    '.aibo-strip .as-vb svg{height:100%;width:auto;display:block}'+
     '@media(min-width:768px){'+
       '.aibo-strip .as-tbo svg{width:96px;height:30px}'+
-      '.aibo-strip .as-vb svg{width:20px;height:46px}'+
+      '.aibo-strip{padding-right:52px}'+
       '.aibo-tech .tp-grid.tp-grid5{grid-template-columns:84px repeat(5,minmax(150px,1fr));min-width:840px}'+
       '.aibo-tech .tp-met{font-size:10px}'+
       '.aibo-tech .tp-hd{font-size:10px}'+
@@ -2597,30 +2598,56 @@ function tfMiniRow(tf,kind){
   return any?s:'';
 }
 function vbulletSVG(tf,pxLast){
+  /* Stage 24: the month bar — Carl's finalized spec. Track = 30-day OPEN/CLOSE range
+     (~one month of bodies), nested week band (5d) and today band, stepped widths
+     4.5/6.5/8.5 on a 64px base, ice-gradient grays, beefy MA20, and a full-circle
+     price dot wider than every band. Rendered at a fixed base size and stretched to
+     the strip's full height by CSS (absolute right column spanning both wrapped rows).
+     Crypto day/week ranges degrade to close-based extremes (no daily h/l there),
+     with the day range recovered from the hourly frame when present. */
   var P=tfParse(tf);
   if(!P||!P.d||P.d.length<21) return '';
-  var bars=P.d,c=tfCloses(bars);
-  var e=tfExt(c);
-  if(!e) return '';
-  var lo=e[0],hi=e[1];
+  var bars=P.d, c=tfCloses(bars);
   var last=(pxLast!=null&&isFinite(pxLast))?pxLast:c[c.length-1];
-  if(last<lo)lo=last;
-  if(last>hi)hi=last;
-  var s20=0;
-  for(var i=c.length-20;i<c.length;i++)s20+=c[i];
-  var ma=s20/20;
-  var day=bars[bars.length-1];
-  var W=16,H=36,cx=W/2,rg=hi-lo||1;
-  function Yv(v){ return 3+(H-6)*(1-(v-lo)/rg); }
-  var s='<rect x="'+(cx-2)+'" y="3" width="4" height="'+(H-6)+'" rx="2" fill="var(--hair,#2A3647)"/>';
-  if(day.h!=null&&day.l!=null){
-    var yh=Yv(Math.min(hi,day.h)),yl=Yv(Math.max(lo,day.l));
-    s+='<rect x="'+(cx-2)+'" y="'+yh.toFixed(1)+'" width="4" height="'+Math.max(2,yl-yh).toFixed(1)+'" rx="2" fill="'+TF_DIM+'"/>';
+  var w30=bars.slice(-30);
+  var lo=Infinity,hi=-Infinity;
+  for(var i=0;i<w30.length;i++){
+    var b=w30[i];
+    var o=(b.o!=null)?b.o:b.c;
+    if(o<lo)lo=o; if(o>hi)hi=o;
+    if(b.c<lo)lo=b.c; if(b.c>hi)hi=b.c;
   }
-  if(ma>=lo&&ma<=hi)s+='<line x1="'+(cx-5)+'" y1="'+Yv(ma).toFixed(1)+'" x2="'+(cx+5)+'" y2="'+Yv(ma).toFixed(1)+'" stroke="'+TF_CY+'" stroke-width="1.3"/>';
+  var wk=bars.slice(-5),wkh=-Infinity,wkl=Infinity;
+  for(var k=0;k<wk.length;k++){
+    var bh=(wk[k].h!=null)?wk[k].h:wk[k].c, bl=(wk[k].l!=null)?wk[k].l:wk[k].c;
+    if(bh>wkh)wkh=bh; if(bl<wkl)wkl=bl;
+  }
+  var day=bars[bars.length-1],dh=day.h,dl=day.l;
+  if((dh==null||dl==null)&&P.h&&P.h.length>=6){
+    var htail=P.h.slice(-24);
+    dh=-Infinity;dl=Infinity;
+    for(var q=0;q<htail.length;q++){
+      var hv=(htail[q].h!=null)?htail[q].h:htail[q].c, lv=(htail[q].l!=null)?htail[q].l:htail[q].c;
+      if(hv>dh)dh=hv; if(lv<dl)dl=lv;
+    }
+  }
+  var s20=0;
+  for(var m=c.length-20;m<c.length;m++)s20+=c[m];
+  var ma=s20/20;
+  hi=Math.max(hi,wkh,last); lo=Math.min(lo,wkl,last);
+  if(dh!=null&&isFinite(dh)){hi=Math.max(hi,dh);lo=Math.min(lo,dl);}
+  var W=26,H=64,pad=6,cx=W/2,rg=hi-lo||1;
+  function Yv(v){ return pad+(H-2*pad)*(1-(v-lo)/rg); }
+  function band(y1,y2,bw,fill){
+    return '<rect x="'+(cx-bw/2).toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+bw+'" height="'+Math.max(2,y2-y1).toFixed(1)+'" rx="'+(bw/2).toFixed(1)+'" fill="'+fill+'"/>';
+  }
+  var s=band(pad,H-pad,3,'#2A3647');
+  s+=band(Yv(wkh),Yv(wkl),4.5,'#5E7188');
+  if(dh!=null&&isFinite(dh)) s+=band(Yv(dh),Yv(dl),6,'#C9D6E8');
+  if(ma>=lo&&ma<=hi) s+='<line x1="'+(cx-8).toFixed(1)+'" y1="'+Yv(ma).toFixed(1)+'" x2="'+(cx+8).toFixed(1)+'" y2="'+Yv(ma).toFixed(1)+'" stroke="'+TF_CY+'" stroke-width="1.8" stroke-linecap="round"/>';
   var prev=c.length>=2?c[c.length-2]:last;
   var col=last>prev?TF_UP:(last<prev?TF_DN:TF_FL);
-  s+='<circle cx="'+cx+'" cy="'+Yv(last).toFixed(1)+'" r="2.8" fill="'+col+'" stroke="#0D1320" stroke-width="1.1"/>';
+  s+='<circle cx="'+cx+'" cy="'+Yv(last).toFixed(1)+'" r="4.5" fill="'+col+'" stroke="#0D1320" stroke-width="1.3"/>';
   return '<span class="as-vb">'+tfSvg(W,H)+s+'</svg></span>';
 }
 
