@@ -142,11 +142,14 @@ html,body{margin:0;background:
   box-shadow:0 -18px 60px rgba(0,0,0,.6);transition:transform .26s cubic-bezier(.22,.61,.36,1);
   padding:0 0 26px;}
 #sheet.show{transform:translate(-50%,0);}
-.sheet-grip{display:flex;justify-content:center;padding:9px 0 4px;position:sticky;top:0;
+.sheet-grip{display:flex;justify-content:center;padding:9px 0 4px;position:sticky;top:0;z-index:6;
   background:linear-gradient(180deg,#101c2e,rgba(16,28,46,.0));}
 .sheet-grip span{width:38px;height:4px;border-radius:3px;background:#33455f;}
-.sheet-x{position:absolute;top:12px;right:14px;width:28px;height:28px;border-radius:50%;border:1px solid var(--hair);
-  background:#16243a;color:var(--ink);font-weight:800;cursor:pointer;line-height:1;font-size:14px;z-index:3;}
+/* Stage 25: the X rides the sticky grip — an absolute X inside the scroll container
+   scrolled away with the content, and taps at the "remembered" corner landed on
+   whatever sat there (often the grades summary = phantom grade toggling). */
+.sheet-x{position:absolute;top:6px;right:14px;width:30px;height:30px;border-radius:50%;border:1px solid var(--hair);
+  background:#16243a;color:var(--ink);font-weight:800;cursor:pointer;line-height:1;font-size:14px;}
 .sh{padding:4px 20px 0;}
 .sh-head{display:flex;align-items:flex-start;gap:12px;padding:2px 4px 14px;border-bottom:1px solid var(--hair);}
 .sh-tk{font-size:27px;font-weight:850;letter-spacing:-.4px;line-height:1;}
@@ -181,7 +184,8 @@ html,body{margin:0;background:
 .sh-desc{margin:14px 0 2px;padding:13px 15px;border:1px solid var(--hair);border-radius:12px;background:rgba(255,255,255,.022);}
 .sh-desc summary{cursor:pointer;list-style:none;position:relative;}
 .sh-desc summary::-webkit-details-marker{display:none;}
-.sh-desc .sd-car{position:absolute;right:2px;top:2px;color:#5A6678;font-size:12px;transition:transform .15s;}
+.sh-desc .sd-car{position:absolute;right:0;top:0;color:#8A93A5;font-size:13px;transition:transform .15s;
+  padding:4px 9px;border:1px solid var(--hair);border-radius:8px;background:rgba(14,21,32,.8);}
 .sh-desc[open] .sd-car{transform:rotate(90deg);}
 .sh-desc .sh-about-why{margin-top:12px;}
 .sh-note-in{margin:12px 0 2px;}
@@ -189,8 +193,9 @@ html,body{margin:0;background:
 .sh-grades summary{cursor:pointer;list-style:none;padding:4px 0 8px;}
 .sh-grades summary::-webkit-details-marker{display:none;}
 .sh-grades .sh-rolls{margin:12px 0 6px;}
-.sh-grades .sg-hint{display:flex;align-items:center;justify-content:center;gap:6px;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);}
-.sh-grades .sg-hint .sd-car{font-style:normal;color:#5A6678;transition:transform .15s;}
+.sh-grades .sg-hint{display:flex;align-items:center;justify-content:flex-end;gap:7px;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);
+  width:max-content;margin-left:auto;padding:6px 11px;border:1px solid var(--hair);border-radius:9px;background:rgba(14,21,32,.8);}
+.sh-grades .sg-hint .sd-car{font-style:normal;font-size:13px;color:#8A93A5;transition:transform .15s;}
 .sh-grades[open] .sg-hint .sd-car{transform:rotate(90deg);}
 .sg-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0 4px;}
 .sg-col{display:flex;flex-direction:column;gap:8px;}
@@ -628,7 +633,8 @@ body.uni-crypto .lensLab{display:none;}
   font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--ink);}
 .cr-bodyd summary::-webkit-details-marker{display:none;}
 .cr-bodyd summary span{font-weight:600;font-size:10px;letter-spacing:.3px;text-transform:none;color:#5A6678;}
-.cr-bodyd summary .sd-car{margin-left:auto;font-style:normal;color:#5A6678;transition:transform .15s;}
+.cr-bodyd summary .sd-car{margin-left:auto;font-style:normal;font-size:13px;color:#8A93A5;transition:transform .15s;
+  padding:4px 9px;border:1px solid var(--hair);border-radius:8px;background:rgba(14,21,32,.8);}
 .cr-bodyd[open] summary .sd-car{transform:rotate(90deg);}
 .cr-dmctr{font-size:33px;font-weight:850;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
 .cr-dlchips{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0;align-content:flex-start;}
@@ -1838,8 +1844,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 <!-- ============ DETAIL DRAWER ============ -->
 <div id="scrim"></div>
 <div id="sheet" role="dialog" aria-modal="true">
-  <div class="sheet-grip"><span></span></div>
-  <button class="sheet-x" id="sheetX" aria-label="Close">&times;</button>
+  <div class="sheet-grip"><span></span><button class="sheet-x" id="sheetX" aria-label="Close">&times;</button></div>
   <div class="sh" id="sheetBody"></div>
 </div>
 
@@ -2233,9 +2238,21 @@ function liveStripCSS(){
     '.aibo-strip .as-t.as-tr{margin-left:0;opacity:.8}'+
     /* Stage 20: left-anchored stamp, right-anchored vertical bullet, iPad scale-up */
     '.aibo-strip .as-t.as-tl{margin-left:0}'+
-    '.aibo-strip{position:relative;padding-right:44px}'+
-    '.aibo-strip .as-vb{position:absolute;right:8px;top:6px;bottom:6px;display:flex;align-items:stretch}'+
+    '.aibo-strip{position:relative;padding-right:52px}'+
+    '.aibo-strip .as-vb{position:absolute;right:9px;top:6px;bottom:6px;display:flex;align-items:stretch}'+
     '.aibo-strip .as-vb svg{height:100%;width:auto;display:block}'+
+    '.aibo-box{margin:12px 4px 2px;border:1px solid var(--hair,#2A3647);border-radius:12px;background:rgba(9,14,20,.55)}'+
+    '.aibo-box .aibo-strip{margin:0;border:0;background:none;border-radius:12px 12px 0 0}'+
+    '.aibo-box .aibo-tech{margin:0;border:0;border-top:1px solid var(--hair,#2A3647);border-radius:0 0 12px 12px;background:none}'+
+    '.aibo-box .aibo-tech>summary{display:none}'+
+    '.aibo-strip .as-xp{flex:1 1 100%;display:flex;align-items:baseline;gap:8px;margin-top:2px;padding:7px 9px;'+
+      'appearance:none;border:1px solid var(--hair,#2A3647);border-radius:9px;background:rgba(14,21,32,.8);cursor:pointer;'+
+      'font:800 11px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'+
+      'letter-spacing:.05em;text-transform:uppercase;color:var(--ink,#EAEEF5);text-align:left}'+
+    '.aibo-strip .as-xp span{font:600 9.5px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'+
+      'letter-spacing:.2px;text-transform:none;color:#5A6678}'+
+    '.aibo-strip .as-xp .xp-ch{margin-left:auto;font-style:normal;font-size:13px;color:#8A93A5;transition:transform .15s}'+
+    '.aibo-strip .as-xp.on .xp-ch{transform:rotate(180deg)}'+
     '@media(min-width:768px){'+
       '.aibo-strip .as-tbo svg{width:96px;height:30px}'+
       '.aibo-strip{padding-right:52px}'+
@@ -2636,7 +2653,7 @@ function vbulletSVG(tf,pxLast){
   var ma=s20/20;
   hi=Math.max(hi,wkh,last); lo=Math.min(lo,wkl,last);
   if(dh!=null&&isFinite(dh)){hi=Math.max(hi,dh);lo=Math.min(lo,dl);}
-  var W=26,H=64,pad=6,cx=W/2,rg=hi-lo||1;
+  var W=30,H=64,pad=6,cx=W/2,rg=hi-lo||1;
   function Yv(v){ return pad+(H-2*pad)*(1-(v-lo)/rg); }
   function band(y1,y2,bw,fill){
     return '<rect x="'+(cx-bw/2).toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+bw+'" height="'+Math.max(2,y2-y1).toFixed(1)+'" rx="'+(bw/2).toFixed(1)+'" fill="'+fill+'"/>';
@@ -2644,7 +2661,7 @@ function vbulletSVG(tf,pxLast){
   var s=band(pad,H-pad,3,'#2A3647');
   s+=band(Yv(wkh),Yv(wkl),4.5,'#5E7188');
   if(dh!=null&&isFinite(dh)) s+=band(Yv(dh),Yv(dl),6,'#C9D6E8');
-  if(ma>=lo&&ma<=hi) s+='<line x1="'+(cx-8).toFixed(1)+'" y1="'+Yv(ma).toFixed(1)+'" x2="'+(cx+8).toFixed(1)+'" y2="'+Yv(ma).toFixed(1)+'" stroke="'+TF_CY+'" stroke-width="1.8" stroke-linecap="round"/>';
+  if(ma>=lo&&ma<=hi) s+='<line x1="'+(cx-9.5).toFixed(1)+'" y1="'+Yv(ma).toFixed(1)+'" x2="'+(cx+9.5).toFixed(1)+'" y2="'+Yv(ma).toFixed(1)+'" stroke="'+TF_CY+'" stroke-width="1.8" stroke-linecap="round"/>';
   var prev=c.length>=2?c[c.length-2]:last;
   var col=last>prev?TF_UP:(last<prev?TF_DN:TF_FL);
   s+='<circle cx="'+cx+'" cy="'+Yv(last).toFixed(1)+'" r="4.5" fill="'+col+'" stroke="#0D1320" stroke-width="1.3"/>';
@@ -2697,6 +2714,30 @@ function liveStripFund(tk){
        + '</div>';
 }
 
+/* Stage 25: the strip and the technicals window share ONE box. The strip goes
+   borderless inside; a full-width TECHNICALS bar (a real button, not a 9px carrot)
+   joins the strip's flex flow, so the full-height bullet column also spans it —
+   more real estate for the month bar, exactly one tap target for expansion. */
+function techBox(strip,panel){
+  if(!panel) return strip||'';
+  if(!strip) return panel;
+  var btn='<button type="button" class="as-xp" data-xp aria-expanded="false">Technicals'
+        +'<span>candles \u00b7 TBO \u00b7 divergence \u00b7 Bollinger \u2014 M/W/D/4H/H</span>'
+        +'<b class="xp-ch">\u25BE</b></button>';
+  strip=strip.replace(/<\/div>$/, btn+'</div>');
+  return '<div class="aibo-box">'+strip+panel+'</div>';
+}
+document.addEventListener('click',function(e){
+  var b=e.target.closest('[data-xp]');
+  if(!b)return;
+  var box=b.closest('.aibo-box');
+  var d=box&&box.querySelector('details.aibo-tech');
+  if(!d)return;
+  var open=d.hasAttribute('open');
+  if(open)d.removeAttribute('open');else d.setAttribute('open','');
+  b.setAttribute('aria-expanded',String(!open));
+  b.classList.toggle('on',!open);
+});
 function techPanel(tk,kind){
   var tf=null;
   if(kind==='fund'){
@@ -2842,7 +2883,7 @@ function coSheet(r){
       </div>
     </div>
 
-    ${liveStrip(r.ticker)}${techPanel(r.ticker,'eq')}
+    ${techBox(liveStrip(r.ticker),techPanel(r.ticker,'eq'))}
 
     ${r.choke ? `<div class="sh-choke t-${r.chokeT||'key'}">
       <span class="ck-lbl">${chokeLabel(r.chokeT)}</span>
@@ -2906,7 +2947,7 @@ function fundSheet(r){
         <div class="sh-tags"><span class="tag">ETF / basket</span><span class="tag">Cataloged, not graded</span></div>
       </div>
     </div>
-    ${liveStripFund(r.ticker)}${techPanel(r.ticker,'fund')}
+    ${techBox(liveStripFund(r.ticker),techPanel(r.ticker,'fund'))}
     <div class="sh-simple"><b>${esc(r.role||'Basket')}.</b> ${esc(r.note||'')}</div>
     <div class="sh-simple">A basket holds many names at once, so a single seven-pillar grade wouldn't be meaningful \u2014 it's carried here as a map landmark, with the look-through exposure living in its underlying holdings.</div>
     ${DISC}
@@ -4417,7 +4458,7 @@ TIERS.forEach(t=>t.ts.forEach(tk=>{
             ${tokBlock}
           </div>
         </div>
-        ${liveStripCrypto(tk)}${techPanel(tk,'cr')}
+        ${techBox(liveStripCrypto(tk),techPanel(tk,'cr'))}
         <details class="cr-bodyd"><summary>Dossier <span>solves \u00b7 token \u00b7 traction \u00b7 risk</span><b class="sd-car">\u25B8</b></summary><div class="cr-mbody">
           <div class="cr-d-is">${d.is}</div>
           <div class="cr-drow"><span class="cr-k">Solves</span><span class="cr-v">${d.solves}</span></div>
