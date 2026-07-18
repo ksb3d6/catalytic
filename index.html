@@ -2229,7 +2229,8 @@ function liveStripCSS(){
     '.aibo-tech .tp-cell svg{width:100%;height:auto;display:block}'+
     '.aibo-tech .tp-gap{font:600 9px/1 ui-monospace,Menlo,monospace;color:#5A6678}'+
     '.aibo-tech .tp-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 10px 10px}'+
-    '.aibo-tech .tp-grid.tp-grid4{grid-template-columns:62px repeat(4,minmax(138px,1fr));padding:0;min-width:640px}'+
+    '.aibo-tech .tp-grid.tp-grid5{grid-template-columns:62px repeat(5,minmax(138px,1fr));padding:0;min-width:775px}'+
+    '.aibo-strip .as-t.as-tr{margin-left:0;opacity:.8}'+
     /* Stage 20: left-anchored stamp, right-anchored vertical bullet, iPad scale-up */
     '.aibo-strip .as-t.as-tl{margin-left:0}'+
     '.aibo-strip .as-vb{margin-left:auto;flex:none;display:inline-flex;align-items:center}'+
@@ -2237,7 +2238,7 @@ function liveStripCSS(){
     '@media(min-width:768px){'+
       '.aibo-strip .as-tbo svg{width:96px;height:30px}'+
       '.aibo-strip .as-vb svg{width:20px;height:46px}'+
-      '.aibo-tech .tp-grid.tp-grid4{grid-template-columns:84px repeat(4,1fr);min-width:0}'+
+      '.aibo-tech .tp-grid.tp-grid5{grid-template-columns:84px repeat(5,minmax(150px,1fr));min-width:840px}'+
       '.aibo-tech .tp-met{font-size:10px}'+
       '.aibo-tech .tp-hd{font-size:10px}'+
     '}';
@@ -2277,7 +2278,7 @@ function tfNum(x){ return TF_NUM.test(x) ? +x : NaN; }
 function tfSvg(w,h){ return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" aria-hidden="true">'; }
 function tfParse(tf){
   if(!tf || typeof tf!=='object' || Array.isArray(tf)) return null;
-  var out={}, ks=['d','w','m','h'], any=false;
+  var out={}, ks=['d','w','m','h','h4'], any=false;
   for(var i=0;i<ks.length;i++){
     var k=ks[i], s=tf[k], bars=null;
     if(typeof s==='string' && s){
@@ -2586,7 +2587,7 @@ function tfMiniRow(tf,kind){
      mini — candles+55EMA where OHLC exists, close line+55EMA where it doesn't. */
   var P=tfParse(tf);
   if(!P) return '';
-  var defs=[['m','M'],['w','W'],['d','D'],['h','H']],s='',any=false;
+  var defs=[['m','M'],['w','W'],['d','D'],['h4','4H'],['h','H']],s='',any=false;
   for(var i=0;i<defs.length;i++){
     var bars=P[defs[i][0]],svg='';
     if(bars) svg=tfCandleSVG(bars,64,20);
@@ -2663,8 +2664,8 @@ function liveStripFund(tk){
        + '<span class="as-px">'+num(px.last,2)+'</span>'
        + '<span class="as-chg '+chCls+'">'+chTxt+'</span>'
        + tfMiniRow(tech && tech.tf,'eq')
-       + '<span class="as-t as-tl'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
        + mas
+       + '<span class="as-t as-tr'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
        + vbulletSVG(tech && tech.tf, px.last)
        + '</div>';
 }
@@ -2700,17 +2701,17 @@ function techPanel(tk,kind){
      window across all four metric rows so the same spike sits at the same x in every
      pane of a column — the congruence fix. */
   var TP_TAIL=45;
-  var out='<div class="tp-hd"></div><div class="tp-hd">MONTHLY</div><div class="tp-hd">WEEKLY</div><div class="tp-hd">DAILY</div><div class="tp-hd">HOURLY</div>';
-  var frames=[P.m,P.w,P.d,P.h];
+  var out='<div class="tp-hd"></div><div class="tp-hd">MONTHLY</div><div class="tp-hd">WEEKLY</div><div class="tp-hd">DAILY</div><div class="tp-hd">4-HOUR</div><div class="tp-hd">HOURLY</div>';
+  var frames=[P.m,P.w,P.d,P.h4,P.h];
   for(var i=0;i<METS.length;i++){
     out+='<div class="tp-met">'+METS[i].l+'</div>';
-    for(var j=0;j<4;j++){
+    for(var j=0;j<5;j++){
       var svg=frames[j]?METS[i].fn(frames[j],150,40,TP_TAIL):'';
-      out+='<div class="tp-cell">'+(svg||'<span class="tp-gap">'+(j===3?'no hourly yet':'short history')+'</span>')+'</div>';
+      out+='<div class="tp-cell">'+(svg||'<span class="tp-gap">'+(j>=3?'no intraday yet':'short history')+'</span>')+'</div>';
     }
   }
   return '<details class="aibo-tech"><summary>Technicals <span>candles · TBO · divergence · Bollinger — M/W/D/H</span></summary>'
-       + '<div class="tp-scroll"><div class="tp-grid tp-grid4">'+out+'</div></div></details>';
+       + '<div class="tp-scroll"><div class="tp-grid tp-grid5">'+out+'</div></div></details>';
 }
 function liveStrip(tk){
   var v = (typeof DATA!=='undefined' && DATA[tk]) ? DATA[tk].live : null;
@@ -2744,8 +2745,8 @@ function liveStrip(tk){
        + '<span class="as-px">'+num(px.last,2)+'</span>'
        + '<span class="as-chg '+chCls+'">'+chTxt+'</span>'
        + tfMiniRow(tech && tech.tf,'eq')
-       + '<span class="as-t as-tl'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
        + mas
+       + '<span class="as-t as-tr'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
        + vbulletSVG(tech && tech.tf, px.last)
        + '</div>';
 }
@@ -2789,8 +2790,8 @@ function liveStripCrypto(tk){
        + '<span class="as-px">'+pxTxt+'</span>'
        + '<span class="as-chg '+chCls+'">'+chTxt+'</span>'
        + tfMiniRow(tech && tech.tf,'cr')
-       + '<span class="as-t as-tl'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
        + mas
+       + '<span class="as-t as-tr'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
        + vbulletSVG(tech && tech.tf, v.usd)
        + '</div>';
 }
