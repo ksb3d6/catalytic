@@ -2245,7 +2245,8 @@ function liveStripCSS(){
     '.aibo-strip .as-t.as-tl{margin-left:0}'+
     '.aibo-strip{position:relative;padding-right:52px}'+
     '.aibo-strip .as-vb{position:absolute;right:9px;top:6px;bottom:6px;display:flex;align-items:stretch}'+
-    '.aibo-strip .as-vb svg{height:100%;width:auto;display:block}'+
+    '.aibo-strip .as-vb svg.vb-w{height:100%;width:auto;display:block}'+
+    '.aibo-strip .as-vb svg.vb-n{display:none}'+
     '.aibo-box{margin:12px 4px 2px;border:1px solid var(--hair,#2A3647);border-radius:12px;background:rgba(9,14,20,.55)}'+
     '.aibo-box .aibo-strip{margin:0;border:0;background:none;border-radius:12px 12px 0 0}'+
     '.aibo-box .aibo-tech{margin:0;border:0;border-top:1px solid var(--hair,#2A3647);border-radius:0 0 12px 12px;background:none}'+
@@ -2266,13 +2267,14 @@ function liveStripCSS(){
       /* Stage 27b: text compresses into the top cluster; the charts get the pixels.
          Exactly THREE minis per view (self-sizing thirds), scroll for 4H/H; the month
          bar stretches down the box. */
-      '.aibo-strip{gap:5px 7px;padding:8px 9px;padding-right:56px}'+
+      '.aibo-strip{gap:5px 7px;padding:8px 9px;padding-right:36px}'+
       '.aibo-strip .as-px{order:1;font-size:14px}'+
       '.aibo-strip .as-chg{order:2}'+
-      '.aibo-strip .as-mas{order:3;flex:0 1 auto;gap:6px}'+
+      '.aibo-strip .as-t{order:3;margin-left:auto;font-size:9px;white-space:nowrap}'+
+      '.aibo-strip .as-mas{order:4;flex:1 1 100%;gap:6px 10px}'+
       '.aibo-strip .as-ma{font-size:10px}'+
       '.aibo-strip .as-dir{font-size:9px;padding:1px 5px}'+
-      '.aibo-strip .as-t{order:4;margin-left:0;margin-right:100%;font-size:9px}'+
+
       '.aibo-strip .as-mrow{order:5;display:flex;flex:1 1 100%;gap:7px;overflow-x:auto;'+
         '-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}'+
       '.aibo-strip .as-mrow::-webkit-scrollbar{display:none}'+
@@ -2282,8 +2284,9 @@ function liveStripCSS(){
       '.aibo-strip .as-tbo{flex:0 0 calc((100% - 14px)/3);gap:2px}'+
       '.aibo-strip .as-tbo svg{width:100%;height:auto}'+
       '.aibo-strip .as-tbo i{font-size:7px}'+
-      '.aibo-strip .as-vb{right:7px;top:8px;bottom:8px;display:flex;align-items:center}'+
-      '.aibo-strip .as-vb svg{height:100%;max-height:132px;width:auto}'+
+      '.aibo-strip .as-vb{right:5px;top:8px;bottom:8px;display:flex;align-items:center}'+
+      '.aibo-strip .as-vb svg.vb-w{display:none}'+
+      '.aibo-strip .as-vb svg.vb-n{display:block;height:100%;max-height:140px;width:auto}'+
       '.aibo-tech .tp-grid.tp-grid5{grid-template-columns:52px repeat(5,minmax(124px,1fr));min-width:690px;gap:4px}'+
       '.aibo-tech .tp-met{font-size:7.5px}'+
       '.aibo-tech .tp-hd{font-size:8px}'+
@@ -2690,20 +2693,30 @@ function vbulletSVG(tf,pxLast){
   var ma=s20/20;
   hi=Math.max(hi,wkh,last); lo=Math.min(lo,wkl,last);
   if(dh!=null&&isFinite(dh)){hi=Math.max(hi,dh);lo=Math.min(lo,dl);}
-  var W=30,H=64,pad=6,cx=W/2,rg=hi-lo||1;
-  function Yv(v){ return pad+(H-2*pad)*(1-(v-lo)/rg); }
-  function band(y1,y2,bw,fill){
-    return '<rect x="'+(cx-bw/2).toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+bw+'" height="'+Math.max(2,y2-y1).toFixed(1)+'" rx="'+(bw/2).toFixed(1)+'" fill="'+fill+'"/>';
+  var rg=hi-lo||1;
+  /* Stage 27c: two geometries from one dataset — wide for desktop/iPad strips,
+     narrow-tall for phones (thin bands, low-profile right edge). CSS picks one. */
+  function draw(W,H,pad,tw,ww,dw,ext,ms,dr,rim,cls){
+    var cx=W/2;
+    function Yv(v){ return pad+(H-2*pad)*(1-(v-lo)/rg); }
+    function band(y1,y2,bw,fill){
+      return '<rect x="'+(cx-bw/2).toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+bw+'" height="'+Math.max(2,y2-y1).toFixed(1)+'" rx="'+(bw/2).toFixed(1)+'" fill="'+fill+'"/>';
+    }
+    var o=band(pad,H-pad,tw,'#2A3647');
+    o+=band(Yv(wkh),Yv(wkl),ww,'#5E7188');
+    if(dh!=null&&isFinite(dh)) o+=band(Yv(dh),Yv(dl),dw,'#C9D6E8');
+    if(ma>=lo&&ma<=hi) o+='<line x1="'+(cx-ext).toFixed(1)+'" y1="'+Yv(ma).toFixed(1)+'" x2="'+(cx+ext).toFixed(1)+'" y2="'+Yv(ma).toFixed(1)+'" stroke="'+TF_CY+'" stroke-width="'+ms+'" stroke-linecap="round"/>';
+    var prev=c.length>=2?c[c.length-2]:last;
+    var col=last>prev?TF_UP:(last<prev?TF_DN:TF_FL);
+    o+='<circle cx="'+cx+'" cy="'+Yv(last).toFixed(1)+'" r="'+dr+'" fill="'+col+'" stroke="#0D1320" stroke-width="'+rim+'"/>';
+    return '<svg class="'+cls+'" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" aria-hidden="true">'+o+'</svg>';
   }
-  var s=band(pad,H-pad,3,'#2A3647');
-  s+=band(Yv(wkh),Yv(wkl),4.5,'#5E7188');
-  if(dh!=null&&isFinite(dh)) s+=band(Yv(dh),Yv(dl),6,'#C9D6E8');
-  if(ma>=lo&&ma<=hi) s+='<line x1="'+(cx-9.5).toFixed(1)+'" y1="'+Yv(ma).toFixed(1)+'" x2="'+(cx+9.5).toFixed(1)+'" y2="'+Yv(ma).toFixed(1)+'" stroke="'+TF_CY+'" stroke-width="1.8" stroke-linecap="round"/>';
-  var prev=c.length>=2?c[c.length-2]:last;
-  var col=last>prev?TF_UP:(last<prev?TF_DN:TF_FL);
-  s+='<circle cx="'+cx+'" cy="'+Yv(last).toFixed(1)+'" r="4.5" fill="'+col+'" stroke="#0D1320" stroke-width="1.3"/>';
-  return '<span class="as-vb">'+tfSvg(W,H)+s+'</svg></span>';
+  return '<span class="as-vb">'
+       + draw(30,64,6,3,4.5,6,9.5,1.8,4.5,1.3,'vb-w')
+       + draw(20,116,8,2.5,4,5.5,7.5,1.5,3.8,1.1,'vb-n')
+       + '</span>';
 }
+
 
 /* the expandable technicals window: 4 locked metrics × D/W/M = 12 panes.
    kind 'eq' reads DATA[tk].live; 'cr' bridges the display key ('$AI' -> 'AI') into
