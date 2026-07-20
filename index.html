@@ -182,7 +182,7 @@ html,body{margin:0;background:
 .sh-val .vbody{min-width:0;}
 .sh-val .vf{font-size:11px;color:var(--muted);line-height:1.5;margin-top:7px;}
 .sh-desc{margin:14px 0 2px;padding:13px 15px;border:1px solid var(--hair);border-radius:12px;background:rgba(255,255,255,.022);}
-.sh-desc summary{cursor:pointer;list-style:none;position:relative;}
+.sh-desc summary{cursor:pointer;list-style:none;position:relative;padding-right:58px;}
 .sh-desc summary::-webkit-details-marker{display:none;}
 .sh-desc .sd-car{position:absolute;right:0;top:0;color:#8A93A5;font-size:13px;transition:transform .15s;
   padding:4px 9px;border:1px solid var(--hair);border-radius:8px;background:rgba(14,21,32,.8);}
@@ -201,6 +201,11 @@ html,body{margin:0;background:
 .sg-col{display:flex;flex-direction:column;gap:8px;}
 .sg-col .sh-sech{margin:8px 0 2px;}
 @media(max-width:430px){.sg-cols{grid-template-columns:1fr;}}
+@media(max-width:480px){
+  #sheet{max-height:92dvh;}
+  .sh{padding:4px 14px 0;}
+  .sh-tk{font-size:23px;}
+}
 @media(min-width:768px){
   #sheet{width:100%;max-width:none;border-radius:0;}
   #sheet .sh{max-width:1080px;margin:0 auto;}
@@ -2253,6 +2258,26 @@ function liveStripCSS(){
       'letter-spacing:.2px;text-transform:none;color:#5A6678}'+
     '.aibo-strip .as-xp .xp-ch{margin-left:auto;font-style:normal;font-size:13px;color:#8A93A5;transition:transform .15s}'+
     '.aibo-strip .as-xp.on .xp-ch{transform:rotate(180deg)}'+
+    /* Stage 26: iPhone-width tuning — five minis on one row, tighter chrome */
+    '@media(max-width:480px){'+
+      '.aibo-strip{gap:6px 5px;padding:8px 9px;padding-right:42px}'+
+      '.aibo-strip .as-px{order:1}'+
+      '.aibo-strip .as-chg{order:2}'+
+      '.aibo-strip .as-t{order:3;margin-left:0;margin-right:100%}'+
+      '.aibo-strip .as-tbo{order:4}'+
+      '.aibo-strip .as-mas{order:5;flex:1 1 100%}'+
+      '.aibo-strip .as-xp{order:6}'+
+      '.aibo-strip .as-tbo svg{width:46px;height:auto}'+
+      '.aibo-strip .as-tbo{gap:1px}'+
+      '.aibo-strip .as-tbo i{font-size:7px}'+
+      '.aibo-strip .as-px{font-size:14px}'+
+      '.aibo-strip .as-vb{right:7px;top:5px;bottom:5px}'+
+      '.aibo-strip .as-xp{padding:6px 8px;font-size:10px}'+
+      '.aibo-strip .as-xp span{display:none}'+
+      '.aibo-tech .tp-grid.tp-grid5{grid-template-columns:52px repeat(5,minmax(124px,1fr));min-width:690px;gap:4px}'+
+      '.aibo-tech .tp-met{font-size:7.5px}'+
+      '.aibo-tech .tp-hd{font-size:8px}'+
+    '}'+
     '@media(min-width:768px){'+
       '.aibo-strip .as-tbo svg{width:96px;height:30px}'+
       '.aibo-strip{padding-right:52px}'+
