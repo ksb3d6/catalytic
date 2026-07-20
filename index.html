@@ -2263,23 +2263,27 @@ function liveStripCSS(){
     '.aibo-strip .as-xp.on .xp-ch{transform:rotate(180deg)}'+
     /* Stage 26: iPhone-width tuning — five minis on one row, tighter chrome */
     '@media(max-width:480px){'+
-      '.aibo-strip{gap:6px 5px;padding:8px 9px;padding-right:40px}'+
-      '.aibo-strip .as-px{order:1}'+
+      /* Stage 27b: text compresses into the top cluster; the charts get the pixels.
+         Exactly THREE minis per view (self-sizing thirds), scroll for 4H/H; the month
+         bar stretches down the box. */
+      '.aibo-strip{gap:5px 7px;padding:8px 9px;padding-right:56px}'+
+      '.aibo-strip .as-px{order:1;font-size:14px}'+
       '.aibo-strip .as-chg{order:2}'+
-      '.aibo-strip .as-t{order:3;margin-left:0;margin-right:100%}'+
-      '.aibo-strip .as-mrow{order:4;display:flex;flex:1 1 100%;gap:7px;overflow-x:auto;'+
+      '.aibo-strip .as-mas{order:3;flex:0 1 auto;gap:6px}'+
+      '.aibo-strip .as-ma{font-size:10px}'+
+      '.aibo-strip .as-dir{font-size:9px;padding:1px 5px}'+
+      '.aibo-strip .as-t{order:4;margin-left:0;margin-right:100%;font-size:9px}'+
+      '.aibo-strip .as-mrow{order:5;display:flex;flex:1 1 100%;gap:7px;overflow-x:auto;'+
         '-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}'+
       '.aibo-strip .as-mrow::-webkit-scrollbar{display:none}'+
-      '.aibo-strip .as-mas{order:5;flex:1 1 100%}'+
-      '.aibo-strip .as-xp{order:6}'+
-      '.aibo-strip .as-tbo{flex:none;gap:2px}'+
-      '.aibo-strip .as-tbo svg{width:58px;height:auto}'+
-      '.aibo-strip .as-tbo i{font-size:7px}'+
-      '.aibo-strip .as-px{font-size:14px}'+
-      '.aibo-strip .as-vb{right:6px;top:8px;bottom:auto;height:64px}'+
-      '.aibo-strip .as-xp{padding:6px 8px;font-size:10px}'+
+      '.aibo-strip .as-xp{order:6;padding:6px 8px;font-size:10px}'+
       '.aibo-strip .as-xp span{display:none}'+
       '.aibo-strip .as-xp .xp-ch{width:24px;height:24px}'+
+      '.aibo-strip .as-tbo{flex:0 0 calc((100% - 14px)/3);gap:2px}'+
+      '.aibo-strip .as-tbo svg{width:100%;height:auto}'+
+      '.aibo-strip .as-tbo i{font-size:7px}'+
+      '.aibo-strip .as-vb{right:7px;top:8px;bottom:8px;display:flex;align-items:center}'+
+      '.aibo-strip .as-vb svg{height:100%;max-height:132px;width:auto}'+
       '.aibo-tech .tp-grid.tp-grid5{grid-template-columns:52px repeat(5,minmax(124px,1fr));min-width:690px;gap:4px}'+
       '.aibo-tech .tp-met{font-size:7.5px}'+
       '.aibo-tech .tp-hd{font-size:8px}'+
