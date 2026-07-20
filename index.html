@@ -2256,24 +2256,30 @@ function liveStripCSS(){
       'letter-spacing:.05em;text-transform:uppercase;color:var(--ink,#EAEEF5);text-align:left}'+
     '.aibo-strip .as-xp span{font:600 9.5px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'+
       'letter-spacing:.2px;text-transform:none;color:#5A6678}'+
-    '.aibo-strip .as-xp .xp-ch{margin-left:auto;font-style:normal;font-size:13px;color:#8A93A5;transition:transform .15s}'+
+    '.aibo-strip .as-xp .xp-ch{margin-left:auto;font-style:normal;font-size:15px;color:var(--ink,#EAEEF5);'+
+      'display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;'+
+      'border:1px solid var(--hair,#2A3647);border-radius:7px;background:#16243a;transition:transform .15s}'+
+    '.as-mrow{display:contents}'+
     '.aibo-strip .as-xp.on .xp-ch{transform:rotate(180deg)}'+
     /* Stage 26: iPhone-width tuning — five minis on one row, tighter chrome */
     '@media(max-width:480px){'+
-      '.aibo-strip{gap:6px 5px;padding:8px 9px;padding-right:42px}'+
+      '.aibo-strip{gap:6px 5px;padding:8px 9px;padding-right:40px}'+
       '.aibo-strip .as-px{order:1}'+
       '.aibo-strip .as-chg{order:2}'+
       '.aibo-strip .as-t{order:3;margin-left:0;margin-right:100%}'+
-      '.aibo-strip .as-tbo{order:4}'+
+      '.aibo-strip .as-mrow{order:4;display:flex;flex:1 1 100%;gap:7px;overflow-x:auto;'+
+        '-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}'+
+      '.aibo-strip .as-mrow::-webkit-scrollbar{display:none}'+
       '.aibo-strip .as-mas{order:5;flex:1 1 100%}'+
       '.aibo-strip .as-xp{order:6}'+
-      '.aibo-strip .as-tbo svg{width:46px;height:auto}'+
-      '.aibo-strip .as-tbo{gap:1px}'+
+      '.aibo-strip .as-tbo{flex:none;gap:2px}'+
+      '.aibo-strip .as-tbo svg{width:58px;height:auto}'+
       '.aibo-strip .as-tbo i{font-size:7px}'+
       '.aibo-strip .as-px{font-size:14px}'+
-      '.aibo-strip .as-vb{right:7px;top:5px;bottom:5px}'+
+      '.aibo-strip .as-vb{right:6px;top:8px;bottom:auto;height:64px}'+
       '.aibo-strip .as-xp{padding:6px 8px;font-size:10px}'+
       '.aibo-strip .as-xp span{display:none}'+
+      '.aibo-strip .as-xp .xp-ch{width:24px;height:24px}'+
       '.aibo-tech .tp-grid.tp-grid5{grid-template-columns:52px repeat(5,minmax(124px,1fr));min-width:690px;gap:4px}'+
       '.aibo-tech .tp-met{font-size:7.5px}'+
       '.aibo-tech .tp-hd{font-size:8px}'+
@@ -2637,7 +2643,9 @@ function tfMiniRow(tf,kind){
     if(svg)any=true;
     s+='<span class="as-tbo"><i>'+defs[i][1]+'</i>'+(svg||'<b class="as-tbo-gap">–</b>')+'</span>';
   }
-  return any?s:'';
+  /* Stage 27: .as-mrow is display:contents on desktop (layout unchanged) and a
+     thumb-scrollable row on phones — M/W/D visible, 4H/H a drag away. */
+  return any?('<span class="as-mrow">'+s+'</span>'):'';
 }
 function vbulletSVG(tf,pxLast){
   /* Stage 24: the month bar — Carl's finalized spec. Track = 30-day OPEN/CLOSE range
@@ -7890,6 +7898,8 @@ try{
   /* ---------- css (runtime element; source keeps one style block) ---------- */
   var css = document.createElement('style'); css.id = 'aibo-live-css';
   css.textContent =
+    'body:has(#sheet.show) #aibo-live-chip{opacity:0;pointer-events:none}'+
+    '#aibo-live-chip{transition:opacity .15s}'+
     '#aibo-live-chip{position:fixed;right:10px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9200;'+
       'font:600 11px/1 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;letter-spacing:.4px;'+
       'background:rgba(10,14,20,.92);color:#cfd8e3;border:1px solid rgba(120,140,165,.35);border-radius:999px;'+
@@ -8021,6 +8031,20 @@ try{
   /* ---------- boot ---------- */
   window.AIBO_LIVE = { refresh: fetchLive, state: S, dayChg: dayChg, num: num, fmtT: fmtT };
   paintChip(); bootCache(); fetchLive();
+  /* Stage 27: the fixed LIVE chip sits exactly where the card's thumb-side expander
+     chips live on phones — step aside whenever a card is open (the strip inside the
+     card already says LIVE/CACHED). */
+  (function(){
+    var sh=document.getElementById('sheet');
+    if(!sh || !window.MutationObserver) return;
+    var sync=function(){
+      var open=sh.classList.contains('show');
+      chip.style.opacity=open?'0':'';
+      chip.style.pointerEvents=open?'none':'';
+    };
+    new MutationObserver(sync).observe(sh,{attributes:true,attributeFilter:['class']});
+    sync();
+  })();
   setInterval(function(){ if(!document.hidden) fetchLive(); }, AUTO_MIN*60*1000);
 }catch(err){ /* the live layer must never take the app down */ }
 })();
