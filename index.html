@@ -1005,6 +1005,22 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .donut-toggles{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:2px 6px 9px;margin:0 2px 6px;border-bottom:1px dashed var(--line)}
 #studioView .donut-toggles .zoomtip{display:block;flex-basis:100%;font-size:10px;color:var(--ink-faint);letter-spacing:.5px;margin-top:2px;padding-left:1px}
 #studioView #masterSvg path[data-seg]{cursor:pointer;transition:opacity .12s}
+/* ---- Gate 4 · live positions (owned vs aim) ---- */
+#studioView .donut-toggles .own-pill{margin-right:2px}
+#studioView .own-pill button.on{background:#0c3028;color:#7fe0b8}
+#studioView #masterSvg path[data-owntk]{cursor:pointer}
+#studioView .own-note{font-size:11px;color:var(--ink-dim);line-height:1.6;margin:6px 4px 10px;padding:8px 10px;border:1px dashed var(--line);border-radius:9px}
+#studioView .own-note b{color:#cdd9e5}
+#studioView .own-note .warn{color:#e8b04b}
+#studioView .pos-connect{display:flex;gap:8px;margin:8px 0 4px;flex-wrap:wrap}
+#studioView .pos-connect input{flex:1;min-width:170px;background:var(--panel2);border:1px solid var(--line2);color:#eef4fb;border-radius:8px;padding:9px 11px;font-family:inherit;font-size:13px}
+#studioView .pos-connect input:focus{outline:2px solid var(--teal);outline-offset:-1px}
+#studioView .pos-actions{margin-top:6px}
+#studioView #posAccounts{margin-top:8px;display:flex;flex-direction:column;gap:5px}
+#studioView .pos-acct{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:11.5px;color:var(--ink-dim);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+#studioView .pos-acct .pv{color:#cdd9e5;font-weight:650;text-transform:uppercase;letter-spacing:.4px}
+#studioView .pos-acct .warn{color:#e8b04b}
+#studioView .pos-acct .gap{color:var(--ink-faint)}
 #studioView #masterSvg path[data-seg]:hover{opacity:.8}
 #studioView #masterSvg text{pointer-events:none}
 #studioView #masterSvg .dup-slice{filter:drop-shadow(0 0 3px rgba(190,240,255,.55))}
@@ -1418,6 +1434,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
   </div>
   <span class="seglab atlas-only">View</span>
   <div class="seg atlas-only" id="viewSeg">
+    <button data-v="mkt">Markets</button>
     <button data-v="wf" class="on">Waterfall</button>
     <button data-v="flow">Flow chart</button>
     <button data-v="web">Web</button>
@@ -1466,6 +1483,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 </div>
 <div class="mdock" id="mDock">
   <div class="mtabs atlas-only">
+    <button type="button" class="mtab" data-mv="mkt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16M8 6v12"/></svg><span>Markets</span></button>
     <button type="button" class="mtab" data-mv="wf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M4 11h14M4 16h7"/></svg><span>Waterfall</span></button>
     <button type="button" class="mtab" data-mv="flow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/><path d="M10 7h7v7"/></svg><span>Flow</span></button>
     <button type="button" class="mtab" data-mv="web"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg><span>Web</span></button>
@@ -1642,6 +1660,10 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 </div>
 </div>
 
+<div id="mktView" class="view hidden">
+<div id="mktMount"></div>
+</div>
+
 <!-- ============ STOCKS STUDIO (folded in as a Deck) ============ -->
 <div id="studioView" class="st-only">
 <div class="wrap">
@@ -1653,9 +1675,11 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
     <div class="studio-left">
       <section class="master-wrap">
         <div class="donut-toggles">
+          <span class="pill own-pill hidden" id="ownPill"><span class="lbl">VIEW</span><button data-act="owntgl" data-own="aim" class="on">Aim</button><button data-act="owntgl" data-own="owned">What I own</button></span>
           <span class="zoomtip">tap a segment to open it on the right · open or collapse each sleeve from the Sleeve split panel</span>
         </div>
         <div id="masterSvg"></div>
+        <div class="own-note hidden" id="ownNote"></div>
         <div class="legend" id="legend"></div>
       </section>
     </div>
@@ -1774,6 +1798,20 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
         <button class="btn" data-act="copy">Copy book</button>
       </div>
       <div class="read" id="readLine"></div>
+    </div>
+    <div class="dk-group">
+      <div class="dk-group-h">Live positions</div>
+      <div class="dk-group-note">What you actually own — read straight from your accounts, on this device only. Paste your positions token once; it is stored in this browser, never in the app file. No token = the app stays exactly as it is.</div>
+      <div class="pos-connect" id="posConnect">
+        <input type="password" id="posToken" placeholder="positions token…" autocomplete="off" spellcheck="false" autocapitalize="off">
+        <button class="btn primary" data-act="posconnect">Connect</button>
+      </div>
+      <div class="dk-actions pos-actions">
+        <button class="btn" data-act="posrefresh">Refresh now</button>
+        <button class="btn" data-act="posforget">Forget token &amp; data</button>
+      </div>
+      <div class="read" id="posStatus">not connected</div>
+      <div id="posAccounts"></div>
     </div>
     <details class="dk-group" open>
       <summary class="dk-group-h">My setups <span class="muted" style="font-size:11px;font-family:inherit;font-weight:400">— save &amp; load your books</span></summary>
@@ -2237,16 +2275,41 @@ function liveStripCSS(){
     '.aibo-tech .tp-met{font:700 8.5px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.03em;color:var(--muted,#8A93A5)}'+
     '.aibo-tech .tp-cell{background:rgba(14,21,32,.8);border:1px solid var(--hair,#2A3647);border-radius:7px;padding:3px 4px;min-height:24px;display:flex;align-items:center;justify-content:center}'+
     '.aibo-tech .tp-cell svg{width:100%;height:auto;display:block}'+
+    '.aibo-tech .tp-cell .tp-w{display:block;width:100%}'+
+    '.aibo-tech .tp-cell .tp-t{display:none}'+
     '.aibo-tech .tp-gap{font:600 9px/1 ui-monospace,Menlo,monospace;color:#5A6678}'+
     '.aibo-tech .tp-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 10px 10px}'+
     '.aibo-tech .tp-grid.tp-grid5{grid-template-columns:62px repeat(5,minmax(138px,1fr));padding:0;min-width:775px}'+
     '.aibo-strip .as-t.as-tr{margin-left:0;opacity:.8}'+
+    /* Stage 30: after-hours chip — shows when the 4H/H frames are carried from a prior
+       session (backend v3.6 stamps tf.h_asOf at each intraday fetch and carries the
+       frames across its nightly rebuild instead of blanking them). */
+    '.aibo-strip .as-ah{font:700 8.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#FFB74D;opacity:.78;border:1px solid rgba(255,183,77,.38);border-radius:3px;padding:2px 5px;margin-left:6px;align-self:center;white-space:nowrap}'+
     /* Stage 20: left-anchored stamp, right-anchored vertical bullet, iPad scale-up */
     '.aibo-strip .as-t.as-tl{margin-left:0}'+
     '.aibo-strip{position:relative;padding-right:52px}'+
     '.aibo-strip .as-vb{position:absolute;right:9px;top:6px;bottom:6px;display:flex;align-items:stretch}'+
-    '.aibo-strip .as-vb svg.vb-w{height:100%;width:auto;display:block}'+
+    '.aibo-strip .as-vb svg.vb-w{height:100%;width:auto;max-width:44px;display:block}'+
     '.aibo-strip .as-vb svg.vb-n{display:none}'+
+    /* Stage 27g: the phone convention goes universal — the minis are the star.
+       Tall charts everywhere, one scrollable row, text compressed above. */
+    '.aibo-strip .as-tbo .mn-w{display:none}'+
+    '.aibo-strip .as-tbo .mn-n{display:block;width:100%}'+
+    '.aibo-strip .as-tbo .mn-w svg,.aibo-strip .as-tbo .mn-n svg{display:block;width:100%;height:auto}'+
+    '.aibo-strip .as-px{order:1}'+
+    '.aibo-strip .as-chg{order:2}'+
+    '.aibo-strip .as-t{order:3;margin-left:auto;white-space:nowrap}'+
+    '.aibo-strip .as-mas{order:4;flex:1 1 100%;gap:6px 10px}'+
+    '.aibo-strip .as-mrow{order:5;display:flex;flex:1 1 100%;gap:8px;overflow-x:auto;'+
+      '-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}'+
+    '.aibo-strip .as-mrow::-webkit-scrollbar{display:none}'+
+    '.aibo-strip .as-xp{order:6}'+
+    '.aibo-strip .as-tbo{flex:0 0 clamp(150px,19.5%,215px)}'+
+    /* short screens (landscape phones): the slender bullet, whatever the width */
+    '@media(max-height:480px){'+
+      '.aibo-strip .as-vb svg.vb-w{display:none}'+
+      '.aibo-strip .as-vb svg.vb-n{display:block;height:100%;max-height:140px;width:auto}'+
+    '}'+
     '.aibo-box{margin:12px 4px 2px;border:1px solid var(--hair,#2A3647);border-radius:12px;background:rgba(9,14,20,.55)}'+
     '.aibo-box .aibo-strip{margin:0;border:0;background:none;border-radius:12px 12px 0 0}'+
     '.aibo-box .aibo-tech{margin:0;border:0;border-top:1px solid var(--hair,#2A3647);border-radius:0 0 12px 12px;background:none}'+
@@ -2260,7 +2323,7 @@ function liveStripCSS(){
     '.aibo-strip .as-xp .xp-ch{margin-left:auto;font-style:normal;font-size:15px;color:var(--ink,#EAEEF5);'+
       'display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;'+
       'border:1px solid var(--hair,#2A3647);border-radius:7px;background:#16243a;transition:transform .15s}'+
-    '.as-mrow{display:contents}'+
+
     '.aibo-strip .as-xp.on .xp-ch{transform:rotate(180deg)}'+
     /* Stage 26: iPhone-width tuning — five minis on one row, tighter chrome */
     '@media(max-width:480px){'+
@@ -2268,21 +2331,14 @@ function liveStripCSS(){
          Exactly THREE minis per view (self-sizing thirds), scroll for 4H/H; the month
          bar stretches down the box. */
       '.aibo-strip{gap:5px 7px;padding:8px 9px;padding-right:36px}'+
-      '.aibo-strip .as-px{order:1;font-size:14px}'+
-      '.aibo-strip .as-chg{order:2}'+
-      '.aibo-strip .as-t{order:3;margin-left:auto;font-size:9px;white-space:nowrap}'+
-      '.aibo-strip .as-mas{order:4;flex:1 1 100%;gap:6px 10px}'+
+      '.aibo-strip .as-px{font-size:14px}'+
+      '.aibo-strip .as-t{font-size:9px}'+
       '.aibo-strip .as-ma{font-size:10px}'+
       '.aibo-strip .as-dir{font-size:9px;padding:1px 5px}'+
-
-      '.aibo-strip .as-mrow{order:5;display:flex;flex:1 1 100%;gap:7px;overflow-x:auto;'+
-        '-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}'+
-      '.aibo-strip .as-mrow::-webkit-scrollbar{display:none}'+
-      '.aibo-strip .as-xp{order:6;padding:6px 8px;font-size:10px}'+
+      '.aibo-strip .as-xp{padding:6px 8px;font-size:10px}'+
       '.aibo-strip .as-xp span{display:none}'+
       '.aibo-strip .as-xp .xp-ch{width:24px;height:24px}'+
-      '.aibo-strip .as-tbo{flex:0 0 calc((100% - 14px)/3);gap:2px}'+
-      '.aibo-strip .as-tbo svg{width:100%;height:auto}'+
+      '.aibo-strip .as-tbo{flex:0 0 calc((100% - 12px)/2.75);gap:2px}'+
       '.aibo-strip .as-tbo i{font-size:7px}'+
       '.aibo-strip .as-vb{right:5px;top:8px;bottom:8px;display:flex;align-items:center}'+
       '.aibo-strip .as-vb svg.vb-w{display:none}'+
@@ -2292,9 +2348,21 @@ function liveStripCSS(){
       '.aibo-tech .tp-hd{font-size:8px}'+
     '}'+
     '@media(min-width:768px){'+
-      '.aibo-strip .as-tbo svg{width:96px;height:30px}'+
+      /* iPad: 4 minis fit evenly + a couple candles of the 5th peeking (swipe cue) */
+      '.aibo-strip .as-tbo{flex:0 0 calc((100% - 74px)/4)}'+
+      /* iPad: MAs ride the price+LIVE row (one text line); the reclaimed vertical
+         space feeds a taller mini row (stout .mn-w emitted at 64x26) */
+      '.aibo-strip .as-mas{order:4;flex:0 1 auto;margin-left:8px}'+
+      '.aibo-strip .as-t{margin-left:8px}'+
+      /* iPad: stout strip minis (wide aspect), tall expanded panes */
+      '.aibo-strip .as-tbo .mn-n{display:none}'+
+      '.aibo-strip .as-tbo .mn-w{display:block;width:100%}'+
+      '.aibo-tech .tp-cell .tp-w{display:none}'+
+      '.aibo-tech .tp-cell .tp-t{display:block;width:100%}'+
+      '.aibo-strip .as-vb svg.vb-w{display:none}'+
+      '.aibo-strip .as-vb svg.vb-n{display:block;height:100%;max-height:210px;width:auto}'+
       '.aibo-strip{padding-right:52px}'+
-      '.aibo-tech .tp-grid.tp-grid5{grid-template-columns:84px repeat(5,minmax(150px,1fr));min-width:840px}'+
+      '.aibo-tech .tp-grid.tp-grid5{grid-template-columns:84px repeat(5,minmax(250px,1fr));min-width:1380px}'+
       '.aibo-tech .tp-met{font-size:10px}'+
       '.aibo-tech .tp-hd{font-size:10px}'+
     '}';
@@ -2426,9 +2494,11 @@ function tfCandleSVG(bars,w,h,tailN){
       s+='<rect x="'+(x-bw/2).toFixed(1)+'" y="'+top.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="'+col+'"/>';
     }
   }else{
-    var col2=B[n-1].c>=B[0].c?TF_UP:TF_DN,pts='';
+    /* Stage 27d: close-only mode (crypto) draws the price in neutral gray — direction
+       already lives in the day-change number and the bullet dot; the line stays calm. */
+    var pts='';
     for(var j2=0;j2<n;j2++){ pts+=(pts?' ':'')+(p+j2*slot+slot/2).toFixed(1)+','+Y(B[j2].c).toFixed(1); }
-    s+='<polyline points="'+pts+'" fill="none" stroke="'+col2+'" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
+    s+='<polyline points="'+pts+'" fill="none" stroke="'+TF_FL+'" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
   }
   return tfSvg(w,h)+s+'</svg>';
 }
@@ -2645,17 +2715,43 @@ function tfMiniRow(tf,kind){
   if(!P) return '';
   var defs=[['m','M'],['w','W'],['d','D'],['h4','4H'],['h','H']],s='',any=false;
   for(var i=0;i<defs.length;i++){
-    var bars=P[defs[i][0]],svg='';
-    if(bars) svg=tfCandleSVG(bars,64,20);
+    var bars=P[defs[i][0]],svg='',svgT='';
+    if(bars){
+      svg=tfCandleSVG(bars,64,26);   /* Stage 27j: iPad stout mini a bit taller, fed by the reclaimed MA row */
+      svgT=tfCandleSVG(bars,64,34);   /* Stage 27e: taller variant for portrait phones */
+    }
     if(svg)any=true;
-    s+='<span class="as-tbo"><i>'+defs[i][1]+'</i>'+(svg||'<b class="as-tbo-gap">–</b>')+'</span>';
+    s+='<span class="as-tbo"><i>'+defs[i][1]+'</i>'
+      +(svg?('<span class="mn-w">'+svg+'</span><span class="mn-n">'+svgT+'</span>'):'<b class="as-tbo-gap">–</b>')
+      +'</span>';
   }
   /* Stage 27: .as-mrow is display:contents on desktop (layout unchanged) and a
      thumb-scrollable row on phones — M/W/D visible, 4H/H a drag away. */
   return any?('<span class="as-mrow">'+s+'</span>'):'';
 }
+/* Stage 30: the after-hours marker. Backend v3.6 carries the 4H/H frames across its
+   nightly rebuild (they used to blank at UTC midnight) and stamps tf.h_asOf with the
+   NEWEST BAR's UTC time. Stale stamp => the frames end in a prior session (evening,
+   weekend, holiday) — say so honestly instead of letting them read as live. In-session
+   the newest bar runs 0-67 min old between hourly passes, so equity/fund threshold is
+   135 min (one missed pass stays quiet; a real close fires ~2h after the last bar).
+   Crypto refreshes ~4h around the clock => newest bar can be ~5h old right before a
+   pass; 360 min means "feed genuinely stuck", not "market closed". */
+function tfAfterHrs(tf,kind){
+  var st=tf&&tf.h_asOf;
+  if(typeof st!=='string')return '';
+  var t=Date.parse(st);
+  if(!isFinite(t))return '';
+  var mins=(Date.now()-t)/60000;
+  if(mins < (kind==='cr'?360:135)) return '';
+  var d=new Date(t);
+  var when=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+  return kind==='cr'
+    ? '<span class="as-ah" title="4H/H frames from '+when+' — feed running behind">FEED LAG</span>'
+    : '<span class="as-ah" title="4H/H frames from '+when+' — market closed since">AFTER HRS</span>';
+}
 function vbulletSVG(tf,pxLast){
-  /* Stage 24: the month bar — Carl's finalized spec. Track = 30-day OPEN/CLOSE range
+  /* Stage 24: the month bar — finalized spec. Track = 30-day OPEN/CLOSE range
      (~one month of bodies), nested week band (5d) and today band, stepped widths
      4.5/6.5/8.5 on a 64px base, ice-gradient grays, beefy MA20, and a full-circle
      price dot wider than every band. Rendered at a fixed base size and stretched to
@@ -2760,6 +2856,7 @@ function liveStripFund(tk){
        + tfMiniRow(tech && tech.tf,'eq')
        + mas
        + '<span class="as-t as-tr'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
+       + tfAfterHrs(tech && tech.tf,'eq')
        + vbulletSVG(tech && tech.tf, px.last)
        + '</div>';
 }
@@ -2825,7 +2922,11 @@ function techPanel(tk,kind){
     out+='<div class="tp-met">'+METS[i].l+'</div>';
     for(var j=0;j<5;j++){
       var svg=frames[j]?METS[i].fn(frames[j],150,40,TP_TAIL):'';
-      out+='<div class="tp-cell">'+(svg||'<span class="tp-gap">'+(j>=3?'no intraday yet':'short history')+'</span>')+'</div>';
+      /* Stage 27h: tall-aspect twin for tablets — same data, ~2x the vertical */
+      var svgT=svg?METS[i].fn(frames[j],250,84,TP_TAIL):'';
+      out+='<div class="tp-cell">'+(svg
+        ?('<span class="tp-w">'+svg+'</span><span class="tp-t">'+svgT+'</span>')
+        :'<span class="tp-gap">'+(j>=3?'no intraday yet':'short history')+'</span>')+'</div>';
     }
   }
   return '<details class="aibo-tech"><summary>Technicals <span>candles · TBO · divergence · Bollinger — M/W/D/H</span></summary>'
@@ -2865,6 +2966,7 @@ function liveStrip(tk){
        + tfMiniRow(tech && tech.tf,'eq')
        + mas
        + '<span class="as-t as-tr'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
+       + tfAfterHrs(tech && tech.tf,'eq')
        + vbulletSVG(tech && tech.tf, px.last)
        + '</div>';
 }
@@ -2910,6 +3012,7 @@ function liveStripCrypto(tk){
        + tfMiniRow(tech && tech.tf,'cr')
        + mas
        + '<span class="as-t as-tr'+(cached?' st':'')+'">'+(cached?'CACHED':'LIVE')+(when?' '+when:'')+'</span>'
+       + tfAfterHrs(tech && tech.tf,'cr')
        + vbulletSVG(tech && tech.tf, v.usd)
        + '</div>';
 }
@@ -3074,9 +3177,11 @@ function showView(v){
   document.getElementById('donutView').classList.toggle('hidden', v!=='donut');
   document.getElementById('cardsView').classList.toggle('hidden', v!=='cards');
   document.getElementById('scView').classList.toggle('hidden', v!=='sc');
+  document.getElementById('mktView').classList.toggle('hidden', v!=='mkt');
   document.querySelectorAll('#viewSeg button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
   if(v==='web'){ if(window.Web) window.Web.show(currentUniverse); return; }
   if(window.Web) window.Web.stop();
+  if(v==='mkt'){ if(window.MktView) MktView.render(); return; }
   if(currentUniverse==='equity'){
     if(v==='flow'){ FlowView.run(); applyZoom(); }
     if(v==='donut'){ DonutView.render(); }
@@ -4492,33 +4597,50 @@ TIERS.forEach(t=>t.ts.forEach(tk=>{
 
   function crSheetHTML(tk){
     const d=P[tk], ac=TNAME[tk].ac, tier=TNAME[tk].name, a=ageInfo(tk), q=isQ(tk);
-    const gradeLabel = q ? 'Quantum-resistance' : 'Narrative fit';
-    const ageChip=`<span class="cr-magechip"><span class="cr-adot ${a.cls}" style="background:${a.c}"></span>${a.label}${a.year?` \u00b7 ${a.year}`:''}</span>`;
-    const tokBlock = d.tok==null
-      ? `<div class="cr-ms"><div class="cr-msl">Tokenomics</div><div class="cr-msv" style="color:#8A93A5;font-size:15px">Pre-token</div></div>`
-      : `<div class="cr-ms"><div class="cr-msl">Tokenomics</div><div class="cr-msv" style="color:${tC(d.tok)}">${d.tok}<span class="cr-msu">/100</span></div><div class="cr-msb"><div class="cr-msf" style="width:${d.tok}%;background:${tC(d.tok)}"></div></div></div>`;
+    const gradeLabel = q ? 'Quantum-resistance grade' : 'Narrative-fit grade';
+    const gcls = (typeof gradeClass==='function') ? gradeClass(d.grade) : '';
+    const tokRoll = d.tok==null
+      ? `<div class="roll"><div class="rl">Tokenomics</div><div class="rg"><span class="big g-na" style="font-size:18px">pre-token</span></div></div>`
+      : `<div class="roll"><div class="rl">Tokenomics</div><div class="rg"><span class="big" style="background:${tC(d.tok)}26;color:${tC(d.tok)};box-shadow:inset 0 0 0 1px ${tC(d.tok)}55">${d.tok}<span style="font-size:12px;opacity:.75">/100</span></span></div><div class="cr-msb" style="margin-top:8px"><div class="cr-msf" style="width:${d.tok}%;background:${tC(d.tok)}"></div></div></div>`;
     return `
       <div class="cr-sheet" style="--ac:${ac}">
-        <div class="cr-mtop">
-          <div class="cr-mticker" style="color:${ac}">${E(tk)}</div>
-          <div class="cr-mname">${d.name}</div>
-          <div class="cr-mtagrow"><span class="cr-mtier" style="color:${ac};background:${ac}22;border-color:${ac}55">${E(tier)}</span>${ageChip}</div>
-          <div class="cr-mscores">
-            <div class="cr-ms"><div class="cr-msl">${gradeLabel}</div><div class="cr-msv" style="color:${gC(d.grade)}">${d.grade}</div><div class="cr-msb"><div class="cr-msf" style="width:${gradePct(d.grade)}%;background:${gC(d.grade)}"></div></div></div>
-            ${tokBlock}
+        <div class="sh-head">
+          <div class="sh-tk">${E(tk)}</div>
+          <div class="sh-meta">
+            <div class="sh-name">${d.name}</div>
+            <div class="sh-tags">
+              <span class="tag" style="color:${ac};border-color:${ac}55">${E(tier)}</span>
+              <span class="tag"><span class="pd" style="background:${a.c}"></span>${a.label}${a.year?` · ${a.year}`:''}</span>
+            </div>
           </div>
         </div>
+
         ${techBox(liveStripCrypto(tk),techPanel(tk,'cr'))}
-        <details class="cr-bodyd"><summary>Dossier <span>solves \u00b7 token \u00b7 traction \u00b7 risk</span><b class="sd-car">\u25B8</b></summary><div class="cr-mbody">
-          <div class="cr-d-is">${d.is}</div>
-          <div class="cr-drow"><span class="cr-k">Solves</span><span class="cr-v">${d.solves}</span></div>
-          <div class="cr-drow"><span class="cr-k">Token</span><span class="cr-v">${d.token}</span></div>
-          <div class="cr-seg"><span class="cr-segk">Tokenomics drivers</span><div class="cr-pills">${crPills(d.pos,d.neg)}</div></div>
-          <div class="cr-seg"><span class="cr-segk">Traction</span><div class="cr-stats">${crStats(d.stats)}</div></div>
-          <div class="cr-driskline"><span class="cr-rk">Key risk</span>${d.risk}</div>
-          <div class="cr-mfoot">Mid-2026 snapshot. Tokenomics is scored on its own axis \u2014 value capture, supply discipline, dilution \u2014 ${q?'never blended into quantum-resistance':'never blended into narrative fit'}. ${DISC}</div>
-        </div>
-      </div></details>`;
+
+        <details class="sh-desc"><summary>
+          <div class="sh-about-does">${d.is}</div>
+          <span class="sd-car">▸</span></summary>
+          <div class="sh-about-why"><span class="wl">Solves</span> ${d.solves}</div>
+          <div class="sh-about-why"><span class="wl">Token</span> ${d.token}</div>
+        </details>
+
+        <details class="sh-grades"><summary>
+          <div class="sh-rolls">
+            <div class="roll">
+              <div class="rl">${gradeLabel}</div>
+              <div class="rg"><span class="big ${gcls}">${d.grade}</span></div>
+            </div>
+            ${tokRoll}
+          </div>
+          <span class="sg-hint">drivers · traction · risk <b class="sd-car">▸</b></span></summary>
+          <div class="sh-sech">Tokenomics drivers</div>
+          <div class="cr-pills">${crPills(d.pos,d.neg)}</div>
+          <div class="sh-sech" style="margin-top:10px">Traction</div>
+          <div class="cr-stats">${crStats(d.stats)}</div>
+          <div class="cr-driskline" style="margin-top:10px"><span class="cr-rk">Key risk</span>${d.risk}</div>
+          <div class="cr-mfoot">Mid-2026 snapshot. Tokenomics is scored on its own axis — value capture, supply discipline, dilution — ${q?'never blended into quantum-resistance':'never blended into narrative fit'}. ${DISC}</div>
+        </details>
+      </div>`;
   }
   function openSheet(tk, srcEl){
     const body=document.getElementById('sheetBody');
@@ -5539,6 +5661,10 @@ function makeWeb(host, cfg){
 const EQ_WEB_CFG = {
   GCOL: GCOL_W, ECOL: ECOL_W, LAYERS: LAYERS_W, RAW: RAW_W, EDGES: EDGES_W,
   coName: c=>c[1],
+  /* Stage 27f: tapping a company dot opens the master grading card (strip +
+     technicals + grades) — cfg.onTapCo existed in the pointer handler but was
+     never wired, so company taps were a silent no-op (user-reported). */
+  onTapCo: n=>{ if(typeof openSheet==='function') openSheet(n.id); },
   coGrade: n=>{ const rec=(typeof currentLens!=='undefined'&&currentLens==='rec'); return rec?n.raw[3]:n.raw[2]; },
   markers: [
     { key:'choke', btnLabel:'◆ Chokepoints', btnCls:'wb-choke', test:n=>CHOKE_W.has(n.id),
@@ -6097,7 +6223,7 @@ const METAL_COL = {GLD:'#d4af37', SLV:'#aab2bd'};
 const METAL_NAME = {GLD:'SPDR Gold Shares',SLV:'iShares Silver Trust'};
 
 /* ---- index top-15 (published, approximate — drift with price) + 16 books + blue-chip baseline ---- */
-const BLUECHIP={compute:[['NVDA',3800],['AVGO',1225],['AMD',450]],foundry:[['TSM',1225]],memory:[['MU',925]],hyper:[['GOOGL',2275],['AAPL',2275]]}; // ~$12,175 anchor baseline folded into every book → sleeve $35,000
+const BLUECHIP={compute:[['NVDA',3800],['AVGO',1200],['AMD',450]],foundry:[['TSM',1200]],memory:[['MU',900]],hyper:[['GOOGL',2300],['AAPL',2300]]}; // ~$12,000 anchor baseline folded into every book → sleeve $35,000
 // books store one "silicon" layer; route each of its tickers to the right sub-segment
 const SILICON_SUB={NVDA:'compute',AVGO:'compute',AMD:'compute',ARM:'compute',ALAB:'compute',MRVL:'compute',QCOM:'compute',CRDO:'compute',MPWR:'compute',TXN:'compute',ADI:'compute',ON:'compute',FN:'compute',SMH:'compute',SOXX:'compute',
  MU:'memory','000660':'memory','005930':'memory',STX:'memory',SNDK:'memory',WDC:'memory',DRAM:'memory',
@@ -6295,6 +6421,7 @@ const state = {
 const segState = id => state.segments.find(s=>s.id===id) || state.crypto.find(s=>s.id===id) || state.stock.find(s=>s.id===id) || state.metals.find(s=>s.id===id);
 const segArrOf = id => state.segments.some(s=>s.id===id) ? state.segments : (state.crypto.some(s=>s.id===id) ? state.crypto : (state.stock.some(s=>s.id===id) ? state.stock : state.metals));
 let focusSeg=null;             // which segment is open in the right-hand focus panel
+let ownedView=false;           // Gate 4: master donut shows what's actually owned vs the aim
 let mixerScope='ai';           // which mixer fills the top panel: 'ai' segments or 'stock' index funds
 let showIndexDetail=true;      // open index funds to their top-15 in the master donut (on by default so the overlap shows)
 let showCryptoDetail=true;     // open the crypto sleeve to its categories & coins (off = single collapsed arc)
@@ -6442,10 +6569,239 @@ function syncSleeveOpenUI(){
   Object.keys(map).forEach(k=>{ document.querySelectorAll(`[data-act="sopen"][data-sleeve-k="${k}"]`).forEach(b=>{ b.classList.toggle('on',map[k]); b.innerHTML=expandIcon(map[k]); b.title=(map[k]?'Collapse ':'Open ')+(k==='ai'?'Stocks':k==='indices'?'index funds':k==='metals'?'metals':'crypto')+' in the donut'; }); });
 }
 
+/* ============================================== GATE 4 · WHAT I OWN ======= */
+/* Reads window.AIBO_POS (the token-gated positions layer, last script block)
+   lazily. Without a token / with a dead feed everything here renders nothing
+   and the aim donut stays byte-identical — degradation is invisibility. */
+const hasOwn=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+const POS_CRYPTO_ALIAS={WAL:'WALR', XBT:'BTC', RNDR:'RENDER'};
+const POS_EQ_ALIAS={GOOG:'GOOGL'};
+const POS_INDEXISH={FXAIX:1,FSKAX:1,FTIHX:1,FXNAX:1};   // Fidelity index-fund cousins of the VOO sleeve
+function posLayer(){ return window.AIBO_POS||null; }
+function posT(iso){ if(!iso)return ''; const d=new Date(iso); if(isNaN(d))return '';
+  const hm=String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0');
+  const now=new Date();
+  if(d.getUTCFullYear()===now.getUTCFullYear()&&d.getUTCMonth()===now.getUTCMonth()&&d.getUTCDate()===now.getUTCDate())return hm;
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()]+' '+d.getUTCDate()+' '+hm; /* old snapshots must not read as today */ }
+function posErrBit(){ const A=posLayer(); if(!A||!A.state.err)return null;
+  return A.state.err==='auth'?'⚠ token rejected':'⚠ refresh failing'; }
+function posQty(q){ if(typeof q!=='number'||!isFinite(q))return ''; return String(Math.round(q*10000)/10000); }
+function posGroupOf(sym,cash,provider,kind){
+  const s=String(sym||'').toUpperCase();
+  if(cash) return {id:'pcash',name:'Cash & sweep',col:'#4fae84'};
+  if(provider==='kraken'||kind==='crypto'){       /* crypto only from crypto accounts — AI/AR/ATOM/QNT are also real equity tickers */
+    const cs=hasOwn(POS_CRYPTO_ALIAS,s)?POS_CRYPTO_ALIAS[s]:s;
+    for(const cg of CRYPTO_SEGMENTS){ if(cg.core.indexOf(cs)>=0||cg.extra.indexOf(cs)>=0) return {id:cg.id,name:cg.name,col:cg.color}; }
+    return {id:'pcother',name:'Crypto · other',col:'#8b5cf6'};
+  }
+  if(hasOwn(FUND_NAME,s)||hasOwn(POS_INDEXISH,s)) return {id:'pindex',name:'Index funds',col:'#2f4d6e'};
+  if(hasOwn(METAL_NAME,s)) return {id:'pmetal',name:'Metals',col:'#c2a33a'};
+  const es=hasOwn(POS_EQ_ALIAS,s)?POS_EQ_ALIAS[s]:s;
+  for(const sg of SEGMENTS){ if(sg.core.indexOf(es)>=0||sg.extra.indexOf(es)>=0) return {id:sg.id,name:sg.name,col:sg.color}; }
+  if(isETF(s)||(typeof FUNDS!=='undefined'&&FUNDS&&hasOwn(FUNDS,s))){
+    for(const sg of SEGMENTS){ if(sg.etfs&&sg.etfs.indexOf(s)>=0) return {id:sg.id,name:sg.name,col:sg.color}; }
+    return {id:'pfunds',name:'Funds · other',col:'#7ab0ea'};
+  }
+  if(typeof DATA!=='undefined'&&DATA&&hasOwn(DATA,s)&&DATA[s].layer) return {id:'L:'+DATA[s].layer,name:DATA[s].layer,col:'#5f7086'};
+  return {id:'pother',name:'Unclassified',col:'#5a6678'};
+}
+function posModel(){
+  const A=posLayer(); if(!A||!A.state||!A.state.data) return null;
+  const d=A.state.data; if(!d||!Array.isArray(d.accounts)) return null;
+  const groups={}, order=[], unpriced=[], debits=[], staleAccts=[], gapNotes=[]; let owned=0;
+  for(const ac of d.accounts){
+    if(!ac||!Array.isArray(ac.assets)) continue;
+    const prov=String(ac.provider||'?'), kind=String(ac.kind||'');   /* coerce — payload is untrusted */
+    if(ac.stale) staleAccts.push(prov);
+    for(const g of (Array.isArray(ac.gaps)?ac.gaps:[])){
+      if(g==='no-key'||g==='no-data') continue;                      /* not configured — hide, don't error */
+      if(!/:unpriced$/.test(String(g))) gapNotes.push(prov+' · '+String(g).slice(0,80));
+    }
+    for(const as of ac.assets){
+      if(!as||!as.sym) continue;
+      const sym=String(as.sym).toUpperCase();
+      const usd=(typeof as.usd==='number'&&isFinite(as.usd))?as.usd:null;
+      if(usd==null){ unpriced.push({sym,qty:as.qty,prov}); continue; }   /* honest: no $, no arc */
+      if(usd<0){ debits.push({sym,usd,prov}); continue; }            /* margin debits / shorts: listed, never drawn */
+      const gd=posGroupOf(sym,!!as.cash,prov,kind);
+      let G=hasOwn(groups,gd.id)?groups[gd.id]:null;
+      if(!G){ G=groups[gd.id]={id:gd.id,name:gd.name,col:gd.col,usd:0,assets:{},aorder:[]}; order.push(G); }
+      let aa=hasOwn(G.assets,sym)?G.assets[sym]:null;
+      if(!aa){ aa=G.assets[sym]={sym,usd:0,qty:0,prov}; G.aorder.push(aa); }
+      else if(aa.prov.indexOf(prov)<0) aa.prov+=' + '+prov;
+      aa.usd+=usd; if(typeof as.qty==='number'&&isFinite(as.qty)) aa.qty+=as.qty;
+      G.usd+=usd; owned+=usd;
+    }
+  }
+  const gl=order.filter(g=>g.usd>0);
+  const spec=g=>g.id==='pcash'?2:(g.id==='pother'?1:0);              /* narratives first, unclassified, cash last */
+  gl.sort((x,y)=>(spec(x)-spec(y))||(y.usd-x.usd));
+  gl.forEach(g=>g.aorder.sort((x,y)=>y.usd-x.usd));
+  return { groups:gl, owned, unpriced, debits, staleAccts, gapNotes,
+    partial:!!(d.totals&&d.totals.partial), dryRun:!!d.dryRun,
+    src:A.state.src, err:A.state.err, at:d.generatedAt||null };
+}
+function ownedParts(total,cx,cy,ri,ro){
+  const m=posModel(); if(!m) return null;
+  /* ---- OWNED OVERLAY: aim stays as grayed backdrop (buildMaster). Draw only
+     the OWNED fill, same three rings (inner=sleeve, middle=segment, outer=holding),
+     filling each aim wedge angularly from the leading edge. Owned angle = true
+     owned $ share; gap to aim = empty space. ---- */
+  const R1=[150,256],R2=[266,372],R3=[382,494];
+  const sleeves=[
+    {name:'Cash',   col:'#3f7d5a', usd:state.sleeves.cash||0,   key:'cash'},
+    {name:'Indices',col:'#2f4d6e', usd:state.sleeves.indices,   key:'indices'},
+    {name:'Stocks', col:'#1a6b7a', usd:state.sleeves.ai,        key:'ai'},
+    {name:'Crypto', col:'#5a3a78', usd:state.sleeves.crypto,    key:'crypto'},
+    {name:'Metals', col:'#8a7530', usd:state.sleeves.metals||0, key:'metals'}
+  ];
+  function sleeveOf(gid){
+    if(gid==='pcash')return 'cash';
+    if(gid==='pindex')return 'indices';
+    if(gid==='pmetal')return 'metals';
+    if(gid==='pcother')return 'crypto';
+    for(const cg of CRYPTO_SEGMENTS){ if(cg.id===gid) return 'crypto'; }
+    return 'ai';
+  }
+  const buck={cash:[],indices:[],ai:[],crypto:[],metals:[]}, sUsd={cash:0,indices:0,ai:0,crypto:0,metals:0};
+  for(const g of m.groups){ const k=sleeveOf(g.id); buck[k].push(g); sUsd[k]+=g.usd; }
+  const deg=u=>(total>0)?(u/total*360):0;
+  const offAim=[];
+  let P='',L='',a=-90;
+  for(const s of sleeves){
+    const sw=deg(s.usd), ownU=sUsd[s.key]||0, groups=(buck[s.key]||[]).slice().sort((x,y)=>y.usd-x.usd);
+    if(sw<=0){ if(ownU>0) offAim.push({name:s.name,usd:ownU}); continue; }
+    const a0=a, a1=a+sw, pct=(s.usd>0)?ownU/s.usd:0;
+    /* INNER — whole owned sleeve, filled from a0 */
+    { const end=Math.min(a1,a0+deg(ownU));
+      if(end>a0+0.01) P+=pathEl(arc(cx,cy,R1[0],R1[1],a0,end),s.col,'#0a0e14',1.2,'',`${s.name} owned ${fmtUsd(ownU)} · ${Math.round(pct*100)}% of aim`,null); }
+    /* MIDDLE — owned segments at book angle */
+    { let ang=a0;
+      for(const g of groups){ let w=deg(g.usd); if(ang+w>a1)w=a1-ang; if(w<=0)break;
+        P+=pathEl(arc(cx,cy,R2[0],R2[1],ang,ang+w),g.col,'#0a0e14',1,'',`${g.name} ${fmtUsd(g.usd)}`,null,`class="hit"`);
+        ang+=w; } }
+    /* OUTER — owned holdings at book angle */
+    { let ang=a0, done=false;
+      for(const g of groups){ if(done)break;
+        for(let i=0;i<g.aorder.length;i++){ const as=g.aorder[i]; let w=deg(as.usd); if(ang+w>a1){w=a1-ang;done=true;} if(w<=0){done=true;break;}
+          P+=pathEl(arc(cx,cy,R3[0],R3[1],ang,ang+w),shade(g.col,0.12+0.30*((i%3)/2)),'#0a0e14',1,'',`${as.sym} ${fmtUsd(as.usd)} · ${as.prov}`,null,'data-owntk="'+as.sym.replace(/[^A-Za-z0-9._\-]/g,'')+'" class="hit"');
+          if(w>2.4)L+=rlab(cx,cy,(R3[0]+R3[1])/2,ang+w/2,as.sym,fontfor(w,(R3[0]+R3[1])/2,12.5,6,as.sym.length),'#0a0e14','800');
+          ang+=w; if(done)break; } } }
+    /* liquid surface — bright spoke where fill stops */
+    if(pct<0.995){ const fe=Math.min(a1,a0+Math.min(1,pct)*sw);
+      const [x0,y0]=ptOf(cx,cy,R1[0],fe),[x1,y1]=ptOf(cx,cy,R3[1],fe);
+      P+=`<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="#7fd8ea" stroke-width="2" opacity="0.9"/>`; }
+    /* owned fill % at trailing (last-to-fill) edge */
+    if(sw>6){ const labA=a1-Math.min(8,sw*0.18);
+      L+=rlab(cx,cy,R3[1]-16,labA,Math.round(pct*100)+'%',fontfor(sw,R3[1]-16,15,8,4),(pct>=1?'#7fd8ea':'#cdd8e4'),'800'); }
+    /* inner-ring sleeve name + aim% — one line (name + % share the top line) */
+    if(sw>7){ const p=ptOf(cx,cy,(R1[0]+R1[1])/2,a0+sw/2);
+      L+='<text x="'+p[0].toFixed(1)+'" y="'+(p[1]+6).toFixed(1)+'" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif">'
+        +'<tspan font-size="17" fill="#eef4fb" font-weight="700">'+s.name.split(' ')[0]+'</tspan>'
+        +'<tspan font-size="20" fill="#fff" font-weight="800" dx="7">'+Math.round(s.usd/total*100)+'%</tspan></text>'; }
+    a=a1;
+  }
+  const srcBits=[];
+  if(m.src==='cache')srcBits.push('CACHED'+(m.at?' '+posT(m.at)+'Z':''));
+  else if(m.src==='live')srcBits.push('LIVE'+(m.at?' '+posT(m.at)+'Z':''));
+  if(m.dryRun)srcBits.push('FIXTURE DATA');
+  const warnBits=[];
+  const eb=posErrBit(); if(eb)warnBits.push(eb);
+  if(m.partial)warnBits.push('⚠ undercount');
+  if(offAim.length)warnBits.push('off-aim: '+offAim.map(o=>o.name+' '+fmtUsd(o.usd)).join(', '));
+  const fillPct=(total>0)?Math.round(m.owned/total*100):0;
+  const center=
+    ctext(cx,cy-38,'WHAT I OWN',13,'#7fd8ea','800')+
+    ctext(cx,cy-10,fmtUsd(m.owned),27,'#e6eef7','800','-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif')+
+    ctext(cx,cy+18,(total>0?fillPct+'% of the '+fmtUsd(total)+' aim':'no aim set'),12.5,'#7d8d9d','500')+
+    (srcBits.length?ctext(cx,cy+40,srcBits.join(' · '),10.5,m.dryRun?'#e8b04b':'#7d8d9d','600'):'')+
+    (warnBits.length?ctext(cx,cy+57,warnBits.join(' · '),10.5,'#e8b04b','600'):'');
+  return {P,L,center};
+}
+function posEmptyWhy(){ const A=posLayer();
+  if(!A)return 'positions layer unavailable';
+  if(A.state.err==='auth')return 'token rejected — recheck it in the console (⚙)';
+  if(A.state.err)return 'feed unreachable — nothing to show';
+  return 'fetching your positions…'; }
+function ownedEmpty(cx,cy){                                          /* owned toggle on, no data: never dress the aim up as owned */
+  return {P:'',L:'',center:
+    ctext(cx,cy-24,'WHAT I OWN',13,'#7fd8ea','800')+
+    ctext(cx,cy+2,'no data yet',15,'#7d8d9d','600')+
+    ctext(cx,cy+26,posEmptyWhy(),10.5,'#e8b04b','600')};
+}
+function paintOwnNote(){
+  const el=document.getElementById('ownNote'); if(!el) return;
+  if(!ownedView){ el.classList.add('hidden'); el.innerHTML=''; return; }
+  const m=posModel();
+  if(!m){ el.innerHTML=esc(posEmptyWhy()); el.classList.remove('hidden'); return; }
+  const A=posLayer(), bits=[], acBits=[];
+  const acs=(A&&A.state.data&&A.state.data.accounts)||[];
+  for(const ac of acs){ if(!ac) continue;
+    const n=Array.isArray(ac.assets)?ac.assets.length:0;
+    const acg=Array.isArray(ac.gaps)?ac.gaps:[];
+    if(!n&&acg.some(g=>g==='no-key'||g==='no-data')) continue;
+    acBits.push('<b>'+esc(String(ac.provider||'?'))+'</b> '+n+(ac.asOf?' · '+posT(ac.asOf)+'Z':'')+(ac.stale?' <span class="warn">stale</span>':''));
+  }
+  if(acBits.length)bits.push(acBits.join(' &nbsp;·&nbsp; '));
+  const noteEb=posErrBit();
+  if(noteEb)bits.push('<span class="warn">'+esc(noteEb)+' — showing the last good snapshot</span>');
+  if(m.unpriced.length)bits.push('<span class="warn">unpriced — no arc, never guessed:</span> '+m.unpriced.map(u=>esc(u.sym)+(posQty(u.qty)?' '+posQty(u.qty):'')).join(' · '));
+  if(m.debits.length)bits.push('<span class="warn">debits — not drawn:</span> '+m.debits.map(u=>esc(u.sym)+' −$'+Math.round(-u.usd).toLocaleString('en-US')+' ('+esc(u.prov)+')').join(' · '));
+  if(m.partial)bits.push('<span class="warn">⚠ the owned total is an undercount — unpriced assets are missing from it</span>');
+  if(m.gapNotes.length)bits.push('<span class="warn">feed gaps:</span> '+m.gapNotes.map(esc).join(' · '));
+  if(m.dryRun)bits.push('<span class="warn">FIXTURE DATA — backend dry-run, not your real accounts</span>');
+  el.innerHTML=bits.join('<br>')||'connected';
+  el.classList.remove('hidden');
+}
+function paintPosStatus(){
+  const st=document.getElementById('posStatus'), accEl=document.getElementById('posAccounts');
+  if(!st||!accEl) return;
+  const A=posLayer(); let txt;
+  if(!A) txt='positions layer unavailable';
+  else if(!A.hasToken()) txt='not connected — paste your token above';
+  else if(A.state.err==='auth') txt='⚠ token rejected (401) — the backend refused it; check it and paste again';
+  else if(A.state.data){ const m=posModel();
+    txt=(A.state.src==='live'?'LIVE':'CACHED')+(A.state.at?' · '+posT(A.state.at)+'Z':'')+' · '+fmtUsd(m?m.owned:0)+' owned'
+      +((m&&m.dryRun)?' · FIXTURE DATA':'')
+      +(A.state.err?' · ⚠ refresh failing':'')
+      +((m&&m.partial)?' · ⚠ undercount':''); }
+  else if(A.state.err) txt='feed unreachable — nothing shown, app unchanged';
+  else txt='connected — fetching…';
+  st.textContent=txt;
+  const acs=(A&&A.state.data&&A.state.data.accounts)||[]; const rows=[];
+  for(const ac of acs){ if(!ac) continue;
+    const gaps=Array.isArray(ac.gaps)?ac.gaps:[], nAssets=(Array.isArray(ac.assets)?ac.assets:[]).length;
+    if(!nAssets&&gaps.some(g=>g==='no-key'||g==='no-data')){
+      rows.push('<div class="pos-acct"><span class="pv">'+esc(String(ac.provider||'?'))+'</span><span class="gap">not configured</span></div>'); continue; }
+    const unp=gaps.filter(g=>/:unpriced$/.test(String(g))).map(g=>String(g).split(':')[0]);
+    rows.push('<div class="pos-acct"><span class="pv">'+esc(String(ac.provider||'?'))+'</span>'
+      +'<span>'+esc(String(ac.kind||''))+'</span><span>'+nAssets+' assets</span>'
+      +(ac.asOf?'<span>as of '+posT(ac.asOf)+'Z</span>':'')
+      +(ac.stale?'<span class="warn">stale — last good snapshot</span>':'')
+      +(unp.length?'<span class="warn">unpriced: '+unp.map(esc).join(', ')+'</span>':'')
+      +'</div>');
+  }
+  accEl.innerHTML=rows.join('');
+}
+function syncOwnPill(){
+  document.querySelectorAll('[data-act="owntgl"]').forEach(x=>x.classList.toggle('on',(x.getAttribute('data-own')==='owned')===ownedView));
+}
+function posSync(){
+  const A=posLayer(), pill=document.getElementById('ownPill');
+  const has=!!(A&&A.hasToken());
+  if(pill)pill.classList.toggle('hidden',!has);
+  if(!has&&ownedView){ ownedView=false; syncOwnPill(); schedulePaint(); }  /* drop straight back to the aim */
+  paintPosStatus();
+  if(ownedView)schedulePaint(); else paintOwnNote();
+}
+
 /* ============================================================ DONUT SVG === */
 function buildMaster(){
   const box=1000,cx=500,cy=500, r1=[150,256],r2=[266,372],r3=[382,494];
   const total=totalUsd(); let P='',L='',a=-90;
+  const own = ownedView ? (ownedParts(total,cx,cy,r1[0],r3[1])||ownedEmpty(cx,cy)) : null;
+  const _det={ix:showIndexDetail,ai:showAiDetail,cr:showCryptoDetail,mt:showMetalsDetail};
+  if(ownedView){ showIndexDetail=showAiDetail=showCryptoDetail=showMetalsDetail=false; }
   const sleeves=[
     {name:'Cash',col:'#3f7d5a',usd:state.sleeves.cash||0,kind:'cash'},
     {name:'Indices',col:'#2f4d6e',usd:state.sleeves.indices,kind:'indices'},
@@ -6453,12 +6809,14 @@ function buildMaster(){
     {name:'Crypto',col:'#5a3a78',usd:state.sleeves.crypto,kind:'crypto'},
     {name:'Metals',col:'#8a7530',usd:state.sleeves.metals||0,kind:'metals'}
   ];
+  if(ownedView) sleeves.forEach(function(x){ x.col='#3c4757'; });
   for(const s of sleeves){
     const sw=s.usd/total*360; if(sw<=0){continue;}
     P+=pathEl(arc(cx,cy,r1[0],r1[1],a,a+sw),s.col,'#0a0e14',2.5,'',`${s.name} ${pct1(s.usd/total)}`);
     const mid=a+sw/2,lr=(r1[0]+r1[1])/2,[lx,ly]=ptOf(cx,cy,lr,mid);
-    L+=ctext(lx,ly-9,s.name.split(' ')[0],17,'#eef4fb','700');
-    L+=ctext(lx,ly+14,Math.round(s.usd/total*100)+'%',20,'#fff','800','-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif');
+    L+='<text x="'+lx.toFixed(1)+'" y="'+(ly+6).toFixed(1)+'" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif">'
+      +'<tspan font-size="17" fill="#eef4fb" font-weight="700">'+s.name.split(' ')[0]+'</tspan>'
+      +'<tspan font-size="20" fill="#fff" font-weight="800" dx="7">'+Math.round(s.usd/total*100)+'%</tspan></text>';
     let sub=a;
     if(s.kind==='ai'){
       if(showAiDetail){
@@ -6547,11 +6905,13 @@ function buildMaster(){
     }
     a+=sw;
   }
+  if(ownedView){ showIndexDetail=_det.ix; showAiDetail=_det.ai; showCryptoDetail=_det.cr; showMetalsDetail=_det.mt; }
   const cashUsd=state.sleeves.cash||0;
   const center=`<circle cx="${cx}" cy="${cy}" r="${r1[0]-6}" fill="#0c1119"/>`+
+    (own ? own.center :
     ctext(cx,cy-10,fmtUsd(total),26,'#e6eef7','800','-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif')+
-    ctext(cx,cy+16, cashUsd>0?`book · incl. ${fmtUsd(cashUsd)} cash`:'invested · no cash',13,'#7d8d9d','500');
-  return `<svg viewBox="0 0 ${box} ${box}" width="100%" role="img" aria-label="Portfolio donut">${P}${L}${center}</svg>`;
+    ctext(cx,cy+16, cashUsd>0?`book · incl. ${fmtUsd(cashUsd)} cash`:'invested · no cash',13,'#7d8d9d','500'));
+  return `<svg viewBox="0 0 ${box} ${box}" width="100%" role="img" aria-label="Portfolio donut">${own?`<g opacity="0.5" pointer-events="none">${P}</g><g opacity="0.42" pointer-events="none">${L}</g>${own.P}${own.L}`:P+L}${center}</svg>`;
 }
 function buildMini(d){
   const box=260,cx=130,cy=130,ri=70,ro=122; const st=segState(d.id),su=segUsd(st),hs=st.holdings,sw=hs.reduce((a,h)=>a+h.w,0);
@@ -6899,6 +7259,7 @@ function paintRead(){
 let rafQueued=false;
 function paint(){
   $('#masterSvg').innerHTML = buildMaster();
+  paintOwnNote();
   document.querySelectorAll('.seg-card[data-seg], #focusPanel[data-seg]').forEach(card=>{const d=SEGDEF[card.getAttribute('data-seg')];if(!d)return;const m=card.querySelector('.mini');if(m)m.innerHTML=buildMini(d);});
   paintReadouts();
   buildBook();
@@ -6926,6 +7287,14 @@ document.addEventListener('input',e=>{
 });
 
 document.addEventListener('click',e=>{
+  const oslice=e.target.closest('#masterSvg path[data-owntk]');
+  if(oslice){ const tk=oslice.getAttribute('data-owntk');
+    try{
+      if(typeof DATA!=='undefined'&&DATA&&hasOwn(DATA,tk)&&typeof openSheet==='function') openSheet(tk,oslice);
+      else if(typeof FUNDS!=='undefined'&&FUNDS&&hasOwn(FUNDS,tk)&&typeof openSheet==='function') openSheet(tk,oslice);
+      else if(typeof Crypto!=='undefined'&&Crypto&&Crypto.api&&Crypto.api.P&&hasOwn(Crypto.api.P,tk)) Crypto.api.openSheet(tk,oslice);
+    }catch(_){}
+    return; }
   const slice=e.target.closest('#masterSvg path[data-seg]');
   if(slice){ setFocus(slice.getAttribute('data-seg')); return; }
   const b=e.target.closest('[data-act]'); if(!b)return;
@@ -6968,6 +7337,18 @@ document.addEventListener('click',e=>{
   else if(act==='etfmode'){ const m=b.getAttribute('data-mode'); if(m===etfAtlasMode)return; etfAtlasMode=m;
     document.querySelectorAll('[data-act="etfmode"]').forEach(x=>x.classList.toggle('on',x.getAttribute('data-mode')===m));
     buildEtfAtlas(); toast(m==='deep'?'ETF view: full named list':'ETF view: compact Atlas'); }
+  else if(act==='owntgl'){ const want=b.getAttribute('data-own')==='owned';
+    if(want===ownedView)return; ownedView=want; syncOwnPill(); paint();
+    toast(want?'Master donut: what you actually own':'Master donut: the aim'); }
+  else if(act==='posconnect'){ const inp=document.getElementById('posToken'); const v=inp?inp.value:''; const A=posLayer();
+    if(!A) toast('positions layer unavailable');
+    else if(A.setToken(v)){ if(inp)inp.value=''; toast('Token stored on this device — fetching your positions'); }
+    else toast('Paste a token first');
+    paintPosStatus(); }
+  else if(act==='posrefresh'){ const A=posLayer();
+    if(A&&A.hasToken()){ A.refresh(); toast('Refreshing positions…'); } else toast('Connect first — paste your token');
+    paintPosStatus(); }
+  else if(act==='posforget'){ const A=posLayer(); if(A)A.forget(); toast('Token and cached positions cleared from this device'); }
 });
 
 document.addEventListener('change',e=>{
@@ -7524,6 +7905,7 @@ function _headH(){ var a=document.querySelector('.appbar'); if(a) document.docum
 _headH(); window.addEventListener('resize', function(){ setTimeout(_headH,120); });
 window.Studio = { setDeck:setDeck, switchPane:dkSwitchPane, openConsole:dkOpenConsole,
   closeConsole:dkCloseConsole, renderHud:renderHud, repaint:function(){paint();},
+  posSync:posSync,
   getLens:function(){return state.lens;}, deck:function(){return _deck;} };
 
 })();
@@ -8064,6 +8446,761 @@ try{
   })();
   setInterval(function(){ if(!document.hidden) fetchLive(); }, AUTO_MIN*60*1000);
 }catch(err){ /* the live layer must never take the app down */ }
+})();
+
+/* ==================================================================== */
+/* ============ GATE 4 · POSITIONS (token-gated, on-device) =========== */
+/* Real holdings from /positions.json. Header-only Bearer auth; the      */
+/* token is entered once in the console and lives in localStorage on     */
+/* THIS device — it is never in this file. No token or dead feed ⇒ the   */
+/* app behaves exactly as it does without Gate 4. Rendering lives in the */
+/* Studio (posSync/posModel); this layer only fetches, caches, reports.  */
+/* ==================================================================== */
+(function(){
+"use strict";
+try{
+  var POS_URL   = window.AIBO_POS_URL || 'https://asset-grading-production.up.railway.app/positions.json';
+  var TOKEN_KEY = 'aibo_pos_token_v1';
+  var POS_CACHE = 'aibo_pos_v1';
+  var POS_MIN   = 30;                       /* backend refreshes hourly; 30 min is plenty */
+  var LS_OK=false; try{ var k='__pt'+Date.now(); localStorage.setItem(k,'1'); localStorage.removeItem(k); LS_OK=true; }catch(_){ LS_OK=false; }
+  var memTok=null, memPayload=null;
+  var PS={ at:null, src:null, data:null, err:null, busy:false, queued:false };
+
+  function getToken(){ if(LS_OK){ try{ return localStorage.getItem(TOKEN_KEY)||null; }catch(_){ return memTok; } } return memTok; }
+  function storeToken(t){ memTok=t; if(LS_OK){ try{ localStorage.setItem(TOKEN_KEY,t); }catch(_){ } } }
+  function sync(){ try{ if(window.Studio&&window.Studio.posSync) window.Studio.posSync(); }catch(_){ } }
+  function okShape(j){ return !!(j && j.schemaVersion!=null && j.accounts && Object.prototype.toString.call(j.accounts)==='[object Array]'); }
+  function apply(j,src){ if(!okShape(j)) return false; PS.data=j; PS.at=j.generatedAt||null; PS.src=src; if(src==='live')PS.err=null; sync(); return true; }
+  function bootCache(){ try{ if(!getToken()) return; var raw=LS_OK?localStorage.getItem(POS_CACHE):null; var j=raw?JSON.parse(raw):memPayload; if(j) apply(j,'cache'); }catch(_){ } }
+
+  function fetchPositions(){
+    var tok=getToken();
+    if(!tok) return Promise.resolve(false);
+    if(PS.busy){ PS.queued=true; return Promise.resolve(false); }   /* run again when the in-flight one settles */
+    PS.busy=true;
+    var ctl=('AbortController' in window)?new AbortController():null;
+    var to=ctl?setTimeout(function(){ ctl.abort(); },9000):null;
+    function settle(){ if(to)clearTimeout(to); PS.busy=false;
+      if(PS.queued){ PS.queued=false; setTimeout(fetchPositions,0); } }
+    return fetch(POS_URL,{ signal:ctl&&ctl.signal, cache:'no-store', headers:{ 'Authorization':'Bearer '+tok } })
+      .then(function(r){
+        if(r.status===401) throw {auth:1};
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        return r.json();
+      })
+      .then(function(j){
+        settle();
+        if(getToken()!==tok) return false;              /* token forgotten or replaced mid-flight — discard */
+        if(!okShape(j)){ PS.err=(PS.data?'net-stale':'net'); sync(); return false; }  /* validate BEFORE caching */
+        memPayload=j; if(LS_OK){ try{ localStorage.setItem(POS_CACHE,JSON.stringify(j)); }catch(_){ } }
+        return apply(j,'live');
+      })
+      .catch(function(e){
+        settle();
+        if(getToken()!==tok) return false;              /* stale failure for a discarded token — ignore */
+        PS.err=(e&&e.auth)?'auth':(PS.err==='auth'?'auth':(PS.data?'net-stale':'net'));
+        sync(); return false;
+      });
+  }
+
+  window.AIBO_POS={
+    refresh: fetchPositions,
+    state: PS,
+    hasToken: function(){ return !!getToken(); },
+    setToken: function(t){ t=String(t==null?'':t).trim(); if(!t) return false;
+      storeToken(t); PS.err=null; PS.src=null; sync(); fetchPositions(); return true; },
+    forget: function(){ memTok=null; memPayload=null; PS.data=null; PS.at=null; PS.src=null; PS.err=null; PS.queued=false;
+      if(LS_OK){ try{ localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(POS_CACHE); }catch(_){ } } sync(); }
+  };
+
+  bootCache();
+  sync();                                   /* always: token+empty-cache boots must show 'fetching…', not 'not connected' */
+  if(getToken()) fetchPositions();
+  setInterval(function(){ if(!document.hidden&&getToken()) fetchPositions(); }, POS_MIN*60*1000);
+}catch(err){ /* the positions layer must never take the app down */ }
+})();
+
+
+/* ====================================================================== */
+/* ============ STAGE 31 — MARKETS VIEW (CMC-style sortable table) ====== */
+/* Rows read the SAME rosters + live feed as every other view (DATA /     */
+/* FUNDS / Crypto.api.P + .live hydration); minis are the app's own       */
+/* tfMiniRow/tfCandleSVG globals; a row tap opens the REAL deep-dive      */
+/* card via openSheet / Crypto.api.openSheet — grades, exploded pillars,  */
+/* live strip and the exploded TECHNICALS panes all included.             */
+/* ====================================================================== */
+window.MktView = (function(){
+  'use strict';
+
+  /* SEC-filed share counts (latest filing as of 2026-07-23; TSM = ADR 1:5).
+     Used ONLY to derive equity market cap = live price × shares; tickers
+     without a US filing stay null and render an honest dash. */
+  var CAPS = {"NVDA":{"sh":24200000000,"asOf":"2026-05-15","src":"SEC"},"AMD":{"sh":1630600639,"asOf":"2026-04-29","src":"SEC"},"AVGO":{"sh":4757580198,"asOf":"2026-05-29","src":"SEC"},"MRVL":{"sh":874800000,"asOf":"2026-05-21","src":"SEC"},"ARM":{"sh":1064055252,"asOf":"2026-03-31","src":"SEC"},"QCOM":{"sh":1054000000,"asOf":"2026-04-27","src":"SEC"},"ADI":{"sh":487087040,"asOf":"2026-05-02","src":"SEC"},"INTC":{"sh":5026000000,"asOf":"2026-04-17","src":"SEC"},"ALAB":{"sh":171407939,"asOf":"2026-04-30","src":"SEC"},"CRDO":{"sh":186477898,"asOf":"2026-06-08","src":"SEC"},"ANET":{"sh":1259202593,"asOf":"2026-04-30","src":"SEC"},"TXN":{"sh":910092791,"asOf":"2026-04-15","src":"SEC"},"MPWR":{"sh":49130000,"asOf":"2026-04-27","src":"SEC"},"ON":{"sh":391903191,"asOf":"2026-04-29","src":"SEC"},"IFX":null,"NVTS":{"sh":229988000,"asOf":"2026-03-31","src":"SEC"},"TEL":{"sh":291895799,"asOf":"2026-04-20","src":"SEC"},"GLW":{"sh":860637825,"asOf":"2026-04-24","src":"SEC"},"MU":{"sh":1129393151,"asOf":"2026-06-17","src":"SEC"},"000660":null,"005930":null,"SNDK":{"sh":148089758,"asOf":"2026-04-24","src":"SEC"},"WDC":{"sh":344682131,"asOf":"2026-04-23","src":"SEC"},"STX":{"sh":224228992,"asOf":"2026-04-27","src":"SEC"},"TSM":{"sh":5186504904,"asOf":"2025-12-31","src":"SEC/ADR1:5"},"ASML":{"sh":385417665,"asOf":"2025-12-31","src":"SEC"},"AMAT":{"sh":793959430,"asOf":"2026-04-26","src":"SEC"},"LRCX":{"sh":1250571000,"asOf":"2026-04-21","src":"SEC"},"KLAC":{"sh":130627521,"asOf":"2026-04-27","src":"SEC"},"SNPS":{"sh":191479325,"asOf":"2026-05-22","src":"SEC"},"CDNS":{"sh":275816000,"asOf":"2026-03-31","src":"SEC"},"COHR":{"sh":195639321,"asOf":"2026-05-04","src":"SEC"},"LITE":{"sh":77800000,"asOf":"2026-04-30","src":"SEC"},"FN":{"sh":35829740,"asOf":"2026-04-24","src":"SEC"},"AAOI":{"sh":80242767,"asOf":"2026-05-05","src":"SEC"},"CIEN":{"sh":141552922,"asOf":"2026-05-29","src":"SEC"},"NOK":{"sh":5742239696,"asOf":"2025-12-31","src":"SEC"},"PLTR":{"sh":2397133000,"asOf":"2026-03-31","src":"SEC"},"NET":{"sh":352625000,"asOf":"2026-03-31","src":"SEC"},"SNOW":{"sh":346600000,"asOf":"2026-05-15","src":"SEC"},"MDB":{"sh":80431927,"asOf":"2026-05-27","src":"SEC"},"DDOG":{"sh":353272000,"asOf":"2026-03-31","src":"SEC"},"NOW":{"sh":1031000000,"asOf":"2026-03-31","src":"SEC"},"SAP":{"sh":1228504232,"asOf":"2025-12-31","src":"SEC"},"RAMP":{"sh":60087866,"asOf":"2026-05-15","src":"SEC"},"BBAI":{"sh":478949450,"asOf":"2026-05-01","src":"SEC"},"IBM":{"sh":939885280,"asOf":"2026-03-31","src":"SEC"},"CRWD":{"sh":254564820,"asOf":"2026-05-28","src":"SEC"},"PANW":{"sh":815000000,"asOf":"2026-05-26","src":"SEC"},"IONQ":{"sh":373269948,"asOf":"2026-04-29","src":"SEC"},"RGTI":{"sh":332398807,"asOf":"2026-05-07","src":"SEC"},"QBTS":{"sh":366737601,"asOf":"2026-05-11","src":"SEC"},"QUBT":{"sh":225534987,"asOf":"2026-05-08","src":"SEC"},"QNT":null,"MSFT":{"sh":7428434704,"asOf":"2026-04-23","src":"SEC"},"GOOG":{"sh":12116000000,"asOf":"2026-03-31","src":"SEC"},"AMZN":{"sh":10757109436,"asOf":"2026-04-22","src":"SEC"},"META":{"sh":2534000000,"asOf":"2026-03-31","src":"SEC"},"ORCL":{"sh":2880471000,"asOf":"2026-06-12","src":"SEC"},"AAPL":{"sh":14687356000,"asOf":"2026-04-17","src":"SEC"},"TSLA":{"sh":3755723871,"asOf":"2026-04-16","src":"SEC"},"NBIS":{"sh":253016971,"asOf":"2025-12-31","src":"SEC"},"IREN":{"sh":357378674,"asOf":"2026-04-30","src":"SEC"},"CRWV":{"sh":527000000,"asOf":"2026-03-31","src":"SEC"},"WULF":{"sh":495532645,"asOf":"2026-05-05","src":"SEC"},"CIFR":{"sh":409049197,"asOf":"2026-05-04","src":"SEC"},"VRT":{"sh":384108816,"asOf":"2026-04-20","src":"SEC"},"ETN":{"sh":388300000,"asOf":"2026-03-31","src":"SEC"},"NVT":{"sh":161720452,"asOf":"2026-03-31","src":"SEC"},"GEV":{"sh":266333581,"asOf":"2026-06-30","src":"SEC"},"CEG":{"sh":361190063,"asOf":"2026-04-30","src":"SEC"},"VST":{"sh":337182468,"asOf":"2026-05-01","src":"SEC"},"OKLO":{"sh":173990987,"asOf":"2026-05-07","src":"SEC"},"SMR":{"sh":319712720,"asOf":"2026-03-31","src":"SEC"},"BE":{"sh":284443868,"asOf":"2026-04-24","src":"SEC"},"EOSE":{"sh":339514027,"asOf":"2026-05-11","src":"SEC"},"SU":{"sh":1193519494,"asOf":"2025-12-31","src":"SEC"},"LEU":{"sh":19773000,"asOf":"2026-03-31","src":"SEC"},"UUUU":{"sh":249867000,"asOf":"2026-05-01","src":"SEC"},"ISRG":{"sh":353278038,"asOf":"2026-07-16","src":"SEC"},"SYM":{"sh":602515397,"asOf":"2026-03-28","src":"SEC"},"MP":{"sh":178022198,"asOf":"2026-04-30","src":"SEC"},"LYC":null,"ALB":{"sh":117934651,"asOf":"2026-04-29","src":"SEC"},"CRML":{"sh":104912853,"asOf":"2025-06-30","src":"SEC"},"LIN":{"sh":462599539,"asOf":"2026-03-31","src":"SEC"},"NUE":{"sh":227740950,"asOf":"2026-04-04","src":"SEC"},"CAT":{"sh":460637026,"asOf":"2026-03-31","src":"SEC"},"HON":{"sh":633653119,"asOf":"2026-03-31","src":"SEC"},"RTX":{"sh":1346683428,"asOf":"2026-03-31","src":"SEC"},"LMT":{"sh":230563608,"asOf":"2026-04-20","src":"SEC"},"NOC":{"sh":142063026,"asOf":"2026-07-16","src":"SEC"},"BA":{"sh":788302331,"asOf":"2026-04-15","src":"SEC"},"KRMN":{"sh":132526299,"asOf":"2026-05-05","src":"SEC"},"AVAV":{"sh":50608030,"asOf":"2026-06-24","src":"SEC"},"KTOS":{"sh":187519984,"asOf":"2026-05-01","src":"SEC"},"ONDS":{"sh":495762650,"asOf":"2026-05-13","src":"SEC"},"UMAC":{"sh":47793923,"asOf":"2026-05-13","src":"SEC"},"RKLB":{"sh":578750990,"asOf":"2026-04-30","src":"SEC"},"ASTS":{"sh":290689457,"asOf":"2026-03-31","src":"SEC"},"LUNR":{"sh":147878006,"asOf":"2026-03-31","src":"SEC"},"PL":{"sh":345524328,"asOf":"2026-04-30","src":"SEC"},"SPCE":{"sh":100683438,"asOf":"2026-05-07","src":"SEC"},"BKSY":{"sh":37109026,"asOf":"2026-05-04","src":"SEC"},"VOYG":{"sh":58339505,"asOf":"2026-03-31","src":"SEC"},"APO":{"sh":576517513,"asOf":"2026-05-05","src":"SEC"},"BX":{"sh":742879807,"asOf":"2026-05-01","src":"SEC"},"KKR":{"sh":897872941,"asOf":"2026-05-07","src":"SEC"},"ARES":{"sh":313170171,"asOf":"2024-12-31","src":"SEC"},"BAM":{"sh":391700000,"asOf":"2023-12-31","src":"SEC"},"OWL":{"sh":680422783,"asOf":"2026-03-31","src":"SEC"},"XOM":{"sh":4144947162,"asOf":"2026-03-31","src":"SEC"},"CVX":{"sh":1991597732,"asOf":"2026-03-31","src":"SEC"},"COST":{"sh":443478804,"asOf":"2026-05-27","src":"SEC"},"WMT":{"sh":7958079155,"asOf":"2026-05-27","src":"SEC"},"COIN":{"sh":263411000,"asOf":"2026-03-31","src":"SEC"},"GME":{"sh":448691257,"asOf":"2026-06-05","src":"SEC"},"FLY":{"sh":160235217,"asOf":"2026-04-30","src":"SEC"},"USAR":{"sh":132638561,"asOf":"2025-10-31","src":"SEC"},"FCX":{"sh":1437559865,"asOf":"2026-04-30","src":"SEC"},"AA":{"sh":263889875,"asOf":"2026-04-27","src":"SEC"},"CSCO":{"sh":3941434665,"asOf":"2026-05-14","src":"SEC"},"DE":{"sh":269937425,"asOf":"2026-05-03","src":"SEC"},"6326":null,"PATH":{"sh":523584000,"asOf":"2026-04-30","src":"SEC"},"PLSR":null,"CCJ":{"sh":435457978,"asOf":"2025-12-31","src":"SEC"},"TLN":{"sh":45395007,"asOf":"2026-05-05","src":"SEC"}};
+
+  var GVAL = {'A+':13,'A':12,'A-':11,'B+':10,'B':9,'B-':8,'C+':7,'C':6,'C-':5,'D+':4,'D':3,'D-':2,'F':1};
+
+  /* Cross-universe themes — one pick pulls the WHOLE watchlist for that story
+     (the raw per-universe categories keep their own entries below). A category
+     may belong to more than one theme; membership is by exact category name. */
+  var THEMES = [
+    ['Private credit & funders', ['Alternative Asset Mgmt / Private Credit (the funders)','Private credit']],
+    ['Semiconductors', ['GPU & AI Accelerators (compute core)','Custom Silicon & AI Networking','Analog / Power Semi / Connectivity','Memory & Storage','Foundry & Semiconductor Equipment','EDA / Chip-Design Software','Semis — broad','Semis — equal-weight','Memory basket']],
+    ['Compute — GPUs + GPU networks', ['GPU & AI Accelerators (compute core)','Neoclouds / Merchant AI Cloud','Compute · GPU networks']],
+    ['Memory & storage — eq + crypto', ['Memory & Storage','Memory · storage','Memory basket']],
+    ['AI software & data', ['AI & Data Software','Software','AI thematic','Data · the raw input']],
+    ['Cybersecurity', ['Cybersecurity']],
+    ['Nuclear & uranium', ['Power Generation / Utilities / Nuclear','Nuclear Fuel & Uranium','Nuclear — full value chain','Uranium / nuclear fuel']],
+    ['Space', ['Space','Space — active','Space — active (holds SpaceX)','Space — pure-play']],
+    ['Defense & aerospace', ['Defense & Aerospace','Defense — equal-weight']],
+    ['Robotics & drones', ['Robotics & Automation','Drone / autonomous systems','Robotics']],
+    ['Quantum', ['Quantum Computing','Quantum / compute','Quantum-resistant']],
+    ['Rare earth & materials', ['Rare Earth / Critical Materials / Industrials','Rare earths / strategic metals','Copper miners']],
+    ['Datacenter & power', ['Datacenter Power & Electrical','Datacenter / infra REIT','Optical & Networking Hardware']]
+  ];
+  var THEME_MAP = {};
+  THEMES.forEach(function(t){ var s={}; t[1].forEach(function(c){ s[c]=1; }); THEME_MAP[t[0]]=s; });
+
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function clamp(x,lo,hi){ return x<lo?lo:(x>hi?hi:x); }
+  function gradePill(g){
+    /* the app's own gradeClass() supplies the class; its style block colors it */
+    if(!g || !GVAL[g]) return '<span class="mk-gp g-na">—</span>';
+    return '<span class="mk-gp '+gradeClass(g)+'">'+g+'</span>';
+  }
+  function fmtMoney(x){
+    if(x==null||!isFinite(x)) return '—';
+    var a=Math.abs(x);
+    if(a>=1e12) return '$'+(x/1e12).toFixed(2)+'T';
+    if(a>=1e9)  return '$'+(x/1e9).toFixed(2)+'B';
+    if(a>=1e6)  return '$'+(x/1e6).toFixed(1)+'M';
+    if(a>=1e3)  return '$'+(x/1e3).toFixed(1)+'K';
+    return '$'+x.toFixed(0);
+  }
+  function fmtCount(x){
+    if(x==null||!isFinite(x)) return '—';
+    var a=Math.abs(x);
+    if(a>=1e9) return (x/1e9).toFixed(2)+'B';
+    if(a>=1e6) return (x/1e6).toFixed(1)+'M';
+    if(a>=1e3) return (x/1e3).toFixed(0)+'K';
+    return String(Math.round(x));
+  }
+  function fmtPrice(x){
+    if(x==null||!isFinite(x)) return '—';
+    if(x>=1000) return '$'+x.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    if(x>=1)    return '$'+x.toFixed(2);
+    return '$'+Number(x.toPrecision(4));
+  }
+  function pctCls(x){ return x==null?'fl':(x>0.049?'up':(x<-0.049?'dn':'fl')); }
+  function fmtPct(x,dim,title){
+    if(x==null||!isFinite(x)) return '<span class="mk-gap">—</span>';
+    if(Math.abs(x)<0.005) x=0;
+    var c=pctCls(x), a=(c==='up'?'▲':(c==='dn'?'▼':'•'));
+    return '<span class="'+c+(dim?' mk-dim':'')+'"'+(title?' title="'+esc(title)+'"':'')+'>'+a+' '+Math.abs(x).toFixed(2)+'%</span>';
+  }
+
+  function lastPct(bars,back){
+    if(!bars || bars.length<=back) return null;
+    var a=bars[bars.length-1].c, b=bars[bars.length-1-back].c;
+    return b ? (a/b-1)*100 : null;
+  }
+  function dChg(lv){
+    if(!lv||!lv.px||lv.px.last==null) return {v:null};
+    /* after-hours quirk: upstream reports chg1d_pct 0.0 for every name when the
+       session is closed — an exact 0 falls back to the frame closes (immune to
+       extended-hours quote drift, unlike px.last/prev_close) */
+    if(lv.px.chg1d_pct!=null && lv.px.chg1d_pct!==0) return {v:lv.px.chg1d_pct};
+    var te=lv.tech;
+    if(te&&te.price!=null&&te.prev_close) return {v:(te.price/te.prev_close-1)*100,
+      note:'last-session move — upstream reports 0.0 after hours'};
+    return {v:lv.px.chg1d_pct!=null?lv.px.chg1d_pct:null};
+  }
+  function techScore(t){
+    if(!t) return null;
+    var a=t.dist_ma20_pct, b=t.dist_ma50_pct, c=t.dist_ma200_pct;
+    if(a==null&&b==null&&c==null) return null;
+    var s=50;
+    if(a!=null) s+=clamp(a,-10,10)*1.5;
+    if(b!=null) s+=clamp(b,-15,15)*0.9;
+    if(c!=null) s+=clamp(c,-30,30)*0.4;
+    return Math.round(clamp(s,3,97));
+  }
+  function techGauge(sc){
+    if(sc==null) return '<span class="mk-gap">—</span>';
+    var word = sc>=60?'BULL':(sc<=40?'BEAR':'NEUT');
+    var col  = sc>=60?'#39d07f':(sc<=40?'#f0685f':'#8A93A5');
+    var R=13, C=Math.PI*R, off=C*(1-sc/100);
+    return '<span class="mk-tg" title="MA-distance read: price vs MA20/50/200 — not news sentiment">'
+      +'<svg width="34" height="19" viewBox="0 0 34 19">'
+      +'<path d="M4 17 A 13 13 0 0 1 30 17" fill="none" stroke="#223045" stroke-width="3.4" stroke-linecap="round"/>'
+      +'<path d="M4 17 A 13 13 0 0 1 30 17" fill="none" stroke="'+col+'" stroke-width="3.4" stroke-linecap="round" '
+      +'stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/>'
+      +'<text x="17" y="16.5" text-anchor="middle" font-size="8.5" font-weight="800" fill="'+col+'">'+sc+'</text>'
+      +'</svg><b style="color:'+col+'">'+word+'</b></span>';
+  }
+  function hFreshInfo(tf,kind){
+    if(!tf) return {stale:false,label:''};
+    var iso=tf.h_asOf, lim=(kind==='cr')?360:135;   /* Stage 30 AFTER-HRS thresholds */
+    if(!iso) return {stale:false,label:''};
+    var age=(Date.now()-Date.parse(iso))/60000;
+    if(!isFinite(age)) return {stale:false,label:''};
+    if(age>lim) return {stale:true,label:(kind==='cr'?'FEED LAG':'AFTER HRS')+' — H frame '+Math.round(age/60)+'h old'};
+    return {stale:false,label:''};
+  }
+
+  /* ---------- assembly (rosters = the app's own; live = .live hydration) --- */
+  var ROWS=[], lastAt=null;
+  function assemble(){
+    var out=[];
+    Object.keys(DATA).forEach(function(t){
+      var r=DATA[t], lv=r.live||{}, px=lv.px||null, te=lv.tech||null;
+      var tf=te&&te.tf||null, P=tf?tfParse(tf):null;
+      var fromTech=!(px&&px.last!=null)&&te&&te.price!=null;
+      var price=px&&px.last!=null?px.last:(fromTech?te.price:null);
+      var cap=CAPS[t], mc=(cap&&price!=null)?price*cap.sh:null;
+      var hf=hFreshInfo(tf,'eq'), dc=dChg(lv);
+      out.push({
+        kind:'eq', key:t, sym:t, name:r.name, cat:r.layer, tint:null,
+        choke:!!r.choke, us:!!r.usonly, chokeWhy:r.choke||'', usWhy:r.usonly||'',
+        gExp:r.exp||null, gRec:r.rec||null, grade:null, tok:null,
+        px:price, pxStale:!!(px&&px.stale)||fromTech,
+        pxTitle:fromTech?'price from nightly technicals — no live quote':(px&&px.stale?'stale quote':null),
+        chg1h:P?lastPct(P.h,1):null, hStale:hf.stale, hLabel:hf.label,
+        chg24:dc.v, chg24Note:dc.note, chg7:P?lastPct(P.d,5):null,
+        mcap:mc, mcapSub:cap?fmtCount(cap.sh)+' sh':null,
+        mcapTitle:cap?((fromTech?'last px × ':'live px × ')+fmtCount(cap.sh)+' sh — '+cap.src+' '+(cap.asOf||'')):'no US filing — cap unavailable',
+        vol:(px&&px.volume!=null&&price!=null)?px.volume*price:null,
+        vol20:te?te.vol_vs_20d_pct:null, tech:techScore(te),
+        sentO:sentObj(lv.news&&lv.news.sent), range:rangePos(P,price), tf:tf
+      });
+    });
+    var CP=Crypto.api.P, TN=Crypto.api.TNAME, crL=window.AIBO_CRYPTO_LIVE||{};
+    Object.keys(CP).forEach(function(pk){
+      var r=CP[pk], fid=pk.replace(/^\$/,''), v=crL[fid]||{}, te=v.tech||null;
+      var tf=te&&te.tf||null, P=tf?tfParse(tf):null;
+      var fromTech=v.usd==null&&te&&te.price!=null;
+      var price=v.usd!=null?v.usd:(fromTech?te.price:null);
+      var mc=v.mcap!=null?v.mcap:null;
+      var tn=TN[pk]||{};
+      var hf=hFreshInfo(tf,'cr');
+      out.push({
+        kind:'cr', key:pk, sym:fid, name:r.name, cat:tn.name||null, tint:tn.ac||null,
+        choke:false, us:false,
+        gExp:null, gRec:null, grade:r.grade||null, tok:(r.tok!=null?r.tok:null),
+        px:price, pxStale:!!v.stale||fromTech,
+        pxTitle:fromTech?'price from cached technicals — no live quote':(v.stale?'stale quote':null),
+        chg1h:P?lastPct(P.h,1):null, hStale:hf.stale, hLabel:hf.label,
+        chg24:(v.chg24h_pct!=null?v.chg24h_pct:null), chg7:P?lastPct(P.d,7):null,
+        mcap:mc, mcapSub:(mc!=null&&price)?fmtCount(mc/price)+' '+fid:null,
+        mcapTitle:'CoinGecko market cap (live feed)',
+        vol:null, vol20:te?te.vol_vs_20d_pct:null, tech:techScore(te),
+        sentO:sentObj(v.sent), range:rangePos(P,price), tf:tf
+      });
+    });
+    var fdL=window.AIBO_FUNDS_LIVE||{};
+    Object.keys(FUNDS).forEach(function(t){
+      var r=FUNDS[t], v=fdL[t]||{}, px=v.px||null, te=v.tech||null;
+      var tf=te&&te.tf||null, P=tf?tfParse(tf):null;
+      var fromTech=!(px&&px.last!=null)&&te&&te.price!=null;
+      var price=px&&px.last!=null?px.last:(fromTech?te.price:null);
+      var hf=hFreshInfo(tf,'fd'), dc=dChg(v);
+      out.push({
+        kind:'fd', key:t, sym:t, name:r.name, cat:r.role, tint:null,
+        choke:false, us:false,
+        gExp:null, gRec:null, grade:null, tok:null,
+        px:price, pxStale:!!(px&&px.stale)||fromTech,
+        pxTitle:fromTech?'price from nightly technicals — no live quote':(px&&px.stale?'stale quote':null),
+        chg1h:P?lastPct(P.h,1):null, hStale:hf.stale, hLabel:hf.label,
+        chg24:dc.v, chg24Note:dc.note, chg7:P?lastPct(P.d,5):null,
+        mcap:null, mcapSub:null, mcapTitle:'ETF — AUM not in feed',
+        vol:(px&&px.volume!=null&&price!=null)?px.volume*price:null,
+        vol20:te?te.vol_vs_20d_pct:null, tech:techScore(te),
+        sentO:sentObj(v.sent), range:rangePos(P,price), tf:tf
+      });
+    });
+    var ranked=out.filter(function(r){return r.mcap!=null;}).sort(function(a,b){return b.mcap-a.mcap;});
+    ranked.forEach(function(r,i){ r.rank=i+1; });
+    return out;
+  }
+
+  /* ---------- table ---------- */
+  var COLS=[
+    {k:'rank', lab:'#',       cls:'c-rank'},
+    {k:'name', lab:'Asset',   cls:'c-name'},
+    {k:'grade',lab:'Grade',   cls:'c-grade'},
+    {k:'px',   lab:'Price',   cls:'c-price'},
+    {k:'chg1h',lab:'1h %',    cls:'c-1h'},
+    {k:'chg24',lab:'24h %',   cls:'c-24h'},
+    {k:'chg7', lab:'7d %',    cls:'c-7d'},
+    {k:'mcap', lab:'Mkt Cap', cls:'c-mcap'},
+    {k:'vol',  lab:'24h Vol', cls:'c-vol'},
+    {k:'tech', lab:'Tech',    cls:'c-tech'},
+    {k:'sent', lab:'Sent',    cls:'c-sent'},
+    {k:'range',lab:'30d',     cls:'c-bullet'},
+    {k:'chart',lab:'Minis · M W D 4H H', cls:'c-chart', nosort:true}
+  ];
+  /* sort key for the bullet: price's position inside the 30-day open/close
+     track — the exact geometry the bullet draws (0 = at the lows, 100 = at
+     the highs). Derived from the same daily frame; null when the bullet
+     itself would refuse to draw. */
+  function rangePos(P,last){
+    if(!P||!P.d||P.d.length<21||last==null) return null;
+    var w30=P.d.slice(-30), lo=Infinity, hi=-Infinity;
+    for(var i=0;i<w30.length;i++){
+      var b=w30[i], o=(b.o!=null)?b.o:b.c;
+      if(o<lo)lo=o; if(o>hi)hi=o;
+      if(b.c<lo)lo=b.c; if(b.c>hi)hi=b.c;
+    }
+    if(!(hi>lo)) return null;
+    return clamp((last-lo)/(hi-lo)*100,0,100);
+  }
+  /* v3.7 community sentiment from the feed: {v:-1..1, src, n} — StockTwits
+     bull/bear ratio (equities+funds), CoinGecko votes (crypto), or a headline-tone
+     fallback. Shown only when the backend supplies it. Never derived here. */
+  var SENT_SRC={'stocktwits':'ST','cg-votes':'CG','headlines':'HL'};
+  var SENT_TITLE={'stocktwits':'StockTwits community — bull/bear ratio of the last ~30 tagged messages',
+                  'cg-votes':'CoinGecko community sentiment votes',
+                  'headlines':'tone of cached news headlines (lexicon fallback)'};
+  function sentObj(s){
+    if(!s||s.v==null||!isFinite(+s.v)) return null;
+    return {v:+s.v, src:s.src||'', n:(s.n!=null?+s.n:null)};
+  }
+  function sentCell(s){
+    if(!s) return '<span class="mk-gap" title="no community sentiment yet — backend v3.7 supplies it (StockTwits / CoinGecko votes)">—</span>';
+    var x=s.v, c=x>0.05?'up':(x<-0.05?'dn':'fl');
+    var tag=SENT_SRC[s.src]||'', tt=SENT_TITLE[s.src]||'community sentiment';
+    return '<span class="'+c+'" title="'+esc(tt+(s.n!=null?' · n='+s.n:''))+'">'+(x>0?'+':'')+x.toFixed(2)+'</span>'
+      +(tag?'<span class="mk-sub">'+tag+(s.n!=null?' · '+s.n:'')+'</span>':'');
+  }
+  var state={sort:'mcap',dir:-1,uni:'all',cat:'',choke:false,us:false,q:'',
+             lens:(typeof currentLens!=='undefined'&&currentLens==='rec')?'rec':'exp', mode:'s3'};
+  var built=false, tbody, headRow, io;
+
+  function gradeOf(r){
+    if(r.kind==='eq') return state.lens==='rec'?r.gRec:r.gExp;
+    if(r.kind==='cr') return r.grade;
+    return null;
+  }
+  function sortVal(r,k){
+    if(k==='rank') return r.mcap!=null?-r.mcap:null;   /* agrees with the displayed rank number */
+    if(k==='name') return r.sym;
+    if(k==='grade'){ var g=gradeOf(r); return g?GVAL[g]:null; }
+    if(k==='sent') return r.sentO?r.sentO.v:null;
+    return r[k];
+  }
+  function nameCell(r){
+    var marks='';
+    if(r.choke) marks+=' <span class="ck" title="Absolute chokepoint · '+esc(r.chokeWhy)+'">◆</span>';
+    if(r.us) marks+=' <span class="mk-usdom" title="Sole US domestic player · '+esc(r.usWhy)+'"></span>';
+    var cat=r.cat?('<span class="mk-cat'+(r.tint?' tinted':'')+'"'+(r.tint?' style="--tint:'+r.tint+'"':'')
+        +' title="'+esc(r.cat)+'">'+esc(r.cat)+'</span>'):'';
+    return '<div class="mk-nm mk-uni-'+r.kind+'"><span class="mk-udot"></span><div class="mk-nmtxt">'
+      +'<div class="mk-sym">'+esc(r.sym)+marks+'</div>'
+      +'<div class="mk-co">'+esc(r.name)+'</div>'+cat+'</div></div>';
+  }
+  function gradeCell(r){
+    if(r.kind==='fd') return '<span class="mk-gap">—</span>';
+    if(r.kind==='cr') return gradePill(r.grade)+(r.tok!=null?'<span class="mk-sub">tok '+r.tok+'</span>':'<span class="mk-sub">pre-token</span>');
+    return gradePill(gradeOf(r));
+  }
+  function buildRow(r){
+    var tr=document.createElement('tr');
+    var v20=r.vol20; if(v20!=null&&Math.abs(v20)<0.5) v20=0;
+    var sub20=(v20!=null)?'<span class="mk-sub"'+(Math.abs(v20)>50?' style="color:#e0b048;font-weight:700"':'')
+        +' title="volume vs 20-day average">vs20d '+(v20>0?'+':'')+v20.toFixed(0)+'%</span>':'';
+    tr.innerHTML=
+      '<td class="c-rank">'+(r.rank!=null?r.rank:'<span class="mk-gap">–</span>')+'</td>'
+      +'<td class="c-name">'+nameCell(r)+'</td>'
+      +'<td class="c-grade cell-grade">'+gradeCell(r)+'</td>'
+      +'<td class="c-price'+(r.pxStale?' mk-dim':'')+'"'+(r.pxTitle?' title="'+esc(r.pxTitle)+'"':'')+'>'+fmtPrice(r.px)+'</td>'
+      +'<td class="c-1h">'+fmtPct(r.chg1h,r.hStale,r.hStale?r.hLabel:null)+'</td>'
+      +'<td class="c-24h">'+fmtPct(r.chg24,false,r.chg24Note)+'</td>'
+      +'<td class="c-7d">'+fmtPct(r.chg7)+'</td>'
+      +'<td class="c-mcap" title="'+esc(r.mcapTitle)+'">'+(r.mcap!=null?fmtMoney(r.mcap):'<span class="mk-gap">—</span>')
+        +(r.mcapSub?'<span class="mk-sub">'+esc(r.mcapSub)+'</span>':'')+'</td>'
+      +'<td class="c-vol"'+(r.vol!=null?' title="session share volume × latest price (dollar-turnover approximation)"':'')+'>'
+        +(r.vol!=null?fmtMoney(r.vol):'<span class="mk-gap">—</span>')+sub20+'</td>'
+      +'<td class="c-tech">'+techGauge(r.tech)+'</td>'
+      +'<td class="c-sent">'+sentCell(r.sentO)+'</td>'
+      +'<td class="c-bullet" title="30-day range bullet — track = month of open/close bodies, nested week + day bands, MA20 line, dot = price (day direction)">'
+        +(function(){ var vb=''; try{ vb=r.tf?vbulletSVG(r.tf,r.px):''; }catch(e){}
+           return vb?('<span class="mk-vb">'+vb+'</span>'):'<span class="mk-gap">—</span>'; })()+'</td>'
+      +'<td class="c-chart"><div class="mstrip"><div class="mk-chph">· · ·</div></div></td>';
+    tr.addEventListener('click',function(){
+      /* THE point of this view: open the real deep-dive card */
+      try{
+        if(r.kind==='cr'){ if(Crypto&&Crypto.api&&Crypto.api.openSheet) Crypto.api.openSheet(r.key,tr); }
+        else if(typeof openSheet==='function') openSheet(r.key,tr);
+      }catch(e){}
+    });
+    r.tr=tr; r.charted=false;
+    return tr;
+  }
+  function fillChart(r){
+    if(r.charted) return;
+    var cell=r.tr.querySelector('.mstrip'), html='';
+    try{ html=r.tf?tfMiniRow(r.tf,r.kind==='cr'?'crypto':'equity'):''; }catch(e){ html=''; }
+    cell.innerHTML=html||'<b class="as-tbo-gap">no frames</b>';
+    r.charted=true;
+  }
+  /* IntersectionObserver can be frame-starved in embedded webviews — this
+     geometry fallback guarantees visible rows always get their charts. */
+  var fillPend=false;
+  function fillVisible(){
+    var tw=document.querySelector('#mktView .twrap');
+    if(!tw||!ROWS.length) return;
+    var twr=tw.getBoundingClientRect();
+    ROWS.forEach(function(r){
+      if(r.charted||!r.tr||r.tr.style.display==='none') return;
+      var b=r.tr.getBoundingClientRect();
+      if(b.bottom>twr.top-600 && b.top<twr.bottom+600) fillChart(r);
+    });
+  }
+  function fillSoon(){
+    if(fillPend) return;
+    fillPend=true;
+    setTimeout(function(){ fillPend=false; fillVisible(); },120);
+  }
+  function visible(r){
+    if(state.uni!=='all' && r.kind!==state.uni) return false;
+    if(state.choke && !r.choke) return false;
+    if(state.us && !r.us) return false;
+    if(state.cat){
+      if(state.cat.indexOf('theme|')===0){
+        var tm=THEME_MAP[state.cat.slice(6)];
+        if(!tm || !r.cat || !tm[r.cat]) return false;   /* cross-universe theme */
+      } else if((r.kind+'|'+r.cat)!==state.cat) return false;   /* kind-namespaced raw category */
+    }
+    if(state.q && r.sym.toUpperCase().indexOf(state.q)<0 && r.name.toUpperCase().indexOf(state.q)<0) return false;
+    return true;
+  }
+  function applySort(){
+    var k=state.sort, dir=state.dir;
+    var arr=ROWS.slice().sort(function(a,b){
+      var av=sortVal(a,k), bv=sortVal(b,k);
+      var an=(av==null), bn=(bv==null);
+      if(an&&bn) return a.sym<b.sym?-1:1;
+      if(an) return 1;
+      if(bn) return -1;
+      if(k==='name') return dir*(av<bv?-1:(av>bv?1:0));
+      return dir*(av-bv);
+    });
+    var frag=document.createDocumentFragment();
+    arr.forEach(function(r){ frag.appendChild(r.tr); });
+    tbody.appendChild(frag);
+    fillSoon();
+    Array.prototype.forEach.call(headRow.querySelectorAll('th'),function(th){
+      th.classList.remove('s-asc','s-desc');
+      if(th.dataset.k===k) th.classList.add(dir<0?'s-desc':'s-asc');
+      var ar=th.querySelector('.mk-ar'); if(ar) ar.textContent=(th.dataset.k===k)?(dir<0?'▼':'▲'):'▼';
+    });
+  }
+  function applyFilter(){
+    ROWS.forEach(function(r){ r.tr.style.display=visible(r)?'':'none'; });
+    renderStats();
+    fillSoon();
+  }
+  function renderStats(){
+    var vis=ROWS.filter(visible);
+    var caps=0, up=0, dn=0, chgs=[];
+    vis.forEach(function(r){
+      if(r.mcap!=null) caps+=r.mcap;
+      if(r.chg24!=null){ chgs.push(r.chg24); if(r.chg24>0.049)up++; else if(r.chg24<-0.049)dn++; }
+    });
+    chgs.sort(function(a,b){return a-b;});
+    var n=chgs.length;
+    var med=!n?null:(n%2 ? chgs[(n-1)/2] : (chgs[n/2-1]+chgs[n/2])/2);
+    if(med!=null&&Math.abs(med)<0.005) med=0;
+    document.getElementById('mkStat').innerHTML=
+      '<span><b>'+vis.length+'</b> assets</span>'
+      +'<span>Σ cap <b>'+(caps>0?fmtMoney(caps):'—')+'</b></span>'
+      +'<span>24h <b class="up">'+up+'▲</b>/<b class="dn">'+dn+'▼</b></span>'
+      +'<span>med '+(med!=null?('<b class="'+pctCls(med)+'">'+(med>0?'+':'')+med.toFixed(2)+'%</b>'):'—')+'</span>';
+  }
+  function rebuildCats(){
+    var sel=document.getElementById('mkCat');
+    var groups={eq:{},cr:{},fd:{}};
+    ROWS.forEach(function(r){ if(r.cat) groups[r.kind][r.cat]=1; });
+    var html='<option value="">All categories</option>';
+    /* cross-universe themes first — one pick = the whole watchlist story */
+    var themed='';
+    THEMES.forEach(function(t){
+      var n=0;
+      ROWS.forEach(function(r){ if(r.cat&&THEME_MAP[t[0]][r.cat]&&(state.uni==='all'||r.kind===state.uni)) n++; });
+      if(n>0){
+        var val='theme|'+t[0];
+        themed+='<option value="'+esc(val)+'"'+(state.cat===val?' selected':'')+'>'+esc(t[0])+' ('+n+')</option>';
+      }
+    });
+    if(themed) html+='<optgroup label="Themes — across universes">'+themed+'</optgroup>';
+    var labs={eq:'Equity layers',cr:'Crypto tiers',fd:'Fund themes'};
+    ['eq','cr','fd'].forEach(function(kind){
+      if(state.uni!=='all'&&state.uni!==kind) return;
+      var cats=Object.keys(groups[kind]).sort();
+      if(!cats.length) return;
+      html+='<optgroup label="'+labs[kind]+'">';
+      cats.forEach(function(c){
+        var val=kind+'|'+c;   /* kind-namespaced value */
+        html+='<option value="'+esc(val)+'"'+(state.cat===val?' selected':'')+'>'+esc(c)+'</option>';
+      });
+      html+='</optgroup>';
+    });
+    sel.innerHTML=html;
+  }
+
+  /* ---------- css (runtime element; source keeps one style block) ------- */
+  var CSS =
+  '#mktView{padding:8px 10px 20px}'
+  +'#mktView .mk-ctl{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:2px 2px 8px}'
+  +'#mktView .mk-stats{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);align-items:baseline;margin:0 4px 8px}'
+  +'#mktView .mk-stats b{color:var(--ink)}'
+  +'#mktView .mk-grp{display:flex;background:rgba(16,27,43,.9);border:1px solid var(--hair);border-radius:10px;padding:2px;gap:2px}'
+  +'#mktView .mk-grp button{appearance:none;background:transparent;border:0;color:var(--muted);font:700 11px/1 inherit;letter-spacing:.3px;padding:7px 10px;border-radius:7px;cursor:pointer;white-space:nowrap}'
+  +'#mktView .mk-grp button.on{background:#21354f;color:var(--ink);box-shadow:inset 0 0 0 1px rgba(120,170,255,.28)}'
+  +'#mktView .mk-grp button.mk-bchoke.on{background:rgba(232,181,60,.18);box-shadow:inset 0 0 0 1px rgba(244,197,82,.55);color:#f4dca0}'
+  +'#mktView .mk-grp button.mk-bus.on{background:rgba(47,78,168,.25);box-shadow:inset 0 0 0 1px rgba(120,150,240,.5);color:#dfe6f8}'
+  +'#mktView .mk-sel{background:rgba(16,27,43,.9);border:1px solid var(--hair);border-radius:10px;color:var(--muted);font:700 11px/1 inherit;padding:8px 8px;max-width:200px}'
+  +'#mktView .mk-q{flex:1 1 120px;min-width:100px;background:#0a0f16;border:1px solid #223650;border-radius:10px;color:var(--ink);padding:8px 10px;font:600 12px/1 inherit;outline:none}'
+  +'#mktView .mk-q::placeholder{color:#5c6b7d}'
+  +'#mktView .twrap{border:1px solid var(--hair);border-radius:14px;background:rgba(18,26,38,.72);overflow:auto;max-height:calc(100dvh - 210px);overscroll-behavior:contain}'
+  +'#mktView table.mkt{border-collapse:separate;border-spacing:0;width:100%;min-width:1290px}'
+  +'#mktView .mkt th,#mktView .mkt td{padding:7px 10px;border-bottom:1px solid rgba(42,54,71,.55);white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right;vertical-align:middle}'
+  +'#mktView .mkt th{position:sticky;top:0;z-index:5;background:#101a29;color:var(--muted);font:700 10px/1.2 inherit;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;user-select:none;-webkit-user-select:none}'
+  +'#mktView .mkt th.nosort{cursor:default}'
+  +'#mktView .mkt th .mk-ar{font-size:8px;opacity:.28;margin-left:2px}'   /* every column sortable — faint arrow as the cue */
+  +'#mktView .mkt th.s-desc .mk-ar,#mktView .mkt th.s-asc .mk-ar{opacity:1;color:#9fd1ff}'
+  +'#mktView .mkt td.c-rank,#mktView .mkt th.c-rank{text-align:center;color:var(--muted);font-size:11px;min-width:34px;padding-left:6px;padding-right:4px}'
+  +'#mktView .mkt th.c-name,#mktView .mkt td.c-name{text-align:left;position:sticky;left:0;z-index:3;background:#0f1826;min-width:170px;max-width:228px;box-shadow:inset -1px 0 0 rgba(42,54,71,.8)}'
+  +'#mktView .mkt th.c-name{z-index:6}'
+  +'#mktView .mkt tbody tr{cursor:pointer}'
+  +'#mktView .mkt tbody tr:hover td{background:rgba(33,53,79,.28)}'
+  +'#mktView .mkt tbody tr:hover td.c-name{background:#14202f}'
+  +'#mktView .mkt td{font-weight:600;font-size:12.5px}'
+  +'#mktView .up{color:#39d07f}#mktView .dn{color:#f0685f}#mktView .fl{color:#8A93A5}'
+  +'#mktView .mk-dim{opacity:.55}'
+  +'#mktView .mk-gap{color:#5A6678;font-weight:700}'
+  +'#mktView .mk-sub{display:block;font-weight:500;font-size:10px;color:var(--muted);margin-top:1px}'
+  +'#mktView .mk-nm{display:flex;align-items:center;gap:8px;min-width:0}'
+  +'#mktView .mk-sym{font-weight:800;font-size:12.5px;letter-spacing:.2px;display:flex;align-items:center;gap:5px}'
+  +'#mktView .mk-co{font-weight:500;font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;max-width:168px}'
+  +'#mktView .mk-cat{display:inline-block;font-size:9px;font-weight:700;color:var(--muted);border:1px solid rgba(120,140,165,.28);border-radius:6px;padding:1px 5px;margin-top:2px;max-width:168px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}'
+  +'#mktView .mk-cat.tinted{color:var(--tint,#9fb0c8);border-color:color-mix(in srgb,var(--tint,#9fb0c8) 45%,transparent)}'
+  +'#mktView .mk-udot{width:6px;height:6px;border-radius:50%;flex:none;opacity:.8}'
+  +'#mktView .mk-uni-eq .mk-udot{background:#7AB0EA}#mktView .mk-uni-cr .mk-udot{background:#5eead4}#mktView .mk-uni-fd .mk-udot{background:#c4b0ff}'
+  +'#mktView .ck{font-size:10px}'
+  +'#mktView .mk-usdom{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block;background:radial-gradient(circle,#c1283b 0 34%,#ffffff 34% 64%,#2f4ea8 64% 100%);box-shadow:0 0 6px 1px rgba(80,118,214,.5)}'
+  +'#mktView .mk-gp{display:inline-block;min-width:26px;text-align:center;font-weight:800;font-size:11px;color:#fff;border-radius:5px;padding:3px 5px}'
+  +'#mktView .mk-gp.g-na{color:#9fb0c8;background:var(--g-na)}'
+  +'#mktView .mk-tg{display:inline-flex;flex-direction:column;align-items:center;line-height:1}'
+  +'#mktView .mk-tg svg{display:block}'
+  +'#mktView .mk-tg b{font-size:9px;font-weight:800;letter-spacing:.06em}'
+  +'#mktView th.c-chart{text-align:left;padding-left:14px}'
+  +'#mktView td.c-chart{padding:5px 12px 5px 14px;min-width:330px}'
+  +'#mktView .mstrip{display:flex;align-items:center}'
+  +'#mktView .mstrip .as-mrow{display:flex;flex:1 1 100%;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:1px}'
+  +'#mktView .mstrip .as-mrow::-webkit-scrollbar{display:none}'
+  +'#mktView .mstrip .as-tbo{display:inline-flex;align-items:flex-end;gap:3px;flex:none}'
+  +'#mktView .mstrip .as-tbo i{font-style:normal;font-size:8px;font-weight:800;letter-spacing:.4px;color:var(--muted);opacity:.75}'
+  +'#mktView .mstrip .as-tbo svg{display:block}'
+  +'#mktView .mstrip .as-tbo-gap{color:#5A6678;font-weight:700;font-size:10px;align-self:center}'
+  +'#mktView .mstrip .mn-w svg,#mktView .mstrip .mn-n svg{display:block;width:100%;height:auto}'
+  +'#mktView .mode-s3 .mstrip .as-tbo{flex:0 0 calc((100% - 20px)/3.25)}'
+  +'#mktView .mode-s3 .mstrip .mn-w{display:none}'
+  +'#mktView .mode-s3 .mstrip .mn-n{display:block;width:100%}'
+  +'#mktView .mode-a5 .mstrip .as-tbo{flex:0 0 calc((100% - 32px)/5)}'
+  +'#mktView .mode-a5 .mstrip .mn-w{display:block;width:100%}'
+  +'#mktView .mode-a5 .mstrip .mn-n{display:none}'
+  +'#mktView .mk-chph{height:24px;display:flex;align-items:center;color:#3d4b60;font-size:10px;font-weight:700}'
+  +'#mktView .mode-s3 .mk-chph{height:52px}'
+  /* the range bullet: stout geometry, scaled to the row */
+  +'#mktView td.c-bullet{text-align:center;min-width:46px}'
+  +'#mktView .mk-vb{display:inline-block}'
+  +'#mktView .mk-vb svg.vb-w{display:block;height:44px;width:auto;margin:0 auto}'
+  +'#mktView .mk-vb svg.vb-n{display:none}'
+  +'#mktView .mode-s3 td.c-bullet .mk-vb svg.vb-w{height:56px}'
+  +'#mktView .mk-note{margin:10px 4px 0;font-size:10.5px;color:var(--muted);line-height:1.55}'
+  +'@media(max-width:900px){#mktView .c-1h,#mktView .c-7d,#mktView .c-vol,#mktView .c-tech,#mktView .c-sent{display:none}'
+  +'#mktView table.mkt{min-width:710px}}'
+  +'@media(max-width:480px){#mktView .c-mcap,#mktView .c-bullet{display:none}'
+  +'#mktView table.mkt{min-width:470px}'
+  +'#mktView .mkt th.c-name,#mktView .mkt td.c-name{min-width:142px;max-width:168px}'
+  +'#mktView .mk-co,#mktView .mk-cat{max-width:118px}'
+  +'#mktView td.c-chart{min-width:215px}'
+  +'#mktView .mkt th,#mktView .mkt td{padding:6px 7px}'
+  +'#mktView .mk-grp button{padding:6px 8px;font-size:10px}'
+  +'#mktView .twrap{max-height:calc(100dvh - 250px)}}';
+
+  /* ---------- mount + wiring ---------- */
+  function mount(){
+    var css=document.createElement('style'); css.id='mkt-css'; css.textContent=CSS;
+    document.head.appendChild(css);
+    var m=document.getElementById('mktMount');
+    m.innerHTML=
+      '<div class="mk-ctl">'
+      +'<div class="mk-grp" id="mkUni">'
+      +'<button data-u="all" class="on">All</button><button data-u="eq">Equities</button>'
+      +'<button data-u="cr">Crypto</button><button data-u="fd">Funds</button></div>'
+      +'<div class="mk-grp"><button id="mkChoke" class="mk-bchoke">◆ Chokepoints</button>'
+      +'<button id="mkUs" class="mk-bus">US-only</button></div>'
+      +'<select class="mk-sel" id="mkCat"></select>'
+      +'<input class="mk-q" id="mkQ" placeholder="Search ticker or name" autocomplete="off">'
+      +'<div class="mk-grp"><button id="mkGain">▲ Gainers</button><button id="mkLose">▼ Losers</button></div>'
+      +'<div class="mk-grp" id="mkLens" title="Grade lens"><button data-l="exp">EXP</button><button data-l="rec">REC</button></div>'
+      +'<div class="mk-grp" id="mkMode" title="Mini layout"><button data-m="s3">3× scroll</button><button data-m="a5">All 5</button></div>'
+      +'</div>'
+      +'<div class="mk-stats" id="mkStat"></div>'
+      +'<div class="twrap mode-'+state.mode+'"><table class="mkt"><thead><tr id="mkHead"></tr></thead><tbody id="mkBody"></tbody></table></div>'
+      +'<div class="mk-note">Tap any row for the full grading card. Equity cap = live px × SEC-filed shares (tooltip has the filing date; no US filing → “—”). '
+      +'24h during a closed session = last-session move. Vol = share volume × latest price — a dollar-turnover approximation (not VWAP); crypto volume is not in the feed, shown “—”. '
+      +'TECH = MA-distance read. SENT = the feed’s news tone — currently null upstream (FMP Starter sends headlines without sentiment), so it shows “—” until the backend supplies it. '
+      +'30d = the strip’s range bullet (sortable: dot position in the month track). Missing data always shows “—”, never a guess.</div>';
+    tbody=document.getElementById('mkBody');
+    headRow=document.getElementById('mkHead');
+    COLS.forEach(function(c){
+      var th=document.createElement('th');
+      th.className=c.cls+(c.nosort?' nosort':'');
+      th.dataset.k=c.k;
+      th.innerHTML=esc(c.lab)+(c.nosort?'':'<span class="mk-ar">▼</span>');
+      if(!c.nosort) th.addEventListener('click',function(){
+        if(state.sort===c.k) state.dir=-state.dir;
+        else { state.sort=c.k; state.dir=(c.k==='name'||c.k==='rank')?1:-1; }
+        applySort();
+      });
+      headRow.appendChild(th);
+    });
+    document.querySelectorAll('#mkUni button').forEach(function(b){
+      b.addEventListener('click',function(){
+        state.uni=b.dataset.u; state.cat='';
+        document.querySelectorAll('#mkUni button').forEach(function(x){x.classList.toggle('on',x===b);});
+        rebuildCats(); applyFilter();
+      });
+    });
+    var bc=document.getElementById('mkChoke'), bu=document.getElementById('mkUs');
+    bc.addEventListener('click',function(){ state.choke=!state.choke; bc.classList.toggle('on',state.choke); applyFilter(); });
+    bu.addEventListener('click',function(){ state.us=!state.us; bu.classList.toggle('on',state.us); applyFilter(); });
+    document.getElementById('mkCat').addEventListener('change',function(e){ state.cat=e.target.value; applyFilter(); });
+    document.getElementById('mkQ').addEventListener('input',function(e){ state.q=e.target.value.trim().toUpperCase(); applyFilter(); });
+    document.querySelectorAll('#mkLens button').forEach(function(b){
+      b.classList.toggle('on',b.dataset.l===state.lens);
+      b.addEventListener('click',function(){
+        state.lens=b.dataset.l;
+        document.querySelectorAll('#mkLens button').forEach(function(x){x.classList.toggle('on',x===b);});
+        ROWS.forEach(function(r){ if(r.kind==='eq') r.tr.querySelector('.cell-grade').innerHTML=gradeCell(r); });
+        if(state.sort==='grade') applySort();
+      });
+    });
+    document.querySelectorAll('#mkMode button').forEach(function(b){
+      b.classList.toggle('on',b.dataset.m===state.mode);
+      b.addEventListener('click',function(){
+        state.mode=b.dataset.m;
+        document.querySelectorAll('#mkMode button').forEach(function(x){x.classList.toggle('on',x===b);});
+        var w=document.querySelector('#mktView .twrap');
+        w.classList.toggle('mode-s3',state.mode==='s3');
+        w.classList.toggle('mode-a5',state.mode==='a5');
+      });
+    });
+    document.getElementById('mkGain').addEventListener('click',function(){ state.sort='chg24'; state.dir=-1; applySort(); });
+    document.getElementById('mkLose').addEventListener('click',function(){ state.sort='chg24'; state.dir=1; applySort(); });
+    built=true;
+  }
+  function rebuild(){
+    var prev=ROWS, prevRows=null;
+    try{
+      /* carry filled charts across the refresh when the tf payload is unchanged,
+         and keep the scroll position — a background refresh must not yank the view */
+      var carry={};
+      prev.forEach(function(r){
+        if(r.charted&&r.tr) carry[r.kind+'|'+r.key]={tfs:JSON.stringify(r.tf||null),html:r.tr.querySelector('.mstrip').innerHTML};
+      });
+      var tw=document.querySelector('#mktView .twrap');
+      var st=tw?tw.scrollTop:0, sl=tw?tw.scrollLeft:0;
+      prevRows=ROWS; ROWS=assemble();
+      tbody.innerHTML='';
+      if(io) io.disconnect();
+      io=new IntersectionObserver(function(es){
+        es.forEach(function(e){
+          if(e.isIntersecting){ fillChart(e.target._row); io.unobserve(e.target); }
+        });
+      },{root:tw,rootMargin:'600px 0px'});
+      ROWS.forEach(function(r){
+        buildRow(r);
+        r.tr._row=r;
+        var c=carry[r.kind+'|'+r.key];
+        if(c&&c.tfs===JSON.stringify(r.tf||null)&&c.html){
+          r.tr.querySelector('.mstrip').innerHTML=c.html; r.charted=true;
+        }
+        tbody.appendChild(r.tr);
+        if(!r.charted) io.observe(r.tr);
+      });
+      applySort(); applyFilter(); rebuildCats();
+      if(tw){
+        tw.scrollTop=st; tw.scrollLeft=sl;
+        if(!tw._mkFill){ tw._mkFill=true; tw.addEventListener('scroll',fillSoon,{passive:true}); }
+      }
+      fillVisible();
+    }catch(e){
+      /* a malformed refresh must never take the table down — keep the old rows */
+      if(prevRows){ ROWS=prevRows; }
+    }
+    lastAt=(window.AIBO_LIVE&&AIBO_LIVE.state)?AIBO_LIVE.state.at:null;
+  }
+  function render(){
+    if(!built) mount();
+    var at=(window.AIBO_LIVE&&AIBO_LIVE.state)?AIBO_LIVE.state.at:null;
+    if(!ROWS.length || at!==lastAt) rebuild();
+    else fillSoon();
+  }
+  /* live-refresh watcher: the Gate-3 layer refreshes every 10 min; pick it up
+     without touching that layer */
+  setInterval(function(){
+    if(document.hidden || !built) return;
+    if(typeof activeView!=='undefined' && activeView!=='mkt') return;
+    var at=(window.AIBO_LIVE&&AIBO_LIVE.state)?AIBO_LIVE.state.at:null;
+    if(at!==lastAt) rebuild();
+  }, 45000);
+
+  /* Mouse support for EVERY thumb-scroll mini row — the table's chart cells AND
+     the deep-dive card strips share .as-mrow, whose scrollbar is hidden by design
+     (touch convention). With a mouse that made M/W/D/4H/H unreachable: now the
+     vertical wheel steers the row horizontally and click-drag pans it. Touch
+     behavior is untouched; a drag never fires the row's open-card click. */
+  (function(){
+    function rowOf(e){
+      var t=e.target&&e.target.closest?e.target.closest('.as-mrow'):null;
+      return (t&&t.scrollWidth>t.clientWidth+4)?t:null;
+    }
+    document.addEventListener('wheel',function(e){
+      var r=rowOf(e); if(!r) return;
+      var d=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY;
+      if(!d) return;
+      var before=r.scrollLeft;
+      r.scrollLeft=before+d;
+      if(r.scrollLeft!==before) e.preventDefault();
+    },{passive:false});
+    var drag=null;
+    document.addEventListener('pointerdown',function(e){
+      if(e.pointerType!=='mouse'||e.button!==0) return;
+      var r=rowOf(e); if(!r) return;
+      drag={r:r,x:e.clientX,sl:r.scrollLeft,moved:false};
+    });
+    document.addEventListener('pointermove',function(e){
+      if(!drag) return;
+      var dx=e.clientX-drag.x;
+      if(Math.abs(dx)>4) drag.moved=true;
+      drag.r.scrollLeft=drag.sl-dx;
+    });
+    document.addEventListener('pointerup',function(){
+      if(drag&&drag.moved){
+        var stop=function(ev){ ev.stopPropagation(); ev.preventDefault(); document.removeEventListener('click',stop,true); };
+        document.addEventListener('click',stop,true);
+        setTimeout(function(){ document.removeEventListener('click',stop,true); },0);
+      }
+      drag=null;
+    });
+    document.addEventListener('pointercancel',function(){ drag=null; });
+  })();
+
+  return { render: render };
 })();
 
 </script>
