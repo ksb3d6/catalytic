@@ -771,7 +771,7 @@ body.uni-crypto .lensLab{display:none;}
 
 body:not(.deck-studio) .st-only{display:none!important;}
 body.deck-studio .atlas-only{display:none!important;}
-body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,body.deck-studio #donutView,body.deck-studio #cardsView,body.deck-studio #scView{display:none!important;}
+body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,body.deck-studio #donutView,body.deck-studio #cardsView,body.deck-studio #scView,body.deck-studio #mktView{display:none!important;}
 #deckSeg button{font-weight:750;}
 #stSeg .dk-navitem{appearance:none;border:0;background:transparent;color:var(--muted);font-weight:700;font-size:12px;letter-spacing:.2px;padding:6px 11px;border-radius:7px;cursor:pointer;transition:.12s;white-space:nowrap;}
 #stSeg .dk-navitem:hover{color:var(--ink);}
@@ -2729,7 +2729,7 @@ function tfMiniRow(tf,kind){
      thumb-scrollable row on phones — M/W/D visible, 4H/H a drag away. */
   return any?('<span class="as-mrow">'+s+'</span>'):'';
 }
-/* Stage 30: the after-hours marker. Backend v3.6 carries the 4H/H frames across its
+/* Stage 30: the owner's after-hours marker. Backend v3.6 carries the 4H/H frames across its
    nightly rebuild (they used to blank at UTC midnight) and stamps tf.h_asOf with the
    NEWEST BAR's UTC time. Stale stamp => the frames end in a prior session (evening,
    weekend, holiday) — say so honestly instead of letting them read as live. In-session
@@ -2751,7 +2751,7 @@ function tfAfterHrs(tf,kind){
     : '<span class="as-ah" title="4H/H frames from '+when+' — market closed since">AFTER HRS</span>';
 }
 function vbulletSVG(tf,pxLast){
-  /* Stage 24: the month bar — finalized spec. Track = 30-day OPEN/CLOSE range
+  /* Stage 24: the month bar — the owner's finalized spec. Track = 30-day OPEN/CLOSE range
      (~one month of bodies), nested week band (5d) and today band, stepped widths
      4.5/6.5/8.5 on a 64px base, ice-gradient grays, beefy MA20, and a full-circle
      price dot wider than every band. Rendered at a fixed base size and stretched to
@@ -6223,7 +6223,7 @@ const METAL_COL = {GLD:'#d4af37', SLV:'#aab2bd'};
 const METAL_NAME = {GLD:'SPDR Gold Shares',SLV:'iShares Silver Trust'};
 
 /* ---- index top-15 (published, approximate — drift with price) + 16 books + blue-chip baseline ---- */
-const BLUECHIP={compute:[['NVDA',3800],['AVGO',1200],['AMD',450]],foundry:[['TSM',1200]],memory:[['MU',900]],hyper:[['GOOGL',2300],['AAPL',2300]]}; // ~$12,000 anchor baseline folded into every book → sleeve $35,000
+const BLUECHIP={compute:[['NVDA',3800],['AVGO',1225],['AMD',450]],foundry:[['TSM',1225]],memory:[['MU',925]],hyper:[['GOOGL',2275],['AAPL',2275]]}; // ~$12,175 anchor baseline folded into every book → sleeve $35,000
 // books store one "silicon" layer; route each of its tickers to the right sub-segment
 const SILICON_SUB={NVDA:'compute',AVGO:'compute',AMD:'compute',ARM:'compute',ALAB:'compute',MRVL:'compute',QCOM:'compute',CRDO:'compute',MPWR:'compute',TXN:'compute',ADI:'compute',ON:'compute',FN:'compute',SMH:'compute',SOXX:'compute',
  MU:'memory','000660':'memory','005930':'memory',STX:'memory',SNDK:'memory',WDC:'memory',DRAM:'memory',
@@ -8796,7 +8796,7 @@ window.MktView = (function(){
         +' title="'+esc(r.cat)+'">'+esc(r.cat)+'</span>'):'';
     return '<div class="mk-nm mk-uni-'+r.kind+'"><span class="mk-udot"></span><div class="mk-nmtxt">'
       +'<div class="mk-sym">'+esc(r.sym)+marks+'</div>'
-      +'<div class="mk-co">'+esc(r.name)+'</div>'+cat+'</div></div>';
+      +'<div class="mk-co" title="'+esc(r.name)+'">'+esc(r.name)+'</div>'+cat+'</div></div>';
   }
   function gradeCell(r){
     if(r.kind==='fd') return '<span class="mk-gap">—</span>';
@@ -8841,7 +8841,50 @@ window.MktView = (function(){
     var cell=r.tr.querySelector('.mstrip'), html='';
     try{ html=r.tf?tfMiniRow(r.tf,r.kind==='cr'?'crypto':'equity'):''; }catch(e){ html=''; }
     cell.innerHTML=html||'<b class="as-tbo-gap">no frames</b>';
+    wireStrip(cell);
+    alignStrip(cell);
     r.charted=true;
+  }
+  /* ---------- synced mini strips — the chart column pans as ONE ----------
+     Scrolling any row's minis (M W D 4H H) drives a single shared X, so every
+     row shows the same frames side by side while you compare assets. Rows
+     charted later (lazy fill, carried across a refresh, re-sorted) adopt the
+     shared position; a strip already at stripX is an echo of our own sync,
+     not a user scroll, and is ignored. Deep-dive card strips (same .as-mrow
+     class, outside td.c-chart) keep their independent thumb-scroll. */
+  var stripX=0, stripRaf=0;
+  function alignAllStrips(){
+    var all=document.querySelectorAll('#mktView td.c-chart .as-mrow');
+    for(var i=0;i<all.length;i++){
+      var o=all[i];
+      if(Math.abs(o.scrollLeft-stripX)>=1) o.scrollLeft=stripX;
+    }
+  }
+  function alignSoon(){
+    if(stripRaf) return;
+    stripRaf=requestAnimationFrame(function(){ stripRaf=0; alignAllStrips(); });
+  }
+  function alignStrip(cell){
+    if(!stripX) return;
+    var mr=cell.querySelector('.as-mrow');
+    if(mr&&Math.abs(mr.scrollLeft-stripX)>=1) mr.scrollLeft=stripX;
+  }
+  function onStripScroll(e){
+    var el=e.target;
+    if(!el||el.nodeType!==1||!el.classList||!el.classList.contains('as-mrow')||!el.closest) return;
+    if(!el.closest('td.c-chart')) return;
+    /* a strip with no scroll range (All-5 mode, mid-layout) only emits clamp
+       echoes — never let those overwrite the user's chosen timeframe X */
+    if(el.scrollWidth<=el.clientWidth+4) return;
+    if(Math.abs(el.scrollLeft-stripX)<1) return;
+    stripX=el.scrollLeft;
+    alignSoon();
+  }
+  /* direct per-strip listener: belt to the .twrap capture listener's suspenders —
+     some engines/inputs deliver subscroller scrolls unreliably to ancestors */
+  function wireStrip(cell){
+    var mr=cell.querySelector&&cell.querySelector('.as-mrow');
+    if(mr&&!mr._ss){ mr._ss=1; mr.addEventListener('scroll',onStripScroll,{passive:true}); }
   }
   /* IntersectionObserver can be frame-starved in embedded webviews — this
      geometry fallback guarantees visible rows always get their charts. */
@@ -8889,6 +8932,7 @@ window.MktView = (function(){
     arr.forEach(function(r){ frag.appendChild(r.tr); });
     tbody.appendChild(frag);
     fillSoon();
+    alignSoon();   /* moving rows in the DOM can zero their strips' scrollLeft */
     Array.prototype.forEach.call(headRow.querySelectorAll('th'),function(th){
       th.classList.remove('s-asc','s-desc');
       if(th.dataset.k===k) th.classList.add(dir<0?'s-desc':'s-asc');
@@ -8899,6 +8943,7 @@ window.MktView = (function(){
     ROWS.forEach(function(r){ r.tr.style.display=visible(r)?'':'none'; });
     renderStats();
     fillSoon();
+    alignSoon();   /* rows leaving display:none can come back at scrollLeft 0 */
   }
   function renderStats(){
     var vis=ROWS.filter(visible);
@@ -8963,14 +9008,14 @@ window.MktView = (function(){
   +'#mktView .mk-q{flex:1 1 120px;min-width:100px;background:#0a0f16;border:1px solid #223650;border-radius:10px;color:var(--ink);padding:8px 10px;font:600 12px/1 inherit;outline:none}'
   +'#mktView .mk-q::placeholder{color:#5c6b7d}'
   +'#mktView .twrap{border:1px solid var(--hair);border-radius:14px;background:rgba(18,26,38,.72);overflow:auto;max-height:calc(100dvh - 210px);overscroll-behavior:contain}'
-  +'#mktView table.mkt{border-collapse:separate;border-spacing:0;width:100%;min-width:1290px}'
+  +'#mktView table.mkt{border-collapse:separate;border-spacing:0;width:100%;min-width:1190px}'
   +'#mktView .mkt th,#mktView .mkt td{padding:7px 10px;border-bottom:1px solid rgba(42,54,71,.55);white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right;vertical-align:middle}'
   +'#mktView .mkt th{position:sticky;top:0;z-index:5;background:#101a29;color:var(--muted);font:700 10px/1.2 inherit;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;user-select:none;-webkit-user-select:none}'
   +'#mktView .mkt th.nosort{cursor:default}'
   +'#mktView .mkt th .mk-ar{font-size:8px;opacity:.28;margin-left:2px}'   /* every column sortable — faint arrow as the cue */
   +'#mktView .mkt th.s-desc .mk-ar,#mktView .mkt th.s-asc .mk-ar{opacity:1;color:#9fd1ff}'
   +'#mktView .mkt td.c-rank,#mktView .mkt th.c-rank{text-align:center;color:var(--muted);font-size:11px;min-width:34px;padding-left:6px;padding-right:4px}'
-  +'#mktView .mkt th.c-name,#mktView .mkt td.c-name{text-align:left;position:sticky;left:0;z-index:3;background:#0f1826;min-width:170px;max-width:228px;box-shadow:inset -1px 0 0 rgba(42,54,71,.8)}'
+  +'#mktView .mkt th.c-name,#mktView .mkt td.c-name{text-align:left;position:sticky;left:0;z-index:3;background:#0f1826;min-width:118px;max-width:132px;box-shadow:inset -1px 0 0 rgba(42,54,71,.8)}'
   +'#mktView .mkt th.c-name{z-index:6}'
   +'#mktView .mkt tbody tr{cursor:pointer}'
   +'#mktView .mkt tbody tr:hover td{background:rgba(33,53,79,.28)}'
@@ -8982,8 +9027,10 @@ window.MktView = (function(){
   +'#mktView .mk-sub{display:block;font-weight:500;font-size:10px;color:var(--muted);margin-top:1px}'
   +'#mktView .mk-nm{display:flex;align-items:center;gap:8px;min-width:0}'
   +'#mktView .mk-sym{font-weight:800;font-size:12.5px;letter-spacing:.2px;display:flex;align-items:center;gap:5px}'
-  +'#mktView .mk-co{font-weight:500;font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;max-width:168px}'
-  +'#mktView .mk-cat{display:inline-block;font-size:9px;font-weight:700;color:var(--muted);border:1px solid rgba(120,140,165,.28);border-radius:6px;padding:1px 5px;margin-top:2px;max-width:168px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}'
+  /* name + category wrap UNDER the ticker instead of stretching the column —
+     the 88px cap ≈ the widest ticker + marks, so the symbol sets the width */
+  +'#mktView .mk-co{font-weight:500;font-size:10.5px;color:var(--muted);max-width:88px;white-space:normal;overflow-wrap:break-word;line-height:1.3;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}'
+  +'#mktView .mk-cat{display:inline-block;font-size:9px;font-weight:700;color:var(--muted);border:1px solid rgba(120,140,165,.28);border-radius:6px;padding:1px 5px;margin-top:2px;max-width:88px;white-space:normal;overflow-wrap:break-word;line-height:1.25;vertical-align:bottom}'
   +'#mktView .mk-cat.tinted{color:var(--tint,#9fb0c8);border-color:color-mix(in srgb,var(--tint,#9fb0c8) 45%,transparent)}'
   +'#mktView .mk-udot{width:6px;height:6px;border-radius:50%;flex:none;opacity:.8}'
   +'#mktView .mk-uni-eq .mk-udot{background:#7AB0EA}#mktView .mk-uni-cr .mk-udot{background:#5eead4}#mktView .mk-uni-fd .mk-udot{background:#c4b0ff}'
@@ -9020,11 +9067,11 @@ window.MktView = (function(){
   +'#mktView .mode-s3 td.c-bullet .mk-vb svg.vb-w{height:56px}'
   +'#mktView .mk-note{margin:10px 4px 0;font-size:10.5px;color:var(--muted);line-height:1.55}'
   +'@media(max-width:900px){#mktView .c-1h,#mktView .c-7d,#mktView .c-vol,#mktView .c-tech,#mktView .c-sent{display:none}'
-  +'#mktView table.mkt{min-width:710px}}'
+  +'#mktView table.mkt{min-width:610px}}'
   +'@media(max-width:480px){#mktView .c-mcap,#mktView .c-bullet{display:none}'
-  +'#mktView table.mkt{min-width:470px}'
-  +'#mktView .mkt th.c-name,#mktView .mkt td.c-name{min-width:142px;max-width:168px}'
-  +'#mktView .mk-co,#mktView .mk-cat{max-width:118px}'
+  +'#mktView table.mkt{min-width:420px}'
+  +'#mktView .mkt th.c-name,#mktView .mkt td.c-name{min-width:112px;max-width:126px}'
+  +'#mktView .mk-co,#mktView .mk-cat{max-width:82px}'
   +'#mktView td.c-chart{min-width:215px}'
   +'#mktView .mkt th,#mktView .mkt td{padding:6px 7px}'
   +'#mktView .mk-grp button{padding:6px 8px;font-size:10px}'
@@ -9056,6 +9103,9 @@ window.MktView = (function(){
       +'30d = the strip’s range bullet (sortable: dot position in the month track). Missing data always shows “—”, never a guess.</div>';
     tbody=document.getElementById('mkBody');
     headRow=document.getElementById('mkHead');
+    /* scroll doesn't bubble — the capture phase on the table wrap still sees
+       every row strip's scroll, including strips charted long after mount */
+    document.querySelector('#mktView .twrap').addEventListener('scroll',onStripScroll,true);
     COLS.forEach(function(c){
       var th=document.createElement('th');
       th.className=c.cls+(c.nosort?' nosort':'');
@@ -9097,6 +9147,7 @@ window.MktView = (function(){
         var w=document.querySelector('#mktView .twrap');
         w.classList.toggle('mode-s3',state.mode==='s3');
         w.classList.toggle('mode-a5',state.mode==='a5');
+        alignSoon();   /* back in 3x-scroll: restore the shared timeframe X */
       });
     });
     document.getElementById('mkGain').addEventListener('click',function(){ state.sort='chg24'; state.dir=-1; applySort(); });
@@ -9127,7 +9178,8 @@ window.MktView = (function(){
         r.tr._row=r;
         var c=carry[r.kind+'|'+r.key];
         if(c&&c.tfs===JSON.stringify(r.tf||null)&&c.html){
-          r.tr.querySelector('.mstrip').innerHTML=c.html; r.charted=true;
+          var ms=r.tr.querySelector('.mstrip');
+          ms.innerHTML=c.html; wireStrip(ms); alignStrip(ms); r.charted=true;
         }
         tbody.appendChild(r.tr);
         if(!r.charted) io.observe(r.tr);
@@ -9149,6 +9201,7 @@ window.MktView = (function(){
     var at=(window.AIBO_LIVE&&AIBO_LIVE.state)?AIBO_LIVE.state.at:null;
     if(!ROWS.length || at!==lastAt) rebuild();
     else fillSoon();
+    alignSoon();   /* re-shown view: engines may have zeroed hidden strips */
   }
   /* live-refresh watcher: the Gate-3 layer refreshes every 10 min; pick it up
      without touching that layer */
@@ -9158,6 +9211,10 @@ window.MktView = (function(){
     var at=(window.AIBO_LIVE&&AIBO_LIVE.state)?AIBO_LIVE.state.at:null;
     if(at!==lastAt) rebuild();
   }, 45000);
+  /* iOS PWA resume / tab return: a restored page can come back with zeroed
+     subscrollers while stripX still holds the user's timeframe — re-assert */
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden&&built) alignSoon(); });
+  window.addEventListener('pageshow',function(){ if(built) alignSoon(); });
 
   /* Mouse support for EVERY thumb-scroll mini row — the table's chart cells AND
      the deep-dive card strips share .as-mrow, whose scrollbar is hidden by design
