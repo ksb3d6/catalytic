@@ -13,7 +13,10 @@
 <link rel="manifest" href="manifest.json">
 <style>:root{
   --bg:#0D1320; --card:#172230; --panel:#121A26; --ink:#EAEEF5; --hair:#2A3647;
-  --muted:rgba(234,238,245,.52); --navy:#0c1c30;
+  --muted:rgba(234,238,245,.52); --muted2:rgba(234,238,245,.4); --navy:#0c1c30;
+  /* Stage 39 ONE HAND: the single selected-state language (Studio's teal family,
+     already the brand accent) — every .on/.dk-on across both decks uses these */
+  --sel-bg:#0c2830; --sel-ink:#9fe8f4; --sel-line:#1e6a78;
   /* quality grade palette (matches the Master Grade Map) */
   --g-aplus:#0f7a43; --g-a:#1c8a4e; --g-aminus:#2f9558; --g-bplus:#6f9e3c; --g-b:#9c8f2e; --g-bminus:#b8862c;
   --g-cplus:#c2742a; --g-c:#cc6328; --g-cminus:#d15227; --g-dplus:#d04a25; --g-d:#c43f28; --g-dminus:#bb2f22; --g-f:#b01e1e; --g-na:#3a4a63;
@@ -27,22 +30,50 @@ html,body{margin:0;background:
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;
   -webkit-font-smoothing:antialiased;}
 
-/* ============ APP BAR ============ */
-.appbar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;align-items:center;gap:12px;
-  padding:10px 16px;background:rgba(11,19,32,.86);backdrop-filter:blur(10px);
+/* ============ APP BAR (Stage 34 — single 44px row; segs live hidden behind dropdown chips) ============ */
+.appbar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:nowrap;align-items:center;gap:8px;
+  min-height:44px;padding:6px 12px;background:rgba(11,19,32,.86);backdrop-filter:blur(10px);
   border-bottom:1px solid var(--hair);}
-.brand{display:flex;flex-direction:column;line-height:1.05;margin-right:auto;}
-.brand b{font-size:15px;font-weight:800;letter-spacing:-.2px;}
-.brand span{font-size:10.5px;color:var(--muted);letter-spacing:.2px;margin-top:2px;}
-.seg{display:inline-flex;background:#101b2b;border:1px solid var(--hair);border-radius:10px;padding:3px;gap:2px;}
+/* wordmark retired to the glyph popover — keep .brand in DOM: _sub() still writes the subtitle */
+.brand{display:none;}
+.seg{display:inline-flex;background:#101b2b;border:1px solid var(--hair);border-radius:10px;padding:3px;gap:2px;flex:none;}
 .seg button{appearance:none;border:0;background:transparent;color:var(--muted);font-weight:700;font-size:12px;
   letter-spacing:.2px;padding:6px 11px;border-radius:7px;cursor:pointer;transition:.12s;white-space:nowrap;}
-.seg button.on{background:#21354f;color:var(--ink);box-shadow:inset 0 0 0 1px rgba(120,170,255,.25);}
+.seg button.on{background:var(--sel-bg);color:var(--sel-ink);box-shadow:inset 0 0 0 1px var(--sel-line);}
 .seg button:hover:not(.on){color:var(--ink);}
 .seglab{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-right:-4px;}
+/* legacy segs stay in DOM as the state machine; the dropdown chips proxy to them */
+.appbar .seglab,#uniSeg,#viewSeg,#lensSeg,#stSeg{display:none!important;}
 .helpbtn{appearance:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--hair);
-  background:#101b2b;color:var(--ink);font-weight:800;font-size:13px;cursor:pointer;}
-.helpbtn:hover{border-color:rgba(120,170,255,.5);}
+  background:#101b2b;color:var(--ink);font-weight:800;font-size:13px;cursor:pointer;flex:none;}
+.helpbtn:hover{border-color:rgba(31,198,220,.55);}
+.a-glyph{flex:none;width:24px;height:24px;border-radius:7px;background:#1FC6DC;color:#0D1320;font-weight:800;
+  font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;}
+.a-pop{position:absolute;top:calc(100% + 6px);left:12px;z-index:60;background:#121A26;border:1px solid #3a4a63;
+  border-radius:10px;padding:10px 14px;display:none;max-width:320px;box-shadow:0 12px 30px rgba(0,0,0,.5);}
+.a-pop b{font-size:13.5px;} .a-pop span{display:block;font-size:11px;color:var(--muted);margin-top:3px;line-height:1.45;}
+.appbar.brand-open .a-pop{display:block;}
+.dd{position:relative;flex:none;}
+.dd-btn{appearance:none;display:inline-flex;align-items:center;gap:6px;background:#101b2b;border:1px solid var(--hair);
+  border-radius:10px;padding:6px 10px;cursor:pointer;font-family:inherit;}
+.dd-btn:hover,.dd.open .dd-btn{border-color:rgba(31,198,220,.55);}
+.dd-lab{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+.dd-val{font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;}
+.dd-car{font-size:8px;color:var(--muted);font-style:normal;}
+.dd-menu{position:absolute;top:calc(100% + 6px);left:0;min-width:172px;background:#121A26;border:1px solid #3a4a63;
+  border-radius:10px;padding:4px;display:none;flex-direction:column;z-index:60;box-shadow:0 12px 30px rgba(0,0,0,.5);}
+.dd.open .dd-menu{display:flex;}
+.dd-menu button{appearance:none;text-align:left;border:0;background:transparent;color:var(--muted);font-family:inherit;
+  font-size:12.5px;font-weight:600;padding:9px 12px;border-radius:7px;cursor:pointer;white-space:nowrap;}
+.dd-menu button:hover{color:var(--ink);}
+.dd-menu button.on{background:var(--sel-bg);color:var(--sel-ink);}
+/* narrow-wide squeeze (landscape iPhone, small tablet): drop chip eyebrows, tighten */
+@media (min-width:741px) and (max-width:900px){
+  .dd-lab{display:none;}
+  .seg button{padding:6px 8px;}
+  .dd-btn{padding:6px 8px;}
+  .sthud{min-width:120px;}
+}
 
 .view{padding:0 0 60px;}
 .view.hidden{display:none;}
@@ -58,7 +89,7 @@ html,body{margin:0;background:
 .chip.clk{cursor:pointer;transition:transform .08s ease,box-shadow .12s,border-color .12s,background .12s;}
 .chip.clk:hover{border-color:rgba(255,255,255,.42);transform:translateY(-1px);}
 .chip.clk:active{transform:translateY(0);}
-.chip.sel{box-shadow:0 0 0 2px rgba(120,170,255,.65);border-color:rgba(120,170,255,.8);}
+.chip.sel{box-shadow:0 0 0 2px rgba(31,198,220,.6);border-color:rgba(31,198,220,.8);}
 /* chokepoint: cornered-market structural bottleneck. Gold glow; tier = intensity. */
 .chip.choke{border-color:#E8B53C;background:rgba(232,181,60,.12);color:#f4dca0;
   box-shadow:0 0 0 1px rgba(232,181,60,.55), 0 0 11px 1px rgba(232,181,60,.38);}
@@ -66,8 +97,8 @@ html,body{margin:0;background:
 .chip.choke.t-core{border-color:#F4C552;
   box-shadow:0 0 0 1.5px rgba(244,197,82,.78), 0 0 16px 2px rgba(244,197,82,.55);}
 .chip.choke.clk:hover{border-color:#F4C552;transform:translateY(-1px);}
-.chip.choke.sel{border-color:rgba(120,170,255,.85);
-  box-shadow:0 0 0 2px rgba(120,170,255,.65), 0 0 13px 2px rgba(232,181,60,.42);}
+.chip.choke.sel{border-color:rgba(31,198,220,.85);
+  box-shadow:0 0 0 2px rgba(31,198,220,.6), 0 0 13px 2px rgba(232,181,60,.42);}
 /* chokepoint banner shared by grading card + flashcard */
 .sh-choke,.fc-choke{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:10px;
   background:rgba(232,181,60,.10);border:1px solid rgba(232,181,60,.45);
@@ -85,7 +116,7 @@ html,body{margin:0;background:
 .chip.usonly .ct{font-weight:600;}
 .chip.usonly.clk:hover{transform:translateY(-1px);
   box-shadow:0 0 0 1px #d12f43, 0 0 0 2px #fff, 0 0 0 3px #3a5ec0, 0 0 13px 3px rgba(90,128,224,.45);}
-.chip.usonly.sel{box-shadow:0 0 0 2px rgba(120,170,255,.7), 0 0 0 3.5px #c1283b, 0 0 12px 2px rgba(80,118,214,.4);}
+.chip.usonly.sel{box-shadow:0 0 0 2px rgba(31,198,220,.65), 0 0 0 3.5px #c1283b, 0 0 12px 2px rgba(80,118,214,.4);}
 /* sole-US-player banner shared by grading card + flashcard */
 .sh-us,.fc-us{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:10px;
   background:rgba(74,98,150,.12);border:1px solid rgba(120,150,220,.42);
@@ -404,7 +435,7 @@ html,body{margin:0;background:
 .fc-count{margin-left:auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--muted);}
 .fc-btn{appearance:none;background:#16243a;border:1px solid var(--hair);color:var(--ink);font-weight:700;font-size:12.5px;
   padding:9px 15px;border-radius:9px;cursor:pointer;transition:.12s;white-space:nowrap;}
-.fc-btn:hover{border-color:rgba(120,170,255,.5);}
+.fc-btn:hover{border-color:rgba(31,198,220,.55);}
 .fc-btn:active{transform:translateY(1px);}
 
 .fcard-wrap{width:min(720px,100%);margin:18px auto 0;padding:0 18px;display:flex;justify-content:center;}
@@ -432,7 +463,7 @@ html,body{margin:0;background:
 
 .fc-ctrls{width:min(560px,100%);margin:16px auto 0;padding:0 18px;display:flex;gap:10px;justify-content:center;}
 .fc-ctrls .fc-btn{flex:1;text-align:center;}
-.fc-ctrls .flip{flex:1.5;background:#21354f;box-shadow:inset 0 0 0 1px rgba(120,170,255,.25);}
+.fc-ctrls .flip{flex:1.5;background:var(--sel-bg);color:var(--sel-ink);box-shadow:inset 0 0 0 1px var(--sel-line);}
 .fc-foot{width:min(640px,100%);margin:20px auto 0;padding:0 18px 8px;font-size:10.5px;color:var(--muted);
   line-height:1.6;text-align:center;font-style:italic;}
 
@@ -693,7 +724,7 @@ body.uni-crypto .lensLab{display:none;}
 .wb-bar{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:7px;align-items:flex-end;z-index:5;}
 .wb-grp{display:inline-flex;background:rgba(16,27,43,.9);border:1px solid var(--hair,#2A3647);border-radius:10px;padding:3px;gap:2px;box-shadow:0 6px 18px rgba(0,0,0,.4);}
 .wb-grp button{appearance:none;border:0;background:transparent;color:var(--muted,rgba(234,238,245,.55));font-weight:700;font-size:11px;letter-spacing:.2px;padding:6px 9px;border-radius:7px;cursor:pointer;transition:.12s;white-space:nowrap;}
-.wb-grp button.on{background:#21354f;color:var(--ink,#EAEEF5);box-shadow:inset 0 0 0 1px rgba(120,170,255,.28);}
+.wb-grp button.on{background:var(--sel-bg);color:var(--sel-ink);box-shadow:inset 0 0 0 1px var(--sel-line);}
 .wb-grp button:hover:not(.on){color:var(--ink,#EAEEF5);}
 .wb-grp button.wb-choke.on{background:rgba(232,181,60,.18);box-shadow:inset 0 0 0 1px rgba(244,197,82,.55);color:#f4dca0;}
 .wb-grp button.wb-dom.on{background:rgba(74,98,150,.22);box-shadow:inset 0 0 0 1px rgba(120,150,220,.55);color:#dde7fb;}
@@ -763,7 +794,8 @@ body.uni-crypto .lensLab{display:none;}
   .wb-catgrp{max-width:54vw;right:8px;bottom:8px;}
   .wb-legend{max-width:172px;padding:8px 9px;}
   .wb-grp button{padding:6px 7px;font-size:10px;}
-  .wb-bar{top:8px;right:8px;gap:5px;}
+  .wb-bar{top:8px;right:8px;left:8px;gap:5px;}
+  .wb-grp{max-width:100%;overflow-x:auto;scrollbar-width:none;}  /* Stage 39: the strip clipped off-screen at 375 */
 }
 
 
@@ -775,12 +807,13 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #deckSeg button{font-weight:750;}
 #stSeg .dk-navitem{appearance:none;border:0;background:transparent;color:var(--muted);font-weight:700;font-size:12px;letter-spacing:.2px;padding:6px 11px;border-radius:7px;cursor:pointer;transition:.12s;white-space:nowrap;}
 #stSeg .dk-navitem:hover{color:var(--ink);}
-#stSeg .dk-navitem.dk-on{background:#21354f;color:var(--ink);box-shadow:inset 0 0 0 1px rgba(120,170,255,.25);}
-.sthud{display:flex;align-items:center;gap:12px;flex:1 1 100%;min-width:0;}
-.sthud-t{appearance:none;border:0;background:transparent;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:1px;padding:0;font-family:inherit;}
-.sthud-t b{color:var(--ink);font-weight:800;font-size:17px;letter-spacing:.3px;font-variant-numeric:tabular-nums;line-height:1.05;}
-.sthud-t span{color:rgba(234,238,245,.45);font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;}
-.sthud-bar{appearance:none;padding:0;flex:1;display:flex;height:20px;border-radius:7px;overflow:hidden;border:1px solid var(--hair);background:#101b2b;cursor:pointer;}
+#stSeg .dk-navitem.dk-on{background:var(--sel-bg);color:var(--sel-ink);box-shadow:inset 0 0 0 1px var(--sel-line);}
+/* Stage 34: HUD rides the single row in BOTH decks (the owner: always visible) — compact, right-aligned */
+.sthud{display:flex;align-items:center;gap:10px;flex:0 1 300px;min-width:150px;margin-left:auto;}
+.sthud-t{appearance:none;border:0;background:transparent;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:1px;padding:0;font-family:inherit;flex:none;}
+.sthud-t b{color:var(--ink);font-weight:800;font-size:13.5px;letter-spacing:.3px;font-variant-numeric:tabular-nums;line-height:1.05;}
+.sthud-t span{color:rgba(234,238,245,.45);font-size:8px;letter-spacing:.5px;text-transform:uppercase;}
+.sthud-bar{appearance:none;padding:0;flex:1;min-width:70px;display:flex;height:12px;border-radius:6px;overflow:hidden;border:1px solid var(--hair);background:#101b2b;cursor:pointer;}
 .sthud-bar:hover{border-color:#1FC6DC;}
 .sthud-bar i{display:block;height:100%;box-shadow:inset -1px 0 0 rgba(10,14,20,.55);}
 #stGear{font-size:15px;}
@@ -791,14 +824,21 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView,#studioView{margin:0}
 #studioView{
   background:var(--bg); color:var(--ink);
-  font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; line-height:1.5;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif; line-height:1.5;
   -webkit-text-size-adjust:100%;
 }
 #studioView .wrap{max-width:min(100%, 3400px);margin:0 auto;padding:20px clamp(16px,2.4vw,60px) 70px}
 #studioView .spine{height:4px;border-radius:3px;margin-bottom:16px;
   background:linear-gradient(90deg,#2dd4bf,#60a5fa,#a78bfa,#f472b6,#fbbf24)}
 #studioView h1{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;font-size:clamp(22px,4.4vw,32px);font-weight:800;margin:0 0 8px;color:#fff;letter-spacing:.2px}
-#studioView h2{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;font-size:17px;font-weight:700;color:#eef4fb;margin:30px 0 4px;letter-spacing:.3px}
+/* Stage 39 ONE HAND: Studio speaks the app's sans; mono becomes the NUMBER voice
+   (same convention the flow deck already uses — .dbl/.dsl/.dln are mono accents).
+   Value-bearing classes below were found empirically (numeric text-node scan). */
+#studioView .num,#studioView .b,#studioView .byc,#studioView .lt-usd,#studioView .ovl-tot,
+#studioView .hu,#studioView .cw,#studioView .sw,#studioView .bc-v,#studioView .bc-sub,
+#studioView .dk-hud-total,#studioView svg text,#studioView text{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+#studioView table{font-variant-numeric:tabular-nums}
+#studioView h2{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;font-size:17px;font-weight:700;color:var(--ink);margin:30px 0 4px;letter-spacing:.3px}
 #studioView .sub0{font-size:13px;color:var(--ink-dim);line-height:1.6;margin:0 0 10px;max-width:880px}
 #studioView .sub0 b{color:#cdd9e5}
 #studioView .tag{display:inline-block;padding:5px 12px;border:1px solid #2a4a5a;color:#7fd8ea;border-radius:20px;font-size:11px;letter-spacing:.6px}
@@ -808,13 +848,13 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
   background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:14px}
 #studioView .field{display:flex;flex-direction:column;gap:3px}
 #studioView .field label{font-size:10px;letter-spacing:.7px;color:var(--ink-faint);text-transform:uppercase}
-#studioView .field input[type=number]{width:108px;background:var(--panel2);border:1px solid var(--line2);color:#eef4fb;
+#studioView .field input[type=number]{width:108px;background:var(--panel2);border:1px solid var(--line2);color:var(--ink);
   border-radius:7px;padding:7px 9px;font-family:inherit;font-size:14px}
 #studioView .field input:focus{outline:2px solid var(--teal);outline-offset:-1px}
 #studioView .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:auto}
 #studioView .btn{background:var(--panel2);border:1px solid var(--line2);color:#cdd9e5;border-radius:8px;
   padding:8px 12px;font-family:inherit;font-size:12px;cursor:pointer;letter-spacing:.3px}
-#studioView .btn:hover{border-color:var(--teal);color:#eef4fb}
+#studioView .btn:hover{border-color:var(--teal);color:var(--ink)}
 #studioView .btn:active{transform:translateY(1px)}
 #studioView .btn.primary{border-color:#1e6a78;color:#9fe8f4;background:#0c2830}
 #studioView .saves{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:14px 0 6px}
@@ -822,7 +862,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .saves-head h2{font-size:15px}
 #studioView .saves-status{font-size:11px;color:var(--ink-faint)}
 #studioView .saves-new{display:flex;gap:8px;margin:10px 0 4px;flex-wrap:wrap}
-#studioView .saves-new input{flex:1;min-width:150px;background:var(--panel2);border:1px solid var(--line2);color:#eef4fb;border-radius:8px;padding:9px 11px;font-family:inherit;font-size:13px}
+#studioView .saves-new input{flex:1;min-width:150px;background:var(--panel2);border:1px solid var(--line2);color:var(--ink);border-radius:8px;padding:9px 11px;font-family:inherit;font-size:13px}
 #studioView .saves-new input:focus{outline:2px solid var(--teal);outline-offset:-1px}
 #studioView .saves-list{display:flex;flex-direction:column;gap:6px;margin:8px 0 4px}
 #studioView .saves-empty{font-size:12px;color:var(--ink-faint);font-style:italic;padding:4px 2px}
@@ -835,30 +875,30 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .save-del{background:var(--panel2);border:1px solid var(--line2);color:#8a99a8;border-radius:8px;width:38px;cursor:pointer;font-size:13px}
 #studioView .save-del:hover{border-color:#b4544f;color:#ff8e88}
 #studioView .save-ico{background:var(--panel2);border:1px solid var(--line2);color:#93a2b1;border-radius:8px;width:33px;cursor:pointer;font-size:12px;flex:none}
-#studioView .save-ico:hover{border-color:var(--teal);color:#eef4fb}
+#studioView .save-ico:hover{border-color:var(--teal);color:var(--ink)}
 #studioView .save-ico.ok{border-color:#2f7d5a;color:#7fe0b8}
 #studioView .save-ico.ok:hover{border-color:#3f9d72;color:#a8f0d0}
 #studioView .save-editing{gap:6px}
-#studioView .save-rename{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--teal);color:#eef4fb;border-radius:8px;padding:9px 11px;font-family:inherit;font-size:13px}
+#studioView .save-rename{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--teal);color:var(--ink);border-radius:8px;padding:9px 11px;font-family:inherit;font-size:13px}
 #studioView .save-rename:focus{outline:none}
 #studioView .saves-file{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 #studioView .saves-file .btn{flex:1;min-width:150px}
 #studioView .saves-backup{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
 #studioView .saves-backup summary{font-size:12px;color:var(--ink-dim);cursor:pointer;letter-spacing:.3px}
-#studioView .saves-backup summary:hover{color:#eef4fb}
+#studioView .saves-backup summary:hover{color:var(--ink)}
 #studioView .saves-backup textarea{width:100%;box-sizing:border-box;background:#0a121b;border:1px solid var(--line2);color:#bfe9df;
   border-radius:8px;padding:9px 11px;font-family:inherit;font-size:11px;resize:vertical;line-height:1.4}
 #studioView .saves-backup textarea:focus{outline:2px solid var(--teal);outline-offset:-1px}
 #studioView .saves-backup-btns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 #studioView .sel{background:var(--panel2);border:1px solid var(--line2);color:#cdd9e5;border-radius:8px;padding:8px 10px;font-family:inherit;font-size:12px;cursor:pointer;max-width:190px}
-#studioView .sel:hover{border-color:var(--teal);color:#eef4fb}
+#studioView .sel:hover{border-color:var(--teal);color:var(--ink)}
 #studioView .sel:focus{outline:2px solid var(--teal);outline-offset:-1px}
-#studioView .pill{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+#studioView .pill{display:inline-flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden}
 #studioView .pill button{background:transparent;border:0;color:var(--ink-dim);font-family:inherit;font-size:11px;padding:8px 11px;cursor:pointer}
 #studioView .pill button.on{background:#0c2830;color:#9fe8f4}
 #studioView .pill .lbl{padding:8px 6px 8px 10px;font-size:10px;color:var(--ink-faint);letter-spacing:.6px;align-self:center}
 #studioView .read{flex-basis:100%;font-size:12px;color:var(--ink-dim);border-top:1px dashed var(--line);padding-top:10px;margin-top:2px}
-#studioView .read b{color:#eef4fb}
+#studioView .read b{color:var(--ink)}
 #studioView .read .g-a{color:#79e2c6}
 #studioView .read .g-b{color:#7fb6ff}
 #studioView .read .g-c{color:#fbbf24}
@@ -874,7 +914,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .ss-row .dot{width:14px;height:14px;border-radius:4px}
 #studioView .ss-row .nm{font-size:14px;color:#dce6f0;font-weight:600;white-space:nowrap}
 #studioView .ss-row .cw{font-size:13px;color:var(--ink-dim);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-#studioView .ss-row .cw b{color:#eef4fb}
+#studioView .ss-row .cw b{color:var(--ink)}
 #studioView .ss-row input[type=range]{width:100%}
 #studioView .seg-row{display:grid;grid-template-columns:34px 16px minmax(120px,1fr) minmax(120px,2.4fr) 132px;
   align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid #141d28}
@@ -883,7 +923,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .seg-row .nm{font-size:13px;color:#cdd9e5;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #studioView .seg-row .nm:hover{color:#fff;text-decoration:underline dotted}
 #studioView .seg-row .cw{font-size:12px;color:var(--ink-dim);text-align:right;font-variant-numeric:tabular-nums}
-#studioView .seg-row .cw b{color:#eef4fb}
+#studioView .seg-row .cw b{color:var(--ink)}
 #studioView .lock{background:transparent;border:1px solid var(--line2);border-radius:6px;color:var(--ink-faint);
   width:28px;height:26px;cursor:pointer;font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center;padding:0}
 #studioView .lock.on{border-color:#7a6a2a;color:#fbbf24;background:#1c1808}
@@ -907,7 +947,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .sc-head .dot{width:13px;height:13px;border-radius:4px;flex:none}
 #studioView .sc-head .nm{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;font-size:15px;color:#fff;font-weight:700}
 #studioView .sc-head .sw{margin-left:auto;font-size:12px;color:var(--ink-dim);text-align:right;font-variant-numeric:tabular-nums}
-#studioView .sc-head .sw b{color:#eef4fb}
+#studioView .sc-head .sw b{color:var(--ink)}
 #studioView .sc-tools{display:flex;gap:5px;justify-content:center;flex-wrap:wrap}
 #studioView .minibtn{background:transparent;border:1px solid var(--line2);border-radius:6px;color:var(--ink-faint);
   font-family:inherit;font-size:10.5px;padding:4px 7px;cursor:pointer;letter-spacing:.3px}
@@ -921,7 +961,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .hold-top{display:flex;align-items:center;gap:6px;min-height:15px}
 #studioView .grip{cursor:grab;color:#566677;font-size:10px;line-height:1;user-select:none;touch-action:none;flex:none}
 #studioView .grip:hover{color:#9fb0c0}
-#studioView .hold .htk{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:#eef4fb;font-weight:700;letter-spacing:.2px;white-space:nowrap;min-width:0;overflow:hidden}
+#studioView .hold .htk{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--ink);font-weight:700;letter-spacing:.2px;white-space:nowrap;min-width:0;overflow:hidden}
 #studioView .hold .htk .bdg{min-width:15px;font-size:8px;padding:1px 3px;flex:none}
 #studioView .hold .hu{margin-left:auto;font-size:10px;color:var(--ink-dim);white-space:nowrap;font-variant-numeric:tabular-nums;flex:none}
 #studioView .hold .rm{background:transparent;border:0;color:#6b7d8c;cursor:pointer;font-size:12px;padding:0 1px;line-height:1;flex:none}
@@ -932,7 +972,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .tray-lbl{font-size:10px;color:var(--ink-faint);letter-spacing:.6px;text-transform:uppercase;margin-right:2px}
 #studioView .chip{display:inline-flex;align-items:center;gap:5px;background:#101722;border:1px solid #1f2c3b;color:#bcccdb;
   border-radius:7px;padding:3px 7px 3px 5px;font-family:inherit;font-size:11.5px;cursor:pointer}
-#studioView .chip:hover{border-color:var(--teal);color:#eef4fb}
+#studioView .chip:hover{border-color:var(--teal);color:var(--ink)}
 #studioView .chip[draggable=true]{cursor:grab}
 #studioView .chip.etf{border-style:dashed}
 #studioView .tray-none{font-size:11px;color:var(--ink-faint);font-style:italic}
@@ -956,7 +996,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView #book tr:hover td{background:#0d141d}
 #studioView #book .seg-cell{display:inline-flex;align-items:center;gap:6px}
 #studioView #book .seg-cell .d{width:9px;height:9px;border-radius:2px}
-#studioView #book tfoot td{font-weight:700;color:#eef4fb;border-top:1px solid var(--line2);background:#0e1620}
+#studioView #book tfoot td{font-weight:700;color:var(--ink);border-top:1px solid var(--line2);background:#0e1620}
 #studioView .val{font-size:11px}
 #studioView .v-cheap{color:#79e2c6}
 #studioView .v-fair{color:#9fb0c0}
@@ -974,8 +1014,8 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .seg-card.focus{border-color:#1e6a78;box-shadow:0 0 0 1px rgba(31,198,220,.14)}
 #studioView .seg-card.focus .sc-head{display:none}
 #studioView .hidden{display:none}
-#studioView .side-mixer-head{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;font-size:14px;color:#eef4fb;margin-top:2px}
-#studioView .side-sleeve-head{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;font-size:14px;color:#eef4fb;margin:0 0 4px}
+#studioView .side-mixer-head{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;font-size:14px;color:var(--ink);margin-top:2px}
+#studioView .side-sleeve-head{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;font-size:14px;color:var(--ink);margin:0 0 4px}
 #studioView .side-sleeve{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px 10px;margin-bottom:12px}
 #studioView .side-sleeve .ss-row{display:grid;grid-template-columns:24px 12px 1fr auto auto;align-items:center;column-gap:8px;row-gap:3px;padding:7px 2px;border-bottom:1px solid #141d28}
 #studioView .side-sleeve .ss-row .lock,#studioView .side-sleeve .ss-row .sx{width:24px;height:24px}
@@ -983,14 +1023,14 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .side-sleeve .ss-row .dot{width:12px;height:12px;border-radius:4px}
 #studioView .side-sleeve .ss-row .nm{font-size:12.5px;color:#dce6f0;font-weight:600;white-space:nowrap}
 #studioView .side-sleeve .ss-row .cw{font-size:11.5px;color:var(--ink-dim);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-#studioView .side-sleeve .ss-row .cw b{color:#eef4fb}
+#studioView .side-sleeve .ss-row .cw b{color:var(--ink)}
 #studioView .side-sleeve .ss-row input[type=range]{grid-column:1/-1;width:100%;margin-top:1px}
 #studioView .studio-right #mixer{margin-top:0}
 #studioView .focus-bar{display:flex;align-items:center;gap:8px;margin-bottom:2px}
 #studioView .focus-bar .dot{width:14px;height:14px;border-radius:4px;flex:none}
 #studioView .focus-bar .ftitle{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;font-size:16px;color:#fff;font-weight:700}
 #studioView .focus-bar .fw{margin-left:auto;font-size:11.5px;color:var(--ink-dim);font-variant-numeric:tabular-nums;text-align:right}
-#studioView .focus-bar .fw b{color:#eef4fb}
+#studioView .focus-bar .fw b{color:var(--ink)}
 #studioView .focus-bar .fx{background:transparent;border:1px solid var(--line2);border-radius:6px;color:var(--ink-faint);width:24px;height:24px;cursor:pointer;font-size:12px;flex:none}
 #studioView .focus-bar .fx:hover{border-color:#f98a8a;color:#f98a8a}
 #studioView .focus-weight{margin:2px 0 4px}
@@ -1008,12 +1048,13 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 /* ---- Gate 4 · live positions (owned vs aim) ---- */
 #studioView .donut-toggles .own-pill{margin-right:2px}
 #studioView .own-pill button.on{background:#0c3028;color:#7fe0b8}
+#studioView .own-pill button.own-dim{opacity:.45}                      /* Stage 35: Owned side when positions aren't connected — still clickable */
 #studioView #masterSvg path[data-owntk]{cursor:pointer}
 #studioView .own-note{font-size:11px;color:var(--ink-dim);line-height:1.6;margin:6px 4px 10px;padding:8px 10px;border:1px dashed var(--line);border-radius:9px}
 #studioView .own-note b{color:#cdd9e5}
 #studioView .own-note .warn{color:#e8b04b}
 #studioView .pos-connect{display:flex;gap:8px;margin:8px 0 4px;flex-wrap:wrap}
-#studioView .pos-connect input{flex:1;min-width:170px;background:var(--panel2);border:1px solid var(--line2);color:#eef4fb;border-radius:8px;padding:9px 11px;font-family:inherit;font-size:13px}
+#studioView .pos-connect input{flex:1;min-width:170px;background:var(--panel2);border:1px solid var(--line2);color:var(--ink);border-radius:8px;padding:9px 11px;font-family:inherit;font-size:13px}
 #studioView .pos-connect input:focus{outline:2px solid var(--teal);outline-offset:-1px}
 #studioView .pos-actions{margin-top:6px}
 #studioView #posAccounts{margin-top:8px;display:flex;flex-direction:column;gap:5px}
@@ -1026,7 +1067,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView #masterSvg .dup-slice{filter:drop-shadow(0 0 3px rgba(190,240,255,.55))}
 #studioView .lt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:12px;margin-top:8px}
 #studioView .lt-card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 12px}
-#studioView .lt-head{display:flex;align-items:center;gap:7px;font-size:13px;color:#eef4fb;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+#studioView .lt-head{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink);margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid var(--line)}
 #studioView .lt-head .d{width:11px;height:11px;border-radius:3px}
 #studioView .lt-head b{font-size:14px}
 #studioView .lt-row{display:grid;grid-template-columns:62px 1fr auto;align-items:center;gap:8px;font-size:11px;color:var(--ink-dim);padding:2px 0}
@@ -1045,13 +1086,13 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .byc-dot{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:5px;vertical-align:middle}
 #studioView .ovl-row{display:grid;grid-template-columns:64px 1fr auto;align-items:center;gap:10px;padding:5px 2px;border-bottom:1px solid #141d28}
 #studioView .ovl-row:last-child{border-bottom:0}
-#studioView .ovl-tk{font-size:12px;font-weight:700;color:#eef4fb;font-variant-numeric:tabular-nums}
+#studioView .ovl-tk{font-size:12px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 #studioView .ovl-bar{display:flex;height:16px;background:#0d141d;border-radius:5px;overflow:hidden;min-width:40px}
 #studioView .ovl-idx{background:#55697e}
 #studioView .ovl-dir{background:var(--teal)}
 #studioView .ovl-tot{font-size:11px;color:#cdd9e5;white-space:nowrap;font-variant-numeric:tabular-nums}
 #studioView .ovl-sum{margin-top:10px;padding-top:9px;border-top:1px dashed var(--line);font-size:12px;color:var(--ink-dim);line-height:1.55}
-#studioView .ovl-sum b{color:#eef4fb}
+#studioView .ovl-sum b{color:var(--ink)}
 #studioView .xrow{padding:6px 2px 7px;border-bottom:1px solid #141d28}
 #studioView .xrow-main{display:grid;grid-template-columns:64px 1fr auto;align-items:center;gap:10px}
 #studioView .ovl-by{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 0 74px}
@@ -1081,7 +1122,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .etf-d svg{width:100%;height:auto;max-width:380px}
 #studioView .etf-info{width:100%;min-width:0}
 #studioView .etf-cap{font-size:11px;color:var(--ink-dim);line-height:1.35;text-align:center}
-#studioView .etf-cap b{color:#eef4fb;font-size:12.5px;letter-spacing:.3px;margin-right:4px}
+#studioView .etf-cap b{color:var(--ink);font-size:12.5px;letter-spacing:.3px;margin-right:4px}
 #studioView .etf-cap .nm{color:#cdd9e5}
 #studioView .etf-cap i{display:block;color:var(--ink-faint);font-style:normal;font-size:9.5px;margin-top:1px}
 #studioView .etf-ln{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
@@ -1109,7 +1150,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .dk-brand{display:flex;align-items:center;gap:8px;min-width:0}
 #studioView .dk-mark{font-size:20px;line-height:1;color:var(--teal);
   filter:drop-shadow(0 0 6px rgba(31,198,220,.45))}
-#studioView .dk-title{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;font-size:16px;color:#eef4fb;font-weight:700;
+#studioView .dk-title{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;font-size:16px;color:var(--ink);font-weight:700;
   letter-spacing:.2px;white-space:nowrap}
 #studioView .dk-title b{color:var(--teal);font-weight:700}
 #studioView .dk-hud{display:flex;flex-direction:column;align-items:flex-start;gap:0;
@@ -1135,7 +1176,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
   white-space:nowrap;transition:color .15s,border-color .15s,background .15s}
 #studioView .dk-navitem svg{width:19px;height:19px;stroke:currentColor;fill:none;
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
-#studioView .dk-navitem:hover{border-color:var(--teal);color:#eef4fb}
+#studioView .dk-navitem:hover{border-color:var(--teal);color:var(--ink)}
 #studioView .dk-navitem.dk-on{color:#9fe8f4;border-color:#1e6a78;background:#0c2830;
   box-shadow:0 0 0 1px rgba(31,198,220,.14)}
 #studioView .dk-navitem .dk-nl{font-weight:600}
@@ -1151,10 +1192,19 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
   border-bottom:1px dashed var(--line);-webkit-overflow-scrolling:touch;scrollbar-width:thin}
 #studioView .dk-subtabs::-webkit-scrollbar{height:5px}
 #studioView .dk-subtabs::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
+/* Stage 35 (pass-2 QA fix): the SCOPE pill shares the Exposure subtab row with two
+   flex:none tabs, so it was the only shrinkable item — at 375px it collapsed to 45px and
+   "What I own" wrapped to three cramped lines. Give it the same flex:none the tabs have,
+   and let that one row wrap so the pill drops to its own full-size line on a phone rather
+   than scrolling out of reach (pass 2's point is that the pill is ALWAYS visible). */
+#studioView .dk-subtabs .own-pill{flex:none}
+@media (max-width:640px){
+  #studioView section.dk-pane[data-pane="exposure"] .dk-subtabs{flex-wrap:wrap;overflow-x:visible}
+}
 #studioView .dk-subtab{white-space:nowrap;background:var(--panel2);border:1px solid var(--line2);
-  color:var(--ink-dim);border-radius:20px;padding:7px 15px;font-size:12.5px;cursor:pointer;
+  color:var(--ink-dim);border-radius:10px;padding:7px 15px;font-size:12.5px;cursor:pointer;
   font-family:inherit;letter-spacing:.2px;flex:none}
-#studioView .dk-subtab:hover{border-color:var(--teal);color:#eef4fb}
+#studioView .dk-subtab:hover{border-color:var(--teal);color:var(--ink)}
 #studioView .dk-subtab.dk-on{background:#0c2830;border-color:#1e6a78;color:#9fe8f4}
 #studioView .dk-sub[hidden]{display:none!important}
 #studioView .dk-scrim{position:fixed;inset:0;background:rgba(4,7,11,.66);z-index:60;
@@ -1166,14 +1216,14 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .dk-sheet-head{position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;
   gap:10px;padding:13px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex:none}
 #studioView .dk-sheet-head h2{margin:0;font-size:16px}
-#studioView .dk-x{background:var(--panel2);border:1px solid var(--line2);color:#aebccb;border-radius:9px;
-  width:34px;height:32px;font-size:14px;cursor:pointer;line-height:1;flex:none}
+#studioView .dk-x{background:var(--panel2);border:1px solid var(--line2);color:#aebccb;border-radius:50%;
+  width:32px;height:32px;font-size:14px;cursor:pointer;line-height:1;flex:none}
 #studioView .dk-x:hover{border-color:#b4544f;color:#ff8e88}
 #studioView .dk-sheet-body{overflow-y:auto;-webkit-overflow-scrolling:touch;
   padding:14px 16px calc(22px + env(safe-area-inset-bottom))}
 #studioView .dk-group{margin:0 0 20px;padding-bottom:16px;border-bottom:1px dashed var(--line)}
 #studioView .dk-group:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
-#studioView .dk-group-h{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;font-size:14px;color:#eef4fb;margin:0 0 9px;
+#studioView .dk-group-h{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;font-size:14px;color:var(--ink);margin:0 0 9px;
   display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
 #studioView .dk-group-note{font-size:11px;color:var(--ink-faint);font-style:italic;margin:-3px 0 9px;line-height:1.5}
 #studioView .dk-hiddensel{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none}
@@ -1236,7 +1286,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView #bookAll tr:hover td{background:#0d141d}
 #studioView #bookAll .seg-cell{display:inline-flex;align-items:center;gap:6px}
 #studioView #bookAll .seg-cell .d{width:9px;height:9px;border-radius:2px}
-#studioView #bookAll tfoot td{font-weight:700;color:#eef4fb;border-top:1px solid var(--line2);background:#0e1620}
+#studioView #bookAll tfoot td{font-weight:700;color:var(--ink);border-top:1px solid var(--line2);background:#0e1620}
 
 
 
@@ -1249,7 +1299,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 #studioView .bc-sw{width:12px;height:12px;border-radius:3px;flex:none}
 #studioView .bc-nm{color:#cdd9e5}
 #studioView .bc-v{font-variant-numeric:tabular-nums}
-#studioView .bc-v b{color:#eef4fb}
+#studioView .bc-v b{color:var(--ink)}
 #studioView .etf2-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:2px 0 12px;font-size:11px;color:var(--ink-dim)}
 #studioView .etf2-lg{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 #studioView .etf2-dot{width:11px;height:11px;border-radius:3px;flex:none}
@@ -1381,46 +1431,54 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 .wb-arrtoast.show{opacity:1;}
 
 
-/* Stage 12 — mobile chrome: dock + auto-hiding strip (≤740px only) */
-.mstrip,.mdock{display:none;}
+/* Stage 12 — mobile chrome: dock + auto-hiding strip (≤740px only).
+   #mStrip by id, NOT .mstrip — the Markets table reuses class "mstrip" for row chart strips. */
+#mStrip,.mdock{display:none;}
 @media (max-width:740px){
   .appbar{display:none;}
-  body{padding-top:47px;padding-bottom:calc(66px + env(safe-area-inset-bottom));}
-  .mstrip{display:flex;position:fixed;top:0;left:0;right:0;z-index:55;height:46px;align-items:center;gap:8px;
-    padding:0 10px;background:var(--panel);border-bottom:1px solid var(--hair);transition:transform .18s ease;}
-  .mstrip.m-hide{transform:translateY(-100%);}
-  .m-glyph{flex:0 0 auto;width:22px;height:22px;border-radius:6px;background:#1FC6DC;color:#0D1320;
-    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;}
-  .m-seg{display:inline-flex;background:#101b2b;border:1px solid var(--hair);border-radius:9px;padding:2px;gap:2px;}
-  .m-seg button{appearance:none;border:0;background:transparent;color:var(--muted);font-weight:700;font-size:11px;
-    padding:6px 9px;border-radius:7px;}
-  .m-seg button.on{background:#21354f;color:var(--ink);}
-  .m-right{margin-left:auto;display:flex;align-items:center;gap:7px;}
-  .m-icobtn{appearance:none;width:34px;height:34px;display:flex;align-items:center;justify-content:center;
-    background:#101b2b;border:1px solid var(--hair);border-radius:9px;color:var(--ink);font-weight:800;font-size:13px;}
-  .m-icobtn svg{width:18px;height:18px;}
-  .m-hud{appearance:none;border:0;background:transparent;display:flex;flex-direction:column;gap:3px;
+  /* Stage 34: strip 46→40, dock ~61→~44 (the owner: dock no taller than the top bar) */
+  body{padding-top:41px;padding-bottom:calc(46px + env(safe-area-inset-bottom));}
+  #mStrip{display:flex;position:fixed;top:0;left:0;right:0;z-index:55;height:40px;align-items:center;gap:6px;
+    padding:0 8px;background:var(--panel);border-bottom:1px solid var(--hair);transition:transform .18s ease;}
+  #mStrip.m-hide{transform:translateY(-100%);}
+  .m-glyph{flex:0 0 auto;width:20px;height:20px;border-radius:6px;background:#1FC6DC;color:#0D1320;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;}
+  .m-seg{display:inline-flex;background:#101b2b;border:1px solid var(--hair);border-radius:9px;padding:2px;gap:2px;flex:none;}
+  .m-seg button{appearance:none;border:0;background:transparent;color:var(--muted);font-weight:700;font-size:10.5px;
+    padding:5px 8px;border-radius:7px;}
+  .m-seg button.on{background:var(--sel-bg);color:var(--sel-ink);}
+  .m-right{margin-left:auto;display:flex;align-items:center;gap:5px;flex:none;}
+  .m-icobtn{appearance:none;width:30px;height:30px;display:flex;align-items:center;justify-content:center;
+    background:#101b2b;border:1px solid var(--hair);border-radius:9px;color:var(--ink);font-weight:800;font-size:12px;flex:none;}
+  .m-icobtn svg{width:16px;height:16px;}
+  .m-hud{appearance:none;border:0;background:transparent;display:flex;flex-direction:column;gap:2px;
     min-width:0;flex:1;align-items:flex-start;padding:0;}
-  .m-hud b{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--ink);line-height:1;}
-  .m-hudbar{display:flex;width:100%;max-width:150px;height:5px;border-radius:999px;overflow:hidden;background:#101b2b;}
+  .m-hud b{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:var(--ink);line-height:1;}
+  .m-hudbar{display:flex;width:100%;max-width:110px;height:4px;border-radius:999px;overflow:hidden;background:#101b2b;}
   .m-hudbar i{display:block;height:100%;}
   .mdock{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:55;background:#101b2b;border-top:1px solid var(--hair);
-    padding:6px max(6px,env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-right));}
+    padding:4px max(6px,env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-right));}
   .mtabs{display:flex;flex:1 1 0;min-width:0;}
-  .mtab{appearance:none;flex:1 1 0;min-width:0;min-height:46px;display:flex;flex-direction:column;align-items:center;
-    justify-content:center;gap:3px;border:0;background:transparent;color:var(--muted);font-size:10px;font-weight:600;
-    border-radius:9px;padding:2px 0;}
-  .mtab svg{width:20px;height:20px;}
+  .mtab{appearance:none;flex:1 1 0;min-width:0;min-height:34px;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:2px;border:0;background:transparent;color:var(--muted);font-size:8.5px;font-weight:600;
+    border-radius:7px;padding:0;}
+  .mtab svg{width:15px;height:15px;}
   .mtab.on{color:#1FC6DC;}
   .mtab:active,.m-icobtn:active{background:#16243a;}
-  #studioView .dk-header{top:46px;}
-  @media (prefers-reduced-motion:reduce){.mstrip{transition:none;}}
+  #studioView .dk-header{top:40px;}
+  .m-pop{position:fixed;top:44px;left:8px;right:8px;z-index:70;background:#121A26;border:1px solid #3a4a63;
+    border-radius:10px;padding:10px 14px;display:none;box-shadow:0 12px 30px rgba(0,0,0,.5);}
+  .m-pop.open{display:block;}
+  .m-pop b{font-size:13px;} .m-pop span{display:block;font-size:11px;color:var(--muted);margin-top:3px;line-height:1.45;}
+  @media (prefers-reduced-motion:reduce){#mStrip{transition:none;}}
 }
 </style>
 </head>
 <body>
 
 <div class="appbar">
+  <button type="button" class="a-glyph" id="aGlyph" aria-label="AI Build-Out — about">A</button>
+  <div class="a-pop" id="aPop" role="dialog"></div>
   <div class="brand"><b>AI Build-Out</b><span>Capital-flow map × seven-pillar fundamentals · Jun 2026</span></div>
   <span class="seglab">Deck</span>
   <div class="seg" id="deckSeg">
@@ -1456,7 +1514,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
     <button class="dk-navitem" data-pane="book">Book</button>
   </div>
   <button class="helpbtn st-only" id="stGear" data-dk="console" title="Console — book size · presets · setups">⚙</button>
-  <div class="sthud st-only">
+  <div class="sthud">
     <button type="button" class="sthud-t" data-dk="console"><b id="hudTotal">$100,000</b><span id="hudSub">invested · no cash</span></button>
     <button type="button" class="sthud-bar" id="dkBar" data-dk="console" aria-label="Sleeve split — tap for the console"></button>
   </div>
@@ -1466,10 +1524,10 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 <div class="mstrip" id="mStrip">
   <span class="m-glyph" aria-hidden="true">A</span>
   <div class="m-seg atlas-only" id="mUni">
-    <button type="button" data-mu="equity">Equities</button>
-    <button type="button" data-mu="crypto">Crypto</button>
+    <button type="button" data-mu="equity" aria-label="Equities">EQ</button>
+    <button type="button" data-mu="crypto" aria-label="Crypto">CR</button>
   </div>
-  <button type="button" class="m-hud st-only" data-mhud="1" aria-label="Book total — tap for the console">
+  <button type="button" class="m-hud" data-mhud="1" aria-label="Book total — tap to open Portfolio Studio">
     <b id="mHudTotal"></b><span class="m-hudbar" id="mHudBar"></span>
   </button>
   <div class="m-right">
@@ -1676,6 +1734,8 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
       <section class="master-wrap">
         <div class="donut-toggles">
           <span class="pill own-pill hidden" id="ownPill"><span class="lbl">VIEW</span><button data-act="owntgl" data-own="aim" class="on">Aim</button><button data-act="owntgl" data-own="owned">What I own</button></span>
+          <!-- Stage 36: ring scale, owned view only. 'vs aim' = the Gate-4 read (owned fills the aim wedges, gap = shortfall); '100%' = owned at its own proportions so the ring closes and you read holding-to-holding ratios. Hidden whenever ownedView is off — it means nothing against the aim. -->
+          <span class="pill own-pill hidden" id="ownScalePill"><span class="lbl">RING</span><button type="button" data-act="ownscale" data-scale="aim" class="on">vs aim</button><button type="button" data-act="ownscale" data-scale="full">100%</button></span>
           <span class="zoomtip">tap a segment to open it on the right · open or collapse each sleeve from the Sleeve split panel</span>
         </div>
         <div id="masterSvg"></div>
@@ -1732,21 +1792,23 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
   <div class="dk-subtabs">
     <button type="button" class="dk-subtab dk-on" data-sub="look">Look-through</button>
     <button type="button" class="dk-subtab" data-sub="funds">Inside each fund</button>
+    <span class="pill own-pill" id="expoScopePill" style="margin-left:auto"><span class="lbl">SCOPE</span><button type="button" data-act="exposcope" data-scope="aim" class="on">Aim</button><button type="button" data-act="exposcope" data-scope="own">What I own</button></span>
   </div>
+  <div class="own-note hidden" id="expoOwnHead"></div>
   <div class="dk-sub" data-subpane="look">
-  <h2>What I carry in the indexes — top 15 per fund</h2>
+  <h2 id="ltTitle">What I carry in the indexes — top 15 per fund</h2>
   <div class="howto">Each index fund opened to its top 15 by published weight. <b>◈ teal</b> rows are names you <b>also</b> hold directly in the Stocks sleeve (the doubling-down); the rest you own only through the fund. Weights are approximate and drift with price.</div>
   <div class="lt-grid" id="indexLookthrough"></div>
 
   <div class="lt-two">
   <div class="lt-col">
-  <h2>True exposure — S&P + Nasdaq top-15 vs. your direct buys</h2>
+  <h2 id="ovTitle">True exposure — S&P + Nasdaq top-15 vs. your direct buys</h2>
   <div class="howto">The combined top-15 of the S&P (VOO) and Nasdaq (QQQM), always shown so you can read what you hold of the names that dominate the indexes. <b>Gray</b> is what the funds already hand you (look-through, across all four); <b>teal</b> is your direct buy stacked on top. Sorted by total exposure.</div>
   <div id="overlapPanel"></div>
 
   </div>
   <div class="lt-col">
-  <h2>ETF crossover — how much of each name you own outright vs. through a fund</h2>
+  <h2 id="xoTitle">ETF crossover — how much of each name you own outright vs. through a fund</h2>
   <div class="howto">For every name you hold <b>both</b> outright and through an ETF (or that sits in two or more of your ETFs), the bar shows what share of your total exposure is <b>outright</b> vs. held <b>through each ETF</b> — and which one. Look-through weights are approximate published holdings and drift.</div>
   <div id="etfOverlapPanel"></div>
 
@@ -1761,6 +1823,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
   </div>
 </section>
 <section class="dk-pane" data-pane="book">
+  <div class="dk-subtabs"><span class="pill own-pill" id="bookScopePill" style="margin-left:auto"><span class="lbl">SCOPE</span><button type="button" data-act="exposcope" data-scope="aim" class="on">Aim</button><button type="button" data-act="exposcope" data-scope="own">What I own</button></span></div><!-- Stage 35: same delegate as #expoScopePill — one scope governs exposure AND book -->
   <h2>The book — every position across every sleeve</h2>
   <div class="muted" style="font-size:12px">Your whole book, live and graded — index funds, individual stocks, the stock-sleeve ETFs, crypto, metals and cash in one place. The bar shows the split by type; grades are recession / expansion lens marks, with valuation graded separately. ◈ marks a fund/ETF.</div>
   <div id="bookComp"></div>
@@ -6090,7 +6153,13 @@ const GRADES = {
  KRMN:['Karman Holdings','B-','B-','Extr','L'], KTOS:['Kratos','—','—','—','M'], AVAV:['AeroVironment','—','—','—','M'],
  ISRG:['Intuitive Surgical','A','A','Exp','H'], SYM:['Symbotic','B-','C+','Extr','M'],
  PATH:['UiPath','—','—','—','M'], ONDS:['Ondas','—','—','—','L'], UMAC:['Unusual Machines','—','—','—','L'],
- UMC:['United Microelectronics','—','—','—','M'], GFS:['GlobalFoundries','—','—','—','M'], KLIC:['Kulicke & Soffa','—','—','—','L'], ACLS:['Axcelis','—','—','—','M']
+ UMC:['United Microelectronics','—','—','—','M'], GFS:['GlobalFoundries','—','—','—','M'], KLIC:['Kulicke & Soffa','—','—','—','L'], ACLS:['Axcelis','—','—','—','M'],
+ /* foreign-listed universe names (2026-08-19): were absent here, so an owned
+    position read "not in the graded universe" — false, they're in DATA with
+    these very grades. Keys = universe home-exchange tickers; POS_EQ_ALIAS
+    maps the US-tradable forms (SKHY, IFNNY, ...) onto them. */
+ IFX:['Infineon','B+','B+','Fair','M'], LYC:['Lynas Rare Earths','B-','C+','Exp','M'],
+ '6326':['Kubota','B-','B-','Cheap','M'], PLSR:['Pulsar Helium','D+','D','—','L']
 };
 const ETFS = {
  XSD:'semis · equal-wt', SMH:'semis · cap-wt', SOXX:'semis · broad', DRAM:'memory · HBM/NAND', IGV:'software', CIBR:'cybersecurity',
@@ -6220,7 +6289,9 @@ const FUND_NAME = {VOO:'Vanguard S&P 500',QQQM:'Invesco Nasdaq-100',VXUS:'Vangua
 /* metals sleeve — gold + silver, defaults to 0% of the book (off) but dial-able like the indices sleeve */
 const METALS_DEFAULT = [['GLD',70],['SLV',30]];
 const METAL_COL = {GLD:'#d4af37', SLV:'#aab2bd'};
-const METAL_NAME = {GLD:'SPDR Gold Shares',SLV:'iShares Silver Trust'};
+const METAL_NAME = {GLD:'SPDR Gold Shares',SLV:'iShares Silver Trust',
+  XAU:'Gold · physical (troy oz)',XAG:'Silver · physical (troy oz)',
+  XPT:'Platinum · physical (troy oz)',XPD:'Palladium · physical (troy oz)'};
 
 /* ---- index top-15 (published, approximate — drift with price) + 16 books + blue-chip baseline ---- */
 const BLUECHIP={compute:[['NVDA',3800],['AVGO',1225],['AMD',450]],foundry:[['TSM',1225]],memory:[['MU',925]],hyper:[['GOOGL',2275],['AAPL',2275]]}; // ~$12,175 anchor baseline folded into every book → sleeve $35,000
@@ -6422,6 +6493,8 @@ const segState = id => state.segments.find(s=>s.id===id) || state.crypto.find(s=
 const segArrOf = id => state.segments.some(s=>s.id===id) ? state.segments : (state.crypto.some(s=>s.id===id) ? state.crypto : (state.stock.some(s=>s.id===id) ? state.stock : state.metals));
 let focusSeg=null;             // which segment is open in the right-hand focus panel
 let ownedView=false;           // Gate 4: master donut shows what's actually owned vs the aim
+let ownScale='aim';            // Stage 36: 'aim' = owned fills the aim wedges (Gate-4 original) · 'full' = owned at its OWN proportions, whole ring (the owner 08-12: "see the ratio of all the holdings")
+let expoScope='aim';           // Stage 35: Exposure pane scope — 'aim' (target state) | 'own' (real positions)
 let mixerScope='ai';           // which mixer fills the top panel: 'ai' segments or 'stock' index funds
 let showIndexDetail=true;      // open index funds to their top-15 in the master donut (on by default so the overlap shows)
 let showCryptoDetail=true;     // open the crypto sleeve to its categories & coins (off = single collapsed arc)
@@ -6575,8 +6648,40 @@ function syncSleeveOpenUI(){
    and the aim donut stays byte-identical — degradation is invisibility. */
 const hasOwn=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
 const POS_CRYPTO_ALIAS={WAL:'WALR', XBT:'BTC', RNDR:'RENDER'};
-const POS_EQ_ALIAS={GOOG:'GOOGL'};
-const POS_INDEXISH={FXAIX:1,FSKAX:1,FTIHX:1,FXNAX:1};   // Fidelity index-fund cousins of the VOO sleeve
+/* US-tradable twins of foreign universe tickers (the owner 2026-08-19: SKHY landed
+   Unclassified in the Studio). The universe keys foreign names by home-exchange
+   ticker, but a US broker reports the US line — every foreign name's US form
+   maps home here so posGroupOf/posExposure classify it. SKHY = SK Hynix's
+   Nasdaq ADR (listed 2026-07-10, 1 ADS = 1/10 share); HXSCL is the legacy OTC
+   stub the backend already knows. The rest are the OTC ADR/ordinary forms of
+   the other non-US names in DATA — added preemptively so the next foreign buy
+   classifies on day one. */
+const POS_EQ_ALIAS={GOOG:'GOOGL',
+  SKHY:'000660', HXSCL:'000660',      /* SK Hynix — Nasdaq ADR + legacy OTC */
+  SSNLF:'005930',                     /* Samsung Electronics — OTC */
+  IFNNY:'IFX', IFNNF:'IFX',           /* Infineon — OTC ADR / ordinary */
+  LYSDY:'LYC', LYSCF:'LYC',           /* Lynas Rare Earths — OTC ADR / ordinary */
+  KUBTY:'6326', KUBTF:'6326',         /* Kubota — OTC ADR / ordinary */
+  PSRHF:'PLSR'};                      /* Pulsar Helium — OTCQB */
+/* Broad-market index products land in the Index sleeve regardless of broker.
+   Checked BEFORE metals and the stock segments (posGroupOf) — so no metal ETFs
+   (GLD/SLV stay in Metals) and no operating companies (NDAQ = Nasdaq Inc, a
+   stock; CME, ICE likewise) may ever be added here. */
+const POS_INDEXISH={
+ /* S&P 500 */            SPY:1,IVV:1,SPLG:1,RSP:1,FXAIX:1,SWPPX:1,VFIAX:1,VFINX:1,
+ /* Nasdaq */             QQQ:1,ONEQ:1,QQQE:1,
+ /* leveraged index */    TQQQ:1,QLD:1,SSO:1,UPRO:1,SPXL:1,
+ /* inverse index */      PSQ:1,SH:1,SQQQ:1,
+ /* total US market */    VTI:1,ITOT:1,SCHB:1,SPTM:1,FSKAX:1,SWTSX:1,VTSAX:1,VTSMX:1,FZROX:1,FNILX:1,
+ /* Dow / mid / small */  DIA:1,IWM:1,VTWO:1,IJR:1,SPSM:1,VB:1,SCHA:1,IJH:1,MDY:1,SPMD:1,VO:1,VXF:1,
+ /* world & intl (VXUS is already a sleeve fund via FUND_NAME) */
+                          VT:1,ACWI:1,IXUS:1,VEA:1,IEFA:1,EFA:1,SCHF:1,SPDW:1,VWO:1,IEMG:1,EEM:1,SCHE:1,SPEM:1,VEU:1,FTIHX:1,FZILX:1,VTIAX:1,SWISX:1,
+ /* country majors */     EWJ:1,EWU:1,EWG:1,EWY:1,EWT:1,INDA:1,MCHI:1,FXI:1,
+ /* style index */        VUG:1,VTV:1,IWF:1,IWD:1,SCHG:1,SCHV:1,SPYG:1,SPYV:1,VBK:1,VBR:1,MGK:1,QUAL:1,VLUE:1,MTUM:1,USMV:1,SPLV:1,
+ /* dividend index */     VIG:1,VYM:1,DGRO:1,SDY:1,NOBL:1,
+ /* bond index */         BND:1,AGG:1,FXNAX:1,SWAGX:1,VBTLX:1,BNDX:1,SCHZ:1,BSV:1,BIV:1,VGIT:1,VGSH:1,IEF:1,TLT:1,SHY:1,GOVT:1,LQD:1,HYG:1,TIP:1,VTIP:1,VCIT:1,VCSH:1,MUB:1,
+ /* T-bill index */       SGOV:1,BIL:1,USFR:1,TFLO:1
+};
 function posLayer(){ return window.AIBO_POS||null; }
 function posT(iso){ if(!iso)return ''; const d=new Date(iso); if(isNaN(d))return '';
   const hm=String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0');
@@ -6589,6 +6694,8 @@ function posQty(q){ if(typeof q!=='number'||!isFinite(q))return ''; return Strin
 function posGroupOf(sym,cash,provider,kind){
   const s=String(sym||'').toUpperCase();
   if(cash) return {id:'pcash',name:'Cash & sweep',col:'#4fae84'};
+  if(kind==='metals') return {id:'pmetal',name:'Metals',col:'#c2a33a'};  /* physical metals account (v3.9): classify by KIND so XAG/XAU/any future
+     metal rides the Metals sleeve + slider — never Unclassified-under-Stocks */
   if(provider==='kraken'||kind==='crypto'){       /* crypto only from crypto accounts — AI/AR/ATOM/QNT are also real equity tickers */
     const cs=hasOwn(POS_CRYPTO_ALIAS,s)?POS_CRYPTO_ALIAS[s]:s;
     for(const cg of CRYPTO_SEGMENTS){ if(cg.core.indexOf(cs)>=0||cg.extra.indexOf(cs)>=0) return {id:cg.id,name:cg.name,col:cg.color}; }
@@ -6602,7 +6709,9 @@ function posGroupOf(sym,cash,provider,kind){
     for(const sg of SEGMENTS){ if(sg.etfs&&sg.etfs.indexOf(s)>=0) return {id:sg.id,name:sg.name,col:sg.color}; }
     return {id:'pfunds',name:'Funds · other',col:'#7ab0ea'};
   }
-  if(typeof DATA!=='undefined'&&DATA&&hasOwn(DATA,s)&&DATA[s].layer) return {id:'L:'+DATA[s].layer,name:DATA[s].layer,col:'#5f7086'};
+  /* fallback must use the ALIASED symbol too — KUBTY et al point at DATA-only
+     keys (6326) that live outside SEGMENTS, and the raw US form is never in DATA */
+  if(typeof DATA!=='undefined'&&DATA&&hasOwn(DATA,es)&&DATA[es].layer) return {id:'L:'+DATA[es].layer,name:DATA[es].layer,col:'#5f7086'};
   return {id:'pother',name:'Unclassified',col:'#5a6678'};
 }
 function posModel(){
@@ -6641,6 +6750,97 @@ function posModel(){
     partial:!!(d.totals&&d.totals.partial), dryRun:!!d.dryRun,
     src:A.state.src, err:A.state.err, at:d.generatedAt||null };
 }
+/* ---- ON-AIM FILTER (Stage 36, the owner 2026-08-12) ------------------------------
+   A SLEEVE WHOSE AIM SLIDER SITS AT $0 IS NOT PART OF THE BOOK.
+   The donut already refused to DRAW such a sleeve (sw<=0 → skip, and it even printed
+   "off-aim: Cash $X"), but m.owned still SUMMED it — so the centre number contradicted
+   the picture it sat inside: the owner's IBKR settlement cash inflated "what I own" AND the
+   "% of aim" with dollars no wedge accounted for. He found it by reading his own book.
+   One rule, applied everywhere, in BOTH ring modes (his explicit call — one consistent
+   owned number, never two): aim slider $0 → that sleeve leaves the owned math.
+   No new control is needed: THE SLIDER IS THE TOGGLE.
+   Excluded money is always SHOWN (offAimBits), never silently dropped — house rule.
+   ⚠ Consequence, by design: zeroing the Stocks slider drops the whole equity book out
+   of the total. That is the rule working, not a bug. ---- */
+function sleeveKeyOf(gid){                                          /* group id → aim sleeve key (mirrors ownedParts' local sleeveOf) */
+  if(gid==='pcash')return 'cash';
+  if(gid==='pindex')return 'indices';
+  if(gid==='pmetal')return 'metals';
+  if(gid==='pcother')return 'crypto';
+  for(const cg of CRYPTO_SEGMENTS){ if(cg.id===gid) return 'crypto'; }
+  return 'ai';                                                      /* pother / pfunds / L:* ride the Stocks sleeve */
+}
+const AIM_SLEEVE_ORDER=[['cash','Cash'],['indices','Indices'],['ai','Stocks'],['crypto','Crypto'],['metals','Metals']];
+function aimOn(key){ return ((state.sleeves&&state.sleeves[key])||0)>0; }
+/* NOT memoized on purpose: one pass over ~10 groups, and it must re-read state.sleeves on
+   EVERY slider drag — posExposure()'s memo is keyed to the positions payload, which does
+   not change when a slider moves, so caching here would freeze the exclusion. */
+function ownedBook(){
+  const m=posModel(); if(!m) return null;
+  const on=[], offBy={}; let owned=0, offUsd=0;
+  for(const g of m.groups){
+    const k=sleeveKeyOf(g.id);
+    if(aimOn(k)){ on.push(g); owned+=g.usd; }
+    else { offBy[k]=(offBy[k]||0)+g.usd; offUsd+=g.usd; }
+  }
+  return {m, groups:on, owned, offBy, offUsd};
+}
+function offAimBits(offBy){                                         /* stable sleeve order, honest labels */
+  const out=[];
+  for(const sl of AIM_SLEEVE_ORDER){ if((offBy[sl[0]]||0)>0) out.push(sl[1]+' '+fmtUsd(offBy[sl[0]])); }
+  return out;
+}
+/* ---- OWNED EXPOSURE (Stage 35): classify the real book for the Exposure pane.
+   Sibling of posModel(). Splits owned assets into direct names / thematic ETFs /
+   index funds so the look-through + crossover renderers can run on real dollars.
+   Additive house convention preserved: direct + every fund contribution are
+   summed per name — overlap is the point, never netted. Crypto/metals/cash are
+   tracked for totals only; unpriced & debits never reach the math (posModel
+   already segregates them — the header lists them, never draws them). ---- */
+const INDEX_ALIAS={SPY:'VOO', IVV:'VOO', VTI:'VOO', QQQ:'QQQM'};   /* owned broad funds ≈ nearest baked basket */
+let _pxCache=null,_pxKey=null;                                     /* memo per positions payload — paint() runs on every slider drag */
+function posExposure(){
+  const A=posLayer(), key=(A&&A.state)?A.state.data:null;
+  if(key&&key===_pxKey) return _pxCache;
+  const m=posModel(); if(!m){ _pxKey=null; _pxCache=null; return null; }
+  const dir={}, etfUsd={}, idxFunds=[], missing=new Set();
+  const fundRows=[], cryptoRows=[], metalRows=[], cashRows=[];     /* Stage 35b: per-name rows for the owned Book table */
+  const tot={dir:0, funds:0, crypto:0, metals:0, cash:0};
+  for(const g of m.groups){
+    const isCryptoGrp = g.id==='pcother' || hasOwn(CRYPTO_BYID,g.id);
+    for(const as of g.aorder){
+      const usd=as.usd; if(!(usd>0)) continue;                     /* unpriced/debits never reach groups — belt & suspenders */
+      if(g.id==='pcash'){ tot.cash+=usd; cashRows.push({sym:String(as.sym).toUpperCase(), usd, prov:as.prov||''}); continue; }
+      if(isCryptoGrp){ tot.crypto+=usd; cryptoRows.push({sym:String(as.sym).toUpperCase(), usd, grp:g.name}); continue; }                /* crypto never joins equity look-through (AI/AR/ATOM/QNT collide) */
+      if(g.id==='pmetal'){ tot.metals+=usd; metalRows.push({sym:String(as.sym).toUpperCase(), usd}); continue; }
+      let s=String(as.sym).toUpperCase();
+      if(hasOwn(POS_EQ_ALIAS,s)) s=POS_EQ_ALIAS[s];
+      if(g.id==='pindex'||hasOwn(FUND_NAME,s)||hasOwn(POS_INDEXISH,s)){
+        tot.funds+=usd;
+        const base=hasOwn(INDEX_ALIAS,s)?INDEX_ALIAS[s]:s;
+        if(INDEX_TOP15[base]) idxFunds.push({t:base, sym:s, usd, col:FUND_COL[base]||'#3c4d63', label:(base!==s? s+' ≈ '+base : s)});
+        else missing.add(s);                                       /* owned index fund with no basket even after aliasing */
+        fundRows.push({sym:s, usd, kind:'idx', mapped:!!INDEX_TOP15[base]});
+        continue;
+      }
+      if(isETF(s)||(typeof FUNDS!=='undefined'&&FUNDS&&hasOwn(FUNDS,s))){
+        tot.funds+=usd;
+        if(ETF_HOLDINGS[s]) etfUsd[s]=(etfUsd[s]||0)+usd;
+        else missing.add(s);                                       /* thematic fund with no mapped basket */
+        fundRows.push({sym:s, usd, kind:'etf', mapped:!!ETF_HOLDINGS[s]});
+        continue;
+      }
+      dir[s]=(dir[s]||0)+usd; tot.dir+=usd;                        /* direct equities + named assets (incl. Unclassified) */
+    }
+  }
+  /* named look-through $ the funds hand you (top-N baskets only — understates by 'rest of fund') */
+  let look=0;
+  idxFunds.forEach(f=>{ (INDEX_TOP15[f.t]||[]).forEach(r=>{ look+=f.usd*r[1]/100; }); });
+  Object.keys(etfUsd).forEach(e=>{ (ETF_HOLDINGS[e]||[]).forEach(r=>{ look+=etfUsd[e]*r[1]/100; }); });
+  const px={m, dir, etfUsd, idxFunds, missing, tot, look, fundRows, cryptoRows, metalRows, cashRows};
+  _pxKey=key; _pxCache=px;
+  return px;
+}
 function ownedParts(total,cx,cy,ri,ro){
   const m=posModel(); if(!m) return null;
   /* ---- OWNED OVERLAY: aim stays as grayed backdrop (buildMaster). Draw only
@@ -6667,6 +6867,10 @@ function ownedParts(total,cx,cy,ri,ro){
   for(const g of m.groups){ const k=sleeveOf(g.id); buck[k].push(g); sUsd[k]+=g.usd; }
   const deg=u=>(total>0)?(u/total*360):0;
   const offAim=[];
+  /* Stage 36: the owned TOTAL now counts on-aim sleeves only — exactly the rule the
+     geometry below already followed (sw<=0 → skip). Number and picture finally agree. */
+  let ownOnAim=0;
+  for(const s of sleeves){ if(s.usd>0) ownOnAim+=(sUsd[s.key]||0); }
   let P='',L='',a=-90;
   for(const s of sleeves){
     const sw=deg(s.usd), ownU=sUsd[s.key]||0, groups=(buck[s.key]||[]).slice().sort((x,y)=>y.usd-x.usd);
@@ -6697,7 +6901,7 @@ function ownedParts(total,cx,cy,ri,ro){
     /* inner-ring sleeve name + aim% — one line (name + % share the top line) */
     if(sw>7){ const p=ptOf(cx,cy,(R1[0]+R1[1])/2,a0+sw/2);
       L+='<text x="'+p[0].toFixed(1)+'" y="'+(p[1]+6).toFixed(1)+'" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif">'
-        +'<tspan font-size="17" fill="#eef4fb" font-weight="700">'+s.name.split(' ')[0]+'</tspan>'
+        +'<tspan font-size="17" fill="#EAEEF5" font-weight="700">'+s.name.split(' ')[0]+'</tspan>'
         +'<tspan font-size="20" fill="#fff" font-weight="800" dx="7">'+Math.round(s.usd/total*100)+'%</tspan></text>'; }
     a=a1;
   }
@@ -6708,12 +6912,77 @@ function ownedParts(total,cx,cy,ri,ro){
   const warnBits=[];
   const eb=posErrBit(); if(eb)warnBits.push(eb);
   if(m.partial)warnBits.push('⚠ undercount');
-  if(offAim.length)warnBits.push('off-aim: '+offAim.map(o=>o.name+' '+fmtUsd(o.usd)).join(', '));
-  const fillPct=(total>0)?Math.round(m.owned/total*100):0;
+  if(offAim.length)warnBits.push('off-aim · NOT counted: '+offAim.map(o=>o.name+' '+fmtUsd(o.usd)).join(', '));
+  const fillPct=(total>0)?Math.round(ownOnAim/total*100):0;
   const center=
     ctext(cx,cy-38,'WHAT I OWN',13,'#7fd8ea','800')+
-    ctext(cx,cy-10,fmtUsd(m.owned),27,'#e6eef7','800','-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif')+
+    ctext(cx,cy-10,fmtUsd(ownOnAim),27,'#e6eef7','800','-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif')+
     ctext(cx,cy+18,(total>0?fillPct+'% of the '+fmtUsd(total)+' aim':'no aim set'),12.5,'#7d8d9d','500')+
+    (srcBits.length?ctext(cx,cy+40,srcBits.join(' · '),10.5,m.dryRun?'#e8b04b':'#7d8d9d','600'):'')+
+    (warnBits.length?ctext(cx,cy+57,warnBits.join(' · '),10.5,'#e8b04b','600'):'');
+  return {P,L,center};
+}
+/* ---- THE 100% RING (Stage 36, the owner's second ask 08-12: "have all of the holdings take
+   up one hundred percent of a doughnut just so I can see the ratio of all the holdings,
+   and then be able to toggle back onto the aiming"). Same owned book, projected at its
+   OWN proportions instead of filling the aim wedges. The three rings keep their meaning
+   (inner = sleeve, middle = segment, outer = holding); every sweep is a share of the
+   owned total, so the ring always closes at 360°. No aim backdrop is drawn here — at
+   owned proportions an aim-proportioned ghost behind it would line up with nothing and
+   read as a rendering bug. Same $0-slider exclusion as the vs-aim view. ---- */
+function ownedPartsFull(cx,cy){
+  const ob=ownedBook(); if(!ob) return null;
+  const R1=[150,256],R2=[266,372],R3=[382,494];
+  const SL_COL={cash:'#3f7d5a',indices:'#2f4d6e',ai:'#1a6b7a',crypto:'#5a3a78',metals:'#8a7530'};
+  const m=ob.m, tot=ob.owned;
+  const srcBits=[],warnBits=[];
+  if(m.src==='cache')srcBits.push('CACHED'+(m.at?' '+posT(m.at)+'Z':''));
+  else if(m.src==='live')srcBits.push('LIVE'+(m.at?' '+posT(m.at)+'Z':''));
+  if(m.dryRun)srcBits.push('FIXTURE DATA');
+  const eb=posErrBit(); if(eb)warnBits.push(eb);
+  if(m.partial)warnBits.push('⚠ undercount');
+  const ofb=offAimBits(ob.offBy);
+  if(ofb.length)warnBits.push('off-aim · NOT counted: '+ofb.join(', '));
+  /* everything he owns sits in sleeves dialled to $0 — say so, never draw an empty ring */
+  if(!(tot>0)) return {P:'',L:'',center:
+    ctext(cx,cy-24,'WHAT I OWN',13,'#7fd8ea','800')+
+    ctext(cx,cy+2,'nothing on aim',15,'#7d8d9d','600')+
+    ctext(cx,cy+26,(ob.offUsd>0?'every position sits in a sleeve dialled to $0':'no priced positions yet'),10.5,'#e8b04b','600')+
+    (warnBits.length?ctext(cx,cy+45,warnBits.join(' · '),10.5,'#e8b04b','600'):'')};
+  const buck={},sUsd={};
+  for(const g of ob.groups){ const k=sleeveKeyOf(g.id); (buck[k]=buck[k]||[]).push(g); sUsd[k]=(sUsd[k]||0)+g.usd; }
+  const deg=u=>u/tot*360;
+  let P='',L='',a=-90;
+  for(const sl of AIM_SLEEVE_ORDER){
+    const key=sl[0], nm=sl[1], su=sUsd[key]||0; if(su<=0) continue;
+    const sw=deg(su), a0=a, a1=a0+sw, col=SL_COL[key]||'#3c4d63';
+    const groups=(buck[key]||[]).slice().sort((x,y)=>y.usd-x.usd);
+    /* INNER — the sleeve at its true share of what he owns */
+    P+=pathEl(arc(cx,cy,R1[0],R1[1],a0,a1),col,'#0a0e14',1.6,'',nm+' '+fmtUsd(su)+' · '+pct1(su/tot)+' of what I own',null,'class="hit"');
+    /* MIDDLE — segments within the sleeve */
+    { let ang=a0;
+      for(const g of groups){ const w=deg(g.usd); if(w<=0) continue;
+        P+=pathEl(arc(cx,cy,R2[0],R2[1],ang,ang+w),g.col,'#0a0e14',1.2,'',g.name+' '+fmtUsd(g.usd)+' · '+pct1(g.usd/tot),null,'class="hit"');
+        if(w>2.4){ const _s=shortName(g.name); L+=rlab(cx,cy,(R2[0]+R2[1])/2,ang+w/2,_s,fontfor(w,(R2[0]+R2[1])/2,14,7,_s.length),'#0c1119','800'); }
+        ang+=w; } }
+    /* OUTER — the individual holdings */
+    { let ang=a0;
+      for(const g of groups){
+        for(let i=0;i<g.aorder.length;i++){ const as=g.aorder[i], w=deg(as.usd); if(w<=0) continue;
+          P+=pathEl(arc(cx,cy,R3[0],R3[1],ang,ang+w),shade(g.col,0.12+0.30*((i%3)/2)),'#0a0e14',1,'',as.sym+' '+fmtUsd(as.usd)+' · '+pct1(as.usd/tot)+' · '+as.prov,null,'data-owntk="'+as.sym.replace(/[^A-Za-z0-9._\-]/g,'')+'" class="hit"');
+          if(w>2.4)L+=rlab(cx,cy,(R3[0]+R3[1])/2,ang+w/2,as.sym,fontfor(w,(R3[0]+R3[1])/2,12.5,6,as.sym.length),'#0a0e14','800');
+          ang+=w; } } }
+    /* sleeve name + its share — same one-line treatment as the aim donut */
+    if(sw>7){ const p=ptOf(cx,cy,(R1[0]+R1[1])/2,a0+sw/2);
+      L+='<text x="'+p[0].toFixed(1)+'" y="'+(p[1]+6).toFixed(1)+'" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif">'
+        +'<tspan font-size="17" fill="#EAEEF5" font-weight="700">'+nm+'</tspan>'
+        +'<tspan font-size="20" fill="#fff" font-weight="800" dx="7">'+Math.round(su/tot*100)+'%</tspan></text>'; }
+    a=a1;
+  }
+  const center=
+    ctext(cx,cy-38,'WHAT I OWN',13,'#7fd8ea','800')+
+    ctext(cx,cy-10,fmtUsd(tot),27,'#e6eef7','800','-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif')+
+    ctext(cx,cy+18,'the whole ring — ratios only, no aim',12.5,'#7d8d9d','500')+
     (srcBits.length?ctext(cx,cy+40,srcBits.join(' · '),10.5,m.dryRun?'#e8b04b':'#7d8d9d','600'):'')+
     (warnBits.length?ctext(cx,cy+57,warnBits.join(' · '),10.5,'#e8b04b','600'):'');
   return {P,L,center};
@@ -6760,8 +7029,9 @@ function paintPosStatus(){
   if(!A) txt='positions layer unavailable';
   else if(!A.hasToken()) txt='not connected — paste your token above';
   else if(A.state.err==='auth') txt='⚠ token rejected (401) — the backend refused it; check it and paste again';
-  else if(A.state.data){ const m=posModel();
-    txt=(A.state.src==='live'?'LIVE':'CACHED')+(A.state.at?' · '+posT(A.state.at)+'Z':'')+' · '+fmtUsd(m?m.owned:0)+' owned'
+  else if(A.state.data){ const m=posModel(), ob=ownedBook();          /* Stage 36: on-aim total, same rule as the donut + book */
+    txt=(A.state.src==='live'?'LIVE':'CACHED')+(A.state.at?' · '+posT(A.state.at)+'Z':'')+' · '+fmtUsd(ob?ob.owned:0)+' owned'
+      +((ob&&ob.offUsd>0)?' · '+fmtUsd(ob.offUsd)+' off-aim not counted':'')
       +((m&&m.dryRun)?' · FIXTURE DATA':'')
       +(A.state.err?' · ⚠ refresh failing':'')
       +((m&&m.partial)?' · ⚠ undercount':''); }
@@ -6785,21 +7055,45 @@ function paintPosStatus(){
 }
 function syncOwnPill(){
   document.querySelectorAll('[data-act="owntgl"]').forEach(x=>x.classList.toggle('on',(x.getAttribute('data-own')==='owned')===ownedView));
+  /* Stage 36: the ring-scale pill exists only inside the owned view — against the aim it means nothing */
+  document.querySelectorAll('[data-act="ownscale"]').forEach(x=>x.classList.toggle('on',x.getAttribute('data-scale')===ownScale));
+  const sp=document.getElementById('ownScalePill'); if(sp)sp.classList.toggle('hidden',!ownedView);
+}
+function syncExpoScopePill(){
+  /* Stage 35b: one sync covers EVERY pill instance (#expoScopePill + #bookScopePill share
+     data-act='exposcope'). The pill is always visible; when positions aren't connected the
+     Owned side dims (still clickable — selecting it shows the connect state, never hides). */
+  const A=posLayer(), connected=!!(A&&A.hasToken()&&posModel());
+  document.querySelectorAll('[data-act="exposcope"]').forEach(x=>{
+    x.classList.toggle('on',(x.getAttribute('data-scope')==='own')===(expoScope==='own'));
+    if(x.getAttribute('data-scope')==='own'){
+      x.classList.toggle('own-dim',!connected);
+      if(!connected)x.setAttribute('title','No positions connected yet — open the ⚙ Console → Live positions and paste your token');
+      else x.removeAttribute('title');
+    }
+  });
 }
 function posSync(){
   const A=posLayer(), pill=document.getElementById('ownPill');
   const has=!!(A&&A.hasToken());
   if(pill)pill.classList.toggle('hidden',!has);
+  syncExpoScopePill();                       /* Stage 35b: scope pills are ALWAYS visible — this refreshes the dim/title state on both instances; token loss no longer force-resets the scope (the connect state shows instead) */
   if(!has&&ownedView){ ownedView=false; syncOwnPill(); schedulePaint(); }  /* drop straight back to the aim */
+  syncOwnPill();                              /* Stage 36: keeps #ownScalePill's visibility honest on every feed/token transition */
   paintPosStatus();
   if(ownedView)schedulePaint(); else paintOwnNote();
+  if(expoScope==='own')schedulePaint();      /* 30-min feed refresh (and manual Refresh now) repaints the owned exposure live */
 }
 
 /* ============================================================ DONUT SVG === */
 function buildMaster(){
   const box=1000,cx=500,cy=500, r1=[150,256],r2=[266,372],r3=[382,494];
   const total=totalUsd(); let P='',L='',a=-90;
-  const own = ownedView ? (ownedParts(total,cx,cy,r1[0],r3[1])||ownedEmpty(cx,cy)) : null;
+  /* Stage 36: two owned projections. 'aim' fills the aim wedges (gap = shortfall);
+     'full' re-proportions to the owned book and closes the ring — and skips the grayed
+     aim backdrop below, which would align with nothing at owned proportions. */
+  const fullRing = ownedView && ownScale==='full';
+  const own = ownedView ? ((fullRing?ownedPartsFull(cx,cy):ownedParts(total,cx,cy,r1[0],r3[1]))||ownedEmpty(cx,cy)) : null;
   const _det={ix:showIndexDetail,ai:showAiDetail,cr:showCryptoDetail,mt:showMetalsDetail};
   if(ownedView){ showIndexDetail=showAiDetail=showCryptoDetail=showMetalsDetail=false; }
   const sleeves=[
@@ -6815,7 +7109,7 @@ function buildMaster(){
     P+=pathEl(arc(cx,cy,r1[0],r1[1],a,a+sw),s.col,'#0a0e14',2.5,'',`${s.name} ${pct1(s.usd/total)}`);
     const mid=a+sw/2,lr=(r1[0]+r1[1])/2,[lx,ly]=ptOf(cx,cy,lr,mid);
     L+='<text x="'+lx.toFixed(1)+'" y="'+(ly+6).toFixed(1)+'" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif">'
-      +'<tspan font-size="17" fill="#eef4fb" font-weight="700">'+s.name.split(' ')[0]+'</tspan>'
+      +'<tspan font-size="17" fill="#EAEEF5" font-weight="700">'+s.name.split(' ')[0]+'</tspan>'
       +'<tspan font-size="20" fill="#fff" font-weight="800" dx="7">'+Math.round(s.usd/total*100)+'%</tspan></text>';
     let sub=a;
     if(s.kind==='ai'){
@@ -6839,14 +7133,14 @@ function buildMaster(){
       } else {
         // collapsed: one solid AI arc (detail toggled off)
         P+=pathEl(arc(cx,cy,r2[0],r2[1],sub,sub+sw),s.col,'#0a0e14',1.6,'',`Stocks ${fmtUsd(s.usd)}`);
-        if(sw>2.4)L+=rlab(cx,cy,(r2[0]+r2[1])/2,sub+sw/2,'Stocks',fontfor(sw,(r2[0]+r2[1])/2,15,8),'#eef4fb','800');
+        if(sw>2.4)L+=rlab(cx,cy,(r2[0]+r2[1])/2,sub+sw/2,'Stocks',fontfor(sw,(r2[0]+r2[1])/2,15,8),'#EAEEF5','800');
         P+=pathEl(arc(cx,cy,r3[0],r3[1],sub,sub+sw),shade(s.col,0.06),'#0a0e14',1,'','',0.35);
       }
     } else if(s.kind==='indices'){
       const direct=directHeld();
       for(const f of indexFunds()){const cw=f.usd/total*360;
         P+=pathEl(arc(cx,cy,r2[0],r2[1],sub,sub+cw),f.col,'#0a0e14',1.6,'',`${f.t} ${fmtUsd(f.usd)}`);
-        if(cw>3)L+=rlab(cx,cy,(r2[0]+r2[1])/2,sub+cw/2,f.t,fontfor(cw,(r2[0]+r2[1])/2,15,8),'#eef4fb','800');
+        if(cw>3)L+=rlab(cx,cy,(r2[0]+r2[1])/2,sub+cw/2,f.t,fontfor(cw,(r2[0]+r2[1])/2,15,8),'#EAEEF5','800');
         if(showIndexDetail && INDEX_TOP15[f.t]){
           const top=INDEX_TOP15[f.t]; let s3=sub, used=0;
           for(let i=0;i<top.length;i++){ const tk=top[i][0], wt=top[i][1], nu=f.usd*wt/100, nw=nu/total*360, dup=direct.has(tk); used+=wt;
@@ -6876,7 +7170,7 @@ function buildMaster(){
     } else if(s.kind==='cash'){
       // cash / HYSA — a single solid arc, no sub-holdings
       P+=pathEl(arc(cx,cy,r2[0],r2[1],sub,sub+sw),s.col,'#0a0e14',1.6,'',`Cash · HYSA ${fmtUsd(s.usd)}`);
-      if(sw>2.4)L+=rlab(cx,cy,(r2[0]+r2[1])/2,sub+sw/2,'Cash',fontfor(sw,(r2[0]+r2[1])/2,15,8),'#eef4fb','800');
+      if(sw>2.4)L+=rlab(cx,cy,(r2[0]+r2[1])/2,sub+sw/2,'Cash',fontfor(sw,(r2[0]+r2[1])/2,15,8),'#EAEEF5','800');
       P+=pathEl(arc(cx,cy,r3[0],r3[1],sub,sub+sw),shade(s.col,0.12),'#0a0e14',1,'',`Cash · HYSA ${fmtUsd(s.usd)}`,0.5);
     } else {
       if(showCryptoDetail){
@@ -6899,7 +7193,7 @@ function buildMaster(){
       } else {
         // collapsed: one solid crypto arc (detail toggled off)
         P+=pathEl(arc(cx,cy,r2[0],r2[1],sub,sub+sw),s.col,'#0a0e14',1.6,'',`Crypto ${fmtUsd(s.usd)}`);
-        if(sw>2.4)L+=rlab(cx,cy,(r2[0]+r2[1])/2,sub+sw/2,'Crypto',fontfor(sw,(r2[0]+r2[1])/2,15,8),'#eef4fb','800');
+        if(sw>2.4)L+=rlab(cx,cy,(r2[0]+r2[1])/2,sub+sw/2,'Crypto',fontfor(sw,(r2[0]+r2[1])/2,15,8),'#EAEEF5','800');
         P+=pathEl(arc(cx,cy,r3[0],r3[1],sub,sub+sw),shade(s.col,0.06),'#0a0e14',1,'','',0.35);
       }
     }
@@ -6911,7 +7205,7 @@ function buildMaster(){
     (own ? own.center :
     ctext(cx,cy-10,fmtUsd(total),26,'#e6eef7','800','-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif')+
     ctext(cx,cy+16, cashUsd>0?`book · incl. ${fmtUsd(cashUsd)} cash`:'invested · no cash',13,'#7d8d9d','500'));
-  return `<svg viewBox="0 0 ${box} ${box}" width="100%" role="img" aria-label="Portfolio donut">${own?`<g opacity="0.5" pointer-events="none">${P}</g><g opacity="0.42" pointer-events="none">${L}</g>${own.P}${own.L}`:P+L}${center}</svg>`;
+  return `<svg viewBox="0 0 ${box} ${box}" width="100%" role="img" aria-label="Portfolio donut">${own?(fullRing?`${own.P}${own.L}`:`<g opacity="0.5" pointer-events="none">${P}</g><g opacity="0.42" pointer-events="none">${L}</g>${own.P}${own.L}`):P+L}${center}</svg>`;
 }
 function buildMini(d){
   const box=260,cx=130,cy=130,ri=70,ro=122; const st=segState(d.id),su=segUsd(st),hs=st.holdings,sw=hs.reduce((a,h)=>a+h.w,0);
@@ -6926,7 +7220,7 @@ function buildMini(d){
     L+=ctext(cx,cy+ro-28,'empty',11,'#5f6f7d','600');
   }
   const center=`<circle cx="${cx}" cy="${cy}" r="${ri-4}" fill="#0f1620"/>`+
-    ctext(cx,cy-13,shortName(d.name),12.5,'#eef4fb','700','-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif')+
+    ctext(cx,cy-13,shortName(d.name),12.5,'var(--ink)','700','-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif')+
     ctext(cx,cy+5,pct1(segPct(st)),18,'#fff','800','-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif')+
     ctext(cx,cy+22,fmtUsd(su),11,'#7d8d9d','600');
   return `<svg viewBox="0 0 ${box} ${box}" width="100%" aria-label="${esc(d.name)} donut">${P}${L}${center}</svg>`;
@@ -7094,8 +7388,86 @@ function buildBook(){
 }
 
 /* ---- index look-through + overlap ---- */
+/* Stage 35 — owned-scope twins for the Exposure pane. Aim paths below are untouched;
+   scope=own sources everything from posExposure() (real dollars, payload untrusted —
+   every position-derived string is esc()'d before innerHTML). */
+const EXPO_TITLES={
+  lt:{aim:'What I carry in the indexes — top 15 per fund', own:'What I OWN through my index funds — top 15 per fund'},
+  ov:{aim:'True exposure — S&P + Nasdaq top-15 vs. your direct buys', own:'True exposure — what you ACTUALLY own: index look-through + your direct buys'},
+  xo:{aim:'ETF crossover — how much of each name you own outright vs. through a fund', own:'ETF crossover — your REAL book: outright vs. through the funds you own'}
+};
+function syncExpoTitles(){
+  const k=expoScope==='own'?'own':'aim';
+  const a=document.getElementById('ltTitle'); if(a)a.textContent=EXPO_TITLES.lt[k];
+  const b=document.getElementById('ovTitle'); if(b)b.textContent=EXPO_TITLES.ov[k];
+  const c=document.getElementById('xoTitle'); if(c)c.textContent=EXPO_TITLES.xo[k];
+}
+/* Stage 35b: friendly connect state — static string, no esc needed. Shown (in .own-note
+   styling via #expoOwnHead / the book table) when scope=own with no token; a present-but-
+   fetching/failing token keeps the more specific posEmptyWhy() wording instead. */
+const EXPO_CONNECT='No positions connected yet — open the ⚙ Console → Live positions and paste your token';
+function expoOwnWhy(){ const A=posLayer(); return (A&&A.hasToken())?esc(posEmptyWhy()):EXPO_CONNECT; }
+function renderExpoOwnHead(){
+  const el=document.getElementById('expoOwnHead'); if(!el) return;
+  if(expoScope!=='own'){ el.classList.add('hidden'); el.innerHTML=''; return; }
+  const px=posExposure();
+  if(!px){ el.innerHTML=expoOwnWhy(); el.classList.remove('hidden'); return; }   /* Stage 35b: no token → friendly connect state (panels below go blank) */
+  const m=px.m, t=px.tot, bits=[];
+  /* Stage 36: headline total is the ON-AIM total; the breakdown still lists every
+     component the feed carries, each flagged when its sleeve slider sits at $0 — so the
+     parts visibly don't have to add to the headline, and nothing is hidden. */
+  const ob=ownedBook(), ownTot=ob?ob.owned:m.owned;
+  const tag=(key,v)=>(v>0&&!aimOn(key))?' <span class="warn">(off-aim · not counted)</span>':'';
+  bits.push('<b>'+fmtUsd(ownTot)+'</b> owned — direct names <b>'+fmtUsd(t.dir)+'</b>'+tag('ai',t.dir)+' · via funds <b>'+fmtUsd(t.funds)+'</b> (handing you ~<b>'+fmtUsd(px.look)+'</b> of named look-through) · crypto <b>'+fmtUsd(t.crypto)+'</b>'+tag('crypto',t.crypto)+' · metals <b>'+fmtUsd(t.metals)+'</b>'+tag('metals',t.metals)+' · cash <b>'+fmtUsd(t.cash)+'</b>'+tag('cash',t.cash));
+  bits.push('★ Combined per-name exposure, overlap counted: <b>'+fmtUsd(t.dir+px.look)+'</b> — your direct buys plus everything your funds already hand you, summed per name, never netted.');
+  const srcBits=[];
+  if(m.src==='cache')srcBits.push('CACHED'+(m.at?' '+posT(m.at)+'Z':''));
+  else if(m.src==='live')srcBits.push('LIVE'+(m.at?' '+posT(m.at)+'Z':''));
+  if(m.dryRun)srcBits.push('<span class="warn">FIXTURE DATA — backend dry-run, not your real accounts</span>');
+  const eb=posErrBit(); if(eb)srcBits.push('<span class="warn">'+esc(eb)+' — showing the last good snapshot</span>');
+  if(m.partial)srcBits.push('<span class="warn">⚠ undercount — unpriced assets are missing from every figure here</span>');
+  if(srcBits.length)bits.push(srcBits.join(' · '));
+  if(m.unpriced.length)bits.push('<span class="warn">unpriced — listed, never guessed:</span> '+m.unpriced.map(u=>esc(u.sym)+(posQty(u.qty)?' '+posQty(u.qty):'')).join(' · '));
+  if(m.debits.length)bits.push('<span class="warn">debits — listed, not drawn:</span> '+m.debits.map(u=>esc(u.sym)+' −$'+Math.round(-u.usd).toLocaleString('en-US')+' ('+esc(u.prov)+')').join(' · '));
+  if(px.missing.size)bits.push('<span class="warn">no look-through mapped yet for:</span> '+[...px.missing].map(esc).join(', '));
+  el.innerHTML=bits.join('<br>');
+  el.classList.remove('hidden');
+}
+function renderLookthroughOwn(el){
+  const px=posExposure();
+  if(!px){ el.innerHTML=''; return; }      /* Stage 35b: connect state lives in #expoOwnHead — panel goes blank, aim stays hidden */
+  const funds=px.idxFunds;
+  if(!funds.length){ el.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">No owned index funds with a mapped basket yet.</div>'; return; }
+  const direct=new Set(Object.keys(px.dir));
+  el.innerHTML=funds.map(f=>{
+    const top=INDEX_TOP15[f.t]||[];
+    const sumW=top.reduce((a,r)=>a+r[1],0), mx=Math.max(1,...top.map(r=>r[1]));
+    const rows=top.map(r=>{const tk=r[0],wt=r[1],nu=f.usd*wt/100,dup=direct.has(tk);
+      return `<div class="lt-row${dup?' dup':''}"><span class="lt-tk">${dup?'◈ ':''}${esc(tk)}</span><span class="lt-bar"><span style="width:${Math.max(4,wt/mx*100)}%;background:${dup?shade(f.col,0.3):'#3c4d63'}"></span></span><span class="lt-usd">${fmtUsd(nu)} · ${wt}%</span></div>`;}).join('');
+    const restW=Math.max(0,100-sumW), ru=f.usd*restW/100;
+    return `<div class="lt-card"><div class="lt-head"><span class="d" style="background:${f.col}"></span><b>${esc(f.label)}</b> <span class="muted">${fmtUsd(f.usd)}</span></div>${rows}<div class="lt-row rest"><span class="lt-tk">rest of fund</span><span class="lt-bar"></span><span class="lt-usd">${fmtUsd(ru)} · ${restW.toFixed(0)}%</span></div></div>`;
+  }).join('');
+}
+function renderOverlapOwn(el){
+  const px=posExposure();
+  if(!px){ el.innerHTML=''; return; }      /* Stage 35b: connect state lives in #expoOwnHead — panel goes blank, aim stays hidden */
+  const idx={};
+  px.idxFunds.forEach(f=>{(INDEX_TOP15[f.t]||[]).forEach(r=>{ idx[r[0]]=(idx[r[0]]||0)+f.usd*r[1]/100; });});
+  const dir=px.dir;
+  const universe=new Set();
+  ['VOO','QQQM'].forEach(f=>(INDEX_TOP15[f]||[]).forEach(r=>universe.add(r[0])));
+  Object.keys(dir).forEach(t=>{ if(idx[t]) universe.add(t); });
+  const rows=[...universe].map(t=>({t,dir:dir[t]||0,idx:idx[t]||0,tot:(dir[t]||0)+(idx[t]||0)})).filter(r=>r.tot>0).sort((a,b)=>b.tot-a.tot);
+  if(!rows.length){ el.innerHTML=`<div class="muted" style="font-size:12px;padding:8px 2px">No owned index look-through to show yet — no mapped index funds (or overlapping direct names) in your book.</div>`; return; }
+  const mx=Math.max(...rows.map(r=>r.tot));
+  const totDir=rows.reduce((a,r)=>a+r.dir,0), totIdx=rows.reduce((a,r)=>a+r.idx,0), held=rows.filter(r=>r.dir>0).length;
+  el.innerHTML=`<div class="ovl-legend"><span class="ovl-key"><span class="sw-i"></span>index look-through (funds you own)</span><span class="ovl-key"><span class="sw-d"></span>your direct position</span></div>`+
+    rows.map(r=>`<div class="ovl-row"><span class="ovl-tk">${esc(r.t)}${chokeMark(r.t)}${usMark(r.t)}</span><span class="ovl-bar"><span class="ovl-idx" style="width:${r.idx/mx*100}%"></span><span class="ovl-dir" style="width:${r.dir/mx*100}%"></span></span><span class="ovl-tot">${fmtUsd(r.tot)}</span></div>`).join('')+
+    `<div class="ovl-sum">Across these ${rows.length} index-dominant names you ACTUALLY hold <b>${fmtUsd(totDir)}</b> directly${held?` (${held} of them)`:''}, on top of <b>${fmtUsd(totIdx)}</b> your index funds already hand you — <b>${fmtUsd(totDir+totIdx)}</b> total, overlap counted.</div>`;
+}
 function renderLookthrough(){
   const el=$('#indexLookthrough'); if(!el)return;
+  if(expoScope==='own'){ renderLookthroughOwn(el); return; }
   const funds=indexFunds(), direct=directHeld();
   el.innerHTML=funds.map(f=>{
     const top=INDEX_TOP15[f.t]||[];
@@ -7108,6 +7480,7 @@ function renderLookthrough(){
 }
 function renderOverlap(){
   const el=$('#overlapPanel'); if(!el)return;
+  if(expoScope==='own'){ renderOverlapOwn(el); return; }
   const funds=indexFunds(), idx={};
   // index look-through $ per name, summed across every fund where it sits in the top-15
   funds.forEach(f=>{(INDEX_TOP15[f.t]||[]).forEach(r=>{ idx[r[0]]=(idx[r[0]]||0)+f.usd*r[1]/100; });});
@@ -7202,7 +7575,7 @@ function etfDonut(e,col){
     }
     a=a1;
   });
-  let center = ctext(cx,cy-(deep?7:9), e.tk, deep?27:30, '#eef4fb','800')+
+  let center = ctext(cx,cy-(deep?7:9), e.tk, deep?27:30, 'var(--ink)','800')+
                ctext(cx,cy+11, e.nh+' holdings', deep?10:11, '#7d8d9d','600');
   if(!deep){ const live=e.status==='live';
     center += ctext(cx,cy+27, live?'LIVE · JUN 2026':'APPROX · VERIFY', 8.5, live?'#2dd4bf':'#7d8d9d','700'); }
@@ -7263,6 +7636,8 @@ function paint(){
   document.querySelectorAll('.seg-card[data-seg], #focusPanel[data-seg]').forEach(card=>{const d=SEGDEF[card.getAttribute('data-seg')];if(!d)return;const m=card.querySelector('.mini');if(m)m.innerHTML=buildMini(d);});
   paintReadouts();
   buildBook();
+  renderExpoOwnHead();
+  syncExpoTitles();
   renderLookthrough();
   renderOverlap();
   renderEtfOverlap();
@@ -7340,6 +7715,12 @@ document.addEventListener('click',e=>{
   else if(act==='owntgl'){ const want=b.getAttribute('data-own')==='owned';
     if(want===ownedView)return; ownedView=want; syncOwnPill(); paint();
     toast(want?'Master donut: what you actually own':'Master donut: the aim'); }
+  else if(act==='ownscale'){ const want=b.getAttribute('data-scale')==='full'?'full':'aim';
+    if(want===ownScale)return; ownScale=want; syncOwnPill(); paint();
+    toast(want==='full'?'Ring: everything you own at 100% — ratios only':'Ring: owned filling the aim'); }
+  else if(act==='exposcope'){ const want=b.getAttribute('data-scope')==='own'?'own':'aim';
+    if(want===expoScope)return; expoScope=want; syncExpoScopePill(); paint();
+    toast(want==='own'?'Exposure & book: what you ACTUALLY own':'Exposure & book: the aim'); }
   else if(act==='posconnect'){ const inp=document.getElementById('posToken'); const v=inp?inp.value:''; const A=posLayer();
     if(!A) toast('positions layer unavailable');
     else if(A.setToken(v)){ if(inp)inp.value=''; toast('Token stored on this device — fetching your positions'); }
@@ -7593,6 +7974,7 @@ const DK_SLC={indices:'#2f4d6e',ai:'#1a6b7a',crypto:'#5a3a78',metals:'#8a7530',c
 const DK_SLN={indices:'Indices',ai:'Stocks',crypto:'Crypto',metals:'Metals',cash:'Cash'};
 function buildBookAll(){
   const el=document.getElementById('bookAll'); if(!el) return;
+  if(expoScope==='own'){ buildBookAllOwn(el); return; }   /* Stage 35b: one scope governs exposure AND book — aim path below is untouched */
   const total=totalUsd();
   const rows=[];
   indexFunds().forEach(f=>{ if(f.usd>0) rows.push({sl:'indices',t:f.t,role:(FUND_NAME[f.t]||f.t)+' \u00b7 index fund',usd:f.usd,mark:'etf',rec:'\u2014',exp:'\u2014',val:'\u2014'}); });
@@ -7648,9 +8030,86 @@ function buildBookAll(){
     +'<tfoot><tr><td colspan="6">Whole book \u2014 '+rows.length+' positions</td><td class="num">'+fmtUsd(grand)+'</td><td class="num">'+pct1(total>0?grand/total:0)+'</td></tr></tfoot>';
 }
 
+/* ---- the book, scope=own (Stage 35b): the REAL book from posExposure()/posModel().
+   Same table shape and mix-bar mechanics as the aim table above, but every dollar is a
+   real position: direct equities get an ownership-mix bar whose fund contributions come
+   from OWNED fund dollars (etfUsd + idxFunds through ETF_HOLDINGS / INDEX_TOP15, broad
+   funds aliased via INDEX_ALIAS \u2014 chips carry the 'SPY \u2248 VOO' label so the mapping is
+   never silent). Funds / crypto / metals / cash are simple $ rows. Grades attach only
+   where the baked GRADES know the ticker. Every position-derived string is esc()'d.
+   Sorted by TOTAL per-name exposure (outright + fund look-through), descending. ---- */
+function buildBookAllOwn(el){
+  const px=posExposure();
+  if(!px){ el.innerHTML='<tbody><tr><td colspan="8" class="muted" style="padding:16px">'+expoOwnWhy()+'</td></tr></tbody>'; return; }
+  const m=px.m;
+  /* per-name mix from OWNED fund dollars (same mechanics as the aim fundMixOf above) */
+  const fundMixOf=name=>{ const by={};
+    Object.keys(px.etfUsd).forEach(e=>{ const hh=(ETF_HOLDINGS[e]||[]).find(x=>x[0]===name); if(hh) by[e]=(by[e]||0)+px.etfUsd[e]*hh[1]/100; });
+    px.idxFunds.forEach(f=>{ const hh=(INDEX_TOP15[f.t]||[]).find(x=>x[0]===name); if(hh) by[f.label]=(by[f.label]||0)+f.usd*hh[1]/100; });
+    return by; };
+  const rows=[];
+  Object.keys(px.dir).forEach(t=>{ const g=GRADES[t];
+    rows.push({sl:'ai',t,role:(g?g[0]:'direct \u00b7 not in the graded universe'),usd:px.dir[t],mark:'',
+      rec:g?gletter(t,'rec'):'\u2014', exp:g?gletter(t,'exp'):'\u2014', val:g?g[3]:'\u2014'}); });
+  px.fundRows.forEach(f=>rows.push({sl:f.kind==='idx'?'indices':'ai', t:f.sym,
+    role:(FUND_NAME[f.sym]||ETFS[f.sym]||'fund')+(f.kind==='idx'?' \u00b7 index fund':' \u00b7 ETF')+(f.mapped?'':' \u00b7 no look-through mapped'),
+    usd:f.usd, mark:'etf', rec:'\u2014', exp:'\u2014', val:'\u2014'}));
+  px.cryptoRows.forEach(c=>rows.push({sl:'crypto',t:c.sym,role:(CRYPTO_NAMES[c.sym]||c.grp),usd:c.usd,mark:'coin',rec:'\u2014',exp:'\u2014',val:'\u2014'}));
+  px.metalRows.forEach(c=>rows.push({sl:'metals',t:c.sym,role:(METAL_NAME[c.sym]||'metal'),usd:c.usd,
+    mark:(c.sym==='XAU'||c.sym==='XAG'||c.sym==='XPT'||c.sym==='XPD')?'phys':'etf', /* physical coins must not wear the ETF diamond */
+    rec:'\u2014',exp:'\u2014',val:'\u2014'}));
+  px.cashRows.forEach(c=>rows.push({sl:'cash',t:c.sym,role:'cash \u00b7 '+c.prov,usd:c.usd,mark:'cash',rec:'\u2014',exp:'\u2014',val:'\u2014'}));
+  /* Stage 36: drop every row whose sleeve slider sits at $0 \u2014 same single rule as the
+     donut. Spliced in place so all downstream `rows` maths (mix bars, sort, % book,
+     tfoot count) operate on the on-aim book only. The excluded money is reported in
+     the tfoot, never silently vanished. */
+  const ob=ownedBook(), ownTot=ob?ob.owned:0;
+  const offNote=ob?offAimBits(ob.offBy):[];
+  for(let i=rows.length-1;i>=0;i--){ if(!aimOn(rows[i].sl)) rows.splice(i,1); }
+  const mixMap={}, fundTot={};
+  rows.filter(r=>r.sl==='ai'&&r.mark!=='etf').forEach(r=>{ const by=fundMixOf(r.t); mixMap[r.t]=by; Object.keys(by).forEach(k=>fundTot[k]=(fundTot[k]||0)+by[k]); });
+  rows.forEach(r=>{ const by=mixMap[r.t]; r.totx=r.usd+(by?Object.keys(by).reduce((a,k)=>a+by[k],0):0); });
+  rows.sort((a,b)=>b.totx-a.totx);
+  const fundsSorted=Object.keys(fundTot).sort((a,b)=>fundTot[b]-fundTot[a]);
+  const ramp=grayRamp(fundsSorted.length||1), shadeOf={}; fundsSorted.forEach((f,i)=>shadeOf[f]=ramp[i]);
+  const mixInline=r=>{
+    const by=mixMap[r.t]||{}, funds=fundsSorted.filter(f=>(by[f]||0)>=0.5), fundSum=funds.reduce((a,f)=>a+by[f],0);
+    if(fundSum<0.5) return '';
+    const tot=r.usd+fundSum, pOf=v=>{ const p=v/tot*100; return (p>0&&p<0.5)?'<1%':Math.round(p)+'%'; };
+    const segs=funds.map(f=>'<span class="ovl-seg" style="width:'+(by[f]/tot*100).toFixed(1)+'%;background:'+shadeOf[f]+'" title="'+esc(f)+' '+fmtUsd(by[f])+'"></span>').join('')
+      +'<span class="ovl-dir" style="width:'+(r.usd/tot*100).toFixed(1)+'%" title="outright '+fmtUsd(r.usd)+'"></span>';
+    const chips=funds.map(f=>'<span class="byc" title="'+esc(f)+' holds '+esc(r.t)+' \u00b7 '+fmtUsd(by[f])+'"><span class="byc-dot" style="background:'+shadeOf[f]+'"></span>'+esc(f)+' <b>'+pOf(by[f])+'</b></span>').join('')
+      +'<span class="byc byc-d" title="outright '+fmtUsd(r.usd)+'"><span class="byc-dot" style="background:var(--teal)"></span>outright <b>'+pOf(r.usd)+'</b></span>';
+    return '<span class="ovl-bar bk-bar">'+segs+'</span><span class="bk-chips">'+chips+'</span>';
+  };
+  const gcell=v=> v==='\u2014' ? '<span class="muted">\u2014</span>' : '<span class="bdg '+tierClass(v)+'" style="display:inline-block">'+esc(v)+'</span>';
+  const body=rows.map(r=>{ const mix=(r.sl==='ai'&&r.mark!=='etf')?mixInline(r):'';
+    return '<tr>'
+    +'<td><span class="seg-cell"><span class="d" style="background:'+DK_SLC[r.sl]+'"></span>'+DK_SLN[r.sl]+'</span></td>'
+    +'<td><b>'+esc(r.t)+'</b>'+(r.mark==='etf'?' \u25c6':'')+chokeMark(r.t)+usMark(r.t)+'</td>'
+    +'<td class="bk-name"><div class="bk-namecell"><span class="bk-role">'+esc(r.role)+'</span>'+mix+'</div></td>'
+    +'<td>'+gcell(r.rec)+'</td>'
+    +'<td>'+gcell(r.exp)+'</td>'
+    +'<td class="val '+valClass(r.val)+'">'+esc(r.val)+'</td>'
+    +'<td class="num">'+fmtUsd(r.usd)+'</td>'
+    +'<td class="num">'+pct1(ownTot>0?r.usd/ownTot:0)+'</td>'
+    +'</tr>'; }).join('');
+  /* totals line = the ON-AIM owned total (Stage 36), same LIVE/CACHED + as-of conventions as the console status */
+  const aimTot=totalUsd();
+  const stamp=(m.src==='live'?'LIVE':'CACHED')+(m.at?' \u00b7 '+posT(m.at)+'Z':'')
+    +(m.dryRun?' \u00b7 <span style="color:#e8b04b">FIXTURE DATA</span>':'')
+    +(m.partial?' \u00b7 <span style="color:#e8b04b">\u26a0 undercount \u2014 unpriced assets missing</span>':'');
+  el.innerHTML='<thead><tr><th>Sleeve</th><th>Ticker</th><th>Name / role</th><th>Rec</th><th>Exp</th><th>Val</th><th>$</th><th>% book</th></tr></thead>'
+    +'<tbody>'+(body||'<tr><td colspan="8" class="muted" style="padding:16px">No priced positions in the feed yet.</td></tr>')+'</tbody>'
+    +'<tfoot><tr><td colspan="6">What I own \u2014 '+rows.length+' positions \u00b7 '+stamp
+      +(offNote.length?' \u00b7 <span style="color:#e8b04b">off-aim, NOT counted: '+offNote.join(', ')+' \u2014 dial that sleeve above $0 to fold it in</span>':'')
+      +'</td><td class="num">'+fmtUsd(ownTot)+'</td><td class="num">'+(aimTot>0?pct1(ownTot/aimTot)+' of aim':'\u2014')+'</td></tr></tfoot>';
+}
+
 /* ---- book composition: by sleeve; Stocks shows its ETF portion inline ----- */
 function buildBookComp(){
   const el=document.getElementById('bookComp'); if(!el) return;
+  if(expoScope==='own'){ el.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Sleeve-split bar is an aim-side read — flip the scope to <b>Aim</b> to see it. Your owned split lives in the cockpit donut ("What I own").</div>'; return; }   /* Stage 35b: aim-vs-sleeve comparison makes no sense on the real book — hidden, not reinvented */
   const total=totalUsd()||1;
   let stkEtfs=0;
   for(const d of SEGMENTS){ const st=segState(d.id); for(const h of st.holdings){ if(isETF(h.t)) stkEtfs+=holdUsd(st,h); } }
@@ -7699,7 +8158,7 @@ function etf2Donut(e,col){
     a=a1; });
   const live=e.status==='live';
   const center='<circle cx="'+cx+'" cy="'+cy+'" r="'+(ri-2)+'" fill="#0f1620"/>'
-    +ctext(cx,cy-3,e.tk,14,'#eef4fb','800')
+    +ctext(cx,cy-3,e.tk,14,'#EAEEF5','800')
     +ctext(cx,cy+10,e.nh+' hold',7.5,'#7d8d9d','600')
     +'<circle cx="'+(cx+ro-10)+'" cy="'+(cy-ro+10)+'" r="4.2" fill="'+(live?'#2dd4bf':'#5f6f7d')+'"><title>'+(live?'live \u00b7 issuer/aggregator':'approx \u00b7 verify')+'</title></circle>';
   return '<svg viewBox="0 0 '+box+' '+box+'" role="img" aria-label="'+esc(e.tk)+' holdings">'+P+L+center+'</svg>';
@@ -7725,13 +8184,21 @@ function buildEtfAtlas(){
    through each ETF (and which). Overrides the base renderEtfOverlap. */
 function renderEtfOverlap(){
   const el=document.getElementById('etfOverlapPanel'); if(!el) return;
-  const etfUsd={}, missing=new Set();
-  for(const d of SEGMENTS){ const st=segState(d.id); for(const h of st.holdings){ if(isETF(h.t)){ const u=holdUsd(st,h);
-    if(ETF_HOLDINGS[h.t]){ etfUsd[h.t]=(etfUsd[h.t]||0)+u; } else if(u>0){ missing.add(h.t); } } } }
+  /* input selector (Stage 35): aim → target-state loops (unchanged); own → posExposure() real dollars */
+  let etfUsd={}, missing=new Set(), dir={};
+  const own = expoScope==='own';
+  if(own){
+    const px=posExposure();
+    if(!px){ el.innerHTML=''; return; }   /* Stage 35b: connect state lives in #expoOwnHead — panel goes blank, aim stays hidden */
+    etfUsd=px.etfUsd; missing=px.missing; dir=px.dir;
+  } else {
+    for(const d of SEGMENTS){ const st=segState(d.id); for(const h of st.holdings){ if(isETF(h.t)){ const u=holdUsd(st,h);
+      if(ETF_HOLDINGS[h.t]){ etfUsd[h.t]=(etfUsd[h.t]||0)+u; } else if(u>0){ missing.add(h.t); } } } }
+    for(const d of SEGMENTS){ const st=segState(d.id); for(const h of st.holdings){ if(!isETF(h.t)){ dir[h.t]=(dir[h.t]||0)+holdUsd(st,h); } } }
+  }
   const heldEtfs=Object.keys(etfUsd);
-  const dir={}, lookBy={};
+  const lookBy={};
   heldEtfs.forEach(e=>{ (ETF_HOLDINGS[e]||[]).forEach(([nm,w])=>{ const c=etfUsd[e]*w/100; (lookBy[nm]||(lookBy[nm]={}))[e]=(lookBy[nm][e]||0)+c; }); });
-  for(const d of SEGMENTS){ const st=segState(d.id); for(const h of st.holdings){ if(!isETF(h.t)){ dir[h.t]=(dir[h.t]||0)+holdUsd(st,h); } } }
   const rows=[];
   new Set([...Object.keys(dir),...Object.keys(lookBy)]).forEach(n=>{
     const d0=dir[n]||0, byE=lookBy[n]||{}, etfC=Object.keys(byE).filter(e=>byE[e]>=0.5);
@@ -7739,9 +8206,9 @@ function renderEtfOverlap(){
     if(((d0>0.5&&etfSum>0.5)||etfC.length>=2) && tot>0.5) rows.push({t:n,dir:d0,byE,etfC,tot});
   });
   rows.sort((a,b)=>b.tot-a.tot);
-  const note = missing.size?'<div class="muted" style="font-size:10.5px;margin-top:8px">No look-through mapped yet for: '+[...missing].join(', ')+'.</div>':'';
-  if(!heldEtfs.length){ el.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Hold some ETFs in the Stocks sleeve (SMH, XSD, IGV\u2026) to see how much of each name you own outright vs. through a fund.</div>'+note; return; }
-  if(!rows.length){ el.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">No overlap yet \u2014 your Stocks-sleeve ETFs and direct names don\u2019t intersect. Add a name an ETF also holds (NVDA, AVGO, MU, PLTR\u2026).</div>'+note; return; }
+  const note = missing.size?'<div class="muted" style="font-size:10.5px;margin-top:8px">No look-through mapped yet for: '+[...missing].map(esc).join(', ')+'.</div>':'';
+  if(!heldEtfs.length){ el.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">'+(own?'You don\u2019t own any thematic ETFs with a mapped basket yet.':'Hold some ETFs in the Stocks sleeve (SMH, XSD, IGV\u2026) to see how much of each name you own outright vs. through a fund.')+'</div>'+note; return; }
+  if(!rows.length){ el.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">'+(own?'No crossover in your owned book yet \u2014 the funds you own and your direct names don\u2019t intersect.':'No overlap yet \u2014 your Stocks-sleeve ETFs and direct names don\u2019t intersect. Add a name an ETF also holds (NVDA, AVGO, MU, PLTR\u2026).')+'</div>'+note; return; }
   const etfTot={}; rows.forEach(r=>r.etfC.forEach(e=>etfTot[e]=(etfTot[e]||0)+r.byE[e]));
   const activeEtfs=Object.keys(etfTot).sort((a,b)=>etfTot[b]-etfTot[a]);
   const ramp=grayRamp(activeEtfs.length), shadeOf={}; activeEtfs.forEach((e,i)=>shadeOf[e]=ramp[i]);
@@ -8206,11 +8673,15 @@ window.WebArrange={ saved:readSaved, apply:applySaved, clear:clearSaved, lsOk:fu
     else if(b.dataset.mp) fwd('#stSeg [data-pane="'+b.dataset.mp+'"]');
     else fwd('#stGear');
   });
+  var flipAt=0;
   strip.addEventListener('click', function(e){
     var b=e.target.closest('[data-mu],[data-ml],[data-mflip],[data-mhelp],[data-mhud]'); if(!b) return;
     if(b.dataset.mu) fwd('#uniSeg [data-u="'+b.dataset.mu+'"]');
     else if(b.dataset.ml) fwd('#lensSeg [data-l="'+b.dataset.ml+'"]');
-    else if(b.dataset.mflip){ var st=document.body.classList.contains('deck-studio');
+    else if(b.dataset.mflip){ var now=Date.now();
+      /* flip reads deck state at tap time — a double-fire would enter+exit Studio (net no-op) */
+      if(now-flipAt<350) return; flipAt=now;
+      var st=document.body.classList.contains('deck-studio');
       fwd('#deckSeg [data-d="'+(st?'atlas':'studio')+'"]'); }
     else if(b.dataset.mhelp) fwd('#helpBtn');
     else fwd('.sthud-t');
@@ -8234,6 +8705,79 @@ window.WebArrange={ saved:readSaved, apply:applySaved, clear:clearSaved, lsOk:fu
     strip.classList.toggle('m-hide', y>_my && y>64); _my=y; }, {passive:true});
   window.addEventListener('resize', mSync);
   mSync();
+})();
+
+/* Stage 34 — one-row app bar: dropdown chips proxy the hidden segs (same pattern
+   as the mobile chrome); glyph popovers; HUD tap in Grade Flow opens the Studio. */
+(function(){
+  var bar=document.querySelector('.appbar'); if(!bar) return;
+  function fwd(sel){ var el=document.querySelector(sel); if(el) el.click(); }
+  function closeAll(){ bar.classList.remove('brand-open');
+    bar.querySelectorAll('.dd.open').forEach(function(d){d.classList.remove('open');});
+    var mp=document.getElementById('mPop'); if(mp) mp.classList.remove('open');
+    /* markets deck menus (exist after MktView mount) — one closer, no strays */
+    var mu=document.getElementById('mkUniDD'); if(mu) mu.classList.remove('open');
+    var ms=document.getElementById('mkSheet'); if(ms) ms.classList.remove('open'); }
+  /* dropdown chips — options are read from (and forward to) the hidden segs */
+  var DDS=[
+    {id:'ddUni', lab:'Universe', cls:'atlas-only', src:'#uniSeg',  attr:'u',    onCls:'on'},
+    {id:'ddView',lab:'View',     cls:'atlas-only', src:'#viewSeg', attr:'v',    onCls:'on'},
+    {id:'ddLens',lab:'Badge',    cls:'',           src:'#lensSeg', attr:'l',    onCls:'on'},
+    {id:'ddPane',lab:'View',     cls:'st-only',    src:'#stSeg',   attr:'pane', onCls:'dk-on'}
+  ];
+  DDS.forEach(function(cfg){
+    var src=document.querySelector(cfg.src); if(!src) return;
+    var dd=document.createElement('div'); dd.className=('dd '+cfg.cls).trim(); dd.id=cfg.id;
+    var opts='';
+    src.querySelectorAll('button').forEach(function(b){
+      opts+='<button type="button" data-o="'+b.dataset[cfg.attr]+'">'+b.textContent+'</button>';
+    });
+    dd.innerHTML='<button type="button" class="dd-btn"><span class="dd-lab">'+cfg.lab+'</span>'
+      +'<b class="dd-val"></b><i class="dd-car">▾</i></button><div class="dd-menu">'+opts+'</div>';
+    src.parentNode.insertBefore(dd, src.nextSibling);
+    dd.querySelector('.dd-btn').addEventListener('click', function(e){
+      e.stopPropagation(); var was=dd.classList.contains('open'); closeAll();
+      if(!was) dd.classList.add('open');
+    });
+    dd.querySelector('.dd-menu').addEventListener('click', function(e){
+      var o=e.target.closest('[data-o]'); if(!o) return;
+      closeAll(); fwd(cfg.src+' [data-'+cfg.attr+'="'+o.dataset.o+'"]');
+    });
+    dd._sync=function(){
+      var onBtn=src.querySelector('.'+cfg.onCls);
+      var v=onBtn?onBtn.textContent:'';
+      var el=dd.querySelector('.dd-val'); if(el.textContent!==v) el.textContent=v;
+      var ov=onBtn?onBtn.dataset[cfg.attr]:null;
+      dd.querySelectorAll('[data-o]').forEach(function(o){o.classList.toggle('on', o.dataset.o===ov);});
+    };
+  });
+  function dSync(){ DDS.forEach(function(cfg){ var dd=document.getElementById(cfg.id); if(dd&&dd._sync) dd._sync(); }); }
+  document.addEventListener('click', function(){ requestAnimationFrame(dSync); }, true);
+  window.addEventListener('resize', dSync);
+  dSync();
+  /* glyph popovers (bar + strip) — content mirrors .brand so _sub() stays the writer */
+  function brandHTML(){ var b=document.querySelector('.brand b'), s=document.querySelector('.brand span');
+    return '<b>'+(b?b.textContent:'AI Build-Out')+'</b><span>'+(s?s.textContent:'')+'</span>'; }
+  var pop=document.getElementById('aPop'), glyph=document.getElementById('aGlyph');
+  if(glyph) glyph.addEventListener('click', function(e){ e.stopPropagation();
+    var was=bar.classList.contains('brand-open'); closeAll();
+    if(!was){ pop.innerHTML=brandHTML(); bar.classList.add('brand-open'); } });
+  var mGlyph=document.querySelector('#mStrip .m-glyph');
+  if(mGlyph){
+    var mp=document.createElement('div'); mp.className='m-pop'; mp.id='mPop'; document.body.appendChild(mp);
+    mGlyph.style.cursor='pointer'; mGlyph.removeAttribute('aria-hidden');
+    mGlyph.addEventListener('click', function(e){ e.stopPropagation();
+      var was=mp.classList.contains('open'); closeAll();
+      if(!was){ mp.innerHTML=brandHTML(); mp.classList.add('open'); } });
+  }
+  document.addEventListener('click', closeAll);
+  /* HUD tap: in Grade Flow the console has no host — go to the Studio instead */
+  document.addEventListener('click', function(e){
+    if(document.body.classList.contains('deck-studio')) return;
+    if(!e.target.closest('.sthud-t,.sthud-bar,[data-mhud]')) return;
+    e.preventDefault(); e.stopPropagation();
+    if(window.Studio) window.Studio.setDeck('studio');
+  }, true);
 })();
 
 /* ===================================================================
@@ -8307,7 +8851,7 @@ try{
     '#aibo-live-chip .dot{width:7px;height:7px;border-radius:50%;background:#5c6b7d}'+
     '#aibo-live-chip.src-live .dot{background:#16a34a;box-shadow:0 0 6px #16a34a}'+
     '#aibo-live-chip.src-cache .dot{background:#d4870f}'+
-    '@media (max-width:760px){#aibo-live-chip{bottom:calc(76px + env(safe-area-inset-bottom,0px))}}'+
+    '@media (max-width:760px){#aibo-live-chip{bottom:calc(58px + env(safe-area-inset-bottom,0px))}}'+
     '#aibo-live-panel{position:fixed;left:0;right:0;bottom:0;z-index:9300;max-height:74vh;display:none;'+
       'flex-direction:column;background:#0b1017;border-top:1px solid #23405e;border-radius:14px 14px 0 0;'+
       'box-shadow:0 -12px 40px rgba(0,0,0,.6);color:#d7dee8;'+
@@ -8767,9 +9311,20 @@ window.MktView = (function(){
   }
   function sentCell(s){
     if(!s) return '<span class="mk-gap" title="no community sentiment yet — backend v3.7 supplies it (StockTwits / CoinGecko votes)">—</span>';
-    var x=s.v, c=x>0.05?'up':(x<-0.05?'dn':'fl');
+    var x=clamp(+s.v,-1,1);
+    var word = x>0.05?'BULL':(x<-0.05?'BEAR':'NEUT');
+    var col  = x>0.05?'#39d07f':(x<-0.05?'#f0685f':'#8A93A5');
     var tag=SENT_SRC[s.src]||'', tt=SENT_TITLE[s.src]||'community sentiment';
-    return '<span class="'+c+'" title="'+esc(tt+(s.n!=null?' · n='+s.n:''))+'">'+(x>0?'+':'')+x.toFixed(2)+'</span>'
+    /* arc fill maps v -1..+1 onto the same half-circle techGauge uses for 0..100 */
+    var R=13, C=Math.PI*R, off=C*(1-(x+1)/2);
+    var txt = x===0 ? '0' : (x>0?'+':'-')+Math.abs(x).toFixed(2).replace(/^0(?=\.)/,'');
+    return '<span class="mk-tg" title="'+esc(tt+(s.n!=null?' · n='+s.n:'')+' · v='+(x>0?'+':'')+x.toFixed(2))+'">'
+      +'<svg width="34" height="19" viewBox="0 0 34 19">'
+      +'<path d="M4 17 A 13 13 0 0 1 30 17" fill="none" stroke="#223045" stroke-width="3.4" stroke-linecap="round"/>'
+      +'<path d="M4 17 A 13 13 0 0 1 30 17" fill="none" stroke="'+col+'" stroke-width="3.4" stroke-linecap="round" '
+      +'stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/>'
+      +'<text x="17" y="16.5" text-anchor="middle" font-size="8" font-weight="800" fill="'+col+'">'+txt+'</text>'
+      +'</svg><b style="color:'+col+'">'+word+'</b></span>'
       +(tag?'<span class="mk-sub">'+tag+(s.n!=null?' · '+s.n:'')+'</span>':'');
   }
   var state={sort:'mcap',dir:-1,uni:'all',cat:'',choke:false,us:false,q:'',
@@ -8826,7 +9381,22 @@ window.MktView = (function(){
         +(function(){ var vb=''; try{ vb=r.tf?vbulletSVG(r.tf,r.px):''; }catch(e){}
            return vb?('<span class="mk-vb">'+vb+'</span>'):'<span class="mk-gap">—</span>'; })()+'</td>'
       +'<td class="c-chart"><div class="mstrip"><div class="mk-chph">· · ·</div></div></td>';
-    tr.addEventListener('click',function(){
+    tr.addEventListener('click',function(ev){
+      /* Stage 38 ZEN two-step on phones: first tap breathes the row open
+         (one at a time); tapping the OPENED charts/bullet/cap goes to the
+         card; tapping the opened data line closes. Desktop: straight to
+         the card, unchanged. */
+      if(window.matchMedia('(max-width:480px)').matches){
+        if(!tr.classList.contains('mx-open')){
+          var prev=tbody?tbody.querySelector('tr.mx-open'):null;
+          if(prev) prev.classList.remove('mx-open');
+          tr.classList.add('mx-open');
+          return;
+        }
+        var t=ev.target;
+        var deeper=t&&t.closest&&(t.closest('td.c-chart')||t.closest('td.c-bullet')||t.closest('td.c-mcap'));
+        if(!deeper){ tr.classList.remove('mx-open'); return; }
+      }
       /* THE point of this view: open the real deep-dive card */
       try{
         if(r.kind==='cr'){ if(Crypto&&Crypto.api&&Crypto.api.openSheet) Crypto.api.openSheet(r.key,tr); }
@@ -8893,6 +9463,9 @@ window.MktView = (function(){
     var tw=document.querySelector('#mktView .twrap');
     if(!tw||!ROWS.length) return;
     var twr=tw.getBoundingClientRect();
+    /* zero rect = view not laid out (hidden deck/view): the ±600px window
+       would degenerate to "every row visible" and bulk-build all charts */
+    if(twr.width===0&&twr.height===0) return;
     ROWS.forEach(function(r){
       if(r.charted||!r.tr||r.tr.style.display==='none') return;
       var b=r.tr.getBoundingClientRect();
@@ -8942,6 +9515,7 @@ window.MktView = (function(){
   function applyFilter(){
     ROWS.forEach(function(r){ r.tr.style.display=visible(r)?'':'none'; });
     renderStats();
+    updateFBadge();
     fillSoon();
     alignSoon();   /* rows leaving display:none can come back at scrollLeft 0 */
   }
@@ -8957,10 +9531,10 @@ window.MktView = (function(){
     var med=!n?null:(n%2 ? chgs[(n-1)/2] : (chgs[n/2-1]+chgs[n/2])/2);
     if(med!=null&&Math.abs(med)<0.005) med=0;
     document.getElementById('mkStat').innerHTML=
-      '<span><b>'+vis.length+'</b> assets</span>'
-      +'<span>Σ cap <b>'+(caps>0?fmtMoney(caps):'—')+'</b></span>'
-      +'<span>24h <b class="up">'+up+'▲</b>/<b class="dn">'+dn+'▼</b></span>'
-      +'<span>med '+(med!=null?('<b class="'+pctCls(med)+'">'+(med>0?'+':'')+med.toFixed(2)+'%</b>'):'—')+'</span>';
+      '<span class="st-n"><b>'+vis.length+'</b> assets</span>'
+      +'<span class="st-cap">Σ cap <b>'+(caps>0?fmtMoney(caps):'—')+'</b></span>'
+      +'<span class="st-brd">24h <b class="up">'+up+'▲</b>/<b class="dn">'+dn+'▼</b></span>'
+      +'<span class="st-med">med '+(med!=null?('<b class="'+pctCls(med)+'">'+(med>0?'+':'')+med.toFixed(2)+'%</b>'):'—')+'</span>';
   }
   function rebuildCats(){
     var sel=document.getElementById('mkCat');
@@ -8996,18 +9570,48 @@ window.MktView = (function(){
   /* ---------- css (runtime element; source keeps one style block) ------- */
   var CSS =
   '#mktView{padding:8px 10px 20px}'
-  +'#mktView .mk-ctl{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:2px 2px 8px}'
-  +'#mktView .mk-stats{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);align-items:baseline;margin:0 4px 8px}'
+  /* Stage 34 deck: ONE control row; on phones the marks/category/movers live in a
+     drop-over Filters sheet and search expands in place (controls are REPARENTED
+     by placeCtls(), never duplicated) */
+  +'#mktView .mk-deck{position:relative;margin:2px 0 8px}'
+  +'#mktView .mk-ctl{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;min-height:38px}'
+  +'#mktView .mk-inline{display:flex;gap:6px;align-items:center;flex:1 1 auto;min-width:0}'
+  +'#mktView .mk-stats{margin-left:auto;display:flex;gap:9px;align-items:baseline;font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;flex:0 1 auto}'
   +'#mktView .mk-stats b{color:var(--ink)}'
-  +'#mktView .mk-grp{display:flex;background:rgba(16,27,43,.9);border:1px solid var(--hair);border-radius:10px;padding:2px;gap:2px}'
+  +'#mktView .mk-grp{display:flex;background:rgba(16,27,43,.9);border:1px solid var(--hair);border-radius:10px;padding:2px;gap:2px;flex:none}'
   +'#mktView .mk-grp button{appearance:none;background:transparent;border:0;color:var(--muted);font:700 11px/1 inherit;letter-spacing:.3px;padding:7px 10px;border-radius:7px;cursor:pointer;white-space:nowrap}'
-  +'#mktView .mk-grp button.on{background:#21354f;color:var(--ink);box-shadow:inset 0 0 0 1px rgba(120,170,255,.28)}'
+  +'#mktView .mk-grp button.on{background:var(--sel-bg);color:var(--sel-ink);box-shadow:inset 0 0 0 1px var(--sel-line)}'
   +'#mktView .mk-grp button.mk-bchoke.on{background:rgba(232,181,60,.18);box-shadow:inset 0 0 0 1px rgba(244,197,82,.55);color:#f4dca0}'
   +'#mktView .mk-grp button.mk-bus.on{background:rgba(47,78,168,.25);box-shadow:inset 0 0 0 1px rgba(120,150,240,.5);color:#dfe6f8}'
-  +'#mktView .mk-sel{background:rgba(16,27,43,.9);border:1px solid var(--hair);border-radius:10px;color:var(--muted);font:700 11px/1 inherit;padding:8px 8px;max-width:200px}'
-  +'#mktView .mk-q{flex:1 1 120px;min-width:100px;background:#0a0f16;border:1px solid #223650;border-radius:10px;color:var(--ink);padding:8px 10px;font:600 12px/1 inherit;outline:none}'
+  +'#mktView .mk-sel{background:rgba(16,27,43,.9);border:1px solid var(--hair);border-radius:10px;color:var(--muted);font:700 11px/1 inherit;padding:8px 8px;max-width:180px;flex:none}'
+  +'#mktView .mk-q{flex:0 1 190px;min-width:90px;background:#0a0f16;border:1px solid #223650;border-radius:10px;color:var(--ink);padding:8px 10px;font:600 12px/1 inherit;outline:none}'
   +'#mktView .mk-q::placeholder{color:#5c6b7d}'
-  +'#mktView .twrap{border:1px solid var(--hair);border-radius:14px;background:rgba(18,26,38,.72);overflow:auto;max-height:calc(100dvh - 210px);overscroll-behavior:contain}'
+  +'#mktView .mk-ico{appearance:none;flex:none;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:rgba(16,27,43,.9);border:1px solid var(--hair);border-radius:10px;color:var(--ink);font-weight:800;font-size:14px;cursor:pointer}'
+  +'#mktView .mk-ctl .dd-btn{flex:none}'
+  +'#mktView .mk-fbdg{background:#1FC6DC;color:#0D1320;font-size:9px;font-weight:800;border-radius:999px;padding:1px 5px}'
+  +'#mktView .mk-fbdg[hidden]{display:none}'
+  +'#mktView .mk-qrow{display:none;align-items:center;gap:6px;min-height:38px}'
+  +'#mktView .mk-qrow .mk-q{flex:1 1 auto;max-width:none}'
+  +'#mktView .mk-deck.mk-searching .mk-ctl{display:none}'
+  +'#mktView .mk-deck.mk-searching .mk-qrow{display:flex}'
+  +'#mktView .mk-sheet{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:30;background:#121A26;border:1px solid #3a4a63;border-radius:12px;padding:12px 14px;box-shadow:0 14px 34px rgba(0,0,0,.55)}'
+  +'#mktView .mk-sheet.open{display:block}'
+  +'#mktView .mk-shrow{display:flex;align-items:center;gap:8px;margin:0 0 10px;flex-wrap:wrap}'
+  +'#mktView .mk-shrow:last-child{margin-bottom:0}'
+  +'#mktView .mk-shlab{flex:0 0 68px;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}'
+  +'#mktView .mk-slot{display:flex;flex:1;min-width:0}'
+  +'#mktView .mk-slot .mk-sel{width:100%;max-width:none}'
+  +'#mktView #mkSlotSort{gap:6px;align-items:center}'
+  /* the generic slot rule forces selects to width:100% — here the ▼ button
+     shares the slot, so the select must shrink or the button clips off-sheet */
+  +'#mktView #mkSlotSort .mk-sel{width:auto;flex:1 1 auto;min-width:0}'
+  +'#mktView #mkSortDir{flex:none;font-size:11px}'
+  /* Stage 37: phone legend strip (thead is gone on portrait phones — this is
+     the one-line map of what the deck shows) */
+  +'#mktView .mk-legend{display:none;font-size:9px;font-weight:700;letter-spacing:.04em;'
+  +'color:var(--muted);padding:0 4px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+  +'#mktView .mk-ph{display:none}'
+  +'#mktView .twrap{border:1px solid var(--hair);border-radius:14px;background:rgba(18,26,38,.72);overflow:auto;max-height:calc(100dvh - 165px);overscroll-behavior:contain}'
   +'#mktView table.mkt{border-collapse:separate;border-spacing:0;width:100%;min-width:1190px}'
   +'#mktView .mkt th,#mktView .mkt td{padding:7px 10px;border-bottom:1px solid rgba(42,54,71,.55);white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right;vertical-align:middle}'
   +'#mktView .mkt th{position:sticky;top:0;z-index:5;background:#101a29;color:var(--muted);font:700 10px/1.2 inherit;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;user-select:none;-webkit-user-select:none}'
@@ -9068,34 +9672,123 @@ window.MktView = (function(){
   +'#mktView .mk-note{margin:10px 4px 0;font-size:10.5px;color:var(--muted);line-height:1.55}'
   +'@media(max-width:900px){#mktView .c-1h,#mktView .c-7d,#mktView .c-vol,#mktView .c-tech,#mktView .c-sent{display:none}'
   +'#mktView table.mkt{min-width:610px}}'
-  +'@media(max-width:480px){#mktView .c-mcap,#mktView .c-bullet{display:none}'
-  +'#mktView table.mkt{min-width:420px}'
-  +'#mktView .mkt th.c-name,#mktView .mkt td.c-name{min-width:112px;max-width:126px}'
-  +'#mktView .mk-co,#mktView .mk-cat{max-width:82px}'
-  +'#mktView td.c-chart{min-width:215px}'
-  +'#mktView .mkt th,#mktView .mkt td{padding:6px 7px}'
-  +'#mktView .mk-grp button{padding:6px 8px;font-size:10px}'
-  +'#mktView .twrap{max-height:calc(100dvh - 250px)}}';
+  /* phone deck: phone-only chips appear, inline slot retires to the sheet */
+  +'@media(max-width:740px){#mktView .mk-ph{display:inline-flex}'
+  +'#mktView .mk-inline{display:none}'
+  +'#mktView .mk-stats{font-size:9.5px;gap:6px}'
+  +'#mktView .mk-stats .st-med{display:none}'
+  +'#mktView .mk-grp button{padding:6px 8px;font-size:10px}}'
+  /* Stage 37 MKTPHONE — portrait-phone two-decker (the owner's pick, variant B of the
+     08-19 sandbox round): the table drops table layout entirely and each row
+     becomes [data line over a FULL-WIDTH strip] with the 30d bullet as a
+     right rail spanning both lines. Minis are the star — every reclaimed
+     pixel of the old category chips / off-screen columns went to the charts. */
+  /* td.<cls> specificity REQUIRED here: the generic "td{display:block}" below
+     out-guns the ≤900px ".c-1h{display:none}" hiders — six zombie columns
+     came back as a third row line without this (caught in webkit QA) */
+  +'@media(max-width:480px){'
+  +'#mktView .mkt td.c-1h,#mktView .mkt td.c-7d,#mktView .mkt td.c-mcap,'
+  +'#mktView .mkt td.c-vol,#mktView .mkt td.c-tech,#mktView .mkt td.c-sent,'
+  +'#mktView .mkt td.c-rank,#mktView .mkt td.c-bullet{display:none}'
+  +'#mktView table.mkt,#mktView .mkt tbody{display:block;min-width:0;width:100%}'
+  +'#mktView .mkt thead{display:none}'
+  +'#mktView #mkMode{display:none}'   /* Stage 38: one chart at rest — 3×|5 means nothing here */
+  +'#mktView .twrap{overflow-x:hidden;max-height:calc(100dvh - 175px)}'
+  /* Stage 38 ZEN (the owner 08-20, sandbox pick: Z1's row + Z3's breathe-open,
+     sizes between the two): rest rows = ticker/name over the grade pill,
+     ONE hero daily chart, price over 24h — no rank, no leader, no bullet.
+     Tap a row → .mx-open expands it in place to the full 5-frame wrap +
+     30d bullet + market cap; tapping the OPENED charts goes to the real
+     deep-dive card (wired in buildRow). Divider stays the 37b bright line. */
+  +'#mktView .mkt tbody tr{display:grid;grid-template-columns:minmax(96px,116px) minmax(0,1fr) 84px;'
+  +'grid-auto-rows:min-content;column-gap:8px;align-items:center;padding:6px 6px 7px 10px;'
+  +'border-bottom:1px solid rgba(126,160,205,.42)}'
+  +'#mktView .mkt tbody tr:active{background:rgba(31,198,220,.08)}'
+  +'#mktView .mkt tbody tr:hover td{background:transparent}'
+  +'#mktView .mkt td{display:block;padding:0;border-bottom:0;min-width:0}'
+  +'#mktView .mkt td.c-name{grid-area:1/1;position:static;background:transparent;box-shadow:none;min-width:0;max-width:none;overflow:hidden}'
+  +'#mktView .mkt td.c-grade{grid-area:2/1;justify-self:start;padding-top:2px}'
+  +'#mktView .mkt td.c-chart{grid-area:1/2/3/3;padding:0;min-width:0}'
+  +'#mktView .mkt td.c-price{grid-area:1/3;font-size:13.5px;font-weight:700;align-self:end}'
+  +'#mktView .mkt td.c-24h{grid-area:2/3;font-size:11px;align-self:start;padding-top:2px}'
+  +'#mktView .mk-sym{font-size:14px}'
+  +'#mktView .mk-co{-webkit-line-clamp:1;max-width:none;line-height:1.25}'
+  +'#mktView .mk-cat{display:none}'
+  +'#mktView .cell-grade .mk-sub{display:none}'
+  /* rest state: the strip cell shows ONLY the daily frame — label off, hero
+     size, mode classes overruled (the 3×|5 toggle is hidden on phones; both
+     modes render the same zen row). .as-mrow children: M(1) W(2) D(3) 4H(4)
+     H(5). Strip sync stays desktop-only (nothing scrolls here). */
+  +'#mktView .mkt td.c-chart .mn-w{display:none}'
+  +'#mktView .mkt td.c-chart .mn-n{display:block;width:100%}'
+  +'#mktView .mkt td.c-chart .as-tbo{display:none}'
+  +'#mktView .mkt td.c-chart .as-tbo:nth-child(3){display:inline-flex;flex:1 1 100%}'
+  +'#mktView .mkt td.c-chart .as-tbo i{display:none}'
+  +'#mktView .mkt td.c-chart .mn-n svg{height:44px}'
+  +'#mktView .mk-chph{height:44px}#mktView .mode-s3 .mk-chph{height:44px}'
+  /* open state (the owner 08-20 revision: NOT the five-small wrap): one full-width
+     line of BIG frames — 3 visible + a .25 peek that cues the thumb-scroll
+     (the app's own mode-s3 fraction), M W D 4H H a drag away. The scroll
+     lives only inside the opened row; rest rows stay scroll-free. Bullet
+     sits under the strip's right end at its native stout size, cap line
+     bottom-left. */
+  +'#mktView .mkt tbody tr.mx-open td.c-chart{grid-area:3/1/4/4;padding-top:5px}'
+  +'#mktView .mkt tbody tr.mx-open td.c-chart .as-tbo{display:inline-flex;flex:0 0 calc((100% - 20px)/3.25)}'
+  +'#mktView .mkt tbody tr.mx-open td.c-chart .as-tbo i{display:block}'
+  +'#mktView .mkt tbody tr.mx-open td.c-chart .mn-n svg{height:52px}'
+  +'#mktView .mkt tbody tr.mx-open td.c-bullet{display:block;grid-area:4/3/5/4;align-self:center;text-align:right;padding-top:4px}'
+  +'#mktView .mkt tbody tr.mx-open .mk-vb svg.vb-w{display:block;height:64px;margin:0 0 0 auto}'
+  +'#mktView .mkt tbody tr.mx-open td.c-mcap{display:block;grid-area:4/1/5/3;align-self:center;font-size:10.5px;color:var(--muted);text-align:left;padding-top:4px}'
+  +'#mktView .mkt tbody tr.mx-open td.c-mcap::before{content:"market cap  ";opacity:.75}'
+  +'#mktView .mkt tbody tr.mx-open td.c-mcap .mk-sub{display:inline;margin-left:6px}'
+  +'#mktView .mk-legend{display:block}'
+  +'#mktView .mk-stats .st-cap{display:none}}';
 
   /* ---------- mount + wiring ---------- */
   function mount(){
+    /* the Badge may have been flipped before Markets ever opened — sync, or the
+       first build grades with the wrong lens under a top bar that says otherwise */
+    state.lens=(typeof currentLens!=='undefined'&&currentLens==='rec')?'rec':'exp';
     var css=document.createElement('style'); css.id='mkt-css'; css.textContent=CSS;
     document.head.appendChild(css);
     var m=document.getElementById('mktMount');
     m.innerHTML=
-      '<div class="mk-ctl">'
-      +'<div class="mk-grp" id="mkUni">'
+      '<div class="mk-deck" id="mkDeck">'
+      +'<div class="mk-ctl" id="mkCtl">'
+      +'<div class="dd" id="mkUniDD"><button type="button" class="dd-btn"><span class="dd-lab">Uni</span><b class="dd-val" id="mkUniVal">All</b><i class="dd-car">▾</i></button>'
+      +'<div class="dd-menu" id="mkUni">'
       +'<button data-u="all" class="on">All</button><button data-u="eq">Equities</button>'
-      +'<button data-u="cr">Crypto</button><button data-u="fd">Funds</button></div>'
-      +'<div class="mk-grp"><button id="mkChoke" class="mk-bchoke">◆ Chokepoints</button>'
+      +'<button data-u="cr">Crypto</button><button data-u="fd">Funds</button></div></div>'
+      +'<button type="button" class="mk-ico mk-ph" id="mkQBtn" aria-label="Search">🔍</button>'
+      +'<button type="button" class="dd-btn mk-ph" id="mkFBtn"><b class="dd-val">Filters</b><span class="mk-fbdg" id="mkFBadge" hidden></span><i class="dd-car">▾</i></button>'
+      +'<span class="mk-inline" id="mkInline">'
+      +'<div class="mk-grp" id="mkMarks"><button id="mkChoke" class="mk-bchoke">◆ Chokepoints</button>'
       +'<button id="mkUs" class="mk-bus">US-only</button></div>'
       +'<select class="mk-sel" id="mkCat"></select>'
       +'<input class="mk-q" id="mkQ" placeholder="Search ticker or name" autocomplete="off">'
-      +'<div class="mk-grp"><button id="mkGain">▲ Gainers</button><button id="mkLose">▼ Losers</button></div>'
-      +'<div class="mk-grp" id="mkLens" title="Grade lens"><button data-l="exp">EXP</button><button data-l="rec">REC</button></div>'
-      +'<div class="mk-grp" id="mkMode" title="Mini layout"><button data-m="s3">3× scroll</button><button data-m="a5">All 5</button></div>'
-      +'</div>'
+      +'<div class="mk-grp" id="mkMov"><button id="mkGain">▲ Gainers</button><button id="mkLose">▼ Losers</button></div>'
+      +'</span>'
+      +'<div class="mk-grp" id="mkMode" title="Mini layout"><button data-m="s3">3×</button><button data-m="a5">5</button></div>'
       +'<div class="mk-stats" id="mkStat"></div>'
+      +'</div>'
+      +'<div class="mk-qrow" id="mkQRow"><button type="button" class="mk-ico" id="mkQClose" aria-label="Close search">✕</button></div>'
+      +'<div class="mk-sheet" id="mkSheet">'
+      +'<div class="mk-shrow"><span class="mk-shlab">Marks</span><span class="mk-slot" id="mkSlotMarks"></span></div>'
+      +'<div class="mk-shrow"><span class="mk-shlab">Category</span><span class="mk-slot" id="mkSlotCat"></span></div>'
+      +'<div class="mk-shrow"><span class="mk-shlab">Movers</span><span class="mk-slot" id="mkSlotMov"></span></div>'
+      /* Stage 37: the phone deck has no thead, so the sheet carries sort */
+      +'<div class="mk-shrow"><span class="mk-shlab">Sort</span><span class="mk-slot" id="mkSlotSort">'
+      +'<select class="mk-sel" id="mkSortSel">'
+      +'<option value="rank"># Rank</option><option value="name">Ticker A–Z</option>'
+      +'<option value="grade">Grade</option><option value="px">Price</option>'
+      +'<option value="chg24">24h %</option><option value="chg7">7d %</option>'
+      +'<option value="mcap">Mkt Cap</option><option value="tech">Tech</option>'
+      +'<option value="sent">Sent</option><option value="range">30d position</option></select>'
+      +'<button type="button" class="mk-ico" id="mkSortDir" aria-label="Flip sort direction">▼</button>'
+      +'</span></div>'
+      +'</div>'
+      +'</div>'
+      +'<div class="mk-legend">tap a name to look closer · tap its charts for the full card</div>'
       +'<div class="twrap mode-'+state.mode+'"><table class="mkt"><thead><tr id="mkHead"></tr></thead><tbody id="mkBody"></tbody></table></div>'
       +'<div class="mk-note">Tap any row for the full grading card. Equity cap = live px × SEC-filed shares (tooltip has the filing date; no US filing → “—”). '
       +'24h during a closed session = last-session move. Vol = share volume × latest price — a dollar-turnover approximation (not VWAP); crypto volume is not in the feed, shown “—”. '
@@ -9122,6 +9815,8 @@ window.MktView = (function(){
       b.addEventListener('click',function(){
         state.uni=b.dataset.u; state.cat='';
         document.querySelectorAll('#mkUni button').forEach(function(x){x.classList.toggle('on',x===b);});
+        document.getElementById('mkUniVal').textContent=b.textContent;
+        document.getElementById('mkUniDD').classList.remove('open');
         rebuildCats(); applyFilter();
       });
     });
@@ -9130,14 +9825,16 @@ window.MktView = (function(){
     bu.addEventListener('click',function(){ state.us=!state.us; bu.classList.toggle('on',state.us); applyFilter(); });
     document.getElementById('mkCat').addEventListener('change',function(e){ state.cat=e.target.value; applyFilter(); });
     document.getElementById('mkQ').addEventListener('input',function(e){ state.q=e.target.value.trim().toUpperCase(); applyFilter(); });
-    document.querySelectorAll('#mkLens button').forEach(function(b){
-      b.classList.toggle('on',b.dataset.l===state.lens);
-      b.addEventListener('click',function(){
-        state.lens=b.dataset.l;
-        document.querySelectorAll('#mkLens button').forEach(function(x){x.classList.toggle('on',x===b);});
-        ROWS.forEach(function(r){ if(r.kind==='eq') r.tr.querySelector('.cell-grade').innerHTML=gradeCell(r); });
-        if(state.sort==='grade') applySort();
-      });
+    /* the in-deck EXP/REC group is gone (the top bar owns the lens) — mirror the
+       real #lensSeg instead, so the Badge chip/strip now regrades this table too */
+    document.addEventListener('click',function(e){
+      var b=e.target.closest('#lensSeg button'); if(!b) return;
+      var l=b.dataset.l==='rec'?'rec':'exp';
+      if(state.lens===l) return;
+      state.lens=l;
+      if(!built) return;
+      ROWS.forEach(function(r){ if(r.kind==='eq') r.tr.querySelector('.cell-grade').innerHTML=gradeCell(r); });
+      if(state.sort==='grade') applySort();
     });
     document.querySelectorAll('#mkMode button').forEach(function(b){
       b.classList.toggle('on',b.dataset.m===state.mode);
@@ -9150,9 +9847,74 @@ window.MktView = (function(){
         alignSoon();   /* back in 3x-scroll: restore the shared timeframe X */
       });
     });
-    document.getElementById('mkGain').addEventListener('click',function(){ state.sort='chg24'; state.dir=-1; applySort(); });
-    document.getElementById('mkLose').addEventListener('click',function(){ state.sort='chg24'; state.dir=1; applySort(); });
+    document.getElementById('mkGain').addEventListener('click',function(){ state.sort='chg24'; state.dir=-1; applySort(); syncSortUI(); });
+    document.getElementById('mkLose').addEventListener('click',function(){ state.sort='chg24'; state.dir=1; applySort(); syncSortUI(); });
+    /* Stage 37: sheet sort row — the phone deck hides thead, whose taps were the
+       only sort UI. Mirrors state.sort/state.dir; desktop th clicks unaffected. */
+    var mkSS=document.getElementById('mkSortSel'), mkSD=document.getElementById('mkSortDir');
+    function syncSortUI(){
+      if(!mkSS) return;
+      if(mkSS.querySelector('option[value="'+state.sort+'"]')) mkSS.value=state.sort;
+      mkSD.textContent=state.dir<0?'▼':'▲';
+    }
+    mkSS.addEventListener('change',function(){
+      state.sort=mkSS.value;
+      state.dir=(mkSS.value==='name'||mkSS.value==='rank')?1:-1;
+      applySort(); syncSortUI();
+    });
+    mkSD.addEventListener('click',function(){ state.dir=-state.dir; applySort(); syncSortUI(); });
+    syncSortUI();
+    /* --- Stage 34 deck behaviors --- */
+    var deck=document.getElementById('mkDeck'), sheet=document.getElementById('mkSheet'),
+        uniDD=document.getElementById('mkUniDD');
+    function closeBarDDs(){ var bar=document.querySelector('.appbar');
+      if(bar){ bar.classList.remove('brand-open');
+        bar.querySelectorAll('.dd.open').forEach(function(d){d.classList.remove('open');}); }
+      var mp=document.getElementById('mPop'); if(mp) mp.classList.remove('open'); }
+    document.querySelector('#mkUniDD .dd-btn').addEventListener('click',function(e){
+      e.stopPropagation(); closeBarDDs(); sheet.classList.remove('open'); uniDD.classList.toggle('open');
+    });
+    document.getElementById('mkFBtn').addEventListener('click',function(e){
+      e.stopPropagation(); closeBarDDs(); uniDD.classList.remove('open'); sheet.classList.toggle('open');
+      syncSortUI();   /* Stage 37: reflect whatever gainers/losers or a th tap set */
+    });
+    sheet.addEventListener('click',function(e){ e.stopPropagation(); });
+    document.getElementById('mkQBtn').addEventListener('click',function(){
+      uniDD.classList.remove('open'); sheet.classList.remove('open');
+      deck.classList.add('mk-searching');
+      var q=document.getElementById('mkQ'); q.focus();
+    });
+    document.getElementById('mkQClose').addEventListener('click',function(){
+      var q=document.getElementById('mkQ');
+      deck.classList.remove('mk-searching');
+      if(q.value){ q.value=''; state.q=''; applyFilter(); }
+    });
+    document.addEventListener('click',function(){ uniDD.classList.remove('open'); sheet.classList.remove('open'); });
+    /* phone: marks/category/movers live in the sheet and search in its own row;
+       wide: everything returns inline. Reparenting keeps listeners — no duplicates. */
+    var mql=window.matchMedia('(max-width:740px)');
+    function placeCtls(){
+      var marks=document.getElementById('mkMarks'), cat=document.getElementById('mkCat'),
+          mov=document.getElementById('mkMov'), q=document.getElementById('mkQ');
+      if(mql.matches){
+        document.getElementById('mkSlotMarks').appendChild(marks);
+        document.getElementById('mkSlotCat').appendChild(cat);
+        document.getElementById('mkSlotMov').appendChild(mov);
+        document.getElementById('mkQRow').appendChild(q);
+      } else {
+        var inl=document.getElementById('mkInline');
+        inl.appendChild(marks); inl.appendChild(cat); inl.appendChild(q); inl.appendChild(mov);
+        deck.classList.remove('mk-searching'); sheet.classList.remove('open');
+      }
+    }
+    try{ mql.addEventListener('change',placeCtls); }catch(_){ mql.addListener(placeCtls); }
+    placeCtls();
     built=true;
+  }
+  function updateFBadge(){
+    var el=document.getElementById('mkFBadge'); if(!el) return;
+    var n=(state.choke?1:0)+(state.us?1:0)+(state.cat?1:0);
+    el.hidden=!n; if(n) el.textContent=n;
   }
   function rebuild(){
     var prev=ROWS, prevRows=null;
@@ -9198,6 +9960,7 @@ window.MktView = (function(){
   }
   function render(){
     if(!built) mount();
+    var sh=document.getElementById('mkSheet'); if(sh) sh.classList.remove('open');
     var at=(window.AIBO_LIVE&&AIBO_LIVE.state)?AIBO_LIVE.state.at:null;
     if(!ROWS.length || at!==lastAt) rebuild();
     else fillSoon();
@@ -9208,6 +9971,10 @@ window.MktView = (function(){
   setInterval(function(){
     if(document.hidden || !built) return;
     if(typeof activeView!=='undefined' && activeView!=='mkt') return;
+    /* studio deck hides #mktView (display:none) without changing activeView —
+       rebuilding a zero-layout view bulk-fills every chart and reads scroll as
+       0; skip, deck-return runs showView -> render() and catches up there */
+    if(document.body.classList.contains('deck-studio')) return;
     var at=(window.AIBO_LIVE&&AIBO_LIVE.state)?AIBO_LIVE.state.at:null;
     if(at!==lastAt) rebuild();
   }, 45000);
