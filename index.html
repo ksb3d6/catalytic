@@ -9761,6 +9761,10 @@ window.MktView = (function(){
       +'<button data-u="cr">Crypto</button><button data-u="fd">Funds</button></div></div>'
       +'<button type="button" class="mk-ico mk-ph" id="mkQBtn" aria-label="Search">🔍</button>'
       +'<button type="button" class="dd-btn mk-ph" id="mkFBtn"><b class="dd-val">Filters</b><span class="mk-fbdg" id="mkFBadge" hidden></span><i class="dd-car">▾</i></button>'
+      /* Stage 40 (the owner 08-22): the macro dial — opens the standalone Yield curves
+         page (yields.html, baked Treasury data). Placement provisional per the owner
+         ("we'll find a way to put this later"). */
+      +'<button type="button" class="dd-btn" id="mkYields" title="US Treasury yield curves"><b class="dd-val">Yields</b></button>'
       +'<span class="mk-inline" id="mkInline">'
       +'<div class="mk-grp" id="mkMarks"><button id="mkChoke" class="mk-bchoke">◆ Chokepoints</button>'
       +'<button id="mkUs" class="mk-bus">US-only</button></div>'
@@ -9878,6 +9882,8 @@ window.MktView = (function(){
       e.stopPropagation(); closeBarDDs(); uniDD.classList.remove('open'); sheet.classList.toggle('open');
       syncSortUI();   /* Stage 37: reflect whatever gainers/losers or a th tap set */
     });
+    /* Stage 40: same-tab so the PWA's back gesture returns to the table */
+    document.getElementById('mkYields').addEventListener('click',function(){ location.href='yields.html'; });
     sheet.addEventListener('click',function(e){ e.stopPropagation(); });
     document.getElementById('mkQBtn').addEventListener('click',function(){
       uniDD.classList.remove('open'); sheet.classList.remove('open');

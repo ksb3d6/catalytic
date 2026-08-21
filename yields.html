@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0D1320">
+<title>AI Build-Out — Yield curves</title>
+<style>
+/* ===== the app's One Hand tokens (Stage 39) — keep in sync with the canonical ===== */
+:root{
+  --bg:#0D1320; --card:#172230; --panel:#121A26; --ink:#EAEEF5; --hair:#2A3647;
+  --muted:rgba(234,238,245,.52); --muted2:rgba(234,238,245,.4);
+  --sel-bg:#0c2830; --sel-ink:#9fe8f4; --sel-line:#1e6a78;
+  --up:#39d07f; --dn:#f0685f; --teal:#1FC6DC;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:
+   radial-gradient(1200px 700px at 78% 0%, rgba(31,198,220,.05), transparent 60%),
+   radial-gradient(1100px 800px at 12% 14%, rgba(217,69,182,.045), transparent 60%),
+   var(--bg);
+  color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"DejaVu Sans",sans-serif;
+  -webkit-font-smoothing:antialiased;}
+.mono{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1100px;margin:0 auto;padding:calc(10px + env(safe-area-inset-top)) 12px calc(28px + env(safe-area-inset-bottom))}
+.hdr{display:flex;align-items:center;gap:10px;min-height:40px;margin-bottom:6px}
+.back{appearance:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--hair);
+  background:#101b2b;color:var(--ink);font-weight:800;font-size:14px;cursor:pointer;flex:none}
+.hdr h1{font-size:17px;font-weight:700;margin:0;letter-spacing:.2px}
+.hdr .asof{margin-left:auto;font-size:10.5px;color:var(--muted);white-space:nowrap}
+.ctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 10px}
+.seg{display:inline-flex;background:#101b2b;border:1px solid var(--hair);border-radius:10px;padding:3px;gap:2px;flex:none}
+.seg button{appearance:none;border:0;background:transparent;color:var(--muted);font-weight:700;font-size:12px;
+  padding:6px 12px;border-radius:7px;cursor:pointer;font-family:inherit}
+.seg button.on{background:var(--sel-bg);color:var(--sel-ink);box-shadow:inset 0 0 0 1px var(--sel-line)}
+.legend{display:flex;gap:5px;flex-wrap:wrap;flex:1 1 auto;justify-content:flex-end}
+.lg{appearance:none;display:inline-flex;align-items:center;gap:5px;background:#101b2b;border:1px solid var(--hair);
+  border-radius:10px;padding:4px 8px;color:var(--muted);font:700 10.5px/1 inherit;cursor:pointer}
+.lg i{width:8px;height:8px;border-radius:50%;flex:none;background:var(--c)}
+.lg.off{opacity:.32}
+.lg.star{color:var(--ink)}
+.card{background:rgba(18,26,38,.72);border:1px solid var(--hair);border-radius:14px;padding:12px 12px 10px;margin:0 0 10px;overflow:hidden}
+.card h2{margin:0 0 2px;font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.card .sub{font-size:11px;color:var(--muted2);margin:0 0 8px;line-height:1.45}
+svg{display:block;width:100%;height:auto;touch-action:pan-y}
+.spreadnow{display:flex;gap:14px;margin-top:6px;font-size:11px;color:var(--muted);flex-wrap:wrap}
+.spreadnow b{font-size:12.5px}
+.foot{font-size:10.5px;color:var(--muted2);line-height:1.6;margin-top:14px}
+.err{padding:30px 10px;color:var(--muted);font-size:13px;text-align:center}
+@media(min-width:741px){ .hdr h1{font-size:20px} .card{padding:16px 16px 12px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <button class="back" id="back" aria-label="Back">←</button>
+    <h1>Yield curves</h1>
+    <span class="asof mono" id="asof"></span>
+  </div>
+
+  <div class="ctl">
+    <div class="seg" id="range">
+      <button data-r="252">1Y</button><button data-r="756" class="on">3Y</button><button data-r="0">All</button>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="card">
+    <h2>All maturities · superimposed</h2>
+    <div class="sub">Every Treasury tenor as one ribbon — drag anywhere to scrub; the curve below redraws at that date. Tap a legend chip to hide/show a tenor. <b style="color:var(--ink)">2Y · 10Y · 30Y</b> ride bold.</div>
+    <svg id="ribbons" viewBox="0 0 720 320" preserveAspectRatio="none"></svg>
+  </div>
+
+  <div class="card">
+    <h2 id="curveTitle">The curve</h2>
+    <div class="sub">Yield vs maturity at the scrubbed date — the ghost line is today, for the shape drift. Red dots mark inverted steps (that tenor yields less than the one before it).</div>
+    <svg id="curve" viewBox="0 0 720 210"></svg>
+  </div>
+
+  <div class="card">
+    <h2>Spreads · the recession dials</h2>
+    <div class="sub">10Y−2Y filled (red below zero = inverted), 10Y−3M as the thin line. The 2022–24 inversion and the re-steepening are the whole story of this window.</div>
+    <svg id="spread" viewBox="0 0 720 150" preserveAspectRatio="none"></svg>
+    <div class="spreadnow mono" id="spreadNow"></div>
+  </div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+'use strict';
+/* colors: cool short end → warm long end; the three Carl named ride bold */
+var COLS={ '1M':'#47617f','3M':'#5b7fa6','6M':'#6d97c4','1Y':'#7ab0ea','2Y':'#1FC6DC',
+           '3Y':'#8b9cf6','5Y':'#a78bfa','7Y':'#c084fc','10Y':'#e879f9','20Y':'#f0a24a','30Y':'#e8b53c' };
+var STARS={'2Y':1,'10Y':1,'30Y':1};
+var D=null, vis={}, rangeN=756, scrubIdx=null;
+
+document.getElementById('back').addEventListener('click',function(){
+  if(history.length>1) history.back(); else location.href='latest.html';
+});
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function fmt2(x){return (x==null||!isFinite(x))?'—':x.toFixed(2);}
+function niceDate(iso){ var p=iso.split('-'); return p[1]+'/'+p[2]+'/'+p[0].slice(2); }
+
+fetch('yields.json').then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+  D=j;
+  D.maturities.forEach(function(m){ vis[m.k]=true; });
+  scrubIdx=D.days.length-1;
+  document.getElementById('asof').textContent='through '+j.asOf;
+  document.getElementById('foot').innerHTML='Daily par yields · '+esc(j.source)+' · baked snapshot through <b class="mono">'+j.asOf+
+    '</b> — nothing interpolated, gaps stay gaps. Refresh: <span class="mono">python3 bake_yields.py</span> and republish.';
+  buildLegend(); paintAll();
+}).catch(function(){
+  document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="err">Couldn’t load yields.json — it ships alongside this page; rerun bake_yields.py if it’s missing.</div>');
+});
+
+function buildLegend(){
+  var el=document.getElementById('legend');
+  el.innerHTML=D.maturities.map(function(m){
+    return '<button class="lg'+(STARS[m.k]?' star':'')+'" data-k="'+m.k+'" style="--c:'+COLS[m.k]+'"><i></i>'+m.k+'</button>';
+  }).join('');
+  el.addEventListener('click',function(e){
+    var b=e.target.closest('.lg'); if(!b) return;
+    vis[b.dataset.k]=!vis[b.dataset.k];
+    b.classList.toggle('off',!vis[b.dataset.k]);
+    paintAll();
+  });
+}
+document.getElementById('range').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  rangeN=+b.dataset.r;
+  document.querySelectorAll('#range button').forEach(function(x){x.classList.toggle('on',x===b);});
+  paintAll();
+});
+
+function windowDays(){
+  var days=D.days;
+  return rangeN>0 ? days.slice(Math.max(0,days.length-rangeN)) : days;
+}
+function yScale(days){
+  var lo=Infinity,hi=-Infinity;
+  var idx=D.maturities.map(function(m,i){return vis[m.k]?i:-1;}).filter(function(i){return i>=0;});
+  days.forEach(function(d){ idx.forEach(function(i){ var v=d[1][i]; if(v!=null){ if(v<lo)lo=v; if(v>hi)hi=v; } }); });
+  if(!isFinite(lo)){lo=0;hi=5;}
+  var pad=(hi-lo)*0.06||0.3; lo-=pad; hi+=pad;
+  return {lo:lo,hi:hi};
+}
+
+function paintAll(){ paintRibbons(); paintCurve(); paintSpread(); }
+
+function paintRibbons(){
+  var days=windowDays(), W=720,H=320,padL=34,padR=8,padT=8,padB=18;
+  var sc=yScale(days), n=days.length;
+  var X=function(i){ return padL+(W-padL-padR)*(n<2?0:i/(n-1)); };
+  var Y=function(v){ return padT+(H-padT-padB)*(1-(v-sc.lo)/(sc.hi-sc.lo)); };
+  var s='';
+  /* y gridlines at whole percents */
+  for(var g=Math.ceil(sc.lo);g<=Math.floor(sc.hi);g++){
+    s+='<line x1="'+padL+'" y1="'+Y(g).toFixed(1)+'" x2="'+(W-padR)+'" y2="'+Y(g).toFixed(1)+'" stroke="rgba(42,54,71,.55)" stroke-width="1"/>'
+      +'<text x="'+(padL-5)+'" y="'+(Y(g)+3).toFixed(1)+'" text-anchor="end" font-size="10" fill="rgba(234,238,245,.4)" font-family="ui-monospace,Menlo,monospace">'+g+'</text>';
+  }
+  /* year ticks */
+  var lastYr='';
+  days.forEach(function(d,i){ var yr=d[0].slice(0,4);
+    if(yr!==lastYr){ lastYr=yr;
+      if(i>0) s+='<line x1="'+X(i).toFixed(1)+'" y1="'+padT+'" x2="'+X(i).toFixed(1)+'" y2="'+(H-padB)+'" stroke="rgba(42,54,71,.4)" stroke-width="1"/>';
+      s+='<text x="'+(X(i)+3).toFixed(1)+'" y="'+(H-5)+'" font-size="10" fill="rgba(234,238,245,.4)" font-family="ui-monospace,Menlo,monospace">'+yr+'</text>';
+    }});
+  D.maturities.forEach(function(m,mi){
+    if(!vis[m.k]) return;
+    var p='';
+    days.forEach(function(d,i){ var v=d[1][mi];
+      if(v==null){ return; }
+      p+=(p?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1);
+    });
+    var star=STARS[m.k];
+    s+='<path d="'+p+'" fill="none" stroke="'+COLS[m.k]+'" stroke-width="'+(star?2:1)+'" opacity="'+(star?1:.42)+'" stroke-linejoin="round"/>';
+  });
+  /* scrub hairline */
+  var si=scrubIdxInWindow(days);
+  if(si!=null){
+    s+='<line x1="'+X(si).toFixed(1)+'" y1="'+padT+'" x2="'+X(si).toFixed(1)+'" y2="'+(H-padB)+'" stroke="#9fe8f4" stroke-width="1" stroke-dasharray="3 3" opacity=".8"/>';
+  }
+  var svg=document.getElementById('ribbons');
+  svg.innerHTML=s;
+  wireScrub(svg,days,X,padL,W-padR);
+}
+function scrubIdxInWindow(days){
+  if(scrubIdx==null) return null;
+  var d=D.days[scrubIdx][0];
+  for(var i=days.length-1;i>=0;i--) if(days[i][0]===d) return i;
+  return null;
+}
+function wireScrub(svg,days,X,x0,x1){
+  function pick(clientX){
+    var r=svg.getBoundingClientRect();
+    var fx=(clientX-r.left)/r.width*720;
+    var t=Math.max(0,Math.min(1,(fx-x0)/(x1-x0)));
+    var i=Math.round(t*(days.length-1));
+    var d=days[i][0];
+    for(var g=0;g<D.days.length;g++) if(D.days[g][0]===d){ scrubIdx=g; break; }
+    paintAll();
+  }
+  svg.onpointerdown=function(e){ pick(e.clientX); svg.setPointerCapture(e.pointerId); svg._dn=1; };
+  svg.onpointermove=function(e){ if(svg._dn) pick(e.clientX); };
+  svg.onpointerup=svg.onpointercancel=function(){ svg._dn=0; };
+}
+
+function paintCurve(){
+  var W=720,H=210,padL=34,padR=10,padT=12,padB=22;
+  var day=D.days[scrubIdx], latest=D.days[D.days.length-1];
+  document.getElementById('curveTitle').textContent='The curve · '+niceDate(day[0])+(scrubIdx===D.days.length-1?' (latest)':'');
+  var idx=D.maturities.map(function(m,i){return i;});
+  var lo=Infinity,hi=-Infinity;
+  [day,latest].forEach(function(dd){ idx.forEach(function(i){ var v=dd[1][i]; if(v!=null){ if(v<lo)lo=v; if(v>hi)hi=v; } }); });
+  var pad=(hi-lo)*0.1||0.3; lo-=pad; hi+=pad;
+  var X=function(i){ return padL+(W-padL-padR)*i/(idx.length-1); };
+  var Y=function(v){ return padT+(H-padT-padB)*(1-(v-lo)/(hi-lo)); };
+  var s='';
+  for(var g=Math.ceil(lo);g<=Math.floor(hi);g++){
+    s+='<line x1="'+padL+'" y1="'+Y(g).toFixed(1)+'" x2="'+(W-padR)+'" y2="'+Y(g).toFixed(1)+'" stroke="rgba(42,54,71,.55)"/>'
+      +'<text x="'+(padL-5)+'" y="'+(Y(g)+3).toFixed(1)+'" text-anchor="end" font-size="10" fill="rgba(234,238,245,.4)" font-family="ui-monospace,Menlo,monospace">'+g+'</text>';
+  }
+  D.maturities.forEach(function(m,i){
+    s+='<text x="'+X(i).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" font-size="9.5" fill="rgba(234,238,245,.45)" font-family="ui-monospace,Menlo,monospace">'+m.k+'</text>';
+  });
+  function path(dd){
+    var p='';
+    idx.forEach(function(i){ var v=dd[1][i]; if(v==null) return; p+=(p?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1); });
+    return p;
+  }
+  if(scrubIdx!==D.days.length-1)
+    s+='<path d="'+path(latest)+'" fill="none" stroke="rgba(234,238,245,.28)" stroke-width="1.5" stroke-dasharray="4 3"/>';
+  s+='<path d="'+path(day)+'" fill="none" stroke="var(--teal)" stroke-width="2.2" stroke-linejoin="round"/>';
+  idx.forEach(function(i){
+    var v=day[1][i]; if(v==null) return;
+    var prev=null; for(var q=i-1;q>=0;q--){ if(day[1][q]!=null){ prev=day[1][q]; break; } }
+    var inv=prev!=null&&v<prev;
+    s+='<circle cx="'+X(i).toFixed(1)+'" cy="'+Y(v).toFixed(1)+'" r="3.4" fill="'+(inv?'var(--dn)':'var(--teal)')+'" stroke="#0D1320" stroke-width="1.4"/>';
+  });
+  document.getElementById('curve').innerHTML=s;
+}
+
+function sIdx(k){ for(var i=0;i<D.maturities.length;i++) if(D.maturities[i].k===k) return i; return -1; }
+function paintSpread(){
+  var days=windowDays(), W=720,H=150,padL=34,padR=8,padT=8,padB=16;
+  var i2=sIdx('2Y'), i10=sIdx('10Y'), i3m=sIdx('3M');
+  var sp=days.map(function(d){ var a=d[1][i10],b=d[1][i2],c=d[1][i3m];
+    return [ (a!=null&&b!=null)?a-b:null, (a!=null&&c!=null)?a-c:null ]; });
+  var lo=0,hi=0;
+  sp.forEach(function(p){ p.forEach(function(v){ if(v!=null){ if(v<lo)lo=v; if(v>hi)hi=v; } }); });
+  lo-=.15; hi+=.15;
+  var n=days.length;
+  var X=function(i){ return padL+(W-padL-padR)*(n<2?0:i/(n-1)); };
+  var Y=function(v){ return padT+(H-padT-padB)*(1-(v-lo)/(hi-lo)); };
+  var s='';
+  var z=Y(0);
+  /* 10Y-2Y filled area split at zero */
+  var area='';
+  sp.forEach(function(p,i){ var v=p[0]; if(v==null) return; area+=(area?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1); });
+  if(area){
+    var first=null,last=null;
+    for(var a=0;a<sp.length;a++){ if(sp[a][0]!=null){ if(first==null)first=a; last=a; } }
+    s+='<defs><clipPath id="above"><rect x="0" y="0" width="'+W+'" height="'+z+'"/></clipPath>'
+      +'<clipPath id="below"><rect x="0" y="'+z+'" width="'+W+'" height="'+(H-z)+'"/></clipPath></defs>';
+    var closed=area+'L'+X(last).toFixed(1)+' '+z.toFixed(1)+'L'+X(first).toFixed(1)+' '+z.toFixed(1)+'Z';
+    s+='<path d="'+closed+'" fill="rgba(31,198,220,.25)" clip-path="url(#above)"/>'
+      +'<path d="'+closed+'" fill="rgba(240,104,95,.3)" clip-path="url(#below)"/>'
+      +'<path d="'+area+'" fill="none" stroke="var(--teal)" stroke-width="1.6"/>';
+  }
+  var l2='';
+  sp.forEach(function(p,i){ var v=p[1]; if(v==null) return; l2+=(l2?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1); });
+  s+='<path d="'+l2+'" fill="none" stroke="#7ab0ea" stroke-width="1" opacity=".8"/>';
+  s+='<line x1="'+padL+'" y1="'+z.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+z.toFixed(1)+'" stroke="rgba(234,238,245,.4)" stroke-width="1" stroke-dasharray="2 3"/>';
+  [-1,0,1,2].forEach(function(g){ if(g<lo||g>hi||g===0) return;
+    s+='<text x="'+(padL-5)+'" y="'+(Y(g)+3).toFixed(1)+'" text-anchor="end" font-size="10" fill="rgba(234,238,245,.4)" font-family="ui-monospace,Menlo,monospace">'+g+'</text>'; });
+  s+='<text x="'+(padL-5)+'" y="'+(z+3).toFixed(1)+'" text-anchor="end" font-size="10" fill="rgba(234,238,245,.55)" font-family="ui-monospace,Menlo,monospace">0</text>';
+  document.getElementById('spread').innerHTML=s;
+  var cur=sp[sp.length-1], c0=cur?cur[0]:null, c1=cur?cur[1]:null;
+  document.getElementById('spreadNow').innerHTML=
+    '<span>10Y−2Y <b style="color:'+(c0!=null&&c0<0?'var(--dn)':'var(--up)')+'">'+(c0!=null&&c0>0?'+':'')+fmt2(c0)+'</b></span>'
+   +'<span>10Y−3M <b style="color:'+(c1!=null&&c1<0?'var(--dn)':'var(--up)')+'">'+(c1!=null&&c1>0?'+':'')+fmt2(c1)+'</b></span>'
+   +'<span style="opacity:.7">at '+niceDate(windowDays()[windowDays().length-1][0])+'</span>';
+}
+</script>
+</body>
+</html>
