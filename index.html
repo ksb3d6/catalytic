@@ -316,6 +316,20 @@ html,body{margin:0;background:
 #wfView .howto{background:rgba(18,26,38,.6);border:1px solid var(--hair);border-radius:12px;padding:12px 16px;
   margin:16px 0 6px;font-size:11.5px;color:rgba(234,238,245,.62);line-height:1.6;}
 #wfView .howto b{color:var(--ink);font-weight:650;}
+/* Stage 40b (the owner 08-24): Yields lives in the Waterfall as its own tappable card —
+   macro header above the tiers, opens yields.html. Hidden until yields.json loads. */
+#wfView .wf-yields{display:none;align-items:center;gap:12px;width:100%;text-align:left;
+  appearance:none;cursor:pointer;font-family:inherit;color:var(--ink);
+  background:rgba(18,26,38,.6);border:1px solid var(--hair);border-radius:12px;
+  padding:11px 14px;margin:10px 0 4px;}
+#wfView .wf-yields.on{display:flex;}
+#wfView .wf-yields:hover{border-color:rgba(31,198,220,.55);}
+#wfView .wf-yields .yl-eyebrow{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;}
+#wfView .wf-yields .yl-vals{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:12.5px;font-weight:700;}
+#wfView .wf-yields .yl-vals .neg{color:#f0685f}#wfView .wf-yields .yl-vals .pos{color:#39d07f}
+#wfView .wf-yields svg{flex:none;margin-left:auto;display:block;}
+#wfView .wf-yields .yl-go{flex:none;font-size:12px;color:#7fd8ea;font-weight:700;white-space:nowrap;}
+@media(max-width:480px){#wfView .wf-yields svg{width:96px}}
 .legchip{display:inline-block;font-size:10.5px;line-height:1;padding:3px 7px;border-radius:999px;background:#1b283a;
   border:1px solid rgba(255,255,255,.12);color:#dde5f0;vertical-align:middle;}
 .legchip.etf{font-style:italic;background:rgba(224,188,99,.10);border-color:rgba(224,188,99,.42);color:#ecd9ab;}
@@ -1565,6 +1579,14 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
     <h1>The AI Capital-Flow Waterfall</h1>
     <p class="sub">The watchlist sorted by where each name sits in the cascade of hyperscaler capex — largest / source at the top, smallest / most upstream at the bottom. Read it top-down: a capex dollar enters at Tier&nbsp;1 and trickles down, each tier capturing money that flowed from the one above. Power, networking and the silicon spine are really parallel streams flattened into one sequence. <b>Tap any name for its full fundamentals.</b></p>
     <div class="howto" id="wfHowto"></div>
+    <!-- Stage 40b: the macro dial — populated by the yields teaser script below;
+         stays hidden (honest) if yields.json is missing on this deploy -->
+    <button type="button" class="wf-yields" id="wfYields" title="US Treasury yield curves — tap to open">
+      <span><span class="yl-eyebrow">Yield curves · US Treasuries</span><br>
+      <span class="yl-vals" id="wfYlVals"></span></span>
+      <svg id="wfYlSpark" width="128" height="34" viewBox="0 0 128 34" aria-hidden="true"></svg>
+      <span class="yl-go">open ›</span>
+    </button>
     <div id="wfTiers"></div>
     <div class="sect">
       <div class="sect-title">Outside the hyperscaler capex flow</div>
@@ -1736,6 +1758,8 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
           <span class="pill own-pill hidden" id="ownPill"><span class="lbl">VIEW</span><button data-act="owntgl" data-own="aim" class="on">Aim</button><button data-act="owntgl" data-own="owned">What I own</button></span>
           <!-- Stage 36: ring scale, owned view only. 'vs aim' = the Gate-4 read (owned fills the aim wedges, gap = shortfall); '100%' = owned at its own proportions so the ring closes and you read holding-to-holding ratios. Hidden whenever ownedView is off — it means nothing against the aim. -->
           <span class="pill own-pill hidden" id="ownScalePill"><span class="lbl">RING</span><button type="button" data-act="ownscale" data-scale="aim" class="on">vs aim</button><button type="button" data-act="ownscale" data-scale="full">100%</button></span>
+          <!-- Stage 41: P&L lens (the owner 08-24) — green = growth since buy, red = what shrank away; forces the 100% ring while on -->
+          <span class="pill own-pill hidden" id="ownPnlPill"><span class="lbl">P&amp;L</span><button type="button" data-act="ownpnl" data-p="off" class="on">off</button><button type="button" data-act="ownpnl" data-p="on">gain / loss</button></span>
           <span class="zoomtip">tap a segment to open it on the right · open or collapse each sleeve from the Sleeve split panel</span>
         </div>
         <div id="masterSvg"></div>
@@ -6493,7 +6517,8 @@ const segState = id => state.segments.find(s=>s.id===id) || state.crypto.find(s=
 const segArrOf = id => state.segments.some(s=>s.id===id) ? state.segments : (state.crypto.some(s=>s.id===id) ? state.crypto : (state.stock.some(s=>s.id===id) ? state.stock : state.metals));
 let focusSeg=null;             // which segment is open in the right-hand focus panel
 let ownedView=false;           // Gate 4: master donut shows what's actually owned vs the aim
-let ownScale='aim';            // Stage 36: 'aim' = owned fills the aim wedges (Gate-4 original) · 'full' = owned at its OWN proportions, whole ring (the owner 08-12: "see the ratio of all the holdings")
+let ownScale='aim';
+let ownPnl=false;              // Stage 41: P&L lens — outer wedges split into basis + green growth / red shrinkage (needs the 100% ring)            // Stage 36: 'aim' = owned fills the aim wedges (Gate-4 original) · 'full' = owned at its OWN proportions, whole ring (the owner 08-12: "see the ratio of all the holdings")
 let expoScope='aim';           // Stage 35: Exposure pane scope — 'aim' (target state) | 'own' (real positions)
 let mixerScope='ai';           // which mixer fills the top panel: 'ai' segments or 'stock' index funds
 let showIndexDetail=true;      // open index funds to their top-15 in the master donut (on by default so the overlap shows)
@@ -6736,9 +6761,14 @@ function posModel(){
       let G=hasOwn(groups,gd.id)?groups[gd.id]:null;
       if(!G){ G=groups[gd.id]={id:gd.id,name:gd.name,col:gd.col,usd:0,assets:{},aorder:[]}; order.push(G); }
       let aa=hasOwn(G.assets,sym)?G.assets[sym]:null;
-      if(!aa){ aa=G.assets[sym]={sym,usd:0,qty:0,prov}; G.aorder.push(aa); }
+      if(!aa){ aa=G.assets[sym]={sym,usd:0,qty:0,prov,basis:0,bUsd:0}; G.aorder.push(aa); }
       else if(aa.prov.indexOf(prov)<0) aa.prov+=' + '+prov;
       aa.usd+=usd; if(typeof as.qty==='number'&&isFinite(as.qty)) aa.qty+=as.qty;
+      /* v4.0 P&L: cost basis rides only when the feed supplies it. bUsd tracks how much
+         of the asset's value is basis-covered — partial coverage (multi-account merges)
+         must read as NO basis downstream, never as a half-true P&L */
+      const bs=(typeof as.basis==='number'&&isFinite(as.basis)&&as.basis>0)?as.basis:null;
+      if(bs!=null){ aa.basis+=bs; aa.bUsd+=usd; }
       G.usd+=usd; owned+=usd;
     }
   }
@@ -6949,27 +6979,55 @@ function ownedPartsFull(cx,cy){
     ctext(cx,cy+2,'nothing on aim',15,'#7d8d9d','600')+
     ctext(cx,cy+26,(ob.offUsd>0?'every position sits in a sleeve dialled to $0':'no priced positions yet'),10.5,'#e8b04b','600')+
     (warnBits.length?ctext(cx,cy+45,warnBits.join(' · '),10.5,'#e8b04b','600'):'')};
-  const buck={},sUsd={};
-  for(const g of ob.groups){ const k=sleeveKeyOf(g.id); (buck[k]=buck[k]||[]).push(g); sUsd[k]=(sUsd[k]||0)+g.usd; }
-  const deg=u=>u/tot*360;
+  const buck={},sUsd={},sW={};
+  /* Stage 41 P&L lens: with the lens on, every holding's angular span becomes
+     max(current, cost basis) — a winner keeps its bought-size span plus a GREEN
+     growth tip; a loser keeps visible the RED span it shrank away from. Weights
+     aggregate up through segment and sleeve so all three rings stay angle-aligned;
+     $ labels and tooltips always state REAL dollars, never the weights. Assets
+     without feed basis draw at current span, neutral. */
+  const pnl=!!ownPnl;
+  const aBasis=a2=>(pnl&&a2.bUsd!=null&&a2.basis>0&&a2.bUsd>=a2.usd-0.01)?a2.basis:null;
+  const aW=a2=>{ const b=aBasis(a2); return b!=null?Math.max(a2.usd,b):a2.usd; };
+  const gWs=new Map(); let wTot=0;
+  for(const g of ob.groups){ let s=0; for(const a2 of g.aorder) s+=aW(a2); gWs.set(g,s); wTot+=s; }
+  if(!(wTot>0)) wTot=tot;
+  for(const g of ob.groups){ const k=sleeveKeyOf(g.id); (buck[k]=buck[k]||[]).push(g);
+    sUsd[k]=(sUsd[k]||0)+g.usd; sW[k]=(sW[k]||0)+gWs.get(g); }
+  const deg=u=>u/(pnl?wTot:tot)*360;
   let P='',L='',a=-90;
   for(const sl of AIM_SLEEVE_ORDER){
-    const key=sl[0], nm=sl[1], su=sUsd[key]||0; if(su<=0) continue;
-    const sw=deg(su), a0=a, a1=a0+sw, col=SL_COL[key]||'#3c4d63';
-    const groups=(buck[key]||[]).slice().sort((x,y)=>y.usd-x.usd);
+    const key=sl[0], nm=sl[1], su=sUsd[key]||0, suW=pnl?(sW[key]||0):su; if(suW<=0) continue;
+    const sw=deg(suW), a0=a, a1=a0+sw, col=SL_COL[key]||'#3c4d63';
+    const groups=(buck[key]||[]).slice().sort((x,y)=>pnl?(gWs.get(y)-gWs.get(x)):(y.usd-x.usd));
     /* INNER — the sleeve at its true share of what he owns */
     P+=pathEl(arc(cx,cy,R1[0],R1[1],a0,a1),col,'#0a0e14',1.6,'',nm+' '+fmtUsd(su)+' · '+pct1(su/tot)+' of what I own',null,'class="hit"');
     /* MIDDLE — segments within the sleeve */
     { let ang=a0;
-      for(const g of groups){ const w=deg(g.usd); if(w<=0) continue;
+      for(const g of groups){ const w=deg(pnl?gWs.get(g):g.usd); if(w<=0) continue;
         P+=pathEl(arc(cx,cy,R2[0],R2[1],ang,ang+w),g.col,'#0a0e14',1.2,'',g.name+' '+fmtUsd(g.usd)+' · '+pct1(g.usd/tot),null,'class="hit"');
         if(w>2.4){ const _s=shortName(g.name); L+=rlab(cx,cy,(R2[0]+R2[1])/2,ang+w/2,_s,fontfor(w,(R2[0]+R2[1])/2,14,7,_s.length),'#0c1119','800'); }
         ang+=w; } }
     /* OUTER — the individual holdings */
     { let ang=a0;
       for(const g of groups){
-        for(let i=0;i<g.aorder.length;i++){ const as=g.aorder[i], w=deg(as.usd); if(w<=0) continue;
-          P+=pathEl(arc(cx,cy,R3[0],R3[1],ang,ang+w),shade(g.col,0.12+0.30*((i%3)/2)),'#0a0e14',1,'',as.sym+' '+fmtUsd(as.usd)+' · '+pct1(as.usd/tot)+' · '+as.prov,null,'data-owntk="'+as.sym.replace(/[^A-Za-z0-9._\-]/g,'')+'" class="hit"');
+        for(let i=0;i<g.aorder.length;i++){ const as=g.aorder[i], wv=pnl?aW(as):as.usd, w=deg(wv); if(w<=0) continue;
+          const base=shade(g.col,0.12+0.30*((i%3)/2));
+          const attrs='data-owntk="'+as.sym.replace(/[^A-Za-z0-9._\-]/g,'')+'" class="hit"';
+          const bsv=pnl?aBasis(as):null;
+          if(bsv!=null&&Math.abs(as.usd-bsv)>Math.max(1,bsv*0.001)){
+            const dU=as.usd-bsv, pb=bsv>0?dU/bsv*100:0;
+            const tip=as.sym+' '+fmtUsd(as.usd)+' · basis '+fmtUsd(bsv)+' · '+(dU>0?'+':'−')+fmtUsd(Math.abs(dU))+' ('+(dU>0?'+':'−')+Math.abs(pb).toFixed(1)+'%)';
+            if(dU>0){ const wb=deg(bsv);
+              P+=pathEl(arc(cx,cy,R3[0],R3[1],ang,ang+wb),base,'#0a0e14',1,'',tip,null,attrs);
+              P+=pathEl(arc(cx,cy,R3[0],R3[1],ang+wb,ang+w),'#39d07f','#0a0e14',1,'',tip+' — the growth since buy',null,attrs);
+            } else { const wc=deg(as.usd);
+              P+=pathEl(arc(cx,cy,R3[0],R3[1],ang,ang+wc),base,'#0a0e14',1,'',tip,null,attrs);
+              P+=pathEl(arc(cx,cy,R3[0],R3[1],ang+wc,ang+w),'#f0685f','#0a0e14',1,'',tip+' — shrunk from the buy',null,attrs);
+            }
+          } else {
+            P+=pathEl(arc(cx,cy,R3[0],R3[1],ang,ang+w),base,'#0a0e14',1,'',as.sym+' '+fmtUsd(as.usd)+' · '+pct1(as.usd/tot)+' · '+as.prov+(pnl?' · no cost basis in feed':''),null,attrs);
+          }
           if(w>2.4)L+=rlab(cx,cy,(R3[0]+R3[1])/2,ang+w/2,as.sym,fontfor(w,(R3[0]+R3[1])/2,12.5,6,as.sym.length),'#0a0e14','800');
           ang+=w; } } }
     /* sleeve name + its share — same one-line treatment as the aim donut */
@@ -6979,12 +7037,26 @@ function ownedPartsFull(cx,cy){
         +'<tspan font-size="20" fill="#fff" font-weight="800" dx="7">'+Math.round(su/tot*100)+'%</tspan></text>'; }
     a=a1;
   }
-  const center=
-    ctext(cx,cy-38,'WHAT I OWN',13,'#7fd8ea','800')+
-    ctext(cx,cy-10,fmtUsd(tot),27,'#e6eef7','800','-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif')+
-    ctext(cx,cy+18,'the whole ring — ratios only, no aim',12.5,'#7d8d9d','500')+
-    (srcBits.length?ctext(cx,cy+40,srcBits.join(' · '),10.5,m.dryRun?'#e8b04b':'#7d8d9d','600'):'')+
-    (warnBits.length?ctext(cx,cy+57,warnBits.join(' · '),10.5,'#e8b04b','600'):'');
+  let center;
+  if(pnl){
+    let gain=0,nCov=0,nTot=0;
+    for(const g of ob.groups) for(const a2 of g.aorder){ nTot++; const b=aBasis(a2); if(b!=null){ nCov++; gain+=a2.usd-b; } }
+    const gcol=gain>1?'#39d07f':(gain<-1?'#f0685f':'#7d8d9d');
+    center=
+      ctext(cx,cy-38,'GAIN / LOSS · SINCE BUY',13,'#7fd8ea','800')+
+      ctext(cx,cy-10,(gain>1?'+':gain<-1?'−':'')+fmtUsd(Math.abs(gain)),27,gcol,'800','-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif')+
+      ctext(cx,cy+18,nCov?('basis on '+nCov+' of '+nTot+' positions'):'no cost basis in the feed yet',12.5,'#7d8d9d','500')+
+      (nCov?'':ctext(cx,cy+36,'IBKR → Flex query → tick the Cost Basis fields',10.5,'#e8b04b','600'))+
+      (srcBits.length?ctext(cx,cy+(nCov?40:54),srcBits.join(' · '),10.5,m.dryRun?'#e8b04b':'#7d8d9d','600'):'')+
+      (warnBits.length?ctext(cx,cy+(nCov?57:70),warnBits.join(' · '),10.5,'#e8b04b','600'):'');
+  } else {
+    center=
+      ctext(cx,cy-38,'WHAT I OWN',13,'#7fd8ea','800')+
+      ctext(cx,cy-10,fmtUsd(tot),27,'#e6eef7','800','-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif')+
+      ctext(cx,cy+18,'the whole ring — ratios only, no aim',12.5,'#7d8d9d','500')+
+      (srcBits.length?ctext(cx,cy+40,srcBits.join(' · '),10.5,m.dryRun?'#e8b04b':'#7d8d9d','600'):'')+
+      (warnBits.length?ctext(cx,cy+57,warnBits.join(' · '),10.5,'#e8b04b','600'):'');
+  }
   return {P,L,center};
 }
 function posEmptyWhy(){ const A=posLayer();
@@ -7058,6 +7130,8 @@ function syncOwnPill(){
   /* Stage 36: the ring-scale pill exists only inside the owned view — against the aim it means nothing */
   document.querySelectorAll('[data-act="ownscale"]').forEach(x=>x.classList.toggle('on',x.getAttribute('data-scale')===ownScale));
   const sp=document.getElementById('ownScalePill'); if(sp)sp.classList.toggle('hidden',!ownedView);
+  document.querySelectorAll('[data-act="ownpnl"]').forEach(x=>x.classList.toggle('on',(x.getAttribute('data-p')==='on')===ownPnl));
+  const pp=document.getElementById('ownPnlPill'); if(pp)pp.classList.toggle('hidden',!ownedView);
 }
 function syncExpoScopePill(){
   /* Stage 35b: one sync covers EVERY pill instance (#expoScopePill + #bookScopePill share
@@ -7718,6 +7792,12 @@ document.addEventListener('click',e=>{
   else if(act==='ownscale'){ const want=b.getAttribute('data-scale')==='full'?'full':'aim';
     if(want===ownScale)return; ownScale=want; syncOwnPill(); paint();
     toast(want==='full'?'Ring: everything you own at 100% — ratios only':'Ring: owned filling the aim'); }
+  else if(act==='ownpnl'){ const want=b.getAttribute('data-p')==='on';
+    if(want===ownPnl)return; ownPnl=want;
+    /* the lens needs the 100% ring — vs-aim wedges have no angular room for the shrunk-away red */
+    if(ownPnl&&ownScale!=='full') ownScale='full';
+    syncOwnPill(); paint();
+    toast(want?'P&L lens: green = growth since buy · red = what shrank away':'P&L lens off'); }
   else if(act==='exposcope'){ const want=b.getAttribute('data-scope')==='own'?'own':'aim';
     if(want===expoScope)return; expoScope=want; syncExpoScopePill(); paint();
     toast(want==='own'?'Exposure & book: what you ACTUALLY own':'Exposure & book: the aim'); }
@@ -10031,6 +10111,40 @@ window.MktView = (function(){
   })();
 
   return { render: render };
+})();
+
+/* ---- Stage 40b: Waterfall yields teaser — the macro dial above the tiers.
+   Reads the same baked yields.json the standalone page uses; the card only
+   appears once real numbers are in hand (missing file = card stays hidden,
+   never a dead button). ---- */
+(function(){
+  fetch('yields.json').then(function(r){ return r.ok?r.json():null; }).then(function(j){
+    if(!j||!j.days||!j.days.length) return;
+    var mi={}; j.maturities.forEach(function(m,i){ mi[m.k]=i; });
+    var v=j.days[j.days.length-1][1];
+    var s2=v[mi['2Y']], s10=v[mi['10Y']], s3m=v[mi['3M']], s30=v[mi['30Y']];
+    var sp=(s10!=null&&s2!=null)?s10-s2:null, sp3=(s10!=null&&s3m!=null)?s10-s3m:null;
+    function cls(x){ return (x!=null&&x<0)?'neg':'pos'; }
+    function f(x){ return x==null?'—':(x>0?'+':'')+x.toFixed(2); }
+    document.getElementById('wfYlVals').innerHTML=
+      '10Y−2Y <span class="'+cls(sp)+'">'+f(sp)+'</span> · 10Y−3M <span class="'+cls(sp3)+'">'+f(sp3)+'</span>'
+      +' · 30Y '+(s30==null?'—':s30.toFixed(2)+'%');
+    /* sparkline: 10Y−2Y over ~2 trading years, zero line dashed */
+    var days=j.days.slice(-504), W=128,H=34,lo=0,hi=0,pts=[];
+    days.forEach(function(d){ var a=d[1][mi['10Y']],b=d[1][mi['2Y']];
+      var x=(a!=null&&b!=null)?a-b:null; pts.push(x);
+      if(x!=null){ if(x<lo)lo=x; if(x>hi)hi=x; } });
+    lo-=.05; hi+=.05;
+    var z=H*(1-(0-lo)/(hi-lo)), p='';
+    pts.forEach(function(x,i){ if(x==null)return;
+      p+=(p?'L':'M')+(i/(pts.length-1)*W).toFixed(1)+' '+(H*(1-(x-lo)/(hi-lo))).toFixed(1); });
+    document.getElementById('wfYlSpark').innerHTML=
+      '<line x1="0" y1="'+z.toFixed(1)+'" x2="'+W+'" y2="'+z.toFixed(1)+'" stroke="rgba(234,238,245,.28)" stroke-dasharray="2 3"/>'
+      +'<path d="'+p+'" fill="none" stroke="#1FC6DC" stroke-width="1.5"/>';
+    var b=document.getElementById('wfYields');
+    b.classList.add('on');
+    b.addEventListener('click',function(){ location.href='yields.html'; });
+  }).catch(function(){});
 })();
 
 </script>
