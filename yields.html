@@ -98,6 +98,10 @@ var D=null, vis={}, rangeN=756, scrubIdx=null;
 document.getElementById('back').addEventListener('click',function(){
   if(history.length>1) history.back(); else location.href='latest.html';
 });
+/* Stage 42: embedded as the app's Yield-curves view — the app's own chrome
+   surrounds us, so the back circle would be a second, lying exit */
+if(new URLSearchParams(location.search).has('embed'))
+  document.getElementById('back').style.display='none';
 
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
 function fmt2(x){return (x==null||!isFinite(x))?'—':x.toFixed(2);}

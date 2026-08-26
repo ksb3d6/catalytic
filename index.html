@@ -316,20 +316,11 @@ html,body{margin:0;background:
 #wfView .howto{background:rgba(18,26,38,.6);border:1px solid var(--hair);border-radius:12px;padding:12px 16px;
   margin:16px 0 6px;font-size:11.5px;color:rgba(234,238,245,.62);line-height:1.6;}
 #wfView .howto b{color:var(--ink);font-weight:650;}
-/* Stage 40b (the owner 08-24): Yields lives in the Waterfall as its own tappable card —
-   macro header above the tiers, opens yields.html. Hidden until yields.json loads. */
-#wfView .wf-yields{display:none;align-items:center;gap:12px;width:100%;text-align:left;
-  appearance:none;cursor:pointer;font-family:inherit;color:var(--ink);
-  background:rgba(18,26,38,.6);border:1px solid var(--hair);border-radius:12px;
-  padding:11px 14px;margin:10px 0 4px;}
-#wfView .wf-yields.on{display:flex;}
-#wfView .wf-yields:hover{border-color:rgba(31,198,220,.55);}
-#wfView .wf-yields .yl-eyebrow{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;}
-#wfView .wf-yields .yl-vals{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:12.5px;font-weight:700;}
-#wfView .wf-yields .yl-vals .neg{color:#f0685f}#wfView .wf-yields .yl-vals .pos{color:#39d07f}
-#wfView .wf-yields svg{flex:none;margin-left:auto;display:block;}
-#wfView .wf-yields .yl-go{flex:none;font-size:12px;color:#7fd8ea;font-weight:700;white-space:nowrap;}
-@media(max-width:480px){#wfView .wf-yields svg{width:96px}}
+/* Stage 42: Yields as a first-class view — the embed fills the viewport under
+   the chrome; the page inside scrolls itself */
+#ydView{padding:0;}
+#ydView iframe{display:block;width:100%;border:0;height:calc(100vh - 64px);}
+@media(max-width:740px){#ydView iframe{height:calc(100dvh - 46px - 45px - env(safe-area-inset-bottom,0px));}}
 .legchip{display:inline-block;font-size:10.5px;line-height:1;padding:3px 7px;border-radius:999px;background:#1b283a;
   border:1px solid rgba(255,255,255,.12);color:#dde5f0;vertical-align:middle;}
 .legchip.etf{font-style:italic;background:rgba(224,188,99,.10);border-color:rgba(224,188,99,.42);color:#ecd9ab;}
@@ -1513,6 +1504,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
     <button data-v="donut">Grade wheel</button>
     <button data-v="cards">Flashcards</button>
     <button data-v="sc">Scorecard</button>
+    <button data-v="yd">Yield curves</button>
   </div>
   <span class="seglab lensLab">Badge</span>
   <div class="seg" id="lensSeg">
@@ -1562,6 +1554,7 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
     <button type="button" class="mtab" data-mv="donut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/></svg><span>Wheel</span></button>
     <button type="button" class="mtab" data-mv="cards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="11" height="13" rx="2"/><path d="M9 4h11v13"/></svg><span>Cards</span></button>
     <button type="button" class="mtab" data-mv="sc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h2M4 12h2M4 17h2M9 7h11M9 12h11M9 17h11"/></svg><span>Score</span></button>
+    <button type="button" class="mtab" data-mv="yd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5v14h16"/><path d="M6 15c5 0 8-8 13-9"/></svg><span>Yields</span></button>
   </div>
   <div class="mtabs st-only">
     <button type="button" class="mtab" data-mp="cockpit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 18a8 8 0 1 1 14 0"/><path d="M12 13l4-3"/></svg><span>Cockpit</span></button>
@@ -1579,14 +1572,6 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
     <h1>The AI Capital-Flow Waterfall</h1>
     <p class="sub">The watchlist sorted by where each name sits in the cascade of hyperscaler capex — largest / source at the top, smallest / most upstream at the bottom. Read it top-down: a capex dollar enters at Tier&nbsp;1 and trickles down, each tier capturing money that flowed from the one above. Power, networking and the silicon spine are really parallel streams flattened into one sequence. <b>Tap any name for its full fundamentals.</b></p>
     <div class="howto" id="wfHowto"></div>
-    <!-- Stage 40b: the macro dial — populated by the yields teaser script below;
-         stays hidden (honest) if yields.json is missing on this deploy -->
-    <button type="button" class="wf-yields" id="wfYields" title="US Treasury yield curves — tap to open">
-      <span><span class="yl-eyebrow">Yield curves · US Treasuries</span><br>
-      <span class="yl-vals" id="wfYlVals"></span></span>
-      <svg id="wfYlSpark" width="128" height="34" viewBox="0 0 128 34" aria-hidden="true"></svg>
-      <span class="yl-go">open ›</span>
-    </button>
     <div id="wfTiers"></div>
     <div class="sect">
       <div class="sect-title">Outside the hyperscaler capex flow</div>
@@ -1742,6 +1727,13 @@ body.deck-studio #wfView,body.deck-studio #flowView,body.deck-studio #webView,bo
 
 <div id="mktView" class="view hidden">
 <div id="mktMount"></div>
+</div>
+
+<div id="ydView" class="view hidden">
+<!-- Stage 42 (the owner 08-26): Yield curves as a first-class view — "its own pickable
+     page". Same-origin embed of yields.html, so ONE copy of the yields code serves
+     the standalone page AND this view; src loads lazily on first visit. -->
+<iframe id="ydFrame" data-src="yields.html?embed=1" title="US Treasury yield curves"></iframe>
 </div>
 
 <!-- ============ STOCKS STUDIO (folded in as a Deck) ============ -->
@@ -3265,10 +3257,13 @@ function showView(v){
   document.getElementById('cardsView').classList.toggle('hidden', v!=='cards');
   document.getElementById('scView').classList.toggle('hidden', v!=='sc');
   document.getElementById('mktView').classList.toggle('hidden', v!=='mkt');
+  document.getElementById('ydView').classList.toggle('hidden', v!=='yd');
   document.querySelectorAll('#viewSeg button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
   if(v==='web'){ if(window.Web) window.Web.show(currentUniverse); return; }
   if(window.Web) window.Web.stop();
   if(v==='mkt'){ if(window.MktView) MktView.render(); return; }
+  /* Stage 42: yields is universe-agnostic (macro) — same embed either universe */
+  if(v==='yd'){ const yf=document.getElementById('ydFrame'); if(yf&&!yf.src) yf.src=yf.dataset.src; return; }
   if(currentUniverse==='equity'){
     if(v==='flow'){ FlowView.run(); applyZoom(); }
     if(v==='donut'){ DonutView.render(); }
@@ -9841,10 +9836,6 @@ window.MktView = (function(){
       +'<button data-u="cr">Crypto</button><button data-u="fd">Funds</button></div></div>'
       +'<button type="button" class="mk-ico mk-ph" id="mkQBtn" aria-label="Search">🔍</button>'
       +'<button type="button" class="dd-btn mk-ph" id="mkFBtn"><b class="dd-val">Filters</b><span class="mk-fbdg" id="mkFBadge" hidden></span><i class="dd-car">▾</i></button>'
-      /* Stage 40 (the owner 08-22): the macro dial — opens the standalone Yield curves
-         page (yields.html, baked Treasury data). Placement provisional per the owner
-         ("we'll find a way to put this later"). */
-      +'<button type="button" class="dd-btn" id="mkYields" title="US Treasury yield curves"><b class="dd-val">Yields</b></button>'
       +'<span class="mk-inline" id="mkInline">'
       +'<div class="mk-grp" id="mkMarks"><button id="mkChoke" class="mk-bchoke">◆ Chokepoints</button>'
       +'<button id="mkUs" class="mk-bus">US-only</button></div>'
@@ -9962,8 +9953,6 @@ window.MktView = (function(){
       e.stopPropagation(); closeBarDDs(); uniDD.classList.remove('open'); sheet.classList.toggle('open');
       syncSortUI();   /* Stage 37: reflect whatever gainers/losers or a th tap set */
     });
-    /* Stage 40: same-tab so the PWA's back gesture returns to the table */
-    document.getElementById('mkYields').addEventListener('click',function(){ location.href='yields.html'; });
     sheet.addEventListener('click',function(e){ e.stopPropagation(); });
     document.getElementById('mkQBtn').addEventListener('click',function(){
       uniDD.classList.remove('open'); sheet.classList.remove('open');
@@ -10111,40 +10100,6 @@ window.MktView = (function(){
   })();
 
   return { render: render };
-})();
-
-/* ---- Stage 40b: Waterfall yields teaser — the macro dial above the tiers.
-   Reads the same baked yields.json the standalone page uses; the card only
-   appears once real numbers are in hand (missing file = card stays hidden,
-   never a dead button). ---- */
-(function(){
-  fetch('yields.json').then(function(r){ return r.ok?r.json():null; }).then(function(j){
-    if(!j||!j.days||!j.days.length) return;
-    var mi={}; j.maturities.forEach(function(m,i){ mi[m.k]=i; });
-    var v=j.days[j.days.length-1][1];
-    var s2=v[mi['2Y']], s10=v[mi['10Y']], s3m=v[mi['3M']], s30=v[mi['30Y']];
-    var sp=(s10!=null&&s2!=null)?s10-s2:null, sp3=(s10!=null&&s3m!=null)?s10-s3m:null;
-    function cls(x){ return (x!=null&&x<0)?'neg':'pos'; }
-    function f(x){ return x==null?'—':(x>0?'+':'')+x.toFixed(2); }
-    document.getElementById('wfYlVals').innerHTML=
-      '10Y−2Y <span class="'+cls(sp)+'">'+f(sp)+'</span> · 10Y−3M <span class="'+cls(sp3)+'">'+f(sp3)+'</span>'
-      +' · 30Y '+(s30==null?'—':s30.toFixed(2)+'%');
-    /* sparkline: 10Y−2Y over ~2 trading years, zero line dashed */
-    var days=j.days.slice(-504), W=128,H=34,lo=0,hi=0,pts=[];
-    days.forEach(function(d){ var a=d[1][mi['10Y']],b=d[1][mi['2Y']];
-      var x=(a!=null&&b!=null)?a-b:null; pts.push(x);
-      if(x!=null){ if(x<lo)lo=x; if(x>hi)hi=x; } });
-    lo-=.05; hi+=.05;
-    var z=H*(1-(0-lo)/(hi-lo)), p='';
-    pts.forEach(function(x,i){ if(x==null)return;
-      p+=(p?'L':'M')+(i/(pts.length-1)*W).toFixed(1)+' '+(H*(1-(x-lo)/(hi-lo))).toFixed(1); });
-    document.getElementById('wfYlSpark').innerHTML=
-      '<line x1="0" y1="'+z.toFixed(1)+'" x2="'+W+'" y2="'+z.toFixed(1)+'" stroke="rgba(234,238,245,.28)" stroke-dasharray="2 3"/>'
-      +'<path d="'+p+'" fill="none" stroke="#1FC6DC" stroke-width="1.5"/>';
-    var b=document.getElementById('wfYields');
-    b.classList.add('on');
-    b.addEventListener('click',function(){ location.href='yields.html'; });
-  }).catch(function(){});
 })();
 
 </script>
