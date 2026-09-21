@@ -10576,6 +10576,53 @@ html[data-gl] body.gl-chrome #mktView .twrap{max-height:calc(100dvh - var(--gl-t
   html[data-gl] body.gl-chrome #mktView{padding-bottom:0;}   /* its stock 20px is what let the page scroll out from under the table */
 }
 
+/* ---- LANDSCAPE PHONE (the owner 09-21: "horizontal iPhone still doesn't look good with the bar at the bottom").
+   Sideways there are ~390px of height; the strip + a bottom bar ate a quarter of it and the Tape showed TWO rows.
+   Width is what landscape has plenty of, so every option moves the doors OFF the bottom edge:
+     rail = a slim icon rail down the left        top = the doors fold into the top strip (no second bar at all)
+     orb  = one corner button that fans out        bar = the portrait bar, unchanged (default until he picks)
+   html[data-land] is set by shim.js from ?land= / GL48.land(). Portrait is never affected. ---- */
+@media (orientation:landscape) and (max-height:520px){
+  html[data-gl][data-land="rail"] body.gl-chrome,html[data-gl][data-land="top"] body.gl-chrome,html[data-gl][data-land="orb"] body.gl-chrome{padding-bottom:0;}
+  html[data-gl]:is([data-land="rail"],[data-land="top"]) body.gl-chrome #mktView .twrap::after{height:10px;}
+  html[data-gl][data-land="orb"] body.gl-chrome #mktView .twrap::after{height:58px;}
+  html[data-gl]:is([data-land="rail"],[data-land="top"],[data-land="orb"]) body.gl-chrome #aibo-live-chip{bottom:calc(8px + env(safe-area-inset-bottom,0px))!important;}
+  html[data-gl]:is([data-land="rail"],[data-land="top"],[data-land="orb"]) .glc-end{height:14px;}
+  html[data-gl]:is([data-land="rail"],[data-land="top"],[data-land="orb"]) .glc-sheet{padding-bottom:18px;max-height:88vh;}
+  html[data-gl]:is([data-land="rail"],[data-land="top"],[data-land="orb"]) .m-atlas{padding-bottom:14px;max-height:92vh;overflow:auto;}
+  html[data-gl]:is([data-land="rail"],[data-land="top"],[data-land="orb"]) body.gl-settings #studioView .dk-sheet{padding-bottom:18px;}
+  html[data-gl]:is([data-land="rail"],[data-land="top"],[data-land="orb"]) .gl-tab span{display:none;}
+
+  /* Two stock gaps a sideways phone falls into, fixed under EVERY door layout. At 844px wide it is past the
+     app's 740px phone breakpoint, so it got the DESKTOP filter row squeezed until its controls overlapped; and
+     past the 480px one, so each row kept a category tag that wraps to four lines (95px rows = two on screen).
+     Here it takes the phone filter pattern (search + one Filters sheet) and drops the tag. */
+  html[data-gl] #mktView .mk-ph{display:inline-flex;}
+  html[data-gl] #mktView .mk-inline{display:none;}
+  html[data-gl] #mktView .mk-cat{display:none;}
+  html[data-gl] #mktView .mkt td{padding-top:3px;padding-bottom:3px;}
+
+  /* rail */
+  html[data-gl][data-land="rail"] #glDock:not([hidden]){left:calc(6px + env(safe-area-inset-left));top:calc(20px + 50dvh);bottom:auto;transform:translateY(-50%);
+    flex-direction:column;gap:1px;padding:5px;border-radius:22px;}
+  html[data-gl][data-land="rail"] .gl-tab{width:46px;height:44px;padding:0;justify-content:center;border-radius:16px;}
+  html[data-gl][data-land="rail"] body.gl-chrome{padding-left:calc(64px + env(safe-area-inset-left));}
+  html[data-gl][data-land="rail"] #glSub,html[data-gl][data-land="rail"] body.gl-cal #glCal,
+  html[data-gl][data-land="rail"] body.gl-settings #studioView .dk-sheet{left:calc(64px + env(safe-area-inset-left));}
+
+  /* top: the doors live IN the strip — its middle is empty in landscape */
+  html[data-gl][data-land="top"] #glDock:not([hidden]){top:2px;bottom:auto;left:50%;transform:translateX(-50%);padding:0;gap:2px;background:transparent;border:0;
+    box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;border-radius:0;transition:transform .18s ease;}
+  html[data-gl][data-land="top"] .gl-tab{width:46px;height:36px;padding:0;justify-content:center;border-radius:12px;}
+  html[data-gl][data-land="top"] #mStrip.m-hide ~ #glDock{transform:translate(-50%,-48px);}     /* the strip tucks away on scroll; the doors go with it */
+
+  /* orb: one button in the corner; tap it and the doors fan out */
+  html[data-gl][data-land="orb"] #glDock:not([hidden]){left:calc(8px + env(safe-area-inset-left));bottom:calc(8px + env(safe-area-inset-bottom));transform:none;padding:4px;gap:2px;border-radius:26px;}
+  html[data-gl][data-land="orb"] .gl-tab{display:none;width:44px;height:44px;padding:0;justify-content:center;border-radius:22px;}
+  html[data-gl][data-land="orb"] .gl-tab.on,html[data-gl][data-land="orb"] #glDock.open .gl-tab{display:flex;}
+  html[data-gl][data-land="orb"] #glDock:not(.open) .gl-tab.on{background:var(--gl-acc);color:var(--gl-on-acc);}
+}
+
 /* ---- the mini charts' moving average wears the theme (the owner 09-21: "the same color as the theme of the whole
    app, so that it changes when you change the color theme"). It is drawn as an SVG presentation ATTRIBUTE
    (stroke="#d4870f"), and a CSS property outranks an attribute — so no chart code is touched. The 30-day
@@ -10978,6 +11025,226 @@ html[data-gl] .glc-cov p b{color:#fff;font-weight:600;margin-right:6px;}
 })();
 
 </script>
+<style id="gl48FundCss">
+/* Stage 48 — fundamentals charts in the asset card. Scoped to html[data-gl]; inert with the theme off. */
+html[data-gl] .glf{margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.09);font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+html[data-gl] .glf-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+html[data-gl] .glf-head h5{margin:0;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(234,238,245,.7);flex:1;}
+html[data-gl] .glf .gl-seg{display:inline-flex;max-width:none;margin:0;flex:none;}
+html[data-gl] .glf .gl-seg button{flex:none;padding:6px 10px;font-size:11.5px;}
+html[data-gl] .glf-load{padding:26px 0;text-align:center;color:rgba(234,238,245,.5);}
+html[data-gl] .glf h6{margin:0 0 5px;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(234,238,245,.42);}
+html[data-gl] .glf .up{color:#4be378;} html[data-gl] .glf .dn{color:#ff6b61;}
+
+/* stats: a dense cell grid, numbers carry it */
+html[data-gl] .glf-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin-bottom:14px;}
+html[data-gl] .glf-stats .c{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;}
+html[data-gl] .glf-stats .c span{background:rgba(255,255,255,.045);border-radius:8px;padding:6px 4px 5px;text-align:center;min-width:0;}
+html[data-gl] .glf-stats small{display:block;font-size:9px;color:rgba(234,238,245,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-gl] .glf-stats b{display:block;font:600 12.5px/1.3 ui-monospace,"SF Mono",Menlo,monospace;color:#fff;}
+@media (max-width:430px){html[data-gl] .glf-stats{grid-template-columns:1fr;}}
+
+/* tiles */
+html[data-gl] .glf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+html[data-gl] .glf-tile{appearance:none;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.035);border-radius:14px;padding:9px 9px 8px;text-align:left;color:inherit;font:inherit;
+  display:block;min-width:0;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .3s cubic-bezier(.3,1.6,.5,1),background-color .25s;}
+html[data-gl] button.glf-tile:active{transform:scale(.975);background:rgba(255,255,255,.08);transition-duration:.05s;}
+html[data-gl] .glf-tile.big{grid-column:1/-1;}
+html[data-gl] .glf-tile .h{display:flex;justify-content:space-between;align-items:baseline;gap:2px 6px;margin-bottom:6px;flex-wrap:wrap;}
+/* two-up tiles on a phone are ~170px: a title and a headline number cannot share a line without one being cut off */
+html[data-gl] .glf-tile:not(.big) .h b{flex:1 1 100%;}
+html[data-gl] .glf-tile .h b{font-size:11px;font-weight:600;color:rgba(234,238,245,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+html[data-gl] .glf-tile .h b em{font-style:normal;font-weight:500;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:rgba(234,238,245,.35);margin-left:5px;}
+html[data-gl] .glf-tile .n{display:flex;align-items:baseline;gap:5px;flex:none;}
+html[data-gl] .glf-tile .n u{text-decoration:none;font:700 13.5px/1 ui-monospace,"SF Mono",Menlo,monospace;color:#fff;white-space:nowrap;}
+html[data-gl] .glf-tile .n i{font-style:normal;font:600 10px/1 ui-monospace,"SF Mono",Menlo,monospace;}
+html[data-gl] .glf-tile.big .n u{font-size:16px;}
+html[data-gl] .glf-plot{position:relative;}
+html[data-gl] .glf-plot svg{display:block;width:100%;overflow:visible;}
+html[data-gl] .glf-plot rect.up{fill:#3fd07c;} html[data-gl] .glf-plot rect.dn{fill:#ff6b61;}
+html[data-gl] .glf-plot rect.seg{fill:var(--gl-acc);}
+html[data-gl] .glf-plot rect.hot{opacity:1!important;filter:brightness(1.35);}
+html[data-gl] .glf-plot line.z{stroke:rgba(234,238,245,.35);stroke-width:1;vector-effect:non-scaling-stroke;}
+html[data-gl] .glf-plot i{position:absolute;font:600 8.5px/1 ui-monospace,"SF Mono",Menlo,monospace;font-style:normal;color:rgba(234,238,245,.5);pointer-events:none;text-shadow:0 0 3px rgba(0,0,0,.9),0 0 6px rgba(0,0,0,.7);}
+html[data-gl] .glf-plot i.t{left:2px;top:1px;} html[data-gl] .glf-plot i.b{left:2px;bottom:12px;} html[data-gl] .glf-plot i.l{left:2px;bottom:1px;} html[data-gl] .glf-plot i.r{right:2px;bottom:1px;}
+html[data-gl] .glf-none{height:104px;display:flex;align-items:center;justify-content:center;color:rgba(234,238,245,.3);font-size:11px;}
+html[data-gl] .glf-leg{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:11px;color:rgba(234,238,245,.6);}
+html[data-gl] .glf-leg i{display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--gl-acc);margin-right:5px;vertical-align:-1px;}
+html[data-gl] .glf-leg b{color:#fff;font:600 11px ui-monospace,"SF Mono",Menlo,monospace;}
+
+/* the street: a RAIL for the target (no dials), a cell row for estimates */
+html[data-gl] .glf-rail,html[data-gl] .glf-est,html[data-gl] .glf-peers{margin-top:14px;}
+html[data-gl] .glf-rail .rl{position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg,rgba(255,107,97,.55),rgba(234,238,245,.18) 50%,rgba(75,227,120,.6));margin:9px 6px 8px;}
+html[data-gl] .glf-rail .rl i{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--gl-acc);transform:translate(-50%,-50%);box-sizing:border-box;}
+html[data-gl] .glf-rail .rv{display:flex;justify-content:space-between;font-size:11px;color:rgba(234,238,245,.5);}
+html[data-gl] .glf-rail .rv b{color:#fff;font:600 12px ui-monospace,"SF Mono",Menlo,monospace;} html[data-gl] .glf-rail .rv .m b{color:var(--gl-acci);}
+html[data-gl] .glf-est .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:6px;}
+html[data-gl] .glf-est .g span{background:rgba(255,255,255,.045);border-radius:10px;padding:8px 9px;min-width:0;}
+html[data-gl] .glf-est small{display:block;font-size:9.5px;color:rgba(234,238,245,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-gl] .glf-est b{display:block;font:700 15px/1.35 ui-monospace,"SF Mono",Menlo,monospace;color:#fff;}
+html[data-gl] .glf-est em{font-style:normal;font:500 10.5px ui-monospace,"SF Mono",Menlo,monospace;color:rgba(234,238,245,.5);}
+html[data-gl] .glf-peers > div{display:flex;flex-wrap:wrap;gap:5px;}
+html[data-gl] .glf-peers .pc{appearance:none;border:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(234,238,245,.5);border-radius:999px;padding:5px 10px;font:600 11.5px -apple-system,system-ui,sans-serif;}
+html[data-gl] .glf-peers .pc.g{color:var(--gl-acci);border-color:rgba(var(--gl-acc-rgb),.45);background:rgba(var(--gl-acc-rgb),.12);cursor:pointer;}
+html[data-gl] .glf-note{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.045);font-size:11.5px;line-height:1.55;color:rgba(234,238,245,.6);}
+html[data-gl] .glf-note[hidden]{display:none;}
+
+</style>
+<script id="gl48Fund">
+/* Stage 48 — Fundamentals charts inside the asset card. Reads GET /fundamentals/<KEY>.json (backend v4.2:
+   60 quarters of statements, annual ratios + segments, TTM stats, estimates, targets, peers; fetched on
+   demand and cached a day). Mounts by wrapping the app's own openSheet() — no stock node is moved.
+
+   House rules this file keeps (the owner's locked design defaults):
+   - small multiples in a dense grid; plots are TALL; axis labels live INSIDE the plot
+   - colour by VALUE only: bars green at/above zero, red below. No per-series hues — the segment stack is
+     ONE hue stepped in opacity, and "cash and debt" is charted as NET cash so the sign carries the meaning
+   - no pinned prose: source, freshness and gaps sit behind the (i)
+   - never invent: a missing quarter is a gap in the bars; a name with no data says so in one line */
+(function(){
+  'use strict';
+  if(typeof window.openSheet!=='function'||typeof window.lookup!=='function') return;
+  var BASE=String(window.AIBO_LIVE_URL||'https://asset-grading-production.up.railway.app/universe.json').replace(/\/universe\.json.*$/,'');
+  var LS='aibo.gl.fund.pref.v1', mem={}, S={per:'q',range:20,open:null};
+  try{ var p=JSON.parse(localStorage.getItem(LS)||'null'); if(p){ if(p.per==='q'||p.per==='a') S.per=p.per; if([20,40,60].indexOf(p.range)>=0) S.range=p.range; } }catch(_){}
+  function save(){ try{ localStorage.setItem(LS,JSON.stringify({per:S.per,range:S.range})); }catch(_){} }
+
+  /* tiles, in reading order. kind: money | per-share | pct | x (multiple). src 'q' = quarterly+annual, 'a' = annual only */
+  var TILES=[['revenue','Revenue','money'],['grossProfit','Gross profit','money'],['grossMargin','Gross margin','pct'],['ebitda','EBITDA','money'],
+             ['netIncome','Net income','money'],['netMargin','Net margin','pct'],['eps','EPS (diluted)','ps'],['opCF','Operating cash flow','money'],
+             ['fcf','Free cash flow','money'],['capex','Capex','money'],['netCash','Net cash','money'],
+             ['pe','Price / earnings','x','a'],['ps','Price / sales','x','a'],['roic','ROIC','pct','a']];
+  var STATS=[['Valuation',[['pe','P/E','x'],['peg','PEG','x'],['ps','P/S','x'],['pb','P/B','x']]],
+             ['Cash valuation',[['pcf','P/CF','x'],['pfcf','P/FCF','x'],['fcfYield','FCF yield','pct'],['earningsYield','Earn. yield','pct']]],
+             ['Enterprise',[['evEbitda','EV/EBITDA','x'],['evSales','EV/Sales','x'],['netDebtToEbitda','Net debt/EBITDA','x'],['debtToEquity','Debt/Equity','x']]],
+             ['Profitability',[['grossMargin','Gross','pct'],['opMargin','Operating','pct'],['netMargin','Net','pct'],['roic','ROIC','pct']]],
+             ['Revenue growth \u00b7 CAGR',[['c1','1y','pct','g'],['c3','3y','pct','g'],['c5','5y','pct','g'],['c10','10y','pct','g']]],
+             ['Dividend',[['divYield','Yield','pct'],['payout','Payout','pct']]]];
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function fmt(v,kind,cur){
+    if(v==null||!isFinite(v)) return '—';
+    if(kind==='pct') return (v*100).toFixed(Math.abs(v)<.0995?1:0)+'%';   /* .0995, not .1: 1.1-1 is 0.0999... in floats */
+    if(kind==='x') return (Math.abs(v)>=100?v.toFixed(0):v.toFixed(1))+'×';
+    if(kind==='ps') return (v<0?'−':'')+(cur&&cur!=='USD'?'':'$')+Math.abs(v).toFixed(2);
+    var a=Math.abs(v), s=a>=1e12?(a/1e12).toFixed(2)+'T':a>=1e9?(a/1e9).toFixed(a>=1e10?1:2)+'B':a>=1e6?(a/1e6).toFixed(0)+'M':a.toFixed(0);
+    return (v<0?'−':'')+(cur&&cur!=='USD'?'':'$')+s;
+  }
+  function series(d,key){
+    var src=(S.per==='a'||key[3]==='a')?d.a:d.q, k=key[0], v;
+    if(k==='netCash'){ var c=src.cash||[], db=src.debt||[]; v=(src.dates||[]).map(function(_,i){ return (c[i]!=null&&db[i]!=null)?c[i]-db[i]:null; }); if(src===d.a) v=[]; }
+    else v=src[k]||[];
+    var n=(src===d.a)?Math.max(5,Math.round(S.range/4)):S.range, L=src.labels||[];
+    return {v:v.slice(-n), L:L.slice(-n), annual:src===d.a};
+  }
+  function yoy(s){ var v=s.v, step=s.annual?1:4, i=v.length-1; while(i>=0&&v[i]==null) i--; if(i-step<0||v[i-step]==null||v[i-step]===0) return null; return {i:i,d:(v[i]-v[i-step])/Math.abs(v[i-step])}; }
+
+  function bars(s,kind,cur,h){
+    var v=s.v, n=v.length, W=300, H=h, pad=2, vals=v.filter(function(x){return x!=null;}); if(!vals.length) return '<div class="glf-none">no data</div>';
+    var hi=Math.max.apply(null,vals.concat([0])), lo=Math.min.apply(null,vals.concat([0])), span=(hi-lo)||1, bw=(W-pad*2)/n, z=H-((0-lo)/span)*H, out='';
+    for(var i=0;i<n;i++){ if(v[i]==null) continue; var y=H-((v[i]-lo)/span)*H, top=Math.min(y,z), hh=Math.max(1,Math.abs(z-y)), op=(.42+.58*(i+1)/n).toFixed(2);
+      out+='<rect data-i="'+i+'" x="'+(pad+i*bw+bw*.12).toFixed(2)+'" y="'+top.toFixed(2)+'" width="'+(bw*.76).toFixed(2)+'" height="'+hh.toFixed(2)+'" rx="'+Math.min(2,bw*.2).toFixed(2)+'" class="'+(v[i]<0?'dn':'up')+'" opacity="'+op+'"/>'; }
+    var zero=(lo<0)?'<line x1="0" x2="'+W+'" y1="'+z.toFixed(2)+'" y2="'+z.toFixed(2)+'" class="z"/>':'';
+    /* axis labels INSIDE the plot: the ceiling top-left, the span of time along the bottom corners */
+    return '<div class="glf-plot"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="height:'+h+'px">'+zero+out+'</svg>'
+      +'<i class="t">'+esc(fmt(hi,kind,cur))+'</i>'+(lo<0?'<i class="b">'+esc(fmt(lo,kind,cur))+'</i>':'')+'<i class="l">'+esc(s.L[0]||'')+'</i><i class="r">'+esc(s.L[n-1]||'')+'</i></div>';
+  }
+  function tile(d,key,big){
+    var s=series(d,key), y=yoy(s), last=null, li=s.v.length-1; while(li>=0&&s.v[li]==null) li--; if(li>=0) last=s.v[li];
+    var onlyA=(key[3]==='a'&&S.per==='q');
+    return '<button type="button" class="glf-tile'+(big?' big':'')+'" data-tile="'+key[0]+'"><span class="h"><b>'+esc(key[1])+(onlyA?'<em>annual</em>':'')+'</b>'
+      +'<span class="n"><u data-val>'+esc(fmt(last,key[2],d.currency))+'</u>'+(y?'<i class="'+(y.d>=0?'up':'dn')+'">'+(y.d>=0?'▲':'▼')+Math.abs(y.d*100).toFixed(0)+'%</i>':'')+'</span></span>'
+      +bars(s,key[2],d.currency,big?190:104)+'</button>';
+  }
+  function segBlock(d){
+    var out='';
+    [['product','Revenue by segment'],['geo','Revenue by region']].forEach(function(p){
+      var g=(d.seg||{})[p[0]]; if(!g||!g.series||!g.series.length||!g.labels.length) return;
+      var n=Math.min(g.labels.length,Math.max(5,Math.round(S.range/4))), L=g.labels.slice(-n), top=g.series.slice(0,5), rest=g.series.slice(5);
+      var rows=top.map(function(s){ return {name:s.name,v:s.v.slice(-n)}; });
+      if(rest.length) rows.push({name:'Other',v:L.map(function(_,i){ var t=0,any=false; rest.forEach(function(s){ var x=s.v.slice(-n)[i]; if(x!=null){t+=x;any=true;} }); return any?t:null; })});
+      var tot=L.map(function(_,i){ return rows.reduce(function(a,r){return a+(r.v[i]||0);},0); }), hi=Math.max.apply(null,tot)||1, W=300,H=150,bw=W/n, svg='';
+      for(var i=0;i<n;i++){ var y=H; rows.forEach(function(r,ri){ var x=r.v[i]; if(!x||x<0) return; var hh=x/hi*H; y-=hh;
+        svg+='<rect x="'+(i*bw+bw*.12).toFixed(2)+'" y="'+y.toFixed(2)+'" width="'+(bw*.76).toFixed(2)+'" height="'+Math.max(.5,hh-.6).toFixed(2)+'" class="seg" opacity="'+(1-ri*.15).toFixed(2)+'"/>'; }); }
+      var lastI=n-1, leg=rows.map(function(r,ri){ var x=r.v[lastI]; if(x==null||!tot[lastI]) return ''; return '<span><i style="opacity:'+(1-ri*.15).toFixed(2)+'"></i>'+esc(r.name)+' <b>'+Math.round(x/tot[lastI]*100)+'%</b></span>'; }).join('');
+      out+='<div class="glf-tile seg big"><span class="h"><b>'+p[1]+'<em>annual</em></b><span class="n"><u>'+esc(fmt(tot[lastI],'money',d.currency))+'</u></span></span>'
+        +'<div class="glf-plot"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="height:150px">'+svg+'</svg><i class="t">'+esc(fmt(hi,'money',d.currency))+'</i><i class="l">'+esc(L[0])+'</i><i class="r">'+esc(L[n-1])+'</i></div>'
+        +'<div class="glf-leg">'+leg+'</div></div>';
+    });
+    return out;
+  }
+  function cagr(d){                          /* compound annual growth from the annual revenue series; null when a leg is missing or non-positive */
+    var r=((d.a||{}).revenue||[]).filter(function(x){return x!=null;}), n=r.length, out={};
+    [1,3,5,10].forEach(function(y){ var a=r[n-1-y], b=r[n-1]; out['c'+y]=(a>0&&b>0)?Math.pow(b/a,1/y)-1:null; });
+    return out;
+  }
+  function statsBlock(d){
+    var G=cagr(d);
+    return '<div class="glf-stats">'+STATS.map(function(g){ var cells=g[1].map(function(c){ var v=(c[3]==='g'?G:d.ttm)||{}; v=v[c[0]];
+        return '<span><small>'+esc(c[1])+'</small><b class="'+(c[3]==='g'&&v!=null?(v>=0?'up':'dn'):'')+'">'+esc(fmt(v,c[2]))+'</b></span>'; }).join('');
+      return '<div><h6>'+esc(g[0])+'</h6><div class="c">'+cells+'</div></div>'; }).join('')+'</div>';
+  }
+  function streetBlock(d){
+    var t=d.target||{}, est=(d.est||[]).filter(function(e){ return e.epsAvg!=null&&+e.year>=new Date().getFullYear(); }).slice(0,4), h='';
+    if(t.low!=null&&t.high!=null&&t.consensus!=null&&t.high>t.low){ var pos=((t.consensus-t.low)/(t.high-t.low)*100).toFixed(1);
+      h+='<div class="glf-rail"><h6>Analyst price target</h6><div class="rl"><i style="left:'+pos+'%"></i></div><div class="rv"><span>low <b>$'+t.low.toFixed(0)+'</b></span><span class="m">consensus <b>$'+t.consensus.toFixed(0)+'</b></span><span>high <b>$'+t.high.toFixed(0)+'</b></span></div></div>'; }
+    if(est.length){ h+='<div class="glf-est"><h6>Street estimates · EPS</h6><div class="g">'+est.map(function(e){
+        return '<span><small>FY'+esc(e.year.slice(2))+(e.nEps?' · '+e.nEps+' analysts':'')+'</small><b>'+esc(fmt(e.epsAvg,'ps',d.currency))+'</b><em>'+esc(fmt(e.epsLow,'ps',d.currency))+' – '+esc(fmt(e.epsHigh,'ps',d.currency))+'</em></span>'; }).join('')+'</div></div>'; }
+    if((d.peers||[]).length){ h+='<div class="glf-peers"><h6>Peers</h6><div>'+d.peers.map(function(p){ var graded=false; try{ graded=!!window.lookup(p.sym); }catch(_){}
+        return '<'+(graded?'button type="button" data-peer="'+esc(p.sym)+'"':'span')+' class="pc'+(graded?' g':'')+'">'+esc(p.sym)+'</'+(graded?'button':'span')+'>'; }).join('')+'</div></div>'; }
+    return h;
+  }
+  function paint(box,d){
+    var bigKey=S.open, tiles=TILES.map(function(k){ return tile(d,k,k[0]===bigKey); }).join('');
+    box.innerHTML='<div class="glf-head"><h5>Fundamentals</h5><div class="gl-seg glf-per"><button type="button" data-per="q"'+(S.per==='q'?' class="on"':'')+'>Quarterly</button><button type="button" data-per="a"'+(S.per==='a'?' class="on"':'')+'>Annual</button></div>'
+      +'<div class="gl-seg glf-rng">'+[[20,'5Y'],[40,'10Y'],[60,'15Y']].map(function(r){ return '<button type="button" data-rng="'+r[0]+'"'+(S.range===r[0]?' class="on"':'')+'>'+r[1]+'</button>'; }).join('')+'</div>'
+      +'<button type="button" class="glc-info" data-finfo="1" aria-label="Source and freshness">i</button></div>'
+      +statsBlock(d)+'<div class="glf-grid">'+tiles+segBlock(d)+'</div>'+streetBlock(d)
+      +'<div class="glf-note" hidden></div>';
+  }
+  function info(box,d){
+    var n=box.querySelector('.glf-note'); if(!n) return; if(!n.hidden){ n.hidden=true; return; }
+    var m=Math.round((Date.now()-new Date(d.asOf).getTime())/6e4);
+    n.innerHTML='Company filings via the data feed, pulled '+(m<90?m+' min':Math.round(m/60)+' h')+' ago'+(d.stale?' — <b class="dn">refresh failed, showing the last good copy</b>':'')+'. Reported in '+esc(d.currency||'USD')
+      +'. Quarterly series go back 15 years; segments, P/E, P/S and ROIC are annual (the quarterly versions are not on this data plan). Net cash = cash and short-term investments minus total debt. A missing period is left as a gap.'
+      +((d.gaps||[]).length?' Sections that did not load: '+esc(d.gaps.map(function(g){return g.section;}).join(', '))+'.':'');
+    n.hidden=false;
+  }
+  function load(key){
+    if(mem[key]&&Date.now()-mem[key].at<30*60*1000) return Promise.resolve(mem[key].d);
+    return fetch(BASE+'/fundamentals/'+encodeURIComponent(key)+'.json').then(function(r){ return r.json().then(function(j){ if(!r.ok||!j||j.error) throw new Error((j&&j.error)||('HTTP '+r.status)); return j; }); })
+      .then(function(j){ mem[key]={at:Date.now(),d:j}; return j; });
+  }
+  function mount(disp){
+    var lk=null; try{ lk=window.lookup(disp); }catch(_){}
+    var body=document.getElementById('sheetBody'); if(!body||!lk||lk.type!=='co') return;
+    if(!document.documentElement.getAttribute('data-gl')) return;                      /* theme off = exact Stage 43 */
+    var box=document.createElement('section'); box.id='glFund'; box.className='glf'; box.innerHTML='<div class="glf-head"><h5>Fundamentals</h5></div><div class="glf-load">Loading 15 years of filings…</div>';
+    body.appendChild(box); S.open=null;
+    var key=lk.key, data=null;
+    box.addEventListener('click',function(e){ var b;
+      if((b=e.target.closest('[data-per]'))){ S.per=b.getAttribute('data-per'); save(); if(data) paint(box,data); return; }
+      if((b=e.target.closest('[data-rng]'))){ S.range=+b.getAttribute('data-rng'); save(); if(data) paint(box,data); return; }
+      if((b=e.target.closest('[data-finfo]'))){ if(data) info(box,data); return; }
+      if((b=e.target.closest('[data-peer]'))){ window.openSheet(b.getAttribute('data-peer')); return; }
+      if((b=e.target.closest('[data-tile]'))&&data){ var k=b.getAttribute('data-tile'); S.open=(S.open===k)?null:k; paint(box,data); var t=box.querySelector('.glf-tile.big[data-tile]'); if(t&&t.scrollIntoView) t.scrollIntoView({block:'nearest',behavior:'smooth'}); } });
+    /* scrub: slide a finger (or the pointer) across a plot and the headline number follows the bar under it */
+    function scrub(e){ if(!data) return; var pt=(e.touches&&e.touches[0])||e, plot=pt.target&&pt.target.closest&&pt.target.closest('.glf-tile[data-tile] .glf-plot'); if(!plot) return;
+      var tl=plot.closest('.glf-tile'), key2=null; TILES.forEach(function(k){ if(k[0]===tl.getAttribute('data-tile')) key2=k; }); if(!key2) return;
+      var s=series(data,key2), r=plot.getBoundingClientRect(), i=Math.max(0,Math.min(s.v.length-1,Math.floor((pt.clientX-r.left)/r.width*s.v.length))), u=tl.querySelector('[data-val]');
+      if(u) u.textContent=fmt(s.v[i],key2[2],data.currency)+'  ·  '+(s.L[i]||'');
+      [].forEach.call(plot.querySelectorAll('rect'),function(rc){ rc.classList.toggle('hot',+rc.getAttribute('data-i')===i); }); }
+    box.addEventListener('pointermove',scrub); box.addEventListener('touchmove',scrub,{passive:true});
+    box.addEventListener('pointerleave',function(){ if(data) paint(box,data); });
+    load(key).then(function(d){ data=d; if(document.body.contains(box)) paint(box,d); })
+      .catch(function(e){ if(document.body.contains(box)) box.innerHTML='<div class="glf-head"><h5>Fundamentals</h5></div><div class="glf-load">'+esc(/identity|graded|unknown/.test(e.message)?'No fundamentals for this name.':'Fundamentals are unreachable right now.')+'</div>'; });
+  }
+  var _open=window.openSheet;
+  window.openSheet=function(disp){ var r=_open.apply(this,arguments); try{ mount(disp); }catch(_){} return r; };
+  window.GLFund={mount:mount};
+})();
+
+</script>
 <script id="gl48Shim">
 /* Stage 48 Glass shim. Additive only: nothing here moves or removes an existing node, and
    every door forwards to a control the app already owns — the hidden segs stay the state
@@ -11096,6 +11363,23 @@ html[data-gl] .glc-cov p b{color:#fff;font-weight:600;margin-right:6px;}
   document.addEventListener('click',function(){ requestAnimationFrame(function(){ requestAnimationFrame(sync); }); },true);
   window.addEventListener('resize',sync);
   document.addEventListener('touchstart',function(){},{passive:true});   /* iOS only honours :active with a touch listener */
+
+  /* ---- landscape-phone layout for the doors: bar (default) | rail | top | orb. `?land=` previews without
+     persisting; GL48.land('rail') saves it on this device. CSS does the layout (skin.css); JS only runs the orb. ---- */
+  var LSL='aibo.gl.land', LANDS=['bar','rail','top','orb'], LQ=window.matchMedia('(orientation:landscape) and (max-height:520px)');
+  function landMode(){ var q=(location.search.match(/[?&]land=([a-z]+)/)||[])[1]; if(LANDS.indexOf(q)>=0) return q;
+    try{ var v=localStorage.getItem(LSL); if(LANDS.indexOf(v)>=0) return v; }catch(_){} return 'bar'; }
+  function setLand(m,persist){ if(LANDS.indexOf(m)<0) return; if(persist!==false){ try{ localStorage.setItem(LSL,m); }catch(_){} }
+    H.setAttribute('data-land',m); dock.classList.remove('open'); window.dispatchEvent(new Event('resize')); }
+  window.GL48.land=setLand; H.setAttribute('data-land',landMode());
+  function orbOn(){ return H.getAttribute('data-land')==='orb'&&LQ.matches; }
+  dock.addEventListener('click',function(e){                                  /* capture: a closed orb opens instead of navigating */
+    if(!orbOn()) return;
+    if(!dock.classList.contains('open')){ dock.classList.add('open'); e.stopPropagation(); e.preventDefault(); return; }
+    setTimeout(function(){ dock.classList.remove('open'); },0);
+  },true);
+  document.addEventListener('click',function(e){ if(orbOn()&&dock.classList.contains('open')&&!e.target.closest('#glDock')) dock.classList.remove('open'); },true);
+  if(LQ.addEventListener) LQ.addEventListener('change',function(){ dock.classList.remove('open'); });
 
   /* ---- LIVE status: chip (stock, default) or a dot on the "A" badge (option B, zero pixels) ----
      `?chip=dot|pill` previews without persisting; GL48.chip('dot') saves the choice on this device.
