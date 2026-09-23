@@ -12385,12 +12385,602 @@ html[data-gl] .glg-end{height:calc(var(--gl-dock-h,52px) + var(--gl-safe-b, env(
 
 </script>
 <style id="gl48TechCss">
-/* Stage 48 — technicals lab (spec §15). Scoped to html[data-gl]; inert with the theme off. */
+/* Stage 48 — the Technicals lab (round 4, 2026-09-23, spec §15). Scoped to html[data-gl]; inert with the theme off.
+   A fixed layer under the strip (40px on touch, 47px under the desktop appbar) — the Financials page's shape — that IS
+   its own scroller, with a frosted bar (the LOOK dial + the confluence read) that stays put while the plots scroll.
+   Colour by value only: green = bullish, red = bearish, grey = neutral, depth = strength. The theme accent marks UI
+   state (the chosen chip, the tapped cube), never a series. Nothing here touches the stock inline grid unless the
+   preview flag html[data-techstrip] is set (?techstrip=1). */
+#glTech{display:none;}
+html[data-gl] body.gl-tech #glTech{display:block;position:fixed;left:0;right:0;top:47px;bottom:0;z-index:52;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  background:rgb(var(--gl-bg-rgb));color:var(--ink,#EAEEF5);font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;animation:glIn .26s ease both;}
+html[data-gl] body.gl-tech{overflow:hidden;}
+html[data-gl] body.gl-tech #aibo-live-chip{display:none!important;}      /* it reports PRICE freshness; the head has the price */
+@media (max-width:740px), (pointer:coarse){
+  html[data-gl] body.gl-tech #glTech{top:40px;}
+  html[data-gl] body.gl-tech #mStrip .atlas-only,html[data-gl] body.gl-tech #mStrip #mLens{visibility:hidden;}   /* universe + lens mean nothing here */
+}
+@media (prefers-reduced-motion:reduce){html[data-gl] #glTech,html[data-gl] .glt-look{animation:none!important;}}
+
+/* ---- head: who + price + close, search + sort note, the name chips ---- */
+html[data-gl] .glt-head{padding:8px 10px 0;}
+html[data-gl] .glt-row{display:flex;align-items:center;gap:8px;min-height:36px;margin-bottom:6px;}
+html[data-gl] .glt-who{display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
+html[data-gl] .glt-who .t{font:800 19px/1 ui-monospace,"SF Mono",Menlo,monospace;color:#fff;letter-spacing:.01em;flex:none;}
+html[data-gl] .glt-who .kd{flex:none;font:700 8.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(234,238,245,.45);font-style:normal;padding:3px 5px;border-radius:5px;border:1px solid rgba(255,255,255,.12);}
+html[data-gl] .glt-who .n{font-size:13px;font-weight:500;color:rgba(234,238,245,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto;}
+html[data-gl] .glt-who .fr{display:inline-flex;gap:3px;flex:none;}
+html[data-gl] .glt-who .fr i{font:700 8.5px/1 ui-monospace,"SF Mono",Menlo,monospace;font-style:normal;padding:4px 4px;border-radius:4px;background:rgba(255,255,255,.05);color:rgba(234,238,245,.26);}
+html[data-gl] .glt-who .fr i.on{background:rgba(255,255,255,.11);color:rgba(234,238,245,.8);}
+html[data-gl] .glt-px{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px;font:600 11px/1 ui-monospace,"SF Mono",Menlo,monospace;color:rgba(234,238,245,.6);}
+html[data-gl] .glt-px u{text-decoration:none;font:800 18px/1 ui-monospace,"SF Mono",Menlo,monospace;color:#fff;white-space:nowrap;}
+html[data-gl] .glt-px span{white-space:nowrap;}
+html[data-gl] .glt-px span i{font-style:normal;font-size:8.5px;opacity:.55;margin-left:4px;letter-spacing:.06em;}
+html[data-gl] .glt-px .up{color:#39d07f;} html[data-gl] .glt-px .dn{color:#f0685f;} html[data-gl] .glt-px .flat{color:rgba(234,238,245,.55);}
+html[data-gl] .glt-x{appearance:none;flex:none;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(234,238,245,.8);
+  font:400 22px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .34s cubic-bezier(.3,1.9,.45,1),background-color .2s;}
+html[data-gl] .glt-x:active{transform:scale(.9);background:rgba(255,255,255,.14);transition-duration:.05s;}
+html[data-gl] .glt-search{display:flex;align-items:center;gap:7px;flex:1;min-width:0;height:34px;padding:0 10px;border-radius:11px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);color:rgba(234,238,245,.5);}
+html[data-gl] .glt-search svg{width:15px;height:15px;flex:none;}
+html[data-gl] .glt-search:focus-within{border-color:rgba(var(--gl-acc-rgb),.55);color:var(--gl-acci);}
+html[data-gl] .glt-search input{appearance:none;-webkit-appearance:none;flex:1;min-width:0;border:0;background:transparent;outline:0;color:#fff;font:600 14px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:0;margin:0;}
+html[data-gl] .glt-search input::placeholder{color:rgba(234,238,245,.38);font-weight:500;}
+html[data-gl] .glt-search input::-webkit-search-cancel-button{-webkit-appearance:none;}
+html[data-gl] .glt-sort{flex:none;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(234,238,245,.38);white-space:nowrap;}
+html[data-gl] .glt-chips{display:flex;align-items:center;gap:5px;overflow-x:auto;scrollbar-width:none;margin:0 -10px;padding:0 10px 8px;-webkit-overflow-scrolling:touch;min-height:40px;}
+html[data-gl] .glt-chips::-webkit-scrollbar{display:none;}
+html[data-gl] .glt-chips.none::after{content:"no name matches";color:rgba(234,238,245,.4);font-size:12px;padding:8px 2px;white-space:nowrap;}
+html[data-gl] .glt-grp{flex:none;font:700 8.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:rgba(234,238,245,.35);font-style:normal;padding:0 4px 0 6px;}
+html[data-gl] .glt-grp[hidden]{display:none;}
+html[data-gl] .glt-chip{appearance:none;flex:none;display:inline-flex;align-items:baseline;gap:5px;max-width:200px;border:1px solid rgba(255,255,255,.12);background:transparent;color:rgba(234,238,245,.55);border-radius:999px;
+  padding:7px 11px;font:600 12px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:transform .34s cubic-bezier(.3,1.9,.45,1),background-color .2s,color .2s;}
+html[data-gl] .glt-chip[hidden]{display:none;}
+html[data-gl] .glt-chip b{font:700 12px/1 ui-monospace,"SF Mono",Menlo,monospace;color:rgba(234,238,245,.85);flex:none;}
+html[data-gl] .glt-chip span{font-weight:500;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+html[data-gl] .glt-chip i{flex:none;font:700 7.5px/1 ui-monospace,"SF Mono",Menlo,monospace;font-style:normal;letter-spacing:.1em;text-transform:uppercase;color:rgba(234,238,245,.4);padding:2px 4px;border-radius:4px;background:rgba(255,255,255,.07);}
+html[data-gl] .glt-chip.on{background:rgba(var(--gl-acc-rgb),.16);border-color:rgba(var(--gl-acc-rgb),.5);color:var(--gl-acci);}
+html[data-gl] .glt-chip.on b{color:var(--gl-acci);}
+html[data-gl] .glt-chip.on i{color:var(--gl-acci);background:rgba(var(--gl-acc-rgb),.18);}
+html[data-gl] .glt-chip:active{transform:scale(.93);transition-duration:.05s;}
+
+/* ---- the frosted bar: LOOK dial + (i), the confluence read, the note ---- */
+html[data-gl] .glt-bar{position:sticky;top:0;z-index:3;padding:8px 10px 7px;background:rgba(var(--gl-bg-rgb),.78);-webkit-backdrop-filter:blur(26px) saturate(1.5);backdrop-filter:blur(26px) saturate(1.5);border-bottom:1px solid rgba(255,255,255,.07);}
+html[data-gl] .glt-bar .glt-row{margin-bottom:0;min-height:34px;}
+html[data-gl] .glt-dial{flex:1 1 auto;max-width:none;margin:0;}
+html[data-gl] .glt-dial button{padding:8px 4px;}
+html[data-gl] .glt-i{flex:none;}
+html[data-gl] .glt-conf{display:flex;align-items:center;gap:7px;margin-top:8px;min-height:14px;}
+html[data-gl] .glt-conf .g{display:grid;grid-template-columns:auto repeat(5,minmax(0,14px));gap:2px;align-items:center;flex:1 1 0;min-width:0;max-width:96px;}
+html[data-gl] .glt-conf .g i{font:700 8px/1 ui-monospace,"SF Mono",Menlo,monospace;font-style:normal;color:rgba(234,238,245,.45);margin-right:2px;}
+html[data-gl] .glt-conf .c{display:block;height:12px;border-radius:3px;cursor:pointer;min-width:0;}
+html[data-gl] .glt-conf .tot{flex:none;margin-left:2px;display:inline-flex;gap:6px;font:700 10.5px/1 ui-monospace,"SF Mono",Menlo,monospace;white-space:nowrap;}
+html[data-gl] .glt-conf .tot u{text-decoration:none;}
+html[data-gl] :is(.glt-conf,.glt-crow .rh,.glt-plot) .up{color:#39d07f;}
+html[data-gl] :is(.glt-conf,.glt-crow .rh,.glt-plot) .dn{color:#f0685f;}
+html[data-gl] :is(.glt-conf,.glt-crow .rh,.glt-plot) .flat{color:rgba(234,238,245,.6);}
+html[data-gl] :is(.glt-conf,.glt-crow .rh,.glt-plot) .gap{color:rgba(234,238,245,.38);}
+html[data-gl] .glt-note{margin:8px 0 2px;padding:9px 11px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);font-size:11.5px;line-height:1.45;color:rgba(234,238,245,.72);}
+html[data-gl] .glt-note[hidden]{display:none;}
+
+/* the tiny cubes (the head's read, the card strip): colour by value, depth by strength */
+html[data-gl] :is(.glt-conf,.glt-strip) .c.up{background:rgba(57,208,127,calc(.22 + var(--k,0)*.62));}
+html[data-gl] :is(.glt-conf,.glt-strip) .c.dn{background:rgba(240,104,95,calc(.22 + var(--k,0)*.62));}
+html[data-gl] :is(.glt-conf,.glt-strip) .c.flat{background:rgba(138,147,165,.3);}
+html[data-gl] :is(.glt-conf,.glt-strip) .c.gap{background:transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);}
+
+/* ---- body: the looks ---- */
+html[data-gl] .glt-body{padding:10px 10px 0;}
+html[data-gl] .glt-look.in{animation:gltIn .32s cubic-bezier(.2,.8,.2,1) both;}   /* no position:fixed child lives in here, so a transform is safe */
+@keyframes gltIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+html[data-gl] .glt-end{height:24px;}
+html[data-gl] .glt-none{padding:28px 6px;text-align:center;font-size:12.5px;color:rgba(234,238,245,.5);}
+html[data-gl] .glt-tfs,html[data-gl] .glt-inds{max-width:none;margin:0 0 10px;}
+html[data-gl] .glt-tfs button{font:700 12.5px/1 ui-monospace,"SF Mono",Menlo,monospace;}
+
+/* a plot: the SVG fills the frame; every label sits INSIDE it */
+html[data-gl] .glt-plot{position:relative;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);overflow:hidden;box-sizing:border-box;}
+html[data-gl] .glt-plot .sv{position:absolute;inset:0;}
+html[data-gl] .glt-plot .sv svg{display:block;width:100%;height:100%;}
+html[data-gl] .glt-plot.tall{height:150px;margin-bottom:8px;}
+html[data-gl] .glt-plot.tall.gap{height:64px;background:transparent;border-style:dashed;}
+html[data-gl] .glt-plot i,html[data-gl] .glt-plot b{position:absolute;font:700 9px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.08em;pointer-events:none;font-style:normal;white-space:nowrap;
+  padding:3px 5px;border-radius:5px;background:rgba(var(--gl-bg-rgb),.74);}      /* the renderers draw edge to edge: a quiet backdrop keeps every label legible over the data */
+html[data-gl] .glt-plot .lb{left:6px;top:6px;color:rgba(234,238,245,.66);letter-spacing:.14em;text-transform:uppercase;}
+html[data-gl] .glt-plot .rd{left:6px;top:24px;font-size:11px;letter-spacing:0;padding:3px 6px;border-radius:6px;background:rgba(var(--gl-bg-rgb),.86);}
+html[data-gl] .glt-plot .rd.gap{display:none;}
+html[data-gl] .glt-plot .hi{right:6px;top:6px;color:rgba(234,238,245,.5);}
+html[data-gl] .glt-plot .lo{right:6px;bottom:6px;color:rgba(234,238,245,.5);}
+html[data-gl] .glt-plot .tfl{left:6px;bottom:6px;color:rgba(234,238,245,.46);text-transform:uppercase;}
+html[data-gl] .glt-plot .gp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-top:12px;font:600 11px/1 ui-monospace,"SF Mono",Menlo,monospace;color:rgba(234,238,245,.4);}
+html[data-gl] .glt-plot .gp[hidden]{display:none;}
+
+/* Wall ≥700px: the 4×5 grid, timeframe headers above, indicator + read inside every cell */
+html[data-gl] .glt-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;}
+html[data-gl] .glt-grid .hd{font:700 9.5px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.14em;color:rgba(234,238,245,.45);padding:2px 2px 0;}
+html[data-gl] .glt-plot.cell{height:132px;}
+html[data-gl] .glt-plot.cell .lb{font-size:8px;top:5px;left:5px;letter-spacing:.1em;padding:2px 4px;}
+html[data-gl] .glt-plot.cell .rd{top:20px;left:5px;font-size:10px;padding:2px 5px;}
+html[data-gl] .glt-plot.cell .hi,html[data-gl] .glt-plot.cell .lo{font-size:8px;padding:2px 4px;right:5px;} html[data-gl] .glt-plot.cell .hi{top:5px;} html[data-gl] .glt-plot.cell .lo{bottom:5px;}
+html[data-gl] .glt-plot.cell .tfl{display:none;}
+html[data-gl] .glt-plot.cell .gp{padding-top:0;font-size:10px;}
+
+/* Cubes: the reading wall */
+html[data-gl] .glt-crow{margin-bottom:12px;}
+html[data-gl] .glt-crow .rh{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px 5px;font:700 9.5px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:rgba(234,238,245,.55);}
+html[data-gl] .glt-crow .cf{font:700 11px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:0;text-transform:none;white-space:nowrap;}
+html[data-gl] .glt-crow .cells{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
+html[data-gl] .glt-cube{appearance:none;position:relative;height:56px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#EAEEF5;
+  font:600 11px/1 ui-monospace,"SF Mono",Menlo,monospace;cursor:pointer;padding:0;margin:0;display:flex;align-items:center;justify-content:center;min-width:0;-webkit-tap-highlight-color:transparent;
+  transition:transform .34s cubic-bezier(.3,1.9,.45,1),box-shadow .2s;}
+html[data-gl] .glt-cube i{position:absolute;left:6px;top:5px;font:700 8px/1 ui-monospace,"SF Mono",Menlo,monospace;font-style:normal;letter-spacing:.1em;opacity:.6;}
+html[data-gl] .glt-cube{flex-direction:column;gap:3px;}
+html[data-gl] .glt-cube b{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 8px);padding-top:8px;}
+html[data-gl] .glt-cube em{font:600 8px/1 ui-monospace,"SF Mono",Menlo,monospace;font-style:normal;letter-spacing:.08em;text-transform:uppercase;opacity:.62;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 8px);}
+html[data-gl] .glt-cube.up{background:rgba(57,208,127,calc(.12 + var(--k,0)*.46));border-color:rgba(57,208,127,calc(.3 + var(--k,0)*.4));}
+html[data-gl] .glt-cube.dn{background:rgba(240,104,95,calc(.12 + var(--k,0)*.46));border-color:rgba(240,104,95,calc(.3 + var(--k,0)*.4));}
+html[data-gl] .glt-cube.flat{background:rgba(138,147,165,.14);color:rgba(234,238,245,.72);}
+html[data-gl] .glt-cube.gap{background:transparent;border-style:dashed;color:rgba(234,238,245,.35);}
+html[data-gl] .glt-cube[disabled]{cursor:default;}
+html[data-gl] .glt-cube.sel{box-shadow:0 0 0 2px var(--gl-acci),0 0 0 5px rgba(var(--gl-acc-rgb),.22);}
+html[data-gl] .glt-cube:not([disabled]):active{transform:scale(.94);transition-duration:.05s;}
+html[data-gl] .glt-cubes + .glt-plot.tall{height:190px;margin-top:4px;}
+@media (max-width:430px){html[data-gl] .glt-cube b{font-size:10.5px;} html[data-gl] .glt-cube em{font-size:7.5px;letter-spacing:.04em;} html[data-gl] .glt-who .kd{display:none;}}   /* the $ prefix / chip already say crypto or fund; the name is worth more than the tag on a phone */
+
+/* Strip: the placement proposal — a mock of the card's box with the one-line reads strip under the price strip */
+html[data-gl] .glt-mock{position:relative;margin-bottom:12px;padding-top:6px;}
+html[data-gl] .glt-mock .cap{position:absolute;right:10px;top:-3px;z-index:1;font:700 8.5px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.14em;color:rgba(234,238,245,.35);}
+html[data-gl] .glt-mock .aibo-box{margin:0;}
+html[data-gl] .glt-strip{display:flex;align-items:center;gap:8px;padding:7px 9px 9px;border-top:1px solid rgba(255,255,255,.08);cursor:pointer;-webkit-tap-highlight-color:transparent;}
+html[data-gl] .glt-strip .g{display:grid;grid-template-columns:auto repeat(5,minmax(0,30px));gap:2px;align-items:center;flex:1 1 0;min-width:0;}
+html[data-gl] .glt-strip .g i{font:700 7.5px/1 ui-monospace,"SF Mono",Menlo,monospace;font-style:normal;color:rgba(234,238,245,.45);margin-right:2px;}
+html[data-gl] .glt-strip .c{display:block;height:13px;border-radius:3px;min-width:0;}
+html[data-gl] .glt-strip .go{flex:none;color:var(--gl-acci);font:700 13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+html[data-gl] .glt-mock + .glt-plot.tall{height:190px;}
+
+/* ---- the card: the "Full page ↗" pill after the TECHNICALS bar; the bar itself opens the page in Glass (techlab.js), so its glyph says so ---- */
+html[data-gl] .aibo-box .aibo-strip .glt-open{order:7;margin-left:auto;appearance:none;flex:none;border:1px solid rgba(var(--gl-acc-rgb),.45);background:rgba(var(--gl-acc-rgb),.12);color:var(--gl-acci);border-radius:999px;
+  padding:5px 10px;font:600 11px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;
+  transition:transform .34s cubic-bezier(.3,1.9,.45,1),background-color .2s;}
+html[data-gl] .aibo-box .aibo-strip .glt-open:active{transform:scale(.93);transition-duration:.05s;}
+html[data-gl] .aibo-box .aibo-strip .as-xp .xp-ch{font-size:0;}
+html[data-gl] .aibo-box .aibo-strip .as-xp .xp-ch::after{content:"\2197";font-size:14px;color:var(--gl-acci);}
+/* the Strip placement PREVIEW (?techstrip=1 only): the reads strip replaces the inline grid and its bar */
+html[data-gl][data-techstrip] #sheetBody .aibo-box details.aibo-tech,html[data-gl][data-techstrip] #sheetBody .aibo-box .as-xp,html[data-gl][data-techstrip] #sheetBody .aibo-box .glt-open{display:none!important;}
+
+/* ---- widths ---- */
+@media (max-height:480px){
+  /* a landscape phone is for the plots: a compact head, and the bar scrolls with it so the plots get the height */
+  html[data-gl] .glt-head{padding-top:4px;} html[data-gl] .glt-row{min-height:30px;margin-bottom:4px;} html[data-gl] .glt-chips{min-height:32px;padding-bottom:4px;}
+  html[data-gl] .glt-chip{padding:5px 9px;} html[data-gl] .glt-search{height:30px;} html[data-gl] .glt-x{width:30px;height:30px;font-size:19px;}
+  html[data-gl] .glt-bar{position:static;padding:4px 16px 6px;} html[data-gl] .glt-dial button{padding:6px 4px;} html[data-gl] .glt-conf{margin-top:5px;}
+  html[data-gl] .glt-plot.tall{height:122px;}
+  html[data-gl] .glt-cube{height:46px;}
+  html[data-gl] .glt-cubes + .glt-plot.tall,html[data-gl] .glt-mock + .glt-plot.tall{height:150px;}
+}
+@media (min-width:700px){
+  html[data-gl] .glt-head{padding:10px 16px 0;}
+  html[data-gl] .glt-bar{padding:8px 16px 8px;}
+  html[data-gl] .glt-body{padding:12px 16px 0;}
+  html[data-gl] .glt-chips{margin:0 -16px;padding-left:16px;padding-right:16px;}
+  html[data-gl] .glt-who .t{font-size:22px;}
+  html[data-gl] .glt-search{max-width:360px;}
+  html[data-gl] .glt-dial{max-width:520px;flex:0 1 520px;}
+  html[data-gl] .glt-plot.tall{height:180px;}
+  html[data-gl] .glt-crow .cells{gap:8px;}
+  html[data-gl] .glt-cube{height:64px;font-size:12px;}
+  html[data-gl] .glt-cubes + .glt-plot.tall,html[data-gl] .glt-mock + .glt-plot.tall{height:220px;}
+  html[data-gl] .glt-strip .c{height:15px;}
+}
+@media (min-width:1024px){
+  html[data-gl] .glt-head > *,html[data-gl] .glt-bar > *,html[data-gl] .glt-look{max-width:1320px;margin-left:auto;margin-right:auto;}
+  html[data-gl] .glt-chips{margin-left:auto;margin-right:auto;padding-left:0;padding-right:0;}
+  html[data-gl] .glt-plot.tall{height:200px;}
+  html[data-gl] .glt-plot.cell{height:150px;}
+  html[data-gl] .glt-cubes + .glt-plot.tall,html[data-gl] .glt-mock + .glt-plot.tall{height:240px;}
+}
+/* bottom clearance under the touch dock (the token is set by the shim's round-4 bar; the fallback is the bar's height) */
+@media (max-width:740px), (pointer:coarse){
+  html[data-gl] .glt-end{height:calc(var(--gl-dock-h,52px) + var(--gl-safe-b, env(safe-area-inset-bottom,0px)) + 12px);}
+}
 
 </style>
 <script id="gl48Tech">
-/* Stage 48 — technicals lab (spec §15). See stage48/SPEC_2026-09-23.md. */
-(function(){ "use strict"; })();
+/* Stage 48 — the Technicals lab (round 4, 2026-09-23, spec §15 + the owner's steer the same day: "the Bollinger bands, the
+   55 EMA, the TBO… all those need to be redesigned… maybe it gets expanded into its own thing and not just in that
+   little sub window. Be experimental, I trust you").
+   The card's TECHNICALS window is a 4×5 grid of 150×40 thumbnails that scrolls sideways on a phone. This is the
+   technicals' full-page HOME: a Glass fixed layer under the strip (the Financials page's shape) that runs the SAME
+   four renderers (tfCandleSVG / tfTboSVG / tfDivSVG / tfBbSVG) on the SAME frames (DATA[tk].live.tech.tf,
+   AIBO_FUNDS_LIVE[tk].tech.tf, AIBO_CRYPTO_LIVE[key].tech.tf) at real sizes, under one LOOK dial:
+     Wall   the matrix with real estate — phone: a timeframe seg + four tall plots; ≥700px: the 4×5 wall, big cells
+     Stack  one indicator, its five timeframes stacked coarse→fine, every one a tall plot
+     Cubes  the reading wall — 4×5 discrete reads (green / red / grey BY VALUE, depth = strength) with a confluence
+            line per indicator; a tapped cube opens its plot tall beneath the grid
+     Strip  the placement proposal — a mock of the card with a one-line reads strip that opens this page
+   The head carries the same 20 reads as a tiny confluence bar (the read at the top), whatever the look.
+
+   Contract (self-contained; shim.js does not know this page):
+     window.GLTech = { show(key[,opt]), hide(), look(name), current() }      opt: {look, sel:{ind,tf}}
+     techlab.js OWNS body class 'gl-tech' (show adds, hide removes and calls GL48.sync() when the shim exposes it).
+     A dock door or an Atlas row tapped while open hides the page (capture-phase listener, the shim's own pattern).
+     ?techlab=KEY opens it once the feed has hydrated (polled, 20s cap). ?techstrip=1 previews the Strip placement
+     inside the real card: techlab.css hides the stock inline grid ONLY under that flag (the owner picks first).
+   Card hook: when #sheet flips to .show (MutationObserver) a "Full page ↗" pill is appended after the card's
+   TECHNICALS bar, and — under html[data-gl] only — the bar itself opens this page instead of the inline grid
+   (capture-phase click; the stock delegate never sees it). Theme off = nothing mounts, nothing intercepted.
+   Persisted: 'aibo.gl.tech.look' (the look) and 'aibo.gl.tech.last' (the name; '$'-prefixed for crypto).
+
+   Reads are DERIVED, never guessed — Candles: last close vs the 55-EMA and the EMA's own slope (both must agree,
+   else neutral); TBO: close above / inside / below the 21/40 cloud; Divergence: the latest RSI-14 divergence still
+   inside the plotted window (tfDivergences), else none; Bollinger: %B of the last close (>0.8 / <0.2 / middle).
+   Strength = distance in units of three mean bar-to-bar moves (frame-scaled). A frame a renderer cannot draw
+   (short history, no intraday yet) reads "—" — a plot is never invented. */
+(function(){
+  'use strict';
+  if(typeof window.lookup!=='function') return;
+  var NEED=['tfParse','tfCloses','tfEma','tfRsi','tfDivergences','tfCandleSVG','tfTboSVG','tfDivSVG','tfBbSVG'];
+  for(var ni=0;ni<NEED.length;ni++) if(typeof window[NEED[ni]]!=='function') return;      /* no renderers, no lab */
+  var H=document.documentElement, B=document.body;
+  var LSL='aibo.gl.tech.look', LSK='aibo.gl.tech.last', DEF='NVDA';
+  var LOOKS=['wall','stack','cubes','strip'], LOOKL={wall:'Wall',stack:'Stack',cubes:'Cubes',strip:'Strip'};
+  var TFS=[['m','M','MONTHLY'],['w','W','WEEKLY'],['d','D','DAILY'],['h4','4H','4-HOUR'],['h','H','HOURLY']];
+  var IND=[
+    {id:'candle', s:'CANDLES · 55 EMA', l:'Candles',    min:8,  fn:'tfCandleSVG'},
+    {id:'tbo',    s:'TBO CLOUD',        l:'TBO cloud',  min:45, fn:'tfTboSVG'},
+    {id:'div',    s:'DIVERGENCE',       l:'Divergence', min:30, fn:'tfDivSVG'},
+    {id:'bb',     s:'BOLLINGER',        l:'Bollinger',  min:21, fn:'tfBbSVG'}];
+  var root=document.createElement('section'); root.id='glTech'; root.setAttribute('aria-label','Technicals'); B.appendChild(root);
+  var S={open:false, built:false, cur:null, look:'wall', tf:'d', ind:'candle', sel:null, q:'', list:[], byCap:false, raf:0, rt:0, wide:null, stamp:null, tobs:null, tailTall:45};
+
+  /* ---------- the app's data (DATA / FUNDS are top-level consts: bare identifiers, not window properties) ---------- */
+  function D(){ try{ return (typeof DATA!=='undefined'&&DATA)||window.DATA||{}; }catch(_){ return window.DATA||{}; } }
+  function FU(){ try{ return (typeof FUNDS!=='undefined'&&FUNDS)||window.FUNDS||{}; }catch(_){ return window.FUNDS||{}; } }
+  function FL(){ return window.AIBO_FUNDS_LIVE||null; }
+  function CL(){ return window.AIBO_CRYPTO_LIVE||null; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function byId(id){ for(var i=0;i<IND.length;i++) if(IND[i].id===id) return IND[i]; return IND[0]; }
+  function byTf(tf){ for(var i=0;i<TFS.length;i++) if(TFS[i][0]===tf) return TFS[i]; return TFS[2]; }
+  function last(){ try{ return localStorage.getItem(LSK)||null; }catch(_){ return null; } }
+  function remember(c){ try{ localStorage.setItem(LSK,c.kind==='cr'?'$'+c.key:c.key); }catch(_){} }
+  function savedLook(){ try{ var v=localStorage.getItem(LSL); return LOOKS.indexOf(v)>=0?v:'wall'; }catch(_){ return 'wall'; } }
+  function saveLook(){ try{ localStorage.setItem(LSL,S.look); }catch(_){} }
+  S.look=savedLook();
+
+  /* a name → {key, kind}. '$TAO' is the card's crypto grammar; a bare key tries the graded universe first, then crypto. */
+  function resolve(key){
+    if(key==null) return null; key=String(key).trim(); if(!key) return null;
+    var cl=CL(), bare=key.charAt(0)==='$'?key.slice(1):key;
+    if(key.charAt(0)==='$') return (cl&&cl[bare]&&!cl[bare].pretoken&&cl[bare].usd!=null)?{key:bare,kind:'cr'}:null;
+    var lk=null; try{ lk=window.lookup(key); }catch(_){}
+    if(lk&&lk.type==='co') return {key:lk.key,kind:'eq'};
+    if(lk&&lk.type==='fund') return {key:lk.key,kind:'fund'};
+    if(cl&&cl[bare]&&!cl[bare].pretoken&&cl[bare].usd!=null) return {key:bare,kind:'cr'};
+    return null;
+  }
+  function same(a,b){ return !!a&&!!b&&a.kind===b.kind&&a.key===b.key; }
+  function rec(c){
+    if(!c) return null;
+    if(c.kind==='eq'){ var r=D()[c.key]; return (r&&r.live)||null; }
+    if(c.kind==='fund'){ var f=FL(); return (f&&f[c.key])||null; }
+    var t=CL(), v=t&&t[c.key]; return (v&&!v.pretoken&&v.usd!=null)?v:null;
+  }
+  function frames(c){ var r=rec(c); if(!r) return null; return window.tfParse(r.tech&&r.tech.tf)||null; }
+  var tapeNamesAt=0, tapeNamesMap={};
+  function tapeNames(){                                    /* crypto names live inside the crypto module; the Tape's row records carry them */
+    if(Date.now()-tapeNamesAt<30000) return tapeNamesMap;
+    tapeNamesAt=Date.now(); var m={};
+    try{ [].forEach.call(document.querySelectorAll('#mktView .mkt tbody tr'),function(tr){ var r=tr._row; if(r&&r.kind==='cr'&&r.key&&r.name) m[r.key]=String(r.name); }); }catch(_){}
+    if(Object.keys(m).length) tapeNamesMap=m; return tapeNamesMap;
+  }
+  function nameOf(c){
+    if(c.kind==='eq'){ var r=D()[c.key]; return (r&&r.name)||c.key; }
+    if(c.kind==='fund'){ var f=FU()[c.key]; return (f&&f.name)||c.key; }
+    return tapeNames()[c.key]||'';
+  }
+  function caps(){                                         /* fin.js's trick: live px × SEC shares from the Tape's own rows, when it has rendered */
+    var out={}, n=0;
+    try{ [].forEach.call(document.querySelectorAll('#mktView .mkt tbody tr'),function(tr){ var r=tr._row; if(r&&r.kind==='eq'&&r.mcap!=null&&isFinite(r.mcap)){ out[r.key]=r.mcap; n++; } }); }catch(_){}
+    return n?out:null;
+  }
+  function stamp(){ var L=window.AIBO_LIVE; return (L&&L.state&&(L.state.at||'')+'|'+(L.state.src||''))||''; }
+
+  /* ---------- the reads ---------- */
+  function unit(cl){ var n=Math.min(20,cl.length-1), s=0; for(var i=cl.length-n;i<cl.length;i++) s+=Math.abs(cl[i]-cl[i-1]); return n?(s/n)*3:0; }
+  function strength(d,u){ return u>0?Math.max(.25,Math.min(1,Math.abs(d)/u)):.5; }
+  function pct(x){ return (x>=0?'+':'−')+Math.abs(x*100).toFixed(1)+'%'; }
+  function readCandle(bars){
+    if(!bars||bars.length<55) return null;                 /* the 55-EMA does not exist yet: no read, even though the close line draws */
+    var cl=window.tfCloses(bars), em=window.tfEma(cl,55), n=cl.length, e=em[n-1], c=cl[n-1]; if(e==null) return null;
+    var back=em[n-4]!=null?em[n-4]:(em[n-2]!=null?em[n-2]:null), slope=back==null?0:e-back;
+    var dir=c>e?1:c<e?-1:0, v=(dir>0&&slope>=0)?1:(dir<0&&slope<=0)?-1:0;
+    var sl=slope>0?'↗':slope<0?'↘':'→';
+    return {v:v, k:strength(c-e,unit(cl)), t:pct((c-e)/e)+' '+sl, m:pct((c-e)/e), s:'EMA '+sl};
+  }
+  function readTbo(bars){
+    if(!bars||bars.length<45) return null;
+    var cl=window.tfCloses(bars), e21=window.tfEma(cl,21), e40=window.tfEma(cl,40), n=cl.length, a=e21[n-1], b=e40[n-1], c=cl[n-1];
+    if(a==null||b==null) return null;
+    var top=Math.max(a,b), bot=Math.min(a,b), u=unit(cl);
+    if(c>top) return {v:1,  k:strength(c-top,u), t:'above '+pct((c-top)/c).slice(1), m:pct((c-top)/c), s:'above cloud'};
+    if(c<bot) return {v:-1, k:strength(bot-c,u), t:'below '+pct((c-bot)/c).slice(1), m:pct((c-bot)/c), s:'below cloud'};
+    return {v:0, k:.3, t:'in cloud', m:'in cloud', s:''};
+  }
+  function readDiv(bars,tail){
+    if(!bars||bars.length<30) return null;
+    var cl=window.tfCloses(bars), r=window.tfRsi(cl,14), evs=window.tfDivergences(cl,r), n=cl.length, win=Math.min(tail||45,n), off=n-win, hit=null;
+    for(var i=0;i<evs.length;i++) if(evs[i].i1>=off) hit=evs[i];       /* the one the renderer draws: the last divergence that starts inside the window */
+    if(!hit) return {v:0, k:.25, t:'none', m:'none', s:''};
+    var age=n-1-hit.i2, nm=hit.type==='bull'?'bull':'bear';
+    return {v:hit.type==='bull'?1:-1, k:Math.max(.3,1-age/win), t:nm+' · '+age+'b', m:nm, s:age+'b ago'};
+  }
+  function bbAt(cl,gi){ var s=0,j; for(j=gi-19;j<=gi;j++) s+=cl[j]; var m=s/20, v=0; for(j=gi-19;j<=gi;j++) v+=(cl[j]-m)*(cl[j]-m); var sd=Math.sqrt(v/20); return [m-2*sd,m+2*sd]; }
+  function readBb(bars){
+    if(!bars||bars.length<21) return null;
+    var cl=window.tfCloses(bars), n=cl.length, b=bbAt(cl,n-1), c=cl[n-1], pb=(b[1]>b[0])?(c-b[0])/(b[1]-b[0]):.5;
+    return {v:pb>.8?1:pb<.2?-1:0, k:Math.max(.25,Math.min(1,Math.abs(pb-.5)/.5)), t:'%B '+pb.toFixed(2), m:pb.toFixed(2), s:'%B'};
+  }
+  var READ={candle:readCandle, tbo:readTbo, div:readDiv, bb:readBb};
+  function readOf(ind,bars,tail){ return (bars&&bars.length>=ind.min)?READ[ind.id](bars,tail):null; }
+  function cls(rd){ return !rd?'gap':rd.v>0?'up':rd.v<0?'dn':'flat'; }
+
+  /* the y-extent each renderer uses, mirrored, so the hi / lo labels inside a plot are the plot's own scale */
+  function extent(ind,bars,tail){
+    var cl=window.tfCloses(bars), n=cl.length, t=Math.min(tail,n), lo=Infinity, hi=-Infinity, i, j;
+    function add(v){ if(v==null) return; if(v<lo) lo=v; if(v>hi) hi=v; }
+    if(ind==='candle'){ var Bt=bars.slice(-t), M=window.tfEma(cl,55).slice(-t), ohlc=0;
+      for(i=0;i<Bt.length;i++) if(Bt[i].o!=null&&Bt[i].h!=null&&Bt[i].l!=null) ohlc++;
+      var candle=ohlc>=Bt.length*.8;
+      for(i=0;i<Bt.length;i++){ add(candle&&Bt[i].l!=null?Bt[i].l:Bt[i].c); add(candle&&Bt[i].h!=null?Bt[i].h:Bt[i].c); add(M[i]); } }
+    else if(ind==='tbo'){ cl.slice(-t).forEach(add); [8,13,21,40].forEach(function(p){ window.tfEma(cl,p).slice(-t).forEach(add); }); }
+    else if(ind==='div'){ cl.slice(-t).forEach(add); }
+    else { cl.slice(-t).forEach(add); for(i=0;i<t;i++){ j=n-t+i; if(j<19) continue; var b=bbAt(cl,j); add(b[0]); add(b[1]); } }
+    return (hi>lo)?[lo,hi]:null;
+  }
+  function fmtP(v){ if(v==null||!isFinite(v)) return '—'; var a=Math.abs(v); return a>=1000?Math.round(v).toLocaleString('en-US'):a>=100?v.toFixed(1):a>=1?v.toFixed(2):String(parseFloat(v.toPrecision(3))); }
+
+  /* ---------- pieces ---------- */
+  function plotHTML(kind,ind,tf,mode){                     /* an empty frame; fit() draws into it at its real size */
+    var I=byId(ind), T=byTf(tf);
+    return '<div class="glt-plot '+kind+'" data-ind="'+I.id+'" data-tf="'+T[0]+'" data-mode="'+(mode||'ind')+'"><div class="sv"></div>'
+      +'<i class="lb">'+(mode==='tf'?T[2]:I.s)+'</i><b class="rd"></b><i class="hi"></i><i class="lo"></i><i class="tfl"></i><span class="gp" hidden></span></div>';
+  }
+  function seg(cl,attr,items,cur){ return '<div class="gl-seg '+cl+'" role="tablist">'+items.map(function(it){ return '<button type="button" role="tab" '+attr+'="'+it[0]+'"'+(cur===it[0]?' class="on" aria-selected="true"':' aria-selected="false"')+'>'+it[1]+'</button>'; }).join('')+'</div>'; }
+  function wallHTML(){
+    S.wide=window.innerWidth>=700;
+    if(!S.wide) return seg('glt-tfs','data-techtf',TFS,S.tf)+'<div class="glt-tall">'+IND.map(function(i){ return plotHTML('tall',i.id,S.tf,'ind'); }).join('')+'</div>';
+    var h='<div class="glt-grid">'+TFS.map(function(t){ return '<div class="hd">'+t[2]+'</div>'; }).join('');
+    IND.forEach(function(i){ TFS.forEach(function(t){ h+=plotHTML('cell',i.id,t[0],'ind'); }); });
+    return h+'</div>';
+  }
+  function stackHTML(){
+    return seg('glt-inds','data-techind',IND.map(function(i){ return [i.id,i.l]; }),S.ind)
+      +'<div class="glt-tall">'+TFS.map(function(t){ return plotHTML('tall',S.ind,t[0],'tf'); }).join('')+'</div>';
+  }
+  function reads(P,tail){ var out=[]; IND.forEach(function(i){ TFS.forEach(function(t){ out.push({ind:i,tf:t,bars:P[t[0]]||null,rd:readOf(i,P[t[0]],tail)}); }); }); return out; }
+  function tiny(list){                                      /* 20 tiny cubes in four groups — the head's confluence bar and the card strip share it */
+    var h='', g=-1;
+    list.forEach(function(x,n){
+      if(n%5===0){ h+=(g>=0?'</span>':'')+'<span class="g"><i>'+IND[++g].l.charAt(0)+'</i>'; }
+      h+='<b class="c '+cls(x.rd)+'" style="--k:'+(x.rd?x.rd.k.toFixed(2):0)+'" data-cube="'+x.ind.id+':'+x.tf[0]+'" title="'+esc(x.ind.l+' · '+x.tf[2]+(x.rd?': '+x.rd.t:': —'))+'"></b>';
+    });
+    return h+'</span>';
+  }
+  function tally(list){ var c={up:0,dn:0,flat:0,gap:0}; list.forEach(function(x){ c[cls(x.rd)]++; }); return c; }
+  function totHTML(c){ var h=''; if(c.up) h+='<u class="up">▲'+c.up+'</u>'; if(c.dn) h+='<u class="dn">▼'+c.dn+'</u>'; if(c.flat) h+='<u class="flat">–'+c.flat+'</u>'; if(c.gap) h+='<u class="gap">—'+c.gap+'</u>'; return '<b class="tot">'+h+'</b>'; }
+  function confHTML(up,dn,fl){ var n=up+dn+fl; if(!n) return '<b class="cf gap">—</b>'; if(up>dn) return '<b class="cf up">'+up+' of '+n+' ▲</b>'; if(dn>up) return '<b class="cf dn">'+dn+' of '+n+' ▼</b>'; return '<b class="cf flat">split '+up+'▲ '+dn+'▼</b>'; }
+  function defaultSel(P){ var tfs=['d','w','m','h4','h']; for(var i=0;i<tfs.length;i++) if(P[tfs[i]]&&P[tfs[i]].length>=8) return {ind:'candle',tf:tfs[i]}; return null; }
+  function cubesHTML(P){
+    if(!S.sel||!P[S.sel.tf]) S.sel=defaultSel(P);
+    var h='';
+    IND.forEach(function(i){
+      var cells='', up=0, dn=0, fl=0;
+      TFS.forEach(function(t){
+        var bars=P[t[0]]||null, rd=readOf(i,bars,S.tailTall), c=cls(rd); if(c==='up') up++; else if(c==='dn') dn++; else if(c==='flat') fl++;
+        var on=S.sel&&S.sel.ind===i.id&&S.sel.tf===t[0], can=!!(bars&&bars.length>=i.min);
+        cells+='<button type="button" class="glt-cube '+c+(on?' sel':'')+'" style="--k:'+(rd?rd.k.toFixed(2):0)+'" data-cube="'+i.id+':'+t[0]+'"'+(can?'':' disabled')
+          +' aria-label="'+esc(i.l+' · '+t[2]+': '+(rd?rd.t:'no read'))+'"><i>'+t[1]+'</i><b>'+(rd?esc(rd.m):'—')+'</b>'+(rd&&rd.s?'<em>'+esc(rd.s)+'</em>':'')+'</button>';
+      });
+      h+='<div class="glt-crow" data-ind="'+i.id+'"><div class="rh"><span>'+i.s+'</span>'+confHTML(up,dn,fl)+'</div><div class="cells">'+cells+'</div></div>';
+    });
+    return '<div class="glt-cubes">'+h+'</div>'+(S.sel?plotHTML('tall',S.sel.ind,S.sel.tf,'ind'):'');
+  }
+  function stripRow(P,tail){ return '<div class="glt-strip" role="button" tabindex="0" data-techstrip aria-label="Technicals reads — open the full page">'+tiny(reads(P,tail))+'<b class="go" aria-hidden="true">↗</b></div>'; }
+  function stripHTML(P){
+    if(!S.sel||!P[S.sel.tf]) S.sel=defaultSel(P);
+    var fn=S.cur.kind==='eq'?window.liveStrip:S.cur.kind==='fund'?window.liveStripFund:window.liveStripCrypto, strip='';
+    try{ strip=typeof fn==='function'?fn(S.cur.key):''; }catch(_){ strip=''; }
+    if(!strip) strip='<div class="aibo-strip"><span class="as-gap">no live strip</span></div>';
+    return '<div class="glt-mock"><i class="cap">CARD PREVIEW</i><div class="aibo-box">'+strip+stripRow(P,45)+'</div></div>'
+      +(S.sel?plotHTML('tall',S.sel.ind,S.sel.tf,'ind'):'');
+  }
+
+  /* ---------- fit: draw every empty frame at its REAL size (the renderers take w,h; the tail follows the width) ---------- */
+  function schedule(){ if(S.raf) return; S.raf=requestAnimationFrame(function(){ S.raf=0; fit(); }); }
+  function setRead(el,rd){ var b=el.querySelector('.rd'); b.className='rd '+cls(rd); b.textContent=rd?rd.t:'—'; }
+  function fit(){
+    if(!S.open||!S.cur) return;
+    var P=frames(S.cur)||{}, st=stamp();
+    [].forEach.call(root.querySelectorAll('.glt-plot'),function(el){
+      var I=byId(el.getAttribute('data-ind')), tf=el.getAttribute('data-tf'), bars=P[tf]||null;
+      var w=el.clientWidth, h=el.clientHeight; if(w<40||h<20) return;
+      var key=w+'x'+h+'|'+S.cur.kind+':'+S.cur.key+'|'+st; if(el.getAttribute('data-fit')===key) return; el.setAttribute('data-fit',key);
+      var tail=Math.max(30,Math.min(90,Math.round(w/6)));
+      var svg=(bars&&bars.length>=I.min)?window[I.fn](bars,w,h,tail):'';
+      var sv=el.querySelector('.sv'), gp=el.querySelector('.gp');
+      if(!svg){ el.classList.add('gap'); sv.innerHTML=''; gp.hidden=false; gp.textContent=bars?'— short history':(tf==='h'||tf==='h4')?'— no intraday yet':'— short history'; setRead(el,null);
+        el.querySelector('.hi').textContent=''; el.querySelector('.lo').textContent=''; el.querySelector('.tfl').textContent=''; return; }
+      el.classList.remove('gap'); gp.hidden=true; sv.innerHTML=svg;
+      setRead(el,readOf(I,bars,tail));
+      var ex=extent(I.id,bars,tail); el.querySelector('.hi').textContent=ex?fmtP(ex[1]):''; el.querySelector('.lo').textContent=ex?fmtP(ex[0]):'';
+      el.querySelector('.tfl').textContent=(el.getAttribute('data-mode')==='tf'?I.s:byTf(tf)[2])+' · '+Math.min(tail,bars.length)+' bars';
+    });
+  }
+
+  /* ---------- the layer ---------- */
+  var SEARCH='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
+  var NOTE='Each cube is one read on one frame. Candles: the last close against the 55-EMA, with the EMA’s own slope (both must agree, else neutral). '
+    +'TBO: the close above, inside or below the 21/40 cloud. Divergence: the latest RSI-14 divergence still inside the plotted window, or none. '
+    +'Bollinger: %B of the last close (above 0.8 / below 0.2 / middle). Green = bullish, red = bearish, grey = neutral, deeper = stronger; '
+    +'— = the frame is missing or too short (short history, or no intraday for this name yet). Chips marked intraday carry 4-hour and hourly frames. '
+    +'Plots draw the newest 30–90 bars, fitted to the width; hi / lo are each plot’s own scale.';
+  function build(){
+    if(S.built) return; S.built=true;
+    root.innerHTML='<div class="glt-head">'
+      +'<div class="glt-row"><div class="glt-who" data-techwho></div><div class="glt-px" data-techpx></div><button type="button" class="glt-x" data-techclose aria-label="Close Technicals">×</button></div>'
+      +'<div class="glt-row"><label class="glt-search">'+SEARCH+'<input type="search" data-techq placeholder="Find a name" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"></label>'
+      +'<small class="glt-sort" data-techsort></small></div>'
+      +'<div class="glt-chips" data-techchips></div></div>'
+      +'<div class="glt-bar"><div class="glt-row">'+seg('glt-dial','data-techdial',LOOKS.map(function(l){ return [l,LOOKL[l]]; }),S.look)
+      +'<button type="button" class="glc-info glt-i" data-techinfo aria-label="How the reads are made" aria-expanded="false">i</button></div>'
+      +'<div class="glt-conf" data-techconf></div><div class="glt-note" data-technote hidden>'+NOTE+'</div></div>'
+      +'<div class="glt-body"><div class="glt-look" data-techlook></div><div class="glt-end"></div></div>';
+    root.addEventListener('click',function(e){ var b, t=e.target; if(!t||!t.closest) return;
+      if(t.closest('[data-techclose]')){ hide(); return; }
+      if((b=t.closest('[data-techco]'))){ pick(b.getAttribute('data-techco')); return; }
+      if((b=t.closest('[data-techdial]'))){ look(b.getAttribute('data-techdial')); return; }
+      if((b=t.closest('[data-techtf]'))){ S.tf=b.getAttribute('data-techtf'); paintLook(false); return; }
+      if((b=t.closest('[data-techind]'))){ S.ind=b.getAttribute('data-techind'); paintLook(false); return; }
+      if((b=t.closest('[data-cube]'))){ if(b.disabled) return; var p=b.getAttribute('data-cube').split(':'); S.sel={ind:p[0],tf:p[1]};
+        if(S.look==='wall'||S.look==='stack') look('cubes'); else paintLook(false);
+        var pl=root.querySelector('.glt-look > .glt-plot.tall'); if(pl&&pl.scrollIntoView){ try{ pl.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){ } } return; }
+      if(t.closest('[data-techinfo]')){ var n=root.querySelector('[data-technote]'), ib=root.querySelector('[data-techinfo]'); n.hidden=!n.hidden; ib.setAttribute('aria-expanded',String(!n.hidden)); return; } });
+    var q=root.querySelector('[data-techq]');
+    q.addEventListener('input',function(){ S.q=q.value.trim().toLowerCase(); paintChips(false); });
+    q.addEventListener('keydown',function(e){ if(e.key==='Enter'){ var first=root.querySelector('[data-techco]:not([hidden])'); if(first){ pick(first.getAttribute('data-techco')); q.blur(); } }
+      else if(e.key==='Escape'){ q.value=''; S.q=''; paintChips(false); q.blur(); } });
+  }
+  document.addEventListener('keydown',function(e){ if(e.key!=='Escape'||!S.open) return; var t=e.target; if(t&&t.matches&&t.matches('[data-techq]')) return; hide(); });   /* the layer never holds focus on a desktop: listen on the document */
+  function paintWho(){
+    var c=S.cur, r=rec(c), who=root.querySelector('[data-techwho]'), px=root.querySelector('[data-techpx]'); if(!who||!c) return;
+    var P=frames(c)||{}, L=window.AIBO_LIVE||{}, num=L.num||function(x,d){ return (x==null||isNaN(x))?'—':Number(x).toFixed(d==null?2:d); };
+    var fr=TFS.map(function(t){ return '<i class="'+(P[t[0]]?'on':'')+'">'+t[1]+'</i>'; }).join('');
+    who.innerHTML='<b class="t">'+esc(c.kind==='cr'?'$'+c.key:c.key)+'</b>'+(c.kind!=='eq'?'<em class="kd">'+(c.kind==='cr'?'crypto':'fund')+'</em>':'')
+      +'<span class="n">'+esc(nameOf(c))+'</span><span class="fr" title="frames on hand">'+fr+'</span>';
+    var lastPx=null, chg=null, lab='';
+    if(r){ if(c.kind==='cr'){ lastPx=r.usd; chg=r.chg24h_pct; lab='24h'; } else { lastPx=r.px&&r.px.last; chg=typeof L.dayChg==='function'?L.dayChg(r):(r.px&&r.px.chg1d_pct); lab='1d'; } }
+    var cc=chg==null?'flat':chg>0.049?'up':chg<-0.049?'dn':'flat', arr=chg==null?'':chg>0.049?'▲':chg<-0.049?'▼':'•';
+    px.innerHTML=(lastPx==null)?'<u>—</u>':'<u>'+(lastPx>=1?num(lastPx,2):esc(String(parseFloat(Number(lastPx).toPrecision(4)))))+'</u>'
+      +'<span class="'+cc+'">'+(chg==null?'—':arr+' '+Math.abs(chg).toFixed(2)+'%')+'<i>'+lab+'</i></span>';
+  }
+  function universe(){
+    var Dd=D(), C=caps(), eq=[], fs=[], cs=[], k, P;
+    for(k in Dd){ if(!Object.prototype.hasOwnProperty.call(Dd,k)) continue; var r=Dd[k]; P=r&&r.live&&r.live.tech?window.tfParse(r.live.tech.tf):null; if(!P) continue;
+      eq.push({key:k,kind:'eq',name:String(r.name||k),cap:C&&C[k]!=null?C[k]:null,intra:!!(P.h||P.h4)}); }
+    S.byCap=!!C;
+    var alpha=function(a,b){ return a.key<b.key?-1:a.key>b.key?1:0; };
+    eq.sort(function(a,b){ if(S.byCap){ var ca=a.cap==null?-1:a.cap, cb=b.cap==null?-1:b.cap; if(ca!==cb) return cb-ca; } return alpha(a,b); });
+    var fl=FL()||{}, FU_=FU(); for(k in fl){ if(!Object.prototype.hasOwnProperty.call(fl,k)) continue; P=fl[k]&&fl[k].tech?window.tfParse(fl[k].tech.tf):null; if(!P) continue;
+      fs.push({key:k,kind:'fund',name:String((FU_[k]&&FU_[k].name)||k),intra:!!(P.h||P.h4)}); }
+    fs.sort(alpha);
+    var cl=CL()||{}, names=tapeNames(); for(k in cl){ if(!Object.prototype.hasOwnProperty.call(cl,k)) continue; var v=cl[k]; if(!v||v.pretoken||v.usd==null) continue; P=v.tech?window.tfParse(v.tech.tf):null; if(!P) continue;
+      cs.push({key:k,kind:'cr',name:names[k]||'',cap:v.mcap!=null?v.mcap:null,intra:!!(P.h||P.h4)}); }
+    cs.sort(function(a,b){ var ca=a.cap==null?-1:a.cap, cb=b.cap==null?-1:b.cap; if(ca!==cb) return cb-ca; return alpha(a,b); });
+    S.list=eq.concat(fs,cs); return S.list;
+  }
+  function chipKey(c){ return c.kind==='cr'?'$'+c.key:c.key; }
+  function match(c,q){ if(!q) return true; return c.key.toLowerCase().indexOf(q)>=0||c.name.toLowerCase().indexOf(q)>=0; }
+  function paintChips(rebuild){
+    var box=root.querySelector('[data-techchips]'), note=root.querySelector('[data-techsort]'); if(!box) return;
+    if(rebuild||!box.firstChild){ var list=universe(), h='', grp=null;
+      list.forEach(function(c){ if(c.kind!==grp){ grp=c.kind; h+='<i class="glt-grp">'+(grp==='eq'?'equities':grp==='fund'?'funds':'crypto')+'</i>'; }
+        h+='<button type="button" class="glt-chip" data-techco="'+esc(chipKey(c))+'" data-kind="'+c.kind+'"><b>'+esc(chipKey(c))+'</b>'+(c.name?'<span>'+esc(c.name)+'</span>':'')+(c.intra?'<i>intraday</i>':'')+'</button>'; });
+      box.innerHTML=h;
+      if(note) note.textContent=S.byCap?'by market cap':'A→Z · caps not live'; }
+    var q=S.q, n=0, cur=null, curKey=S.cur?chipKey(S.cur):null;
+    [].forEach.call(box.children,function(ch){ var k=ch.getAttribute('data-techco'); if(k==null){ ch.hidden=!!q; return; }   /* group captions hide while filtering */
+      var c=null; for(var i=0;i<S.list.length;i++) if(chipKey(S.list[i])===k){ c=S.list[i]; break; }
+      var on=!!c&&match(c,q); ch.hidden=!on; if(on) n++; var isCur=k===curKey; ch.classList.toggle('on',isCur); if(isCur) cur=ch; });
+    box.classList.toggle('none',!n);
+    if(cur&&!cur.hidden&&cur.scrollIntoView){ try{ cur.scrollIntoView({block:'nearest',inline:'center'}); }catch(_){ } }
+  }
+  function paintDial(){ [].forEach.call(root.querySelectorAll('[data-techdial]'),function(b){ var on=b.getAttribute('data-techdial')===S.look; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); }); }
+  function paintConf(P){ var el=root.querySelector('[data-techconf]'); if(!el) return; var L=reads(P,S.tailTall); el.innerHTML=tiny(L)+totHTML(tally(L)); }
+  function paintLook(anim){
+    var body=root.querySelector('[data-techlook]'); if(!body||!S.cur) return;
+    var P=frames(S.cur); S.stamp=stamp();
+    S.tailTall=Math.max(30,Math.min(90,Math.round((root.clientWidth-20)/6)));
+    body.setAttribute('data-look',S.look);
+    if(!P){ body.innerHTML='<div class="glt-none">No technical frames for '+esc(chipKey(S.cur))+' yet — the live feed has not arrived.</div>'; paintConf({}); return; }
+    body.innerHTML=S.look==='wall'?wallHTML():S.look==='stack'?stackHTML():S.look==='cubes'?cubesHTML(P):stripHTML(P);
+    if(anim){ body.classList.remove('in'); void body.offsetWidth; body.classList.add('in'); }
+    paintConf(P); schedule();
+  }
+  var titleEl=null;
+  function title(){
+    if(!titleEl){ titleEl=document.getElementById('glTitle'); if(titleEl&&window.MutationObserver&&!S.tobs){ S.tobs=new MutationObserver(function(){ if(S.open) title(); }); S.tobs.observe(titleEl,{childList:true,characterData:true,subtree:true}); } }
+    if(titleEl&&S.open&&titleEl.textContent!=='Technicals') titleEl.textContent='Technicals';
+  }
+  function closeCard(){ var sh=document.getElementById('sheet'); if(sh&&sh.classList.contains('show')&&typeof window.closeSheet==='function'){ try{ window.closeSheet(); }catch(_){} } }
+  function leaveOthers(){                                   /* one page at a time: the other Glass layers step aside (their own hide() is called after their class, the shim's order) */
+    if(B.classList.contains('gl-fin')){ B.classList.remove('gl-fin'); if(window.GLFin&&window.GLFin.hide){ try{ window.GLFin.hide(); }catch(_){} } }
+    if(B.classList.contains('gl-grid')){ B.classList.remove('gl-grid'); if(window.GLGrid&&window.GLGrid.hide){ try{ window.GLGrid.hide(); }catch(_){} } }
+    if(B.classList.contains('gl-cal')){ B.classList.remove('gl-cal'); if(window.GLCal&&window.GLCal.hide){ try{ window.GLCal.hide(); }catch(_){} } }
+    B.classList.remove('m-atlas-open');
+  }
+  function pick(key){ var c=resolve(key); if(!c){ return; } if(same(c,S.cur)){ paintChips(false); return; } S.cur=c; S.sel=null; remember(c); paintWho(); paintChips(false); paintLook(true); root.scrollTop=0; }
+
+  function show(key,opt){
+    if(!H.getAttribute('data-gl')) return;                 /* theme off = exact Stage 43 */
+    var c=resolve(key);
+    if(!c&&key!=null&&S.open) return;                      /* an explicit name the page cannot show while it is open: stay put */
+    c=c||resolve(last())||resolve(DEF); if(!c){ var Dd=D(); for(var k in Dd){ if(Object.prototype.hasOwnProperty.call(Dd,k)){ c={key:k,kind:'eq'}; break; } } } if(!c) return;
+    build();
+    var was=S.open, isSame=same(c,S.cur); S.open=true;
+    closeCard(); leaveOthers();
+    B.classList.add('gl-tech');
+    if(!isSame){ S.cur=c; S.sel=null; remember(c); }
+    if(opt&&opt.look&&LOOKS.indexOf(opt.look)>=0){ S.look=opt.look; saveLook(); }
+    if(opt&&opt.sel&&opt.sel.ind&&opt.sel.tf) S.sel={ind:opt.sel.ind,tf:opt.sel.tf};
+    var q=root.querySelector('[data-techq]'); if(q&&(!was||!isSame)){ q.value=''; S.q=''; }
+    paintWho(); paintChips(true); paintDial(); paintLook(true); title();
+    if(!isSame||!was) root.scrollTop=0;
+    if(window.GL48&&typeof window.GL48.resetZoom==='function'){ try{ window.GL48.resetZoom(); }catch(_){} }
+  }
+  function hide(){
+    S.open=false; S.q=''; var q=root.querySelector('[data-techq]'); if(q) q.value=''; var n=root.querySelector('[data-technote]'); if(n) n.hidden=true;
+    if(!B.classList.contains('gl-tech')) return; B.classList.remove('gl-tech');
+    if(window.GL48&&typeof window.GL48.sync==='function'){ try{ window.GL48.sync(); }catch(_){} }
+  }
+  function look(name){ if(LOOKS.indexOf(name)<0) return; var ch=name!==S.look; S.look=name; saveLook(); if(!S.built) return; paintDial(); if(S.open) paintLook(ch); }
+  function current(){ return S.cur?chipKey(S.cur):null; }
+  window.GLTech={show:show, hide:hide, look:look, current:current};
+
+  /* ---------- the card: the pill, the bar as the door, the optional strip preview ---------- */
+  function cardKey(){ var body=document.getElementById('sheetBody'); if(!body) return null; var tk=body.querySelector('.sh-tk'); if(!tk) return null; var t=tk.textContent.trim(); if(!t) return null; return body.querySelector('.cr-sheet')?'$'+t:t; }
+  function decorateCard(){
+    if(!H.getAttribute('data-gl')) return;
+    var body=document.getElementById('sheetBody'), box=body&&body.querySelector('.aibo-box'); if(!box) return;   /* no strip + panel, no technicals to open */
+    var key=cardKey(); if(!key) return; box.setAttribute('data-gltech',key);
+    var strip=box.querySelector('.aibo-strip'), xp=strip&&strip.querySelector('.as-xp'); if(!strip) return;
+    if(!strip.querySelector('[data-gltechopen]')){ var b=document.createElement('button'); b.type='button'; b.className='glt-open'; b.setAttribute('data-gltechopen',''); b.setAttribute('aria-label','Open the full Technicals page'); b.textContent='Full page ↗';
+      if(xp) xp.insertAdjacentElement('afterend',b); else strip.appendChild(b); }
+    if(H.hasAttribute('data-techstrip')&&!box.querySelector('.glt-strip')){ var c=resolve(key), P=c&&frames(c);
+      if(P){ var d=document.createElement('div'); d.innerHTML=stripRow(P,45); var el=d.firstChild; el.setAttribute('data-gltechstrip',''); strip.insertAdjacentElement('afterend',el); } }
+  }
+  var sheet=document.getElementById('sheet');
+  if(sheet&&window.MutationObserver) new MutationObserver(function(){ if(sheet.classList.contains('show')) decorateCard(); }).observe(sheet,{attributes:true,attributeFilter:['class']});
+  function fromCard(el,cube){ var box=el.closest('.aibo-box'), key=(box&&box.getAttribute('data-gltech'))||cardKey(); if(!key) return; var opt=null; if(cube){ var p=cube.split(':'); opt={look:'cubes',sel:{ind:p[0],tf:p[1]}}; } show(key,opt); }
+  document.addEventListener('click',function(e){
+    var t=e.target, b; if(!t||!t.closest) return;
+    if(S.open&&(t.closest('#glDock [data-gldoor]')||t.closest('#mAtlasSheet .ma-row'))){ hide(); return; }
+    if(!H.getAttribute('data-gl')) return;                  /* theme off: the stock bar toggles the stock grid, untouched */
+    if((b=t.closest('[data-gltechopen]'))){ e.preventDefault(); e.stopPropagation(); fromCard(b,null); return; }
+    if((b=t.closest('[data-gltechstrip]'))){ e.preventDefault(); e.stopPropagation(); var cb=t.closest('[data-cube]'); fromCard(b,cb?cb.getAttribute('data-cube'):null); return; }
+    if((b=t.closest('#sheetBody .aibo-box [data-xp]'))){ e.preventDefault(); e.stopPropagation(); fromCard(b,null); return; }
+  },true);
+
+  /* ---------- keep up: widths, the feed's refresh, the URL flags ---------- */
+  window.addEventListener('resize',function(){ if(!S.open) return; clearTimeout(S.rt); S.rt=setTimeout(function(){
+    if(S.look==='wall'&&(window.innerWidth>=700)!==S.wide) paintLook(false); else { S.tailTall=Math.max(30,Math.min(90,Math.round((root.clientWidth-20)/6))); schedule(); } },120); });
+  setInterval(function(){ if(!S.open||!S.cur) return; if(stamp()!==S.stamp) paintLook(false); },4000);   /* a fresh feed (or the first one) repaints; otherwise nothing */
+  (function(){
+    if(/[?&]techstrip=1(&|#|$)/.test(location.search)) H.setAttribute('data-techstrip','1');
+    var m=/[?&]techlab=([^&#]+)/.exec(location.search); if(!m) return;
+    var key=decodeURIComponent(m[1]), t0=Date.now();
+    (function poll(){ var c=resolve(key); if(c&&frames(c)&&H.getAttribute('data-gl')){ show(key); return; } if(Date.now()-t0<20000) setTimeout(poll,400); })();
+  })();
+})();
 
 </script>
 <script id="gl48Shim">
