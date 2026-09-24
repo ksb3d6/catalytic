@@ -3008,7 +3008,7 @@ function tfAfterHrs(tf,kind){
     ? '<span class="as-ah" title="4H/H frames from '+when+' — feed running behind">FEED LAG</span>'
     : '<span class="as-ah" title="4H/H frames from '+when+' — market closed since">AFTER HRS</span>';
 }
-function vbulletSVG(tf,pxLast){
+function vbulletSVG(tf,pxLast,variant){
   /* Stage 24: the month bar — the owner's finalized spec. Track = 30-day OPEN/CLOSE range
      (~one month of bodies), nested week band (5d) and today band, stepped widths
      4.5/6.5/8.5 on a 64px base, ice-gradient grays, beefy MA20, and a full-circle
@@ -3065,6 +3065,15 @@ function vbulletSVG(tf,pxLast){
     o+='<circle cx="'+cx+'" cy="'+Yv(last).toFixed(1)+'" r="'+dr+'" fill="'+col+'" stroke="#0D1320" stroke-width="'+rim+'"/>';
     return '<svg class="'+cls+'" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" aria-hidden="true">'+o+'</svg>';
   }
+  /* Stage 48 round 8 §37 (the owner 09-24: "I love the little bullet graph on the far right, but it's so thin…
+     make it thicker all around"): the Tape asks for the STOUT pair instead — vb-s 22×64 for the phone's
+     column 4 (track 4.5 / week 7.5 / day 10.5 wide, a 19px MA20 tick at 2.2, a r=5 price dot — every part
+     scaled up, drawn at natural size so the lines stay crisp) and vb-sw 30×64 for the wide table's cell.
+     The card strips keep the classic pair below, untouched. */
+  if(variant==='stout') return '<span class="as-vb">'
+       + draw(22,64,7,4.5,7.5,10.5,9.5,2.2,5,1.4,'vb-s')
+       + draw(30,64,8,5.5,9,13,13,2.4,6,1.5,'vb-sw')
+       + '</span>';
   return '<span class="as-vb">'
        + draw(30,64,6,3,4.5,6,9.5,1.8,4.5,1.3,'vb-w')
        + draw(20,116,8,2.5,4,5.5,7.5,1.5,3.8,1.1,'vb-n')
@@ -9665,7 +9674,7 @@ window.MktView = (function(){
   }
   function mkAssemble(){
     var d=MK.data, out=[]; if(!d) return out;
-    mkCdFromCache('mk'); mkCdFromCache('mkc');   /* §31: a reload builds the rows from the market cache BEFORE the chip handler runs — the day's candles must ride along */
+    mkCdFromCache('mk'); mkCdFromCache('mkc'); mkAgFromCache();   /* §31/§41: a reload builds the rows from the market cache BEFORE the chip handler runs — the day's candles and auto grades must ride along */
     var er=(d.equities&&Array.isArray(d.equities.rows))?d.equities.rows:[];
     var gEq=mkGradedIndex('mk'), eqSyms={};
     er.forEach(function(x){ if(x&&x.sym) eqSyms[String(x.sym).toUpperCase()]=1; });
@@ -9682,7 +9691,8 @@ window.MktView = (function(){
         px:mkNum(x.px), pxStale:st, pxTitle:st?'carried from an earlier pull — this quote did not refresh':null,
         chg1h:null, hStale:false, hLabel:'', chg24:mkNum(x.chg1d), chg24Note:null, chg7:mkNum(x.chg7d),
         mcap:mkNum(x.mcap), mcapSub:ex||null, mcapTitle:'market cap from the quote feed'+(ex?' · '+ex:''),
-        vol:null, vol20:null, tech:null, sentO:null, range:tf?rangePos(tfParse(tf),mkNum(x.px)):null, tf:tf
+        vol:null, vol20:null, tech:null, sentO:null, range:tf?rangePos(tfParse(tf),mkNum(x.px)):null, tf:tf,
+        auto:mkAgOf(sym)   /* §41: the auto grade (US 500 only), or null */
       });
     });
     var cr=(d.crypto&&Array.isArray(d.crypto.rows))?d.crypto.rows:[];
@@ -9806,6 +9816,79 @@ window.MktView = (function(){
     if(S.err) return 'daily candles unavailable — '+S.err;
     return '';
   }
+  /* ---------- round 8 §41: AUTO grades for the US 500 (backend v4.5) ----------
+     GET <backend>/market_grades.json — {schemaVersion:1, asOf, basis, rows:{SYM:{exp,rec,P,F,C,G,period,asOf}},
+     coverage:{n,graded,pending,skipped,notes}}: only Market names that are NOT curated watchlist names; a name with too
+     little filing history is absent. Same lifecycle as the candles files — fetched ONCE per UTC day when the US 500 chip is
+     chosen (memory, then localStorage 'aibo.mk.grades.v1' holding {day,data}; another day's cache is ignored), 12s abort,
+     a failed pull backs off five minutes. A kind 'mk' row wears r.auto={exp,rec,period}; graded clones (kind 'eq') never do —
+     a curated name that strays into the file is ignored; Coins 500 never asks (no filings, no grades). Missing file ->
+     the rows keep "—" and the note says so. Never invented: a row whose letters are not in the grade table is no grade. */
+  var MK_AG_LS='aibo.mk.grades.v1', MK_AG=mkCdBlank();
+  function mkAgReset(){ var b=mkCdBlank(); Object.keys(b).forEach(function(k){ MK_AG[k]=b[k]; }); }
+  function mkAgShapeOk(j){ return !!(j&&j.schemaVersion===1&&j.rows&&typeof j.rows==='object'&&!Array.isArray(j.rows)); }
+  function mkAgFromCache(){
+    var S=MK_AG; if(S.data||S.cacheRead) return;   /* one localStorage read per page life (forget() re-arms it) */
+    S.cacheRead=true;
+    try{
+      var j=JSON.parse(localStorage.getItem(MK_AG_LS)||'null');
+      if(j&&j.day===mkCdDay()&&mkAgShapeOk(j.data)){ S.data=j.data; S.day=j.day; }
+    }catch(_){}
+  }
+  function mkAgOf(sym){
+    var d=MK_AG.data; if(!d) return null;
+    var x=d.rows[sym]; if(!x||typeof x!=='object') return null;
+    var e=(typeof x.exp==='string'&&GVAL[x.exp])?x.exp:null, rc=(typeof x.rec==='string'&&GVAL[x.rec])?x.rec:null;
+    if(!e&&!rc) return null;
+    return {exp:e, rec:rc, period:(typeof x.period==='string'?x.period:'')};
+  }
+  function mkAgLoad(force){
+    var S=MK_AG;
+    mkAgFromCache();
+    var today=mkCdDay();
+    if(S.busy) return;
+    if(S.data&&S.day===today&&!force) return;
+    if(!force&&S.triedAt&&(Date.now()-S.triedAt<MK_CD_BACKOFF)) return;
+    S.busy=true; S.err=null; S.triedAt=Date.now();
+    if(built) renderStats();
+    var ctl=('AbortController' in window)?new AbortController():null;
+    var to=ctl?setTimeout(function(){ try{ ctl.abort(); }catch(_){} },MK_FETCH_MS):null;
+    var done=function(){ if(to){ clearTimeout(to); to=null; } S.busy=false; };
+    var p;
+    try{ p=fetch(MK_BASE+'/market_grades.json',{cache:'no-store', signal: ctl&&ctl.signal}); }catch(e){ p=Promise.reject(e); }
+    p.then(function(r){
+      if(!r.ok) throw new Error(r.status===404?'not published yet (404)':'HTTP '+r.status);
+      return r.json();
+    }).then(function(j){
+      if(!mkAgShapeOk(j)) throw new Error('unexpected grades shape');
+      S.data=j; S.day=today; S.err=null;
+      try{ localStorage.setItem(MK_AG_LS,JSON.stringify({day:today,data:j})); }catch(_){}
+      done();
+      if(built&&MK.data) mkApply(); else if(built) renderStats();
+    }).catch(function(e){
+      S.err=String(e&&e.message||e||'unreachable');
+      if(/failed to fetch|networkerror|load failed|typeerror|abort/i.test(S.err)) S.err='feed unreachable';
+      done(); if(built) renderStats();
+    });
+  }
+  function mkAgTick(){
+    if(!built||state.uni!=='mk'||MK_AG.busy) return;
+    if(MK_AG.day!==mkCdDay()) mkAgLoad(false);   /* a new UTC day under the US 500 chip asks once; the backoff paces failures */
+  }
+  /* the honest coverage line: "auto grades · 388 of 439 · as of Sep 25" (or loading / unavailable); US 500 only */
+  function mkAgNote(){
+    if(state.uni!=='mk') return '';
+    var S=MK_AG;
+    if(S.data){
+      var d=S.data, c=d.coverage||{}, n=Object.keys(d.rows||{}).length;
+      var cov=(c.graded!=null&&c.n!=null)?(c.graded+' of '+c.n):(n+' names');
+      var at=mkFmtD(d.asOf);
+      return 'auto grades · '+cov+(at?' · as of '+at:'');
+    }
+    if(S.busy) return 'auto grades loading…';
+    if(S.err) return 'auto grades unavailable — '+S.err;
+    return '';
+  }
   function mkFromCache(){
     if(MK.data) return;
     try{
@@ -9826,6 +9909,7 @@ window.MktView = (function(){
     ROWS=ROWS.concat(add);
     applySort(); rebuildCats(); applyFilter();
     if(isMkUni()) mkCdLoad(state.uni,false);   /* §31: rows rebuilt under a Market chip (Retry, a refresh, a reload) ask for today's candles; fresh = no-op, a failure backs off */
+    if(state.uni==='mk') mkAgLoad(false);       /* §41: …and the US 500 chip asks for today's auto grades the same way */
     if(tw){ if(tw.scrollTop!==st) tw.scrollTop=st; if(tw.scrollLeft!==sl) tw.scrollLeft=sl; }
     if((window.scrollY||0)!==wy) try{ window.scrollTo(window.scrollX||0,wy); }catch(_){}
   }
@@ -9871,6 +9955,7 @@ window.MktView = (function(){
     MK.data=null; MK.at=0; MK.err=null;
     try{ localStorage.removeItem(MK_LS); }catch(_){}
     ['mk','mkc'].forEach(function(f){ MK_CD[f]=mkCdBlank(); try{ localStorage.removeItem(MK_CD_LS+'.'+f); }catch(_){} });
+    mkAgReset(); try{ localStorage.removeItem(MK_AG_LS); }catch(_){}   /* §41 */
     if(built){
       ROWS.forEach(function(r){ if(isMkAny(r)&&r.tr&&r.tr.parentNode) r.tr.parentNode.removeChild(r.tr); });
       ROWS=ROWS.filter(function(r){ return !isMkAny(r); });
@@ -9989,6 +10074,7 @@ window.MktView = (function(){
   function gradeOf(r){
     if(r.kind==='eq') return state.lens==='rec'?r.gRec:r.gExp;
     if(r.kind==='cr') return r.grade;
+    if(r.kind==='mk') return r.auto?(state.lens==='rec'?r.auto.rec:r.auto.exp):null;   /* §41: an auto grade sorts and reads the lens like a curated one */
     return null;
   }
   function sortVal(r,k){
@@ -10009,7 +10095,13 @@ window.MktView = (function(){
       +'<div class="mk-co" title="'+esc(r.name)+'">'+esc(r.name)+'</div>'+cat+'</div></div>';
   }
   function gradeCell(r){
-    if(isMk(r)) return '<span class="mk-gp g-na" title="not graded — a Market universe name, no AIBO grade">—</span>';
+    if(isMk(r)){
+      /* round 8 §41: a US 500 name with an AUTO grade (backend v4.5 — the four filings pillars P F C G only) wears a VISIBLY
+         different pill: hollow, dashed in the grade's colour (mk-auto, --ag), the tooltip naming the period; Coins 500 never */
+      var ag=gradeOf(r);
+      if(ag&&GVAL[ag]){ var gc=gradeClass(ag); return '<span class="mk-gp mk-auto '+gc+'" style="--ag:var(--'+gc+')" title="auto grade · 4 pillars from filings · '+esc(r.auto.period||'—')+'">'+ag+'</span>'; }
+      return '<span class="mk-gp g-na" title="not graded — a Market universe name, no AIBO grade">—</span>';
+    }
     if(r.kind==='fd') return '<span class="mk-gap">—</span>';
     if(r.kind==='cr') return gradePill(r.grade)+(r.tok!=null?'<span class="mk-sub">tok '+r.tok+'</span>':'<span class="mk-sub">pre-token</span>');
     return gradePill(gradeOf(r));
@@ -10034,34 +10126,35 @@ window.MktView = (function(){
       +'<td class="c-tech">'+techGauge(r.tech)+'</td>'
       +'<td class="c-sent">'+sentCell(r.sentO)+'</td>'
       +'<td class="c-bullet" title="30-day range bullet — track = month of open/close bodies, nested week + day bands, MA20 line, dot = price (day direction)">'
-        +(function(){ var vb=''; try{ vb=r.tf?vbulletSVG(r.tf,r.px):''; }catch(e){}
+        +(function(){ var vb=''; try{ vb=r.tf?vbulletSVG(r.tf,r.px,'stout'):''; }catch(e){}   /* §37: the stout pair */
            return vb?('<span class="mk-vb">'+vb+'</span>'):'<span class="mk-gap">—</span>'; })()+'</td>'
       +'<td class="c-chart"><div class="mstrip">'+((isMk(r)&&!r.tf)
         ?MK_NOCHART
         :'<div class="mk-chph">· · ·</div>')+'</div></td>';
     if(isMk(r)) tr.classList.add('mk-row');
     tr.addEventListener('click',function(ev){
-      /* Stage 38 ZEN two-step on phones: first tap breathes the row open
-         (one at a time); tapping the OPENED charts/bullet/cap goes to the
-         card; tapping the opened data line closes. Desktop: straight to
-         the card, unchanged. Stage 48 (the owner 09-23): a tap on the NAME cell
-         goes straight to the card on the phone too — at rest and opened.
-         Round 7 §31: a Market row WITH a daily candle breathes open too (the D
-         frame grows, the cap climbs into the hero slot); one without stays shut. */
-      var onName=!!(ev.target&&ev.target.closest&&ev.target.closest('td.c-name'));
-      if(window.matchMedia('(max-width:480px)').matches && !onName && (!isMk(r)||r.tf)){
-        if(!tr.classList.contains('mx-open')){
+      /* Stage 38 ZEN two-step on phones: first tap breathes the row open (one at a time). Desktop: straight to
+         the card, unchanged. Stage 48 (the owner 09-23): a tap on the NAME cell goes straight to the card on the
+         phone too — at rest and opened. Round 7 §31: a Market row WITH a daily candle breathes open too (the D
+         frame grows, the cap climbs into the hero slot); one without stays shut.
+         Round 8 §40 (the owner 09-24: "there's almost nowhere I can click to shut it down… if I click on any of the
+         graphs it collapses; it only goes into the card if I hit the actual asset or the grade"): on an OPENED
+         row a tap on the frames, the bullet, the cap, the price stack or empty space COLLAPSES it; only the
+         name cell or the grade pill goes on to the card (a Market row: to its toast). The rest row is unchanged. */
+      var t=ev.target, onName=!!(t&&t.closest&&t.closest('td.c-name')), onGrade=!!(t&&t.closest&&t.closest('td.c-grade'));
+      if(window.matchMedia('(max-width:480px)').matches && (!isMk(r)||r.tf)){
+        var open=tr.classList.contains('mx-open');
+        if(!open&&!onName){
           var prev=tbody?tbody.querySelector('tr.mx-open'):null;
           if(prev) prev.classList.remove('mx-open');
           tr.classList.add('mx-open');
+          if(isMk(r)) mkWideFrame(r);   /* §43: the lone daily frame, drawn wide at the measured line width */
           return;
         }
-        var t=ev.target;
-        var deeper=t&&t.closest&&(t.closest('td.c-chart')||t.closest('td.c-bullet')||t.closest('td.c-mcap'));
-        if(!deeper){ tr.classList.remove('mx-open'); return; }
+        if(open&&!onName&&!onGrade){ tr.classList.remove('mx-open'); return; }
       }
-      /* §19: a Market name has no card — say so, open nothing */
-      if(isMk(r)){ mkToast('Not a graded name — no card yet'); return; }
+      /* §19/§41: a Market name has no card — say so, open nothing (an auto-graded one names the grade it wears) */
+      if(isMk(r)){ mkToast(r.auto?'auto grade — no card yet':'Not a graded name — no card yet'); return; }
       /* THE point of this view: open the real deep-dive card */
       try{
         if(r.kind==='cr'){ if(Crypto&&Crypto.api&&Crypto.api.openSheet) Crypto.api.openSheet(r.key,tr); }
@@ -10109,7 +10202,27 @@ window.MktView = (function(){
     wireStrip(cell);
     alignStrip(cell);
     r.charted=true;
+    if(isMk(r)&&r.tr.classList.contains('mx-open')) mkWideFrame(r);   /* §43: charted while already open */
   }
+  /* round 8 §43 (the owner's unanswered round-7 item, decided): the LONE daily frame on an OPENED Market row is drawn WIDE
+     across the frames line — the same renderer at real size, tfCandleSVG(bars, lineWidth, --mk-oh, bars.length): every
+     served bar gets its own slot at the measured width (the techlab page's pattern), never a CSS stretch of the 64px mini.
+     Measured when the row opens (phone only — rows open there) and redrawn on resize / rotation; the 3.25-fraction mn-t
+     steps aside (CSS .mk-wide). A row with no drawable frame (no .mk-d1) is left alone. */
+  function mkWideFrame(r){
+    var tr=r&&r.tr; if(!tr||!isMk(r)||!r.tf||!tr.classList.contains('mx-open')) return;
+    if(!r.charted) fillChart(r);
+    var tbo=tr.querySelector('td.c-chart .mk-d1 .as-tbo'); if(!tbo) return;
+    var mr=tbo.parentNode, lab=tbo.querySelector('i');
+    var W=mr.clientWidth-(lab?Math.ceil(lab.getBoundingClientRect().width):0)-4; if(W<40) return;
+    var x=tbo.querySelector('.mn-x'); if(!x){ x=document.createElement('span'); x.className='mn-x'; tbo.appendChild(x); }
+    var key=W+'x'+MK_OH; if(x.getAttribute('data-w')===key) return;
+    var P=null, bars=null, svg='';
+    try{ P=tfParse(r.tf); bars=P&&P.d||null; svg=bars?(tfCandleSVG(bars,W,MK_OH,bars.length)||''):''; }catch(_){ svg=''; }
+    x.innerHTML=svg; x.setAttribute('data-w',key); tbo.classList.toggle('mk-wide',!!svg);
+  }
+  (function(){ var t=0; window.addEventListener('resize',function(){ clearTimeout(t); t=setTimeout(function(){
+    if(!built) return; ROWS.forEach(function(r){ if(isMk(r)&&r.tr&&r.tr.classList.contains('mx-open')) mkWideFrame(r); }); },120); }); })();
   /* ---------- synced mini strips — the chart column pans as ONE ----------
      Scrolling any row's minis (M W D 4H H) drives a single shared X, so every
      row shows the same frames side by side while you compare assets. Rows
@@ -10358,6 +10471,9 @@ window.MktView = (function(){
       /* round 7 §31: how many of the visible Market names are graded watchlist names (full row + card) */
       var nGr=0; vis.forEach(function(r){ if(r.mkFam) nGr++; });
       if(nGr) parts.push(['<span class="st-gr">· <b>'+nGr+'</b> graded</span>', '· '+nGr+' graded']);
+      /* round 8 §41: how many visible Market names wear an AUTO grade under the current lens (US 500 only) */
+      var nAu=0; vis.forEach(function(r){ if(r.kind==='mk'&&gradeOf(r)) nAu++; });
+      if(nAu) parts.push(['<span class="st-au">· <b>'+nAu+'</b> auto</span>', '· '+nAu+' auto']);
       if(state.own&&heldNotGraded) parts.push(['<span class="st-ng">· <b>'+heldNotGraded+'</b> not listed</span>', '· '+heldNotGraded+' not listed']);
       parts.push(['<span class="st-uni">· '+mkFamTag()+'</span>', '· '+mkFamTag()]);
       /* portrait phone: the strip clips the stats' tail, so the time loses its word and the breadth (title keeps both) */
@@ -10368,6 +10484,8 @@ window.MktView = (function(){
       /* §31 coverage note — in the row on wide, title-only on the clipped phone row, and the Filters sheet's foot everywhere */
       var cdn=mkCdNote();
       if(cdn){ if(!tight) parts.push(['<span class="st-cd">· '+esc(cdn)+'</span>', '· '+cdn]); else stEl_title_extra+='  '+cdn; }
+      var agn=mkAgNote();   /* §41: the auto-grades coverage line rides the same way */
+      if(agn){ if(!tight) parts.push(['<span class="st-ag">· '+esc(agn)+'</span>', '· '+agn]); else stEl_title_extra+='  '+agn; }
     } else {
     parts.push(['<span class="st-n"><b>'+vis.length+'</b> '+(state.own?'held':'assets')+'</span>', vis.length+(state.own?' held':' assets')]);
     if(state.own&&heldNotGraded) parts.push(['<span class="st-ng">· <b>'+heldNotGraded+'</b> not graded</span>', '· '+heldNotGraded+' not graded']);
@@ -10380,6 +10498,8 @@ window.MktView = (function(){
     stEl.title=parts.map(function(p){ return p[1]; }).join('  ')+stEl_title_extra;
     var cn=document.getElementById('mkCdNote'), cdt=mkCdNote();
     if(cn){ cn.hidden=!cdt; cn.textContent=cdt; }
+    var an=document.getElementById('mkAgNote'), agt=mkAgNote();
+    if(an){ an.hidden=!agt; an.textContent=agt; }
   }
   function rebuildCats(){
     var sel=document.getElementById('mkCat');
@@ -10524,6 +10644,9 @@ window.MktView = (function(){
   +'#mktView .mk-usdom{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block;background:radial-gradient(circle,#c1283b 0 34%,#ffffff 34% 64%,#2f4ea8 64% 100%);box-shadow:0 0 6px 1px rgba(80,118,214,.5)}'
   +'#mktView .mk-gp{display:inline-block;min-width:26px;text-align:center;font-weight:800;font-size:11px;color:#fff;border-radius:5px;padding:3px 5px}'
   +'#mktView .mk-gp.g-na{color:#9fb0c8;background:var(--g-na)}'
+  /* round 8 §41: the AUTO grade pill — hollow, dashed in the grade's colour (--ag set by gradeCell), the letter tinted
+     toward ink for legibility; a curated pill stays the solid block */
+  +'#mktView .mk-gp.mk-auto{background:transparent;border:1.5px dashed var(--ag,#9fb0c8);color:color-mix(in srgb,var(--ag,#9fb0c8) 58%,#eef3fa);padding:1.5px 3.5px}'
   +'#mktView .mk-tg{display:inline-flex;flex-direction:column;align-items:center;line-height:1}'
   +'#mktView .mk-tg svg{display:block}'
   +'#mktView .mk-tg b{font-size:9px;font-weight:800;letter-spacing:.06em}'
@@ -10542,17 +10665,21 @@ window.MktView = (function(){
   +'#mktView .mstrip .mn-w svg,#mktView .mstrip .mn-n svg,#mktView .mstrip .mn-t svg{display:block;width:100%;height:auto}'
   /* round 7 §33: mn-t = the taller phone opened-row variant (mkFrame); never on wide */
   +'#mktView .mstrip .mn-t{display:none}'
+  /* round 8 §43: mn-x = the WIDE lone daily frame (mkWideFrame) — shown only in an opened Market row on the phone;
+     its svg keeps its own drawn width (no width:100% — a real drawing, not a stretch) */
+  +'#mktView .mstrip .mn-x{display:none}'
+  +'#mktView .mstrip .mn-x svg{display:block}'
   +'#mktView .mode-s3 .mstrip .as-tbo{flex:0 0 calc((100% - 20px)/3.25)}'
   +'#mktView .mode-s3 .mstrip .mn-w{display:none}'
   +'#mktView .mode-s3 .mstrip .mn-n{display:block;width:100%}'
   +'#mktView .mk-chph{height:24px;display:flex;align-items:center;color:#3d4b60;font-size:10px;font-weight:700}'
   +'#mktView .mode-s3 .mk-chph{height:52px}'
-  /* the range bullet: stout geometry, scaled to the row */
+  /* the range bullet — round 8 §37: the Tape draws vbulletSVG's STOUT pair, vb-sw (30×64) in the wide table's cell and
+     vb-s (22×64) in the phone's column 4, both at natural size (no CSS scaling: crisp bands); vb-w / vb-n never render here */
   +'#mktView td.c-bullet{text-align:center;min-width:46px}'
-  +'#mktView .mk-vb{display:inline-block}'
-  +'#mktView .mk-vb svg.vb-w{display:block;height:44px;width:auto;margin:0 auto}'
-  +'#mktView .mk-vb svg.vb-n{display:none}'
-  +'#mktView .mode-s3 td.c-bullet .mk-vb svg.vb-w{height:56px}'
+  +'#mktView .mk-vb{display:block;width:30px;margin:0 auto}'   /* a block: no inline-block descent gap under the 64px svg */
+  +'#mktView .mk-vb svg.vb-w,#mktView .mk-vb svg.vb-n,#mktView .mk-vb svg.vb-s{display:none}'
+  +'#mktView .mk-vb svg.vb-sw{display:block;width:30px;height:64px;margin:0 auto}'
   +'#mktView .mk-note{margin:10px 4px 0;font-size:10.5px;color:var(--muted);line-height:1.55}'
   +'@media(max-width:900px){#mktView .c-vol,#mktView .c-tech,#mktView .c-sent{display:none}'
   +'#mktView table.mkt{min-width:610px}}'
@@ -10599,7 +10726,7 @@ window.MktView = (function(){
      the cap climbs into the hero slot the chart vacates, the frames grow taller.
      Tap a row → .mx-open expands it in place; tapping the OPENED charts goes
      to the real deep-dive card (wired in buildRow). Divider stays the 37b bright line. */
-  +'#mktView .mkt tbody tr{display:grid;grid-template-columns:minmax(92px,112px) minmax(0,1fr) 88px 14px;'
+  +'#mktView .mkt tbody tr{display:grid;grid-template-columns:minmax(92px,112px) minmax(0,1fr) 88px 22px;'
   +'grid-auto-rows:min-content;column-gap:6px;align-items:center;padding:5px 6px 6px 10px;'
   +'border-bottom:1px solid rgba(126,160,205,.42)}'
   +'#mktView .mkt tbody tr.mk-empty{display:block;padding:0}'
@@ -10620,13 +10747,15 @@ window.MktView = (function(){
   +'#mktView .mkt td.c-24h::before{content:"1D ";font-size:9.5px}'
   +'#mktView .mkt td.c-1h::before{content:"1H "}'
   +'#mktView .mkt td.c-7d::before{content:"7D "}'
-  /* §33: column 4 = the 30-day bullet, thin and tall at the far right (vb-n is vbulletSVG's
-     narrow-tall phone geometry; the stout vb-w stays off here). td.c-bullet specificity
-     beats the <=900 hiders; line-height 0 so the svg alone sets the cell's height. */
+  /* §33: column 4 = the 30-day bullet at the far right, in BOTH states. Round 8 §37 (the owner: "so thin… make it
+     thicker all around"): the column grew 14 -> 22px and the bullet is vbulletSVG's STOUT vb-s (22×64: track,
+     week/day bands, MA20 tick and price dot all scaled up), drawn at natural size — crisp, never CSS-scaled.
+     td.c-bullet specificity beats the <=900 hiders; line-height 0 so the svg alone sets the cell's height. */
   +'#mktView .mkt td.c-bullet{display:block;grid-area:1/4/5/5;align-self:center;justify-self:end;min-width:0;text-align:right;line-height:0;padding:0}'
   +'#mktView .mkt td.c-bullet .mk-vb,#mktView .mkt td.c-bullet .as-vb{display:block}'
-  +'#mktView .mkt td.c-bullet .mk-vb svg.vb-w{display:none}'
-  +'#mktView .mkt td.c-bullet .mk-vb svg.vb-n{display:block;height:58px;width:auto;margin:0 0 0 auto}'
+  +'#mktView .mkt td.c-bullet .mk-vb{width:22px;margin:0 0 0 auto}'   /* the wide 30px wrapper must not leak into the 22px column */
+  +'#mktView .mkt td.c-bullet .mk-vb svg.vb-w,#mktView .mkt td.c-bullet .mk-vb svg.vb-n,#mktView .mkt td.c-bullet .mk-vb svg.vb-sw{display:none}'
+  +'#mktView .mkt td.c-bullet .mk-vb svg.vb-s{display:block;width:22px;height:64px;margin:0 0 0 auto}'
   +'#mktView .mkt td.c-bullet .mk-gap{display:block;font-size:10px;line-height:1}'
   +'#mktView .mk-sym{font-size:14px}'
   +'#mktView .mk-co{-webkit-line-clamp:1;max-width:none;line-height:1.25}'
@@ -10649,7 +10778,7 @@ window.MktView = (function(){
      peek that cues the thumb-scroll (the mode-s3 fraction), M W D 4H H a drag away. The
      scroll lives only inside the opened row; rest rows stay scroll-free. Round 7 §33:
      the frames span all four columns and grow to --mk-oh (68px; ?mnh= overrides) using
-     the taller mn-t drawing; the bullet KEEPS column 4 (a little taller); the cap sits
+     the taller mn-t drawing; the bullet KEEPS column 4 (round 8 §37: the same stout 22×64); the cap sits
      centred in the vacated hero slot with a small MARKET CAP label over it and the
      shares sub under it — no sixth line below the frames. */
   +'#mktView .mkt tbody tr.mx-open td.c-chart{grid-area:5/1/6/5;padding-top:5px}'
@@ -10658,7 +10787,6 @@ window.MktView = (function(){
   +'#mktView .mkt tbody tr.mx-open td.c-chart .mn-n{display:none}'
   +'#mktView .mkt tbody tr.mx-open td.c-chart .mn-t{display:block;width:100%}'
   +'#mktView .mkt tbody tr.mx-open td.c-chart .mn-t svg{height:var(--mk-oh,68px)}'
-  +'#mktView .mkt tbody tr.mx-open td.c-bullet .mk-vb svg.vb-n{height:64px}'
   +'#mktView .mkt tbody tr.mx-open td.c-mcap{display:flex;flex-direction:column;align-items:center;justify-content:center;grid-area:1/2/5/3;align-self:stretch;text-align:center;font-size:13px;font-weight:700;line-height:1.15;color:var(--ink);padding:0}'
   +'#mktView .mkt tbody tr.mx-open td.c-mcap::before{content:"Market cap";display:block;font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);opacity:.85;margin:0 0 2px}'
   +'#mktView .mkt tbody tr.mx-open td.c-mcap .mk-sub{display:block;margin:2px 0 0;font-size:10px;font-weight:500}'
@@ -10675,6 +10803,11 @@ window.MktView = (function(){
   +'#mktView .mkt tbody tr.mk-row.mx-open td.c-mcap{display:flex;flex-direction:column;align-items:center;justify-content:center;grid-area:1/2/5/3;align-self:stretch;text-align:center;font-size:13px;font-weight:700;line-height:1.15;color:var(--ink);padding:0}'
   +'#mktView .mkt tbody tr.mk-row.mx-open td.c-mcap::before{content:"Market cap";display:block;font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);opacity:.85;margin:0 0 2px}'
   +'#mktView .mkt tbody tr.mk-row.mx-open td.c-mcap .mk-sub{display:block;margin:2px 0 0;font-size:10px;font-weight:500}'
+  /* round 8 §43: an opened Market row's LONE daily frame is drawn WIDE across the frames line (mkWideFrame — the same
+     renderer at the measured line width, every served bar); the 3.25-fraction mini (mn-t) steps aside; no CSS stretch */
+  +'#mktView .mkt tbody tr.mk-row.mx-open td.c-chart .mk-d1 .as-tbo{flex:1 1 100%}'
+  +'#mktView .mkt tbody tr.mk-row.mx-open td.c-chart .mk-d1 .as-tbo.mk-wide .mn-t{display:none}'
+  +'#mktView .mkt tbody tr.mk-row.mx-open td.c-chart .mk-d1 .as-tbo.mk-wide .mn-x{display:block}'
   +'#mktView .mk-stats .st-cap{display:none}}';
 
   /* ---------- mount + wiring ---------- */
@@ -10730,10 +10863,12 @@ window.MktView = (function(){
       +'</span></div>'
       /* round 7 §31: the daily-candles coverage line (US 500 / Coins 500 only; hidden otherwise) */
       +'<div class="mk-shfoot" id="mkCdNote" hidden></div>'
+      /* round 8 §41: the auto-grades coverage line (US 500 only; hidden otherwise) */
+      +'<div class="mk-shfoot" id="mkAgNote" hidden></div>'
       +'</div>'
       +'</div>'
       +'<div class="twrap mode-'+state.mode+'"><table class="mkt"><thead><tr id="mkHead"></tr></thead><tbody id="mkBody"></tbody></table></div>'
-      +'<div class="mk-note">Tap a name for its full card. On a phone, tap a row’s chart to open its five frames (month · week · day · 4H · hour); tap the frames again for the card. Equity cap = live px × SEC-filed shares (tooltip has the filing date; no US filing → “—”). '
+      +'<div class="mk-note">Tap a name for its full card. On a phone, tap a row’s chart to open its five frames (month · week · day · 4H · hour); tap any graph again to close it — the name or the grade opens the card. Equity cap = live px × SEC-filed shares (tooltip has the filing date; no US filing → “—”). '
       +'1D during a closed session = last-session move. Vol = share volume × latest price — a dollar-turnover approximation (not VWAP); crypto volume is not in the feed, shown “—”. '
       +'TECH = MA-distance read. SENT = community read (StockTwits via the backend) — a dial per name; “—” only where no reads exist. '
       +'30d = the strip’s range bullet (sortable: dot position in the month track). Missing data always shows “—”, never a guess.</div>';
@@ -10761,7 +10896,7 @@ window.MktView = (function(){
         document.getElementById('mkUniVal').textContent=b.textContent;
         document.getElementById('mkUniDD').classList.remove('open');
         syncMarketCls();
-        if(isMkUni()){ mkLoad(false); mkCdLoad(state.uni,false); }   /* §19/§21: cache first (memory, then localStorage), fetch when stale — one fetch feeds both chips; §31: this family's daily candles, once per UTC day */
+        if(isMkUni()){ mkLoad(false); mkCdLoad(state.uni,false); if(state.uni==='mk') mkAgLoad(false); }   /* §19/§21: cache first (memory, then localStorage), fetch when stale — one fetch feeds both chips; §31: this family's daily candles, once per UTC day; §41: US 500's auto grades likewise */
         rebuildCats(); applyFilter();
       });
     });
@@ -10778,7 +10913,7 @@ window.MktView = (function(){
       if(state.lens===l) return;
       state.lens=l;
       if(!built) return;
-      ROWS.forEach(function(r){ if(r.kind==='eq') r.tr.querySelector('.cell-grade').innerHTML=gradeCell(r); });
+      ROWS.forEach(function(r){ if(r.kind==='eq'||(r.kind==='mk'&&r.auto)) r.tr.querySelector('.cell-grade').innerHTML=gradeCell(r); });   /* §41: auto pills follow the lens too */
       if(state.sort==='grade') applySort();
     });
     /* Stage 48 (the owner 09-23): the 3×|5 mini toggle is retired — ONE layout, mode-s3
@@ -10954,6 +11089,7 @@ window.MktView = (function(){
           posTick();
           mkTick();   /* R27: the Market feed's TTL */
           mkCdTick(); /* §31: a new UTC day fetches that day's candles */
+          mkAgTick(); /* §41: …and that day's auto grades under US 500 */
         }
       }catch(_){}
       mkWatch();
@@ -11012,7 +11148,9 @@ window.MktView = (function(){
            /* §19: the Market feed — reload(force) refetches, forget() drops memory + localStorage, state = MK */
            market: { reload: function(f){ mkLoad(f!==false); }, forget: mkForget, state: MK,
                      /* §31: the daily candles — reloadCandles(force) refetches the current chip's family, candles = per-family state */
-                     reloadCandles: function(f){ if(isMkUni()) mkCdLoad(state.uni,f!==false); }, candles: MK_CD } };
+                     reloadCandles: function(f){ if(isMkUni()) mkCdLoad(state.uni,f!==false); }, candles: MK_CD,
+                     /* §41: the auto grades — reloadGrades(force) refetches (US 500 chip up), grades = its state */
+                     reloadGrades: function(f){ if(state.uni==='mk') mkAgLoad(f!==false); }, grades: MK_AG } };
 })();
 
 /* Stage 43 R2 (lens F2 — Touch Truth lite): the app's whole glyph grammar
@@ -11151,8 +11289,10 @@ html[data-gl] .gl-seg button.on{background:rgba(255,255,255,.16);color:#fff;box-
 /* new chrome is mounted only when the shim turns Glass on, and only where the stock mobile chrome lives */
 #glDock,#glSub,.gl-uni,.gl-tctl,.gl-colhelp,#glProbe{display:none;}
 /* ?probe=1 — what the phone measured, in a corner (shim.js) */
-html[data-gl] #glProbe{display:block;position:fixed;left:6px;top:46px;z-index:9999;font:10px/1.4 ui-monospace,Menlo,Consolas,monospace;white-space:pre;
-  background:rgba(0,0,0,.74);color:#9fe7d2;padding:5px 7px;border-radius:6px;pointer-events:none;max-width:calc(100vw - 12px);overflow:hidden;}
+/* §39: the lines wrap (the fit numbers run long) and, while pinched, shim.js maps the box onto the VISUAL viewport with inline styles so a zoomed
+   screenshot still shows it */
+html[data-gl] #glProbe{display:block;position:fixed;left:6px;top:46px;z-index:9999;font:10px/1.4 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;
+  overflow-wrap:anywhere;background:rgba(0,0,0,.74);color:#9fe7d2;padding:5px 7px;border-radius:6px;pointer-events:none;max-width:calc(100vw - 12px);overflow:hidden;box-sizing:border-box;}
 /* §17 the column note has ONE home per width: ≤900px (the stock phone filter pattern) it is the last row of the Tape's Filters
    sheet; above 900px there is no Filters sheet on ANY pointer (stock .mk-ph is display:none there), so the ? sheet carries the
    same sentences — the wheel / Scorecard ? reaches #help on touch chrome too (R15: an iPad in landscape is coarse AND wide). */
@@ -12987,7 +13127,10 @@ html[data-gl] .glg-end{height:calc(var(--gl-dock-h,52px) + var(--gl-safe-b, env(
    the Stack is five tall plots. Every plot carries ONE pill at its top-left and nothing else over the data.
    Colour by value only: green = bullish, red = bearish, grey = neutral. The theme accent marks UI state (the chosen name,
    the card box), never a series. In landscape the strip auto-hides (#mStrip.m-hide, the stock class) and this layer takes
-   its 40px — the sibling selector follows the strip's real state. Landscape Wall (R6 §22): three timeframes per screen. */
+   its 40px — the sibling selector follows the strip's real state. Landscape Wall (R6 §22): three timeframes per screen.
+   R8 §36: every plot with a finer frame wears a faint band (.nx, ~4% ink, no border) hugging its right edge — the next frame's span; it
+   sits UNDER the SVG so the bars' colours are never tinted, and under the pill. R8 §38: landscape Stack plots fill the content height
+   (--glt-th, set by techlab.js sizeStack()); portrait keeps the fixed heights. */
 #glTech{display:none;}
 html[data-gl] body.gl-tech #glTech{display:block;position:fixed;left:0;right:0;top:47px;bottom:0;z-index:52;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
   background:rgb(var(--gl-bg-rgb));color:var(--ink,#EAEEF5);font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;animation:glIn .26s ease both;transition:top .18s ease;}
@@ -13065,6 +13208,8 @@ html[data-gl] .glt-inds{max-width:none;margin:0 0 8px;}
 /* a plot: the SVG fills the frame; ONE read pill at the top-left; nothing on the right */
 html[data-gl] .glt-plot{position:relative;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);overflow:hidden;box-sizing:border-box;}
 html[data-gl] .glt-plot .sv{position:absolute;inset:0;}
+html[data-gl] .glt-plot .nx{position:absolute;top:0;bottom:0;right:2px;width:0;background:rgba(255,255,255,.04);border:0;border-radius:0;pointer-events:none;}   /* §36: first in the frame = beneath the SVG and the pill; fit() sets right (the renderer's gutter) + width (the fraction of the bar span) */
+html[data-gl] .glt-plot .nx[hidden]{display:none;}
 html[data-gl] .glt-plot .sv svg{display:block;width:100%;height:100%;}
 html[data-gl] .glt-plot.tall{height:150px;margin-bottom:8px;}
 html[data-gl] .glt-plot.tall.gap{height:56px;}
@@ -13157,8 +13302,8 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
   html[data-gl] .glt-x,html[data-gl] .glt-fbtn{width:28px;height:28px;} html[data-gl] .glt-x{font-size:18px;}
   html[data-gl] .glt-search{height:28px;}
   html[data-gl] .glt-body{padding:4px 8px 0;}
-  html[data-gl] .glt-plot.tall{height:112px;margin-bottom:6px;}
-  html[data-gl] .glt-plot.tall.gap{height:44px;}
+  html[data-gl] .glt-plot.tall{height:var(--glt-th,112px);margin-bottom:6px;}   /* §38: one timeframe per screen height — sizeStack() sets --glt-th on .glt-tall (root − head − pad − seg); the page scrolls five */
+  html[data-gl] .glt-plot.tall.gap{height:44px;}                                  /* a "no intraday yet" cell never takes a screen */
   html[data-gl] .glt-inds{margin-bottom:6px;} html[data-gl] .glt-inds button{padding:5px 4px;}
   html[data-gl]:not([data-land="bar"]) .glt-end{height:8px;}
 }
@@ -13200,7 +13345,10 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
 
    Reads are DERIVED, never guessed — Candles: last close vs the 55-EMA (distance) with the EMA's own slope arrow;
    TBO: close above / inside / below the 21/40 cloud (distance); Divergence: the latest RSI-14 divergence still inside
-   the plotted window (bull/bear · N bars ago), else none; Bollinger: %B of the last close. */
+   the plotted window (bull/bear · N bars ago), else none; Bollinger: %B of the last close.
+   R8 §36: every plot with a finer frame carries a faint band hugging its RIGHT edge — the span the NEXT frame covers in this
+   frame's bars (M→W, W→D, D→4H, 4H→H; H has none) — see UNIT / nextWin(). `data-next` = the fraction, for QA.
+   R8 §38: in landscape the Stack's plots each fill the content height (one timeframe per screen; the page scrolls five) — sizeStack(). */
 (function(){
   'use strict';
   if(typeof window.lookup!=='function') return;
@@ -13210,6 +13358,18 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
   var LSL='aibo.gl.tech.look', LSK='aibo.gl.tech.last', DEF='NVDA';
   var LOOKS=['wall','stack'], LOOKL={wall:'Wall',stack:'Stack'};
   var TFS=[['m','M','MONTHLY'],['w','W','WEEKLY'],['d','D','DAILY'],['h4','4H','4-HOUR'],['h','H','HOURLY']];
+  /* §36 the "next timeframe" window. One bar of each frame in the family's unit — equities/funds in SESSIONS, crypto in DAYS — read
+     from how the backend builds the frames (asset-grading-backend-v2/engine/technicals.py + jobs/pull_prices.py):
+       tf_frames: d = one session/day row; w = ISO week (5 sessions / 7 days); m = calendar month (≈21 sessions / 30 days)
+       hourly_frame: the raw hourly fetch — FMP /historical-chart/1hour = 7 regular-session bars (09:30…15:30) → H = 1/7 session;
+                     CoinGecko market_chart hourly = 24 bars a UTC day → H = 1/24 day
+       h4_frame: chunks of 4 consecutive hourly bars inside one calendar day — equities 7 bars → 2 buckets a session (4+3) → 4H = 1/2;
+                 crypto 24 bars → 6 buckets → 4H = 1/6
+     width fraction = min(1, (tail_next × unit_next) / (tail_this × unit_this)), tails = the bars each plot ACTUALLY draws
+     (min(bars, clamp(round(w/6),30,90))). Truth over prettiness: a short frame (a 13-bar crypto monthly) gets a wide band. */
+  var UNIT={eq:{m:21,w:5,d:1,h4:1/2,h:1/7}, cr:{m:30,w:7,d:1,h4:1/6,h:1/24}};
+  var NEXT={m:'w',w:'d',d:'h4',h4:'h'};                   /* the next-finer frame; H has none */
+  var GUT={candle:1,tbo:2,div:2,bb:2};                    /* each renderer's side padding p: its bars span [p, w−p] (tfCandleSVG p=1, the rest p=2) */
   var IND=[
     {id:'candle', s:'CANDLES · 55 EMA', r:['CANDLES','55 EMA'], l:'Candles',    min:8,  fn:'tfCandleSVG', why:'last close vs the 55-EMA · arrow = the EMA’s own slope'},
     {id:'tbo',    s:'TBO CLOUD',        r:['TBO','CLOUD'],      l:'TBO cloud',  min:45, fn:'tfTboSVG',    why:'last close vs the 21/40 EMA cloud'},
@@ -13311,7 +13471,7 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
   /* ---------- pieces ---------- */
   function plotHTML(kind,ind,tf,mode){                     /* an empty frame; fit() draws into it at its real size. ONE pill, top-left; nothing else over the plot */
     var I=byId(ind), T=byTf(tf);
-    return '<div class="glt-plot '+kind+'" data-ind="'+I.id+'" data-tf="'+T[0]+'" data-mode="'+(mode||'ind')+'" aria-label="'+esc(I.l+' · '+T[2])+'"><div class="sv"></div>'
+    return '<div class="glt-plot '+kind+'" data-ind="'+I.id+'" data-tf="'+T[0]+'" data-mode="'+(mode||'ind')+'" aria-label="'+esc(I.l+' · '+T[2])+'"><div class="nx" role="img" hidden></div><div class="sv"></div>'
       +'<b class="rd gap" title="'+esc(I.why)+'"></b><span class="gp" hidden></span></div>';
   }
   function seg(cl,attr,items,cur){ return '<div class="gl-seg '+cl+'" role="tablist">'+items.map(function(it){ return '<button type="button" role="tab" '+attr+'="'+it[0]+'"'+(cur===it[0]?' class="on" aria-selected="true"':' aria-selected="false"')+'>'+it[1]+'</button>'; }).join('')+'</div>'; }
@@ -13351,20 +13511,41 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     }
     var st=wall.style; st.setProperty('--glt-lw',lw+'px'); st.setProperty('--glt-cw',cw+'px'); st.setProperty('--glt-ch',ch+'px'); st.setProperty('--glt-gap',gap+'px'); st.setProperty('--glt-hh',hh+'px');
   }
+  function sizeStack(){                                    /* §38: landscape → each tall plot fills the content height (root − head − body pad − indicator seg); portrait keeps the CSS heights */
+    var tall=root.querySelector('.glt-tall'); if(!tall) return;
+    if(!landOn()){ tall.style.removeProperty('--glt-th'); return; }
+    var head=root.querySelector('.glt-head'), body=root.querySelector('.glt-body'), inds=root.querySelector('.glt-inds');
+    var used=(head?head.offsetHeight:34)+(body?parseFloat(getComputedStyle(body).paddingTop)||0:4)+(inds?inds.offsetHeight+(parseFloat(getComputedStyle(inds).marginBottom)||0):0);
+    tall.style.setProperty('--glt-th',Math.max(112,root.clientHeight-used)+'px');
+  }
+  function tailFor(w){ return Math.max(30,Math.min(90,Math.round(w/6))); }
+  function nextWin(el,I,tf,P,w,tail,bars){                 /* §36: the band at the right edge = the next-finer frame's span in this frame's bars */
+    var nx=el.querySelector('.nx'), nt=NEXT[tf], nb=nt?P[nt]:null; if(!nx) return;
+    if(!nt||!nb||nb.length<I.min){ nx.hidden=true; el.removeAttribute('data-next'); el.removeAttribute('title'); return; }   /* H, or a next frame this row cannot draw (no intraday yet): nothing is invented */
+    var fam=S.cur.kind==='cr'?UNIT.cr:UNIT.eq;
+    var nel=root.querySelector('.glt-plot[data-ind="'+I.id+'"][data-tf="'+nt+'"]'), nw=(nel&&nel.clientWidth>=40)?nel.clientWidth:w;   /* the tail the next plot actually draws (same width → same tail) */
+    var tThis=Math.min(bars.length,tail), tNext=Math.min(nb.length,tailFor(nw));
+    var f=Math.min(1,(tNext*fam[nt])/(tThis*fam[tf])), g=GUT[I.id]||2, span=w-2*g, name='the '+byTf(nt)[2].toLowerCase()+'’s span';
+    nx.hidden=false; nx.style.right=g+'px'; nx.style.width=Math.max(1,Math.round(f*span))+'px';
+    nx.setAttribute('aria-label',name); nx.title=name;
+    el.setAttribute('data-next',f.toFixed(3)); el.title='shaded at the right: '+name;
+  }
   function fit(){
     if(!S.open||!S.cur) return;
-    if(S.look==='wall') sizeWall();
+    if(S.look==='wall') sizeWall(); else sizeStack();
     var P=frames(S.cur)||{}, st=stamp();
     [].forEach.call(root.querySelectorAll('.glt-plot'),function(el){
       var I=byId(el.getAttribute('data-ind')), tf=el.getAttribute('data-tf'), mode=el.getAttribute('data-mode'), bars=P[tf]||null;
       var w=el.clientWidth, h=el.clientHeight; if(w<40||h<20) return;
       var key=w+'x'+h+'|'+S.cur.kind+':'+S.cur.key+'|'+st; if(el.getAttribute('data-fit')===key) return; el.setAttribute('data-fit',key);
-      var tail=Math.max(30,Math.min(90,Math.round(w/6)));
+      var tail=tailFor(w);
       var svg=(bars&&bars.length>=I.min)?window[I.fn](bars,w,h,tail):'';
-      var sv=el.querySelector('.sv'), gp=el.querySelector('.gp');
-      if(!svg){ el.classList.add('gap'); sv.innerHTML=''; gp.hidden=false; gp.textContent=bars?'short history':(tf==='h'||tf==='h4')?'no intraday yet':'short history'; setRead(el,null,mode,tf); return; }
+      var sv=el.querySelector('.sv'), gp=el.querySelector('.gp'), nx=el.querySelector('.nx');
+      if(!svg){ el.classList.add('gap'); sv.innerHTML=''; gp.hidden=false; gp.textContent=bars?'short history':(tf==='h'||tf==='h4')?'no intraday yet':'short history'; setRead(el,null,mode,tf);
+        if(nx){ nx.hidden=true; } el.removeAttribute('data-next'); el.removeAttribute('title'); return; }
       el.classList.remove('gap'); gp.hidden=true; sv.innerHTML=svg;
       setRead(el,readOf(I,bars,tail),mode,tf);
+      nextWin(el,I,tf,P,w,tail,bars);
     });
   }
 
@@ -13561,7 +13742,10 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
    the zoom-compensated card (the page zoom is never touched), the dimmed RING/P&L pills, and the explicit foot grammar.
    Round 7 (§29/§30/§34, the owner's 09-24 pm verdict): the card's mapping reads the LAYOUT viewport (iOS innerWidth/innerHeight are the
    pinched visual size — that is what put the card off-screen on the public host), a Settings row "Card when zoomed in" (Keep my zoom |
-   Zoom out, aibo.gl.cardzoom) as the fallback to the stock reset pulse, and the Atlas door lit while its sheet is open. */
+   Zoom out, aibo.gl.cardzoom) as the fallback to the stock reset pulse, and the Atlas door lit while its sheet is open.
+   Round 8 (§39, the owner's 09-25 verdict — "try one last time… then let's just go back"): the fit self-checks ON THE DEVICE (rect vs the visual
+   viewport, ±4 px, at open/120/400/800 ms + slide-end) and clears itself + pulses the stock zoom-out when the phone disagrees; ?probe=1 prints
+   the verdict and the numbers; the Settings foot says so. */
 (function(){
   'use strict';
   var H=document.documentElement, B=document.body, META=window.GL48||{palettes:[],default:'violet'};
@@ -13649,6 +13833,24 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
   function paintCardZoom(){ var m=cardZoomSaved(); [].forEach.call(document.querySelectorAll('[data-glcardzoom]'),function(b){ var on=b.getAttribute('data-glcardzoom')===m; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); }); }
   function setCardZoom(m,persist){ m=(m==='reset')?'reset':'keep'; if(persist!==false){ try{ localStorage.setItem(LSZ,m); }catch(_){} } paintCardZoom(); return m; }
   window.GL48.cardZoom=setCardZoom; window.GL48.cardZoomSaved=cardZoomSaved;
+  /* ---- §39 (round 8) THE SELF-CHECK — the last zoom attempt, with a guarantee. the owner: "that zoom thing is still not working out… try one
+     last time to fix it, but then let's just go back to where we had it. I really hate being zoomed in and then clicking on an asset and
+     the card being zoomed in." His phone cannot be seen from here, so the DEVICE judges the fit: after fitCard() (and again at ~120/400/800
+     ms — iOS fires visualViewport events late and the card's own slide-in runs .26 s) the card's box is read back and held against the top
+     visual viewport. "fit ok" = the card is inside the visual viewport, its bottom within FIT_TOL (4) layout px of the visual bottom, its
+     width the full visual width (560 layout px scaled, below 768px) ±4. Anything else = the fit is CLEARED (clearFit(false)) and the stock
+     zoom-out pulse fires (resetZoom(true), the round-5 lever he knows works); S.fitFailed=true for that open. So "Keep my zoom" can only
+     ever show the fitted card or the zoomed-out page — never a magnified card. Which box is judged: while the slide-in is mid-flight the
+     rendered rect lies, so those ticks judge the box the inline style ASKS for (a sanity check on the mapping's own numbers); the sheet's
+     transitionend and any tick ≥300 ms after the transform was last set judge the RENDERED box (getBoundingClientRect) — the truth. If no
+     rendered verdict has landed by the last tick (a pinch kept the transform moving), up to three more ticks follow at 400 ms. Every tick
+     re-fits from the live numbers BEFORE it judges, so a late viewport event can never produce a stale-rect false failure. Hardening: the
+     fit is re-applied on window resize/scroll (this frame AND the top window), on visualViewport resize/scroll, and in a rAF loop for the
+     first 600 ms. Verdicts stop 2.5 s after open — a pinch WHILE the card is open only re-fits. GL48.fitState (S) carries the last verdict
+     and the numbers for ?probe=1 and for the QA. ---- */
+  var S=window.GL48.fitState={mode:'keep',open:false,fitted:false,fitFailed:false,verdict:'—',why:'',tick:'',checks:0,settled:0,scale:1,card:null,vv:null,visual:null,layout:null,frame:null,pulsed:null,at:0,onchange:null};
+  var FIT_TOL=4, FIT_TICKS=[120,400,800], FIT_SETTLE=300, fitOpenedAt=0, fitTfAt=0, fitTimers=[], fitRaf=0, fitWins=[], fitExtra=0;
+  function rnd1(x){ return Math.round(x*10)/10; }
   function layoutBox(){                                    /* this frame's LAYOUT viewport in its own CSS px — never innerWidth/innerHeight (§30) */
     var w=0,h=0; try{ w=H.clientWidth; h=H.clientHeight; }catch(_){ w=h=0; }
     if(!(w>0&&h>0)){ var vv=window.visualViewport; if(vv&&vv.width>0&&vv.height>0){ w=vv.width*(vv.scale||1); h=vv.height*(vv.scale||1); } }
@@ -13658,40 +13860,100 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     try{ if(window.top&&window.top!==window&&window.frameElement){ var r=window.frameElement.getBoundingClientRect(); if(r&&r.width>0) return {left:r.left,top:r.top,right:r.right,bottom:r.bottom}; } }catch(_){}
     var lb=layoutBox(); return {left:0,top:0,right:lb.w,bottom:lb.h};
   }
+  function visualBox(vv,fr){                               /* the top visual viewport clipped to this frame's box, in this frame's layout px */
+    var ox=vv.offsetLeft||0, oy=vv.offsetTop||0;
+    return {left:Math.max(ox,fr.left)-fr.left, top:Math.max(oy,fr.top)-fr.top, right:Math.min(ox+vv.width,fr.right)-fr.left, bottom:Math.min(oy+vv.height,fr.bottom)-fr.top};
+  }
   function fitCard(){
     if(!cardSheet||!fitOn) return false;
     var vv=topVV(), s=vv?vv.scale:1;
     if(!(s>1.001)){ clearFit(false); return false; }      /* pinched back to 1 while open: the stock geometry is right again */
-    var fr=frameRect(), lb=layoutBox(), ox=vv.offsetLeft||0, oy=vv.offsetTop||0;
-    var l=Math.max(ox,fr.left)-fr.left, t=Math.max(oy,fr.top)-fr.top, r=Math.min(ox+vv.width,fr.right)-fr.left, b=Math.min(oy+vv.height,fr.bottom)-fr.top;
+    var fr=frameRect(), lb=layoutBox(), vb=visualBox(vv,fr), l=vb.left, t=vb.top, r=vb.right, b=vb.bottom;
     var vw=r-l, vh=b-t; if(!(vw>0)||!(vh>0)||!(lb.h>0)) return false;
     var full=window.matchMedia&&window.matchMedia('(min-width:768px)').matches, cw=full?vw*s:Math.min(560,vw*s);
-    var st=cardSheet.style;
+    var st=cardSheet.style, tf='scale('+(1/s)+')';
     /* bottom = the layout viewport's height (this frame's fixed-position containing block) minus the visual bottom, both in layout px */
     st.position='fixed'; st.left=(l+(vw-cw/s)/2).toFixed(2)+'px'; st.top='auto'; st.right='auto'; st.bottom=(lb.h-b).toFixed(2)+'px';
     st.width=cw.toFixed(2)+'px'; st.maxWidth='none'; st.maxHeight=(vh*s*.92).toFixed(2)+'px';
-    st.transformOrigin='0 100%'; st.transform='scale('+(1/s)+')';
+    st.transformOrigin='0 100%'; if(st.transform!==tf){ fitTfAt=Date.now(); st.transform=tf; }   /* a NEW scale restarts the .26 s transition: the rendered box is unsettled again */
+    S.fitted=true;
     return true;
   }
   function clearFit(slide){
-    if(!cardSheet) return; var st=cardSheet.style; clearTimeout(fitClearT); fitClearT=0;
+    if(!cardSheet) return; var st=cardSheet.style; clearTimeout(fitClearT); fitClearT=0; S.fitted=false;
     function wipe(){ FIT_PROPS.forEach(function(p){ st[p]=''; }); }
     if(slide&&/scale\(/.test(st.transform||'')){          /* slide out through the compensated geometry, then hand the stock geometry back */
       st.transform=st.transform.replace(/\s*translateY\([^)]*\)/,'')+' translateY(102%)'; fitClearT=setTimeout(wipe,320);
     } else wipe();
   }
+  function fitExpect(){                                    /* the box the inline style asks for, in this frame's layout px (used while the slide-in is mid-flight) */
+    var st=cardSheet.style, k=parseFloat((/scale\(([^)]+)\)/.exec(st.transform||'')||[])[1])||1, lb=layoutBox();
+    var L=parseFloat(st.left)||0, Bt=lb.h-(parseFloat(st.bottom)||0), W=(parseFloat(st.width)||0)*k, Hh=cardSheet.offsetHeight*k;
+    return {left:L,top:Bt-Hh,right:L+W,bottom:Bt,src:'inline'};
+  }
+  function fitJudge(settled){                              /* the §39 verdict: ok + why + the numbers */
+    var vv=topVV(); if(!vv||!(vv.scale>1.001)) return {ok:true,verdict:'not zoomed',scale:vv?vv.scale:1};
+    var s=vv.scale, fr=frameRect(), lb=layoutBox(), vb=visualBox(vv,fr), vw=vb.right-vb.left;
+    var full=window.matchMedia&&window.matchMedia('(min-width:768px)').matches, wantW=full?vw:Math.min(vw,560/s), c;
+    if(settled){ var bb=cardSheet.getBoundingClientRect(); c={left:bb.left,top:bb.top,right:bb.right,bottom:bb.bottom,src:'rect'}; } else c=fitExpect();
+    var bad=[], f=function(x){ return (x>0?'+':'')+rnd1(x); };
+    if(!(c.right-c.left>8&&c.bottom-c.top>8)) bad.push('no box');
+    if(c.left<vb.left-FIT_TOL) bad.push('left '+f(c.left-vb.left));
+    if(c.right>vb.right+FIT_TOL) bad.push('right '+f(c.right-vb.right));
+    if(c.top<vb.top-FIT_TOL) bad.push('top '+f(c.top-vb.top));
+    if(Math.abs(c.bottom-vb.bottom)>FIT_TOL) bad.push('bottom '+f(c.bottom-vb.bottom));
+    if(Math.abs((c.right-c.left)-wantW)>FIT_TOL) bad.push('width '+rnd1(c.right-c.left)+' vs '+rnd1(wantW));
+    return {ok:!bad.length, why:bad.join(' · '), src:c.src, scale:s, card:[c.left,c.top,c.right,c.bottom].map(rnd1), vv:[vv.offsetLeft||0,vv.offsetTop||0,vv.width,vv.height].map(rnd1),
+      visual:[vb.left,vb.top,vb.right,vb.bottom].map(rnd1), layout:[lb.w,lb.h].map(rnd1), frame:[fr.left,fr.top,fr.right,fr.bottom].map(rnd1)};
+  }
+  function fitNotify(){ if(S.onchange){ try{ S.onchange(); }catch(_){} } }
+  function fitCheck(tag,settledHint){
+    if(!fitOn||!cardSheet.classList.contains('show')) return;
+    fitCard();                                              /* re-fit from the live numbers first, then judge what the browser did with them */
+    var settled=!!settledHint||(Date.now()-fitTfAt>=FIT_SETTLE), v=fitJudge(settled);
+    S.checks++; S.at=Date.now()-fitOpenedAt; S.scale=v.scale||1; S.tick=tag+(v.src?' '+v.src:'');
+    if(v.card){ S.card=v.card; S.vv=v.vv; S.visual=v.visual; S.layout=v.layout; S.frame=v.frame; }
+    if(v.verdict==='not zoomed'){ S.verdict='not zoomed'; S.why=''; fitNotify(); return; }
+    if(settled) S.settled++;
+    if(!v.ok){ fitFail(v); return; }
+    S.verdict=settled?'fit ok':'fit ok (sliding)'; S.why='';
+    if(!settled&&!S.settled&&!fitTimers.length&&fitExtra<3){ fitExtra++; fitArm(400,'+'+fitExtra); }   /* no rendered verdict yet: one more look */
+    fitNotify();
+  }
+  function fitFail(v){
+    S.fitFailed=true; S.verdict='fit failed → zoomed out'; S.why=v.why||'';
+    fitStop(); clearFit(false); S.pulsed=resetZoom(true);   /* the old way: the stock pulse, the card in its stock geometry */
+    log('§39 fit failed ('+S.why+') → zoom-out pulse '+S.pulsed); fitNotify();
+  }
+  function fitArm(ms,tag){ var t=setTimeout(function(){ fitTimers=fitTimers.filter(function(x){ return x!==t; }); fitCheck(tag); },ms); fitTimers.push(t); }
+  function fitStop(){
+    fitOn=false; fitTimers.forEach(clearTimeout); fitTimers=[]; if(fitRaf){ cancelAnimationFrame(fitRaf); fitRaf=0; }
+    if(fitVV){ try{ fitVV.removeEventListener('resize',fitCard); fitVV.removeEventListener('scroll',fitCard); }catch(_){} fitVV=null; }
+    fitWins.forEach(function(w){ try{ w.removeEventListener('resize',fitCard); w.removeEventListener('scroll',fitCard); }catch(_){} }); fitWins=[];
+  }
+  function fitStart(){
+    fitOn=true; clearTimeout(fitClearT); fitClearT=0; fitOpenedAt=fitTfAt=Date.now(); fitExtra=0;
+    S.open=true; S.mode='keep'; S.fitted=false; S.fitFailed=false; S.verdict='—'; S.why=''; S.tick=''; S.checks=0; S.settled=0; S.pulsed=null; S.at=0;
+    fitVV=topVV(); if(fitVV){ try{ fitVV.addEventListener('resize',fitCard); fitVV.addEventListener('scroll',fitCard); }catch(_){ fitVV=null; } }
+    fitWins=[window]; var tw=topWin(); if(tw!==window) fitWins.push(tw);
+    fitWins.forEach(function(w){ try{ w.addEventListener('resize',fitCard); w.addEventListener('scroll',fitCard,{passive:true}); }catch(_){} });
+    fitCheck('0ms');                                        /* fits, then the first (inline) look */
+    FIT_TICKS.forEach(function(ms){ fitArm(ms,ms+'ms'); });
+    (function loop(){ if(!fitOn) return; fitCard(); fitRaf=(Date.now()-fitOpenedAt<600)?requestAnimationFrame(loop):0; })();
+  }
   window.GL48.fitCard=fitCard;
+  if(cardSheet) cardSheet.addEventListener('transitionend',function(e){   /* the slide-in has ended: the rendered box is the truth now */
+    if(e.target===cardSheet&&e.propertyName==='transform'&&fitOn&&Date.now()-fitOpenedAt<2500) fitCheck('slide-end',true); });
   var cardWasOpen=!!(cardSheet&&cardSheet.classList.contains('show'));
   if(cardSheet&&window.MutationObserver) new MutationObserver(function(){
     var open=cardSheet.classList.contains('show');
-    if(open&&!cardWasOpen&&cardZoomSaved()==='reset'){ cardWasOpen=true; resetZoom(true); return; }   /* §30 Zoom out: the stock pulse, never fitCard */
-    if(open&&!fitOn&&!cardWasOpen){ cardWasOpen=true; fitOn=true; clearTimeout(fitClearT); fitClearT=0; fitVV=topVV();
-      if(fitVV){ try{ fitVV.addEventListener('resize',fitCard); fitVV.addEventListener('scroll',fitCard); }catch(_){ fitVV=null; } }
-      fitCard(); }
-    else if(!open&&cardWasOpen){ cardWasOpen=false;
-      if(fitOn){ fitOn=false;
-        if(fitVV){ try{ fitVV.removeEventListener('resize',fitCard); fitVV.removeEventListener('scroll',fitCard); }catch(_){} fitVV=null; }
-        clearFit(true); } }
+    if(open&&!cardWasOpen){ cardWasOpen=true;
+      if(cardZoomSaved()==='reset'){                        /* §30 Zoom out: the stock pulse, never fitCard */
+        S.open=true; S.mode='reset'; S.fitted=false; S.fitFailed=false; S.verdict='zoom out (setting)'; S.why=''; S.tick=''; S.checks=0; S.settled=0; S.at=0;
+        S.pulsed=resetZoom(true); fitNotify(); return; }
+      fitStart(); }
+    else if(!open&&cardWasOpen){ cardWasOpen=false; S.open=false; fitNotify();
+      if(fitOn){ fitStop(); clearFit(true); } }
   }).observe(cardSheet,{attributes:true,attributeFilter:['class']});
 
   /* ---- theme ---- */
@@ -14111,6 +14373,7 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
   /* ---- ?probe=1 (§18): what the phone really measured, printed in a corner so a screenshot answers it ---- */
   if(/[?&]probe=1/.test(QS)){
     var pr=el('div',null); pr.id='glProbe'; pr.setAttribute('aria-hidden','true'); B.appendChild(pr);
+    var bx=function(a){ return a?a.join(','):'—'; };
     var probe=function(){
       try{
         var tw=topWin(), framed=false; try{ framed=window.top!==window; }catch(_){ framed=true; }
@@ -14121,11 +14384,18 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
           'doc '+H.clientWidth+'×'+H.clientHeight+(framed?' · top.doc '+tw.document.documentElement.clientWidth+'×'+tw.document.documentElement.clientHeight:'')+' · cardzoom '+cardZoomSaved(),   /* §30: the layout viewport the card maps onto */
           'vv.h '+(vv?Math.round(vv.height):'—')+' · vv.scale '+(vv?vv.scale.toFixed(3):'—')+(tvv?' · top.vv.h '+Math.round(tvv.height)+' · top.scale '+tvv.scale.toFixed(3):''),
           'bar top '+Math.round(d.top)+' bottom '+Math.round(d.bottom)+' h '+Math.round(d.height)+' · innerH−bottom '+Math.round(window.innerHeight-d.bottom),
-          'framed '+framed];
+          'framed '+framed,
+          /* §39: the fit verdict + the numbers a screenshot needs (layout px; card = rendered box, visual = the top vv clipped to this frame) */
+          'fit '+S.verdict+(S.why?' · '+S.why:'')+' · mode '+S.mode+' · check '+(S.tick||'—')+' ×'+S.checks+'/'+S.settled+' settled'+(S.pulsed!=null?' · pulsed '+S.pulsed:'')+(S.open?' · open':' · closed')+(S.fitted?' · fitted':''),
+          'card '+bx(S.card)+' · vv '+bx(S.vv)+' ×'+(+S.scale).toFixed(3)+' · visual '+bx(S.visual)+' · layout '+bx(S.layout)+(framed?' · frame '+bx(S.frame):'')];
         pr.textContent=lines.join('\n');
+        /* §39: while pinched, sit the box on the VISUAL viewport (same mapping as the card, about the top-left) so a zoomed screenshot shows it */
+        var pv=topVV(), ps=pv?pv.scale:1, pst=pr.style;
+        if(pv&&ps>1.001){ var pb=visualBox(pv,frameRect()); pst.left=(pb.left+6/ps).toFixed(2)+'px'; pst.top=(pb.top+46/ps).toFixed(2)+'px'; pst.maxWidth=((pb.right-pb.left)*ps-12).toFixed(2)+'px'; pst.transformOrigin='0 0'; pst.transform='scale('+(1/ps)+')'; }
+        else { pst.left=''; pst.top=''; pst.maxWidth=''; pst.transformOrigin=''; pst.transform=''; }
       }catch(e){ pr.textContent='probe error '+e; }
     };
-    probe(); setInterval(probe,1000); window.addEventListener('resize',probe); window.addEventListener('scroll',probe,{passive:true});
+    probe(); S.onchange=probe; setInterval(probe,1000); window.addEventListener('resize',probe); window.addEventListener('scroll',probe,{passive:true});
     if(window.visualViewport){ window.visualViewport.addEventListener('resize',probe); window.visualViewport.addEventListener('scroll',probe); }
   }
 
@@ -14189,11 +14459,12 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     /* §27 (round 6): explicit foot grammar (.gl-foot, skin.css) — the owner saw this line "like highlighted text" on the phone */
     var gfoot=document.createElement('div'); gfoot.className='st8-foot gl-foot'; gfoot.textContent='Which roll grade the wheel, scorecard, tape and chips wear. Every company card always shows both. Saved on this device.';
     /* §30 (round 7) "Card when zoomed in" — Keep my zoom (the card is fitted to what is on screen, the page zoom untouched) | Zoom out
-       (the stock reset pulse on open: the page snaps to full size and the card fills it). Same grammar as Grades shown; aibo.gl.cardzoom. */
+       (the stock reset pulse on open: the page snaps to full size and the card fills it). Same grammar as Grades shown; aibo.gl.cardzoom.
+       §39 (round 8): the foot says Keep falls back to the zoom-out by itself when the device-side self-check disagrees. */
     var zcap=document.createElement('div'); zcap.className='st8-cap'; zcap.textContent='Card when zoomed in';
     var zcard=document.createElement('div'); zcard.className='dk-group st8-card'; zcard.id='glCardZoom';
     zcard.innerHTML='<div class="st8-row st8-static gl-lensrow"><div class="gl-seg" role="group" aria-label="Card when zoomed in"><button type="button" data-glcardzoom="keep">Keep my zoom</button><button type="button" data-glcardzoom="reset">Zoom out</button></div></div>';
-    var zfoot=document.createElement('div'); zfoot.className='st8-foot gl-foot'; zfoot.textContent='What a company card does when you open it pinch-zoomed. Keep my zoom fits the card to the part of the page you can see and leaves the zoom as it was. Zoom out snaps the page back to full size first. Saved on this device.';
+    var zfoot=document.createElement('div'); zfoot.className='st8-foot gl-foot'; zfoot.textContent='What a company card does when you open it pinch-zoomed. Keep my zoom fits the card to the part of the page you can see and leaves the zoom as it was — and if your phone disagrees with the fit, it zooms out by itself instead. Zoom out always zooms the page out first. Saved on this device.';
     [[cap,card,foot],[gcap,gcard,gfoot],[zcap,zcard,zfoot]].forEach(function(trio){ trio.forEach(function(n){ if(about) main.insertBefore(n,about); else main.appendChild(n); }); });
     card.addEventListener('click',function(e){ var b=e.target.closest('[data-gltheme]'); if(b){ e.stopPropagation(); setTheme(b.getAttribute('data-gltheme')); } });
     gcard.addEventListener('click',function(e){ var b=e.target.closest('[data-gllens]'); if(b){ e.stopPropagation(); setLens(b.getAttribute('data-gllens')); } });
