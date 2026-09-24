@@ -9605,17 +9605,25 @@ window.MktView = (function(){
     return out;
   }
 
-  /* ---------- Stage 48 round 5 §19: the "Market" universe (the owner 09-23: "could you just pick the
-     top 500 stocks?") — GET <backend>/market.json: top-N US common stocks (FMP screener + quotes)
-     and the top coins (CoinGecko), UNGRADED. Rows are kind 'mk' (equities) / 'mkc' (crypto): "—"
-     grade, price · 1D · 7D · cap, no minis, no card. Cached 30 min in memory and in localStorage
+  /* ---------- Stage 48 round 5 §19 / round 6 §21: the "Market" universe (the owner 09-23: "could you
+     just pick the top 500 stocks?"; the owner 09-24: split into two chips, US 500 / Coins 500) — GET
+     <backend>/market.json: top-N US common stocks (FMP screener + quotes) and the top coins
+     (CoinGecko), UNGRADED. Rows are kind 'mk' (equities, state.uni='mk', chip "US 500") / 'mkc'
+     (crypto, state.uni='mkc', chip "Coins 500"): "—" grade, price · 1D · 7D · cap, no minis, no
+     card. BOTH families are built from the SAME payload/cache (one fetch, ranked separately per
+     family below); each chip shows only its own kind. Cached 30 min in memory and in localStorage
      so the choice is instant next time; 503 (backend before its first pull) / network → one honest
-     row with Retry. Rows only enter ROWS once a payload exists — the graded universes pay nothing. */
+     row with Retry, per family. Rows only enter ROWS once a payload exists — the graded universes pay nothing. */
   var MK_BASE=String(window.AIBO_LIVE_URL||'https://asset-grading-production.up.railway.app/universe.json').replace(/\/universe\.json.*$/,'');
   var MK_LS='aibo.mk.market.v1', MK_TTL=30*60*1000, MK_FETCH_MS=12000;
   var MK={data:null, at:0, err:null, busy:false};
   function isMk(r){ return r.kind==='mk'||r.kind==='mkc'; }
-  function inFamily(r){ return isMk(r)===(state.uni==='mk'); }
+  function isMkUni(){ return state.uni==='mk'||state.uni==='mkc'; }   /* round 6 §21: either Market chip */
+  function inFamily(r){
+    if(state.uni==='mk') return r.kind==='mk';
+    if(state.uni==='mkc') return r.kind==='mkc';
+    return !isMk(r);
+  }
   function mkNum(v){ return (v==null||v===''||!isFinite(+v))?null:+v; }
   function mkShapeOk(j){ return !!(j&&j.schemaVersion===1&&j.equities&&Array.isArray(j.equities.rows)); }
   function mkRowCount(j){ return !j?0:((j.equities&&Array.isArray(j.equities.rows))?j.equities.rows.length:0)+((j.crypto&&Array.isArray(j.crypto.rows))?j.crypto.rows.length:0); }
@@ -9647,8 +9655,12 @@ window.MktView = (function(){
         vol:null, vol20:null, tech:null, sentO:null, range:null, tf:null
       });
     });
-    var ranked=out.filter(function(r){return r.mcap!=null;}).sort(function(a,b){return b.mcap-a.mcap;});
-    ranked.forEach(function(r,i){ r.rank=i+1; });   /* rank within the Market universe, coins and stocks together */
+    /* round 6 §21: US 500 and Coins 500 are separate chips now — rank each family on its own
+       market cap, not stocks and coins pooled into one sequence */
+    var eqRanked=out.filter(function(r){return r.kind==='mk'&&r.mcap!=null;}).sort(function(a,b){return b.mcap-a.mcap;});
+    eqRanked.forEach(function(r,i){ r.rank=i+1; });
+    var crRanked=out.filter(function(r){return r.kind==='mkc'&&r.mcap!=null;}).sort(function(a,b){return b.mcap-a.mcap;});
+    crRanked.forEach(function(r,i){ r.rank=i+1; });
     return out;
   }
   function mkFromCache(){
@@ -9673,10 +9685,11 @@ window.MktView = (function(){
     if(tw){ if(tw.scrollTop!==st) tw.scrollTop=st; if(tw.scrollLeft!==sl) tw.scrollLeft=sl; }
     if((window.scrollY||0)!==wy) try{ window.scrollTo(window.scrollX||0,wy); }catch(_){}
   }
-  /* R27: while the Tape sits on Market, honour the 30-min TTL from the watcher tick and on tab return — the
-     graded rows re-render every feed tick, the Market rows must not freeze at the first pull's quotes. A
-     failed refresh carries the rows on screen (mkLoad leaves MK.data alone and the error row needs !MK.data) */
-  function mkTick(){ if(built&&state.uni==='mk'&&MK.data&&mkInRows()&&!MK.busy&&(Date.now()-MK.at>=MK_TTL)) mkLoad(false); }
+  /* R27: while the Tape sits on either Market chip, honour the 30-min TTL from the watcher tick and
+     on tab return — the graded rows re-render every feed tick, the Market rows must not freeze at
+     the first pull's quotes. A failed refresh carries the rows on screen (mkLoad leaves MK.data
+     alone and the error row needs !MK.data) */
+  function mkTick(){ if(built&&isMkUni()&&MK.data&&mkInRows()&&!MK.busy&&(Date.now()-MK.at>=MK_TTL)) mkLoad(false); }
   function mkLoad(force){
     mkFromCache();
     if(MK.data&&!mkInRows()) mkApply();
@@ -9735,15 +9748,26 @@ window.MktView = (function(){
     if(c.skippedForBudget) parts.push('quote pass skipped for budget — prices carried');
     return parts.join(' · ');
   }
+  /* round 6 §21: the two chips' display name and their own row count from the shared payload
+     (never from ROWS/mkInRows, which mixes both families) — drives the stats line and the
+     per-family honest empty/loading states */
+  function mkFamTag(){ return state.uni==='mkc'?'Coins 500':'US 500'; }
+  function mkFamNoun(){ return state.uni==='mkc'?'coins':'US stocks'; }
+  function mkFamCount(fam){
+    var d=MK.data; if(!d) return 0;
+    if(fam==='mk') return (d.equities&&Array.isArray(d.equities.rows))?d.equities.rows.length:0;
+    if(fam==='mkc') return (d.crypto&&Array.isArray(d.crypto.rows))?d.crypto.rows.length:0;
+    return 0;
+  }
   function syncMarketCls(){
-    var mk=(state.uni==='mk'), tw=document.querySelector('#mktView .twrap'); if(tw) tw.classList.toggle('mk-market',mk);
-    /* R12: Market rows carry no marks (choke:false, us:false on every row) — under Market the two mark buttons are
-       disabled (dimmed + titled) rather than cleared: their state is kept, ignored by visible() and the Filters
-       badge, and comes back untouched with the graded universes */
+    var mk=isMkUni(), tw=document.querySelector('#mktView .twrap'); if(tw) tw.classList.toggle('mk-market',mk);
+    /* R12: Market rows carry no marks (choke:false, us:false on every row) — under either Market chip
+       the two mark buttons are disabled (dimmed + titled) rather than cleared: their state is kept,
+       ignored by visible() and the Filters badge, and comes back untouched with the graded universes */
     ['mkChoke','mkUs'].forEach(function(id){
       var b=document.getElementById(id); if(!b) return;
       b.disabled=mk;
-      if(mk) b.title='Not under Market — these names carry no marks'; else b.removeAttribute('title');
+      if(mk) b.title='Not under '+mkFamTag()+' — these names carry no marks'; else b.removeAttribute('title');
     });
   }
   var mkToastEl=null;
@@ -9916,11 +9940,11 @@ window.MktView = (function(){
      shared position; a strip already at stripX is an echo of our own sync,
      not a user scroll, and is ignored. Deep-dive card strips (same .as-mrow
      class, outside td.c-chart) keep their independent thumb-scroll.
-     Stage 48 round 5 (§18, the owner 09-23): the Tape's strips no longer scroll at
-     all — all five frames fit the cell (wide) or wrap 3 + 2 (phone, opened row).
-     STRIP_SYNC=false makes the whole mechanism INERT (kept, not deleted: flip it
-     back if a scrolling layout ever returns). */
-  var STRIP_SYNC=false;
+     Stage 48 round 6 (§21, the owner 09-24: "keep scrolling them… go back to the same
+     thing"): round 5's no-scroll change is reverted — the strips scroll and sync
+     again on iPad/desktop; the phone opened row thumb-scrolls (Stage 38b). The
+     STRIP_SYNC flag stays (kept, not deleted) in case a no-scroll layout ever returns. */
+  var STRIP_SYNC=true;
   var stripX=0, stripRaf=0;
   function alignAllStrips(){
     if(!STRIP_SYNC) return;
@@ -10000,15 +10024,21 @@ window.MktView = (function(){
     var A=window.AIBO_POS, d=(A&&A.state)?A.state.data:null;
     if(!d||!Array.isArray(d.accounts)) return;
     var rowSyms={}; ROWS.forEach(function(r){ if(inFamily(r)) rowSyms[heldKey(r)]=1; });
-    /* R8/R13: under Market before the feed has rows (loading / 503 / empty) nothing has been checked, so no
-       holding may be counted as 'not listed' — the honest row below says what is going on */
-    var mkPending=(state.uni==='mk'&&!mkInRows());
+    /* R8/R13: under either Market chip before the feed has rows for THAT family (loading / 503 / empty)
+       nothing has been checked, so no holding may be counted as 'not listed' — the honest row below
+       says what is going on */
+    var mkPending=(isMkUni()&&!mkFamCount(state.uni));
+    /* round 6 §21: a single-asset-class Market chip (US 500 = equities only, Coins 500 = crypto only)
+       only reasons about holdings of ITS OWN asset class — an equity holding is not "not listed" while
+       looking at Coins 500, it is simply a different asset class and is skipped entirely below */
+    var famNs=(state.uni==='mk')?'x|':((state.uni==='mkc')?'cr|':null);
     var seen={};
     d.accounts.forEach(function(ac){
       if(!ac||!Array.isArray(ac.assets)) return;
       var kind=String(ac.kind||''), prov=String(ac.provider||'');
       if(kind==='metals') return;
       var crypto=(kind==='crypto'||prov==='kraken'), ns=crypto?'cr|':'x|';
+      if(famNs&&ns!==famNs) return;
       ac.assets.forEach(function(as){
         if(!as||!as.sym||as.cash) return;
         var s=String(as.sym).toUpperCase(), al=s;
@@ -10033,11 +10063,12 @@ window.MktView = (function(){
   function ownEmptyRow(){
     var old=tbody.querySelector('tr.mk-empty'); if(old) old.parentNode.removeChild(old);
     var nVis=ROWS.filter(visible).length, msg='', btn=false, title='';
-    /* §19 Market states: loading, or nothing to show (503 until the backend's first pull / unreachable) */
-    var mkEmpty=(state.uni==='mk' && (!MK.data || !mkInRows()));   /* R7: a payload with no rows is no universe */
+    /* §19/§21 Market states, per family: loading, or nothing to show (503 until the backend's
+       first pull / unreachable / that family's side of the payload came back empty) */
+    var mkEmpty=(isMkUni() && (!MK.data || !mkFamCount(state.uni)));   /* R7: a payload with no rows is no universe */
     if(mkEmpty){
-      if(MK.busy) msg='Loading the Market universe…';
-      else { msg=MK.data?'Market universe is empty — the feed had no rows':'Market universe not available yet'; btn='retry'; title=MK.err?('last try: '+MK.err):''; }
+      if(MK.busy) msg='Loading '+mkFamTag()+'…';
+      else { msg=MK.data?mkFamTag()+' is empty — the feed had no rows':mkFamTag()+' not available yet'; btn='retry'; title=MK.err?('last try: '+MK.err):''; }
     } else if(!state.own){
       if(!nVis && ROWS.some(inFamily)) msg='No names match these filters';
     }
@@ -10055,7 +10086,7 @@ window.MktView = (function(){
         else msg='Fetching your positions…';
       }
     } else if(!nVis){
-      msg=heldRows?'No held names match these filters':(state.uni==='mk'?'None of your held names are in the Market universe':'None of your held names are in the graded universe yet');
+      msg=heldRows?'No held names match these filters':(isMkUni()?'None of your held names are in '+mkFamTag():'None of your held names are in the graded universe yet');
     }
     if(!msg) return;
     var tr=document.createElement('tr'); tr.className='mk-empty';
@@ -10077,10 +10108,10 @@ window.MktView = (function(){
     if(built&&state.own) applyFilter();
   }
   function visible(r){
-    if(!inFamily(r)) return false;   /* §19: Market rows only under Market; graded rows never under Market */
+    if(!inFamily(r)) return false;   /* §19/§21: each chip (US 500 / Coins 500) shows only its own kind; graded rows never under either */
     if(state.own && !HELD[heldKey(r)]) return false;
-    if(state.uni!=='all' && state.uni!=='mk' && r.kind!==state.uni) return false;
-    if(state.uni!=='mk'){   /* R12: the marks are inert under Market (no Market row carries one) */
+    if(state.uni!=='all' && !isMkUni() && r.kind!==state.uni) return false;
+    if(!isMkUni()){   /* R12: the marks are inert under either Market chip (no Market row carries one) */
       if(state.choke && !r.choke) return false;
       if(state.us && !r.us) return false;
     }
@@ -10143,11 +10174,12 @@ window.MktView = (function(){
        consistency wins). innerHTML stays a PLAIN SPAN LIST — the Glass shim mirrors it into the strip. */
     var capS=(caps>0?fmtMoney(caps):'—'), medS=(med!=null?((med>0?'+':'')+med.toFixed(2)+'%'):'—');
     var parts=[], stEl_title_extra='';   /* [html, plain] */
-    if(state.uni==='mk'){
-      /* §19: the ungraded universe says what it is and how old its feed is; no Σ cap / median (a top-500 sum is not a read) */
-      parts.push(['<span class="st-n"><b>'+vis.length+'</b> '+(state.own?'held':'names')+'</span>', vis.length+(state.own?' held':' names')]);
+    if(isMkUni()){
+      /* §19/§21: the ungraded universe says what it is (US 500 / Coins 500, real vis.length) and how
+         old its feed is; no Σ cap / median (a top-500 sum is not a read) */
+      parts.push(['<span class="st-n"><b>'+vis.length+'</b> '+(state.own?'held':mkFamNoun())+'</span>', vis.length+(state.own?' held':' '+mkFamNoun())]);
       if(state.own&&heldNotGraded) parts.push(['<span class="st-ng">· <b>'+heldNotGraded+'</b> not listed</span>', '· '+heldNotGraded+' not listed']);
-      parts.push(['<span class="st-uni">· Market</span>', '· Market']);
+      parts.push(['<span class="st-uni">· '+mkFamTag()+'</span>', '· '+mkFamTag()]);
       /* portrait phone: the strip clips the stats' tail, so the time loses its word and the breadth (title keeps both) */
       var tight=window.matchMedia('(max-width:480px)').matches, ft=mkFeedTime();
       if(ft) parts.push(['<span class="st-at" title="'+esc(mkFeedTitle())+'">'+(tight?'· ':'feed ')+esc(ft)+'</span>', 'feed '+ft]);
@@ -10302,23 +10334,23 @@ window.MktView = (function(){
   +'#mktView .mk-tg svg{display:block}'
   +'#mktView .mk-tg b{font-size:9px;font-weight:800;letter-spacing:.06em}'
   +'#mktView th.c-chart{text-align:left;padding-left:14px}'
-  /* round 5 (§18): wide enough for five readable frames (the H frame clipped at 1440 with 440px) */
-  +'#mktView td.c-chart{padding:5px 12px 5px 14px;min-width:420px}'
+  /* round 6 (§21): reverted to the pre-round-5 width — the strip scrolls again */
+  +'#mktView td.c-chart{padding:5px 12px 5px 14px;min-width:330px}'
   +'#mktView .mstrip{display:flex;align-items:center}'
-  /* round 5 (§18, the owner: no scrolling within the scrolling): the strip never scrolls — five frames fit the cell */
-  +'#mktView .mstrip .as-mrow{display:flex;flex:1 1 100%;gap:8px;overflow-x:hidden;scrollbar-width:none;padding-bottom:1px}'
+  /* round 6 (§21, the owner 09-24: "keep scrolling them"): reverted to round 4 — the strip
+     thumb-scrolls, ~3.25 frames visible, shared-X sync (STRIP_SYNC) drives every row */
+  +'#mktView .mstrip .as-mrow{display:flex;flex:1 1 100%;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:1px}'
   +'#mktView .mstrip .as-mrow::-webkit-scrollbar{display:none}'
   +'#mktView .mstrip .as-tbo{display:inline-flex;align-items:flex-end;gap:3px;flex:none}'
   +'#mktView .mstrip .as-tbo i{font-style:normal;font-size:8px;font-weight:800;letter-spacing:.4px;color:var(--muted);opacity:.75}'
   +'#mktView .mstrip .as-tbo svg{display:block}'
   +'#mktView .mstrip .as-tbo-gap{color:#5A6678;font-weight:700;font-size:10px;align-self:center}'
   +'#mktView .mstrip .mn-w svg,#mktView .mstrip .mn-n svg{display:block;width:100%;height:auto}'
-  /* wide cells: the label sits ABOVE the chart (top-left) so the frame gets the full fifth of the cell */
-  +'#mktView .mode-s3 .mstrip .as-tbo{flex:0 0 calc((100% - 32px)/5);min-width:0;flex-direction:column;align-items:flex-start;gap:1px}'
+  +'#mktView .mode-s3 .mstrip .as-tbo{flex:0 0 calc((100% - 20px)/3.25)}'
   +'#mktView .mode-s3 .mstrip .mn-w{display:none}'
   +'#mktView .mode-s3 .mstrip .mn-n{display:block;width:100%}'
   +'#mktView .mk-chph{height:24px;display:flex;align-items:center;color:#3d4b60;font-size:10px;font-weight:700}'
-  +'#mktView .mode-s3 .mk-chph{height:50px}'
+  +'#mktView .mode-s3 .mk-chph{height:52px}'
   /* the range bullet: stout geometry, scaled to the row */
   +'#mktView td.c-bullet{text-align:center;min-width:46px}'
   +'#mktView .mk-vb{display:inline-block}'
@@ -10377,12 +10409,12 @@ window.MktView = (function(){
   +'#mktView .mkt td.c-name{grid-area:1/1/3/2;align-self:start;position:static;background:transparent;box-shadow:none;min-width:0;max-width:none;overflow:hidden}'
   +'#mktView .mkt td.c-grade{grid-area:3/1/5/2;justify-self:start;align-self:start;padding-top:2px}'
   +'#mktView .mkt td.c-chart{grid-area:1/2/5/3;align-self:center;padding:0;min-width:0}'
-  /* right column = a four-line stack (price / 1D / 1H / 7D), tight leading so the
+  /* right column = a four-line stack (price / 1H / 1D / 7D), tight leading so the
      row stays ~70px at 390 wide; the three lines are labelled by pseudo-content
-     (round 5 §18: 1H · 1D · 7D read as one set, 1D the prominent line) */
+     (round 6 §21: reads top-to-bottom 1H · 1D · 7D, 1D still the prominent/largest line) */
   +'#mktView .mkt td.c-price{grid-area:1/3;font-size:13.5px;font-weight:700;line-height:1.1;align-self:start}'
-  +'#mktView .mkt td.c-24h{grid-area:2/3;font-size:11px;line-height:1.15;align-self:start;padding-top:1px}'
-  +'#mktView .mkt td.c-1h{grid-area:3/3;font-size:10px;line-height:1.15;align-self:start}'
+  +'#mktView .mkt td.c-1h{grid-area:2/3;font-size:10px;line-height:1.15;align-self:start;padding-top:1px}'
+  +'#mktView .mkt td.c-24h{grid-area:3/3;font-size:11px;line-height:1.15;align-self:start}'
   +'#mktView .mkt td.c-7d{grid-area:4/3;font-size:10px;line-height:1.15;align-self:start}'
   +'#mktView .mkt td.c-24h::before,#mktView .mkt td.c-1h::before,#mktView .mkt td.c-7d::before{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);opacity:.85;margin-right:2px}'
   +'#mktView .mkt td.c-24h::before{content:"1D ";font-size:9.5px}'
@@ -10403,23 +10435,24 @@ window.MktView = (function(){
   +'#mktView .mkt td.c-chart .as-tbo i{display:none}'
   +'#mktView .mkt td.c-chart .mn-n svg{height:44px}'
   +'#mktView .mk-chph{height:44px}#mktView .mode-s3 .mk-chph{height:44px}'
-  /* open state (round 5 §18, the owner 09-23: "all the charts locked in and just part of
-     the entire scroll"): the five frames WRAP 3 + 2 at full row width, labels on,
-     each a third wide and ~60px tall — the row grows and the PAGE scrolls; nothing
-     scrolls inside the row. Bullet sits under the strip's right end at its native
-     stout size, cap line bottom-left. */
+  /* open state (round 6 §21, the owner 09-24: "keep scrolling them… whole bar scrolls more
+     that's absolutely fine" — reverted to Stage 38b): ONE line of BIG frames, ~3.25
+     visible + a .25 peek that cues the thumb-scroll (the mode-s3 fraction), M W D 4H H
+     a drag away. The scroll lives only inside the opened row; rest rows stay scroll-free.
+     Bullet sits under the strip's right end at its native stout size, cap line bottom-left. */
   +'#mktView .mkt tbody tr.mx-open td.c-chart{grid-area:5/1/6/4;padding-top:5px}'
-  +'#mktView .mkt tbody tr.mx-open td.c-chart .as-mrow{flex-wrap:wrap;overflow-x:hidden;row-gap:6px}'
-  +'#mktView .mkt tbody tr.mx-open td.c-chart .as-tbo{display:inline-flex;flex:0 0 calc((100% - 16px)/3);min-width:0;flex-direction:row;align-items:flex-end;gap:3px}'
+  +'#mktView .mkt tbody tr.mx-open td.c-chart .as-tbo{display:inline-flex;flex:0 0 calc((100% - 20px)/3.25)}'
   +'#mktView .mkt tbody tr.mx-open td.c-chart .as-tbo i{display:block}'
-  +'#mktView .mkt tbody tr.mx-open td.c-chart .mn-n svg{height:60px}'
+  +'#mktView .mkt tbody tr.mx-open td.c-chart .mn-n svg{height:52px}'
   +'#mktView .mkt tbody tr.mx-open td.c-bullet{display:block;grid-area:6/3/7/4;align-self:center;text-align:right;padding-top:4px}'
   +'#mktView .mkt tbody tr.mx-open .mk-vb svg.vb-w{display:block;height:64px;margin:0 0 0 auto}'
   +'#mktView .mkt tbody tr.mx-open td.c-mcap{display:block;grid-area:6/1/7/3;align-self:center;font-size:10.5px;color:var(--muted);text-align:left;padding-top:4px}'
   +'#mktView .mkt tbody tr.mx-open td.c-mcap::before{content:"market cap  ";opacity:.75}'
   +'#mktView .mkt tbody tr.mx-open td.c-mcap .mk-sub{display:inline;margin-left:6px}'
-  /* §19 Market rows on the phone: the always-empty 1H line yields to the cap (price / 1D / 7D / CAP) */
+  /* §19/§21 Market-family rows on the phone: the always-empty 1H line yields to 1D + 7D
+     shifting up, and the cap fills the freed fourth line (price / 1D / 7D / CAP) */
   +'#mktView .mkt tbody tr.mk-row td.c-1h{display:none}'
+  +'#mktView .mkt tbody tr.mk-row td.c-24h{grid-area:2/3;padding-top:1px}'
   +'#mktView .mkt tbody tr.mk-row td.c-7d{grid-area:3/3}'
   +'#mktView .mkt tbody tr.mk-row td.c-mcap{display:block;grid-area:4/3;font-size:10px;line-height:1.15;align-self:start;text-align:right;color:var(--muted);padding:0}'
   +'#mktView .mkt tbody tr.mk-row td.c-mcap::before{content:"CAP ";font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);opacity:.85;margin-right:2px}'
@@ -10441,8 +10474,10 @@ window.MktView = (function(){
       +'<div class="dd-menu" id="mkUni">'
       +'<button data-u="all" class="on">All</button><button data-u="eq">Equities</button>'
       +'<button data-u="cr">Crypto</button><button data-u="fd">Funds</button>'
-      /* Stage 48 round 5 (§19, the owner 09-23: "could you just pick the top 500 stocks?"): the ungraded Market universe */
-      +'<button data-u="mk" title="Top-500 US stocks + top coins by cap — ungraded, no cards yet">Market</button></div></div>'
+      /* Stage 48 round 6 (§21, the owner 09-24: "US 500" and "Coins 500" as two chips): the ungraded
+         Market universe, split — each fetches the same /market.json (shared cache), shows only its own kind */
+      +'<button data-u="mk" title="Top 500 US stocks by market cap — ungraded, no cards yet">US 500</button>'
+      +'<button data-u="mkc" title="Top 500 coins by market cap — ungraded, no cards yet">Coins 500</button></div></div>'
       +'<button type="button" class="mk-ico mk-ph" id="mkQBtn" aria-label="Search">🔍</button>'
       +'<button type="button" class="dd-btn mk-ph" id="mkFBtn"><b class="dd-val">Filters</b><span class="mk-fbdg" id="mkFBadge" hidden></span><i class="dd-car">▾</i></button>'
       /* Stage 48 §13: scope seg — the whole watchlist, or only what the positions layer says you hold */
@@ -10505,7 +10540,7 @@ window.MktView = (function(){
         document.getElementById('mkUniVal').textContent=b.textContent;
         document.getElementById('mkUniDD').classList.remove('open');
         syncMarketCls();
-        if(state.uni==='mk') mkLoad(false);   /* §19: cache first (memory, then localStorage), fetch when stale */
+        if(isMkUni()) mkLoad(false);   /* §19/§21: cache first (memory, then localStorage), fetch when stale — one fetch feeds both chips */
         rebuildCats(); applyFilter();
       });
     });
@@ -10610,8 +10645,8 @@ window.MktView = (function(){
     }
     try{ mql.addEventListener('change',placeCtls); }catch(_){ mql.addListener(placeCtls); }
     placeCtls();
-    /* §19: the Market stats line is width-aware — re-render it when the portrait-phone class flips (rotation) */
-    var mqTight=window.matchMedia('(max-width:480px)'), onTight=function(){ if(built&&state.uni==='mk') renderStats(); };
+    /* §19/§21: the Market stats line is width-aware — re-render it when the portrait-phone class flips (rotation) */
+    var mqTight=window.matchMedia('(max-width:480px)'), onTight=function(){ if(built&&isMkUni()) renderStats(); };
     try{ mqTight.addEventListener('change',onTight); }catch(_){ mqTight.addListener(onTight); }
     built=true;
   }
@@ -10620,7 +10655,7 @@ window.MktView = (function(){
     /* round 5 (§18): scope rides inside the sheet on phones, so an active Owned counts on the
        badge — a hidden active scope with no signal is the "where did my rows go" trap. On wide
        widths the seg is inline and the badge's button is hidden anyway. */
-    var marks=(state.uni==='mk')?0:((state.choke?1:0)+(state.us?1:0));   /* R12: inert marks do not count */
+    var marks=isMkUni()?0:((state.choke?1:0)+(state.us?1:0));   /* R12: inert marks do not count */
     var n=marks+(state.cat?1:0)+(state.uni!=='all'?1:0)+(state.own?1:0);
     el.hidden=!n; if(n) el.textContent=n;
   }
@@ -10715,9 +10750,9 @@ window.MktView = (function(){
   (function(){
     function rowOf(e){
       var t=e.target&&e.target.closest?e.target.closest('.as-mrow'):null;
-      /* round 5 (§18): the Tape's chart cells never scroll — the wheel/drag pan is inert
-         there (the deep-dive card strips keep it) */
-      if(t&&t.closest('#mktView td.c-chart')) return null;
+      /* round 6 (§21): reverted from round 5 — the Tape's chart cells scroll again
+         (STRIP_SYNC on), so the wheel/drag pan works there too, same as the
+         deep-dive card strips */
       return (t&&t.scrollWidth>t.clientWidth+4)?t:null;
     }
     document.addEventListener('wheel',function(e){
@@ -11137,7 +11172,17 @@ html[data-gl] body.gl-chrome #mktView .twrap{max-height:calc(100dvh - var(--gl-t
   html[data-gl][data-land="top"] body.gl-tape #mStrip .gl-tstat .st-cap{display:none;}
   @media (max-width:739px){ html[data-gl] body.gl-tape #mStrip .gl-tstat{display:none;} }
   @media (max-width:699px){ html[data-gl] body.gl-chrome #mStrip .m-hud{display:none;} }
-  html[data-gl][data-land="top"] #mStrip.m-hide ~ #glDock{transform:translate(-50%,-48px);}     /* the strip tucks away on scroll; the doors go with it */
+  /* §20/§23 STANDING RULE (round 6): sideways in top mode the doors LIVE in the strip, so nothing may tuck the strip away. Two things
+     did: the stock scroll handler toggles #mStrip.m-hide on every body scroll (Waterfall / Flow) and techlab.js adds it 1.5s after the
+     last touch on the Technicals page — either way the doors went off the top edge with it (the owner: "I can't click on the Atlas in that
+     mode"). shim.js strips the class the moment it lands (a microtask — no frame ever paints it), so every module keyed on it (#glSub,
+     #glTech's top, the edge handle) sees a visible strip; these rules are the belt under that: even with the class present the strip,
+     the doors and the Studio pane seg stay put. Z-order: #glDock (z 58) sits above #mStrip (z 55), and the strip's own stacking
+     context caps every strip child at 55 — the Tape mirror, the HUD, the title box can never take a tap meant for a door. */
+  html[data-gl][data-land="top"] #mStrip.m-hide{transform:none;}
+  html[data-gl][data-land="top"] #mStrip.m-hide ~ #glDock{transform:translateX(-50%);}
+  html[data-gl][data-land="top"] #mStrip.m-hide ~ #glSub{transform:none;}
+  html[data-gl][data-land="top"] #glDock:not([hidden]),html[data-gl][data-land="top"] #glDock .gl-tab{pointer-events:auto;}
 
   /* orb: one button in the corner; tap it and the doors fan out */
   html[data-gl][data-land="orb"] #glDock:not([hidden]){left:calc(8px + env(safe-area-inset-left));right:auto;bottom:calc(8px + var(--gl-safe-b,env(safe-area-inset-bottom,0px)));transform:none;padding:4px;gap:2px;
@@ -11163,6 +11208,19 @@ html[data-gl] .gl-own-empty{display:none;order:-1;flex:0 0 100%;width:100%;align
 html[data-gl] .gl-own-empty.gl-show{display:flex;}
 html[data-gl] .gl-own-empty button{appearance:none;flex:none;border:1px solid rgba(var(--gl-acc-rgb),.5);background:rgba(var(--gl-acc-rgb),.16);color:var(--gl-acci);
   border-radius:999px;padding:6px 11px;font:600 11.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+/* §25 (round 6) the RING vs-aim | 100% and P&L pills while the own side is lit WITHOUT connected positions: dimmed and inert, not
+   gone (stock hides them). body.gl-own-side is set by shim.js from the cockpit's SCOPE pill; .hidden is the stock verdict "not
+   connected" — when a payload lands, stock removes .hidden and the pills return to full strength by themselves. */
+html[data-gl] body.gl-own-side #studioView #ownSub.hidden{display:flex;}
+html[data-gl] body.gl-own-side #studioView :is(#ownScalePill,#ownPnlPill).hidden{display:inline-flex;opacity:.35;pointer-events:none;}   /* outranks stock's .own-sub .own-pill{opacity:.9} */
+
+/* §27 (round 6) the Glass-only footnotes — Settings › Appearance / Grades shown, and the help sheet's lens line — in the sheet's own
+   foot grammar made EXPLICIT: 11.5px, muted, no background, no accent, no border, and no iOS tap-highlight or selection wash (what
+   "highlighted text" is on a phone: the sheet's document-level click handlers make iOS flash a tap wash on plain text, and a
+   selected run wears the accent ::selection tint). Neither wash reproduces on a Mac; both are switched off here. */
+html[data-gl] .gl-foot{font:400 11.5px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#61748a;background:transparent;border:0;
+  box-shadow:none;text-shadow:none;letter-spacing:normal;text-transform:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
+html[data-gl] #help #glLensNote.gl-foot{margin:4px 0 8px;font-size:11.5px;color:#61748a;}   /* by id: the stock #help .hsub outranks a class */
 
 /* ---- theme picker (Settings > Appearance) ---- */
 html[data-gl] .gl-themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px;padding:12px;}
@@ -11248,14 +11306,8 @@ html[data-gl] .glc-chip.mod{display:inline-flex;align-items:center;gap:4px;paddi
 html[data-gl] .glc-chip.mod svg{flex:none;opacity:.8;}
 html[data-gl] .glc-chip.mod.on svg{opacity:1;}
 html[data-gl] .glc-chip.mod.empty{border-style:dashed;opacity:.55;}
-html[data-gl] .glc-chip.wiggle{animation:glcWiggle .35s cubic-bezier(.36,.07,.19,.97) both;}
-@keyframes glcWiggle{20%{transform:translateX(-4px) rotate(-2deg)}40%{transform:translateX(4px) rotate(2deg)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}100%{transform:none}}
-/* a refused tap says why, briefly, just under the bar — overlaid so the grid never jumps */
-html[data-gl] .glc-toast{position:absolute;left:50%;top:44px;transform:translate(-50%,-4px);z-index:5;pointer-events:none;
-  padding:6px 11px;border-radius:999px;background:rgba(var(--gl-d18-rgb),.96);border:1px solid rgba(255,255,255,.14);box-shadow:0 6px 20px rgba(0,0,0,.35);
-  color:rgba(234,238,245,.9);font:600 11.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;white-space:nowrap;opacity:0;transition:opacity .18s,transform .18s;}
-html[data-gl] .glc-toast[hidden]{display:none;}
-html[data-gl] .glc-toast.show{opacity:1;transform:translate(-50%,0);}
+/* §26 (round 6): the "one of Earn · Econ · Div stays on" guard is gone, and with it the chip wiggle + toast — all three may be off;
+   the body then shows one .glc-empty line ("Nothing selected — turn on Earn, Econ or Div") */
 html[data-gl] .glc-info{appearance:none;flex:none;width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);
   color:rgba(234,238,245,.7);font:italic 700 13px/1 Georgia,serif;cursor:pointer;transition:transform .34s cubic-bezier(.3,1.9,.45,1);}
 html[data-gl] .glc-info.busy{animation:glcPulse 1s ease-in-out infinite;}
@@ -11347,8 +11399,7 @@ html[data-gl] .glc-sheet header{display:flex;align-items:center;justify-content:
 html[data-gl] .glc-x{appearance:none;border:0;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.1);color:#fff;font-size:17px;line-height:1;cursor:pointer;}
 html[data-gl] .glc-cov p{margin:0;padding:9px 6px;border-top:1px solid rgba(255,255,255,.07);color:rgba(234,238,245,.62);line-height:1.5;font-size:12.5px;}
 html[data-gl] .glc-cov p b{color:#fff;font-weight:600;margin-right:6px;}
-@media (prefers-reduced-motion:reduce){html[data-gl] #glCal,html[data-gl] .glc-sheet,html[data-gl] .glc-chip.wiggle,html[data-gl] .glc-empty-held.loading{animation:none!important;}
-  html[data-gl] .glc-toast{transition:none;}}
+@media (prefers-reduced-motion:reduce){html[data-gl] #glCal,html[data-gl] .glc-sheet,html[data-gl] .glc-empty-held.loading{animation:none!important;}}
 
 </style>
 <script id="gl48Cal">
@@ -11498,7 +11549,6 @@ html[data-gl] .glc-cov p b{color:#fff;font-weight:600;margin-right:6px;}
      +  '<button type="button" class="glc-chip mod" data-f="heldOnly" aria-label="Only what I hold">'+HELD_GLYPH+'Held</button></div>'
      +  '<button type="button" class="glc-info" data-info="1" aria-label="Coverage and freshness">i</button>'
      +'</div>'
-     +'<div class="glc-toast" id="glcToast" hidden role="status" aria-live="polite"></div>'
      +'<button type="button" class="glc-next" id="glcNext" hidden></button>'
      +'<div class="glc-held" id="glcHeld"></div>'      /* the honest Held line lives ABOVE the scrolling body, so it is seen the moment Held is tapped */
      +'<div class="glc-body" id="glcBody"></div>'
@@ -11518,6 +11568,8 @@ html[data-gl] .glc-cov p b{color:#fff;font-weight:600;margin-right:6px;}
     S.heldState=hs; S.tok=hasTok(); var hn=document.getElementById('glcHeld'); if(hn) hn.innerHTML=(hs&&hs!=='ok'&&S.pub)?heldNote(hs):'';
     var body=document.getElementById('glcBody');
     if(!S.pub){ body.innerHTML='<div class="glc-empty">'+(S.busy?'Loading the calendar…':esc(S.err||'No calendar yet.')+'<br><button type="button" class="glc-chip on" data-retry="1">Retry</button>')+'</div>'; document.getElementById('glcNext').hidden=true; return; }
+    /* §26 (round 6): all three types off is allowed — one honest line, no wiggle, no toast. Held (a modifier) and its note above are untouched. */
+    if(!f.earn&&!f.econ&&!f.div){ body.className='glc-body'; body.innerHTML='<div class="glc-empty" data-glc-none="1">Nothing selected — turn on Earn, Econ or Div</div>'; document.getElementById('glcNext').hidden=true; return; }
     var days=model(), T=today();
     paintNext(days,T);
     if(f.layout==='agenda') renderAgenda(body,days,T); else renderGrid(body,days,T);
@@ -11617,14 +11669,6 @@ html[data-gl] .glc-cov p b{color:#fff;font-weight:600;margin-right:6px;}
   function sheet(html){ var s=document.getElementById('glcSheet'), c=document.getElementById('glcScrim'); s.innerHTML=html; s.hidden=false; c.hidden=false; s.scrollTop=0; }
   function closeSheet(){ var s=document.getElementById('glcSheet'), c=document.getElementById('glcScrim'); if(s) s.hidden=true; if(c) c.hidden=true; }
 
-  /* a tap that cannot be honoured: the chip wiggles and a short toast says why (never silent) */
-  function refuse(chip,msg){
-    if(chip){ chip.classList.remove('wiggle'); void chip.offsetWidth; chip.classList.add('wiggle');
-      clearTimeout(chip._wg); chip._wg=setTimeout(function(){ chip.classList.remove('wiggle'); },450); }
-    var tt=document.getElementById('glcToast'); if(!tt) return;
-    tt.textContent=msg; tt.hidden=false; tt.classList.remove('show'); void tt.offsetWidth; tt.classList.add('show');
-    clearTimeout(S.toastT); S.toastT=setTimeout(function(){ tt.classList.remove('show'); tt.hidden=true; },1400);
-  }
   function onClick(e){
     var t=e.target, b;
     if((b=t.closest('[data-close]'))||t.id==='glcScrim'){ closeSheet(); return; }
@@ -11633,9 +11677,8 @@ html[data-gl] .glc-cov p b{color:#fff;font-weight:600;margin-right:6px;}
     if((b=t.closest('[data-lay]'))){ S.pref.layout=b.getAttribute('data-lay'); savePref(); document.getElementById('glcBody')._scrolled=false; render(); return; }
     if((b=t.closest('[data-glsettings]'))){ openSettingsFromCal(); return; }
     if((b=t.closest('[data-posretry]'))){ try{ if(window.AIBO_POS&&window.AIBO_POS.refresh) window.AIBO_POS.refresh(); }catch(_){} refresh(true); return; }
-    if((b=t.closest('[data-f]'))){ var k=b.getAttribute('data-f'); S.pref[k]=!S.pref[k];
-      if(!S.pref.earn&&!S.pref.econ&&!S.pref.div){ S.pref[k]=true; refuse(b,'one of Earn · Econ · Div stays on'); return; }
-      savePref(); render(); return; }
+    /* §26 (round 6): no "one stays on" guard — all three types may be off; render() then says so in one honest line */
+    if((b=t.closest('[data-f]'))){ var k=b.getAttribute('data-f'); S.pref[k]=!S.pref[k]; savePref(); render(); return; }
     if((b=t.closest('[data-sym]'))){ var sym=b.getAttribute('data-sym'); try{ if(typeof lookup==='function'&&lookup(sym)&&typeof openSheet==='function'){ closeSheet(); openSheet(sym,b); } }catch(_){} return; }
     if((b=t.closest('[data-goto]'))){ openDay(b.getAttribute('data-goto')); return; }
     if((b=t.closest('.glc-day.has'))){ openDay(b.getAttribute('data-day')); return; }
@@ -12717,8 +12760,8 @@ html[data-gl] .glg-end{height:calc(var(--gl-dock-h,52px) + var(--gl-safe-b, env(
    row (≤34px in landscape); the Wall is a horizontal snap-scroller of rectangular cells (≈3.2:1) with sticky row labels;
    the Stack is five tall plots. Every plot carries ONE pill at its top-left and nothing else over the data.
    Colour by value only: green = bullish, red = bearish, grey = neutral. The theme accent marks UI state (the chosen name,
-   the card row), never a series. In landscape the strip auto-hides (#mStrip.m-hide, the stock class) and this layer takes
-   its 40px — the sibling selector follows the strip's real state. */
+   the card box), never a series. In landscape the strip auto-hides (#mStrip.m-hide, the stock class) and this layer takes
+   its 40px — the sibling selector follows the strip's real state. Landscape Wall (R6 §22): three timeframes per screen. */
 #glTech{display:none;}
 html[data-gl] body.gl-tech #glTech{display:block;position:fixed;left:0;right:0;top:47px;bottom:0;z-index:52;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
   background:rgb(var(--gl-bg-rgb));color:var(--ink,#EAEEF5);font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;animation:glIn .26s ease both;transition:top .18s ease;}
@@ -12823,16 +12866,28 @@ html[data-gl] .glt-plot.cell{width:var(--glt-cw);height:var(--glt-ch);scroll-sna
 html[data-gl] .glt-plot.cell .rd{font-size:10px;padding:2px 5px;}
 html[data-gl] .glt-plot.cell .gp{font-size:10px;}
 
-/* ---- the card under Glass: the stock TECHNICALS toggle + inline grid hide (never removed); ONE full-width row under the price strip opens the page ---- */
+/* ---- the card under Glass (R6 §22): the stock TECHNICALS toggle + inline grid hide (never removed); the entry is ITS OWN BOX — a full-width
+   bordered, accent-tinted button that sits UNDER the price strip (a sibling in .aibo-box, so the strip's bullet lane never eats its right edge):
+   "Technicals" bold, "candles · TBO cloud · divergence · Bollinger — M W D 4H H" muted under it, an ↗ at the right, ≥44px, a pressed state, no caret.
+   On a phone (≤480) the frames move up beside the title so the description keeps to ONE line; the same grammar as the fundamentals' pill. ---- */
 html[data-gl] #sheetBody .aibo-box details.aibo-tech,html[data-gl] #sheetBody .aibo-box .aibo-strip .as-xp{display:none!important;}
-html[data-gl] .aibo-box .aibo-strip .glt-row{order:7;flex:1 1 100%;appearance:none;display:flex;align-items:center;gap:8px;margin-top:4px;padding:9px 9px 8px;border:0;border-top:1px solid var(--hair,#2A3647);background:transparent;
-  color:var(--gl-acci);font:700 12px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.02em;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;border-radius:0;}
-html[data-gl] .aibo-box .aibo-strip .glt-row em{display:inline-flex;gap:5px;font:700 10px/1 ui-monospace,"SF Mono",Menlo,monospace;font-style:normal;letter-spacing:.06em;opacity:.9;}
-html[data-gl] .aibo-box .aibo-strip .glt-row .dot{font-style:normal;opacity:.5;margin:0 -2px;}
-html[data-gl] .aibo-box .aibo-strip .glt-row em i{font-style:normal;}
-html[data-gl] .aibo-box .aibo-strip .glt-row em i.off{opacity:.32;}      /* a frame the feed has not got for this name (no intraday yet): dim, never invented */
-html[data-gl] .aibo-box .aibo-strip .glt-row b{margin-left:auto;font-weight:700;font-size:14px;}
-html[data-gl] .aibo-box .aibo-strip .glt-row:active{background:rgba(255,255,255,.06);}
+html[data-gl] .aibo-box .glt-row{appearance:none;box-sizing:border-box;width:calc(100% - 24px);margin:0 12px 12px;min-height:44px;padding:8px 10px 8px 12px;
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"ttl ttl go" "sub fr go";column-gap:8px;row-gap:3px;align-items:center;
+  border:1px solid rgba(var(--gl-acc-rgb),.5);border-radius:11px;background:rgba(var(--gl-acc-rgb),.13);color:var(--gl-acci);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  font:600 12px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;transition:transform .34s cubic-bezier(.3,1.9,.45,1),background-color .2s,border-color .2s;}
+html[data-gl] .aibo-box .glt-row .ttl{grid-area:ttl;font-weight:800;font-size:13.5px;line-height:1.15;letter-spacing:.01em;color:var(--gl-acci);}
+html[data-gl] .aibo-box .glt-row .sub{grid-area:sub;font:500 10.5px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(234,238,245,.6);min-width:0;}
+html[data-gl] .aibo-box .glt-row em{grid-area:fr;justify-self:start;display:inline-flex;align-items:baseline;gap:5px;font:700 10px/1.25 ui-monospace,"SF Mono",Menlo,monospace;font-style:normal;letter-spacing:.06em;color:var(--gl-acci);opacity:.92;white-space:nowrap;}
+html[data-gl] .aibo-box .glt-row em::before{content:"\2014";font:500 10.5px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:0;color:rgba(234,238,245,.6);margin:0 1px 0 -3px;}   /* the dash lives here: it only makes sense when the frames END the description line */
+html[data-gl] .aibo-box .glt-row em i{font-style:normal;}
+html[data-gl] .aibo-box .glt-row em i.off{opacity:.32;}      /* a frame the feed has not got for this name (no intraday yet): dim, never invented */
+html[data-gl] .aibo-box .glt-row .go{grid-area:go;align-self:center;justify-self:end;font-weight:700;font-size:18px;line-height:1;color:var(--gl-acci);padding-left:2px;}
+html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(var(--gl-acc-rgb),.28);border-color:rgba(var(--gl-acc-rgb),.75);transition-duration:.05s;}
+@media (max-width:480px){
+  html[data-gl] .aibo-box .glt-row{width:calc(100% - 18px);margin:0 9px 9px;padding:8px 9px 8px 11px;grid-template-areas:"ttl fr go" "sub sub go";}
+  html[data-gl] .aibo-box .glt-row em{justify-self:end;}
+  html[data-gl] .aibo-box .glt-row em::before{content:none;}
+}
 
 /* ---- widths / heights ---- */
 @media (max-width:599px) and (min-height:481px){
@@ -12897,9 +12952,9 @@ html[data-gl] .aibo-box .aibo-strip .glt-row:active{background:rgba(255,255,255,
             One column fits a portrait phone, ~2.4 an iPad (300×100), all five a desktop when each can be ≥240px wide
             (else the iPad scroller — never a clipped fifth column). In LANDSCAPE one column is the viewport minus the
             label and the four rows share the height under one slim head row.
-            DECIDED (R3, 09-24): the landscape column is FULL-WIDTH (~744×64–74 on an 844 phone, ~11:1), NOT the 3.2:1
-            rectangle — four rows must share ~300px of height and the owner wants the plots big sideways; the 3.2:1 rule holds
-            for portrait / iPad / desktop only. Morning check.
+            R3 (09-24) made the landscape column FULL-WIDTH (~744×64–74, ~11:1); the owner's morning verdict (R6 §22) set it to
+            THREE timeframes per screen: cell width = (wall − label − 2 gaps)/3 (≈242×64–74 on an 844 phone, ≈190×62–64 on
+            a 667), still snapping per column; the height follows the four-row fit, capped at h/w .34 so it stays a rectangle.
      Stack  one indicator (a seg), its five timeframes stacked coarse→fine as tall full-width plots.
    Every plot carries ONE small read pill at its top-left and nothing else over the data — no hi/lo, no bar count, nothing
    on the right. A frame a renderer cannot draw is a dashed cell that says "no intraday yet" / "short history"; a plot is
@@ -12912,8 +12967,9 @@ html[data-gl] .aibo-box .aibo-strip .glt-row:active{background:rgba(255,255,255,
      ?techlab=KEY opens it once the feed has hydrated (polled, 20s cap).
    Landscape (touch, ≤520px tall): the app strip auto-hides 1.5s after the last touch (#mStrip.m-hide — the stock class,
    the top-mode doors follow it through skin.css) and the page takes its 40px; a tap on the top edge brings it back.
-   The card: under Glass the stock TECHNICALS toggle + its inline grid are hidden (techlab.css) and ONE full-width row
-   "Technicals · M W D 4H H ↗" (the frames on hand lit) sits under the price strip and opens this page. Theme off = stock.
+   The card: under Glass the stock TECHNICALS toggle + its inline grid are hidden (techlab.css) and ONE full-width BOX (R6 §22:
+   bordered, accent-tinted, "Technicals" bold over "candles · TBO cloud · divergence · Bollinger — M W D 4H H", the frames on
+   hand lit, ↗ at the right, ≥44px, pressed state) sits under the price strip and opens this page. Theme off = stock.
    Persisted: 'aibo.gl.tech.look' (the look) and 'aibo.gl.tech.last' (the name; '$'-prefixed for crypto).
 
    Reads are DERIVED, never guessed — Candles: last close vs the 55-EMA (distance) with the EMA's own slope arrow;
@@ -13054,10 +13110,12 @@ html[data-gl] .aibo-box .aibo-strip .glt-row:active{background:rgba(255,255,255,
     var wall=root.querySelector('[data-techwall]'); if(!wall) return;
     var ww=wall.clientWidth, W=root.clientWidth, wide=W>=700, lw=wide?76:62, gap=wide?8:6, hh=16, cw, ch;
     var avail=ww-lw-gap;                                   /* the width left for columns after the sticky label + one gap */
-    if(landOn()){                                          /* landscape phone: one column = the width; the four rows share the height */
-      cw=avail; var head=root.querySelector('.glt-head'), body=root.querySelector('.glt-body'), end=root.querySelector('.glt-end');
+    if(landOn()){                                          /* landscape phone (R6 §22): THREE timeframes per screen; the four rows share the height */
+      cw=Math.floor((avail-2*gap)/3);                      /* avail = wall − label − its gap; two more gaps sit between the three columns */
+      var head=root.querySelector('.glt-head'), body=root.querySelector('.glt-body'), end=root.querySelector('.glt-end');
       var used=(head?head.offsetHeight:34)+(body?parseFloat(getComputedStyle(body).paddingTop)||0:6)+(end?end.offsetHeight:8);
-      ch=Math.max(48,Math.floor((root.clientHeight-used-hh-4*gap)/4));
+      ch=Math.floor((root.clientHeight-used-hh-4*gap)/4);  /* the four-row fit, as before */
+      ch=Math.max(48,Math.min(ch,Math.floor(cw*.34)));     /* ...capped at the old rectangle (h/w ≤ .34): a 667-wide phone with the strip tucked would otherwise go 190×72 — squarer than the owner's "rectangles before" */
     } else if(W<700){ cw=avail; ch=Math.round(cw*.32); }                        /* portrait phone: one column */
     else if(W<1024){ cw=300; ch=100; }                                           /* iPad: ~2.4 columns, the next one peeking (R32: spec's 100px floor, h/w .33) */
     else {                                                                       /* desktop: all five when each can be ≥240 (R2: fit-or-fall-back) */
@@ -13188,8 +13246,9 @@ html[data-gl] .aibo-box .aibo-strip .glt-row:active{background:rgba(255,255,255,
   /* ---- landscape: the strip hides after 1.5s idle (the stock class; the top-mode doors follow it), a tap on the top edge brings it back ---- */
   function stripEl(){ return document.getElementById('mStrip'); }
   function stripHidden(){ var st=stripEl(); return !!(st&&st.classList.contains('m-hide')); }
-  function armIdle(){ clearTimeout(S.idle); S.idle=0; if(!S.open||!landOn()) return;
-    S.idle=setTimeout(function(){ S.idle=0; if(!S.open||!landOn()||S.finding) return; var st=stripEl(); if(st){ st.classList.add('m-hide'); schedule(); } },1500); }
+  function pinned(){ try{ return !!(window.GL48&&typeof GL48.stripPinned==='function'&&GL48.stripPinned()); }catch(_){ return false; } }   /* §20: in top mode the strip never hides (the doors live in it) */
+  function armIdle(){ clearTimeout(S.idle); S.idle=0; if(!S.open||!landOn()||pinned()) return;
+    S.idle=setTimeout(function(){ S.idle=0; if(!S.open||!landOn()||S.finding||pinned()) return; var st=stripEl(); if(st){ st.classList.add('m-hide'); schedule(); } },1500); }
   function reveal(){ clearTimeout(S.idle); S.idle=0; var st=stripEl(); if(st&&st.classList.contains('m-hide')){ st.classList.remove('m-hide'); schedule(); } armIdle(); }
   function restoreStrip(){ clearTimeout(S.idle); S.idle=0; var st=stripEl(); if(st&&st.classList.contains('m-hide')) st.classList.remove('m-hide'); }
   if(LQ&&LQ.addEventListener) LQ.addEventListener('change',function(){ if(!S.open) return; if(landOn()) armIdle(); else restoreStrip(); schedule(); });
@@ -13223,17 +13282,20 @@ html[data-gl] .aibo-box .aibo-strip .glt-row:active{background:rgba(255,255,255,
   function current(){ return S.cur?chipKey(S.cur):null; }
   window.GLTech={show:show, hide:hide, look:look, current:current};
 
-  /* ---------- the card: ONE full-width row under the price strip opens the page (the stock toggle + grid are hidden by techlab.css under Glass) ---------- */
+  /* ---------- the card (R6 §22): ONE box under the price strip opens the page — a full-width bordered, accent-tinted button, a sibling of the strip
+     inside .aibo-box (the stock toggle + grid are hidden by techlab.css under Glass): "Technicals" bold / the four indicators muted / the frames on hand
+     lit (a missing one dimmed, never invented) / ↗ at the right. ---------- */
   function cardKey(){ var body=document.getElementById('sheetBody'); if(!body) return null; var tk=body.querySelector('.sh-tk'); if(!tk) return null; var t=tk.textContent.trim(); if(!t) return null; return body.querySelector('.cr-sheet')?'$'+t:t; }
   function decorateCard(){
     if(!H.getAttribute('data-gl')) return;
     var body=document.getElementById('sheetBody'), box=body&&body.querySelector('.aibo-box'); if(!box) return;   /* no strip + panel, no technicals to open */
     var key=cardKey(); if(!key) return; box.setAttribute('data-gltech',key);
-    var strip=box.querySelector('.aibo-strip'); if(!strip||strip.querySelector('[data-gltechopen]')) return;
+    var strip=box.querySelector('.aibo-strip'); if(!strip||box.querySelector('[data-gltechopen]')) return;
     var c=resolve(key), P=(c&&frames(c))||{};
     var b=document.createElement('button'); b.type='button'; b.className='glt-row'; b.setAttribute('data-gltechopen',''); b.setAttribute('aria-label','Open the Technicals page');
-    b.innerHTML='<span>Technicals</span><i class="dot" aria-hidden="true">·</i><em>'+TFS.map(function(t){ return '<i'+(P[t[0]]?'':' class="off"')+'>'+t[1]+'</i>'; }).join('')+'</em><b aria-hidden="true">↗</b>';
-    strip.appendChild(b);
+    b.innerHTML='<b class="ttl">Technicals</b><span class="sub">candles · TBO cloud · divergence · Bollinger</span>'
+      +'<em>'+TFS.map(function(t){ return '<i'+(P[t[0]]?'':' class="off"')+'>'+t[1]+'</i>'; }).join('')+'</em><b class="go" aria-hidden="true">↗</b>';
+    strip.parentNode.insertBefore(b,strip.nextSibling);   /* directly under the strip, above the hidden stock grid */
   }
   var sheet=document.getElementById('sheet');
   if(sheet&&window.MutationObserver) new MutationObserver(function(){ if(sheet.classList.contains('show')) decorateCard(); }).observe(sheet,{attributes:true,attributeFilter:['class']});
@@ -13268,7 +13330,9 @@ html[data-gl] .aibo-box .aibo-strip .glt-row:active{background:rgba(255,255,255,
    landscape default `top`, GL48.go() for the Grid, the own-pill no-token line, and resetZoom().
    Round 5 (§17/§18, the owner's overnight verdict): the Universe seg lives IN each Atlas view, the Grades seg is a
    Settings card (aibo.gl.lens), the strip's ? is gone (the wheel + scorecard carry one), the Tape's control row
-   rides the strip, a shorter bar, ?probe=1, and the zoom is put back when a card closes. */
+   rides the strip, a shorter bar, ?probe=1, and the zoom is put back when a card closes.
+   Round 6 (§20/§23–§27, the owner's 09-24 morning verdict): the strip never tucks away in top-mode landscape (the doors live there),
+   the zoom-compensated card (the page zoom is never touched), the dimmed RING/P&L pills, and the explicit foot grammar. */
 (function(){
   'use strict';
   var H=document.documentElement, B=document.body, META=window.GL48||{palettes:[],default:'violet'};
@@ -13285,7 +13349,8 @@ html[data-gl] .aibo-box .aibo-strip .glt-row:active{background:rgba(255,255,255,
      beat and restoring it is the one lever iOS honours. The app runs inside latest.html, so the TOP document's
      meta is the one that counts (same origin; try/catch; local meta as the fallback). Works with the theme off
      too — registered above the early return. Not provable on a Mac; WebKit QA only checks it does not throw and
-     that the meta round-trips. ---- */
+     that the meta round-trips. Round 6: the CARD no longer uses this lever (§24 below — it is sized to the visual
+     viewport instead, so the zoom survives); the dock doors and the Technicals page still call resetZoom(). ---- */
   var RESET_META='width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover', zoomBusy=false, zoomRec=null;
   function topWin(){ var w=window; try{ if(window.top&&window.top!==window&&window.top.document) w=window.top; }catch(_){ w=window; } return w; }
   function topVV(){ var vv=null; try{ if(window.top&&window.top!==window) vv=window.top.visualViewport; }catch(_){ vv=null; } return vv||window.visualViewport||null; }
@@ -13308,10 +13373,8 @@ html[data-gl] .aibo-box .aibo-strip .glt-row:active{background:rgba(255,255,255,
     if(!force&&!(vv&&vv.scale>1.001)) return false;
     return pulseMeta(RESET_META);
   }
-  /* §18 (round 5) "when I close [the card] I would like it to stay zoomed in like it was": what the pinch was before the
-     card reset it — scale + the visual offset, read off the TOP window when framed — and the same lever in reverse:
-     minimum-scale = maximum-scale = <prev> for one beat, the normal meta back, then scrollTo the recorded offset.
-     Best effort, try/catch everywhere; cannot be proven on a Mac (morning check on the phone). */
+  /* §18 (round 5) restoreZoom — the reverse pulse (minimum-scale = maximum-scale = <prev> for one beat, then scrollTo). Kept
+     exported; the card path no longer uses it (§24 below). Best effort, try/catch everywhere. */
   function readZoom(){
     try{ var vv=topVV(); if(!vv||!(vv.scale>1.001)) return null; var w=topWin();
       return {scale:vv.scale, x:(vv.pageLeft!=null?vv.pageLeft:(w.scrollX||0)), y:(vv.pageTop!=null?vv.pageTop:(w.scrollY||0)), win:w}; }
@@ -13324,15 +13387,58 @@ html[data-gl] .aibo-box .aibo-strip .glt-row:active{background:rgba(255,255,255,
     if(ok) setTimeout(function(){ try{ rec.win.scrollTo(rec.x,rec.y); }catch(_){} },130);
     return ok;
   }
-  window.GL48.resetZoom=resetZoom; window.GL48.restoreZoom=restoreZoom;
-  /* R31: a page opened FROM the card (techlab.js) closes the sheet itself and then fills the screen — the pinch recorded before
-     the card must not be put back onto that page. The page calls this before closeSheet(); the observer then finds no record. */
+  window.GL48.resetZoom=resetZoom; window.GL48.restoreZoom=restoreZoom; window.GL48.readZoom=readZoom;
+  /* R31 kept as a contract: techlab.js calls this before closeSheet(). There is no pre-card record any more (§24 never touches the
+     page zoom), so it is a no-op — the function stays because the caller checks for it. */
   function dropZoomRec(){ zoomRec=null; }
   window.GL48.dropZoomRec=dropZoomRec;
-  var cardSheet=$('#sheet');
+
+  /* ---- §24 (round 6) THE ZOOM-COMPENSATED CARD. the owner: the card must open full-size while he is pinch-zoomed AND closing must
+     leave him zoomed exactly where he was ("is that possible?"). So the page zoom is never touched. When the TOP window's
+     visualViewport.scale > 1 the card is sized and placed onto the VISUAL viewport with inline styles: left/bottom = the visual
+     rect in this frame's CSS px (latest.html offsets its iframe by the top safe-area inset, so the frame's box is subtracted),
+     width = visual width × scale (capped at the stock 560 below 768px), max-height = visual height × scale × .92, and
+     transform scale(1/scale) about the BOTTOM-LEFT corner — the card is bottom-anchored, so that origin does the anchoring and no
+     content height has to be read (the spec's top = offsetTop + height − h/scale, without the h). Re-applied on every
+     visualViewport resize/scroll while open; on close the card slides out through the same geometry and every inline style is
+     cleared, so the stock geometry returns. The scrim is inset:0 of the LAYOUT viewport, which always contains the visual one:
+     nothing to do there. Registered above the theme==='off' early return like §10 was. Cannot be proven on a Mac; the WebKit
+     smoke stubs the top visualViewport and asserts the mapped rect + an untouched meta. ---- */
+  var cardSheet=$('#sheet'), fitOn=false, fitVV=null, fitClearT=0, FIT_PROPS=['position','left','top','right','bottom','width','maxWidth','maxHeight','transform','transformOrigin'];
+  function frameRect(){                                    /* this frame's box in the TOP layout viewport; unframed = the window itself */
+    try{ if(window.top&&window.top!==window&&window.frameElement){ var r=window.frameElement.getBoundingClientRect(); if(r&&r.width>0) return r; } }catch(_){}
+    return {left:0,top:0,right:window.innerWidth,bottom:window.innerHeight};
+  }
+  function fitCard(){
+    if(!cardSheet||!fitOn) return false;
+    var vv=topVV(), s=vv?vv.scale:1;
+    if(!(s>1.001)){ clearFit(false); return false; }      /* pinched back to 1 while open: the stock geometry is right again */
+    var fr=frameRect(), ox=vv.offsetLeft||0, oy=vv.offsetTop||0;
+    var l=Math.max(ox,fr.left)-fr.left, t=Math.max(oy,fr.top)-fr.top, r=Math.min(ox+vv.width,fr.right)-fr.left, b=Math.min(oy+vv.height,fr.bottom)-fr.top;
+    var vw=r-l, vh=b-t; if(!(vw>0)||!(vh>0)) return false;
+    var full=window.matchMedia&&window.matchMedia('(min-width:768px)').matches, cw=full?vw*s:Math.min(560,vw*s);
+    var st=cardSheet.style;
+    st.position='fixed'; st.left=(l+(vw-cw/s)/2).toFixed(2)+'px'; st.top='auto'; st.right='auto'; st.bottom=(window.innerHeight-b).toFixed(2)+'px';
+    st.width=cw.toFixed(2)+'px'; st.maxWidth='none'; st.maxHeight=(vh*s*.92).toFixed(2)+'px';
+    st.transformOrigin='0 100%'; st.transform='scale('+(1/s)+')';
+    return true;
+  }
+  function clearFit(slide){
+    if(!cardSheet) return; var st=cardSheet.style; clearTimeout(fitClearT); fitClearT=0;
+    function wipe(){ FIT_PROPS.forEach(function(p){ st[p]=''; }); }
+    if(slide&&/scale\(/.test(st.transform||'')){          /* slide out through the compensated geometry, then hand the stock geometry back */
+      st.transform=st.transform.replace(/\s*translateY\([^)]*\)/,'')+' translateY(102%)'; fitClearT=setTimeout(wipe,320);
+    } else wipe();
+  }
+  window.GL48.fitCard=fitCard;
   if(cardSheet&&window.MutationObserver) new MutationObserver(function(){
-    if(cardSheet.classList.contains('show')){ if(!zoomRec) zoomRec=readZoom(); resetZoom(); }
-    else if(zoomRec){ var r=zoomRec; zoomRec=null; restoreZoom(r); }
+    var open=cardSheet.classList.contains('show');
+    if(open&&!fitOn){ fitOn=true; clearTimeout(fitClearT); fitClearT=0; fitVV=topVV();
+      if(fitVV){ try{ fitVV.addEventListener('resize',fitCard); fitVV.addEventListener('scroll',fitCard); }catch(_){ fitVV=null; } }
+      fitCard(); }
+    else if(!open&&fitOn){ fitOn=false;
+      if(fitVV){ try{ fitVV.removeEventListener('resize',fitCard); fitVV.removeEventListener('scroll',fitCard); }catch(_){} fitVV=null; }
+      clearFit(true); }
   }).observe(cardSheet,{attributes:true,attributeFilter:['class']});
 
   /* ---- theme ---- */
@@ -13609,8 +13715,21 @@ html[data-gl] .aibo-box .aibo-strip .glt-row:active{background:rgba(255,255,255,
   function landMode(){ var q=(QS.match(/[?&]land=([a-z]+)/)||[])[1]; if(LANDS.indexOf(q)>=0) return q;
     try{ var v=localStorage.getItem(LSL); if(LANDS.indexOf(v)>=0) return v; }catch(_){} return 'top'; }
   function setLand(m,persist){ if(LANDS.indexOf(m)<0) return; if(persist!==false){ try{ localStorage.setItem(LSL,m); }catch(_){} }
-    H.setAttribute('data-land',m); dock.classList.remove('open'); window.dispatchEvent(new Event('resize')); }
+    H.setAttribute('data-land',m); dock.classList.remove('open'); unhideStrip(); window.dispatchEvent(new Event('resize')); }
   window.GL48.land=setLand; H.setAttribute('data-land',landMode());
+  /* ---- §20/§23 (round 6) STANDING RULE: sideways in top mode the doors live in the strip, so nothing may tuck the strip away.
+     Two things did — the stock scroll handler toggles #mStrip.m-hide on every body scroll (Waterfall / Flow), and techlab.js adds
+     it 1.5s after the last touch on the Technicals page — and the top-mode doors went off the top edge with it (the owner: "I can't
+     click on the Atlas in that mode"). The class is stripped the moment it lands (a MutationObserver: a microtask, so no frame
+     ever paints it), which keeps every module keyed on it honest (#glSub, #glTech's top, the edge handle all see a visible
+     strip); skin.css neutralises the class as well, should one ever slip through. Portrait and rail/orb/bar are untouched: there
+     the doors are not in the strip and the stock hide is welcome. Rotating into top-mode landscape with the strip already tucked
+     (a scrolled portrait Waterfall) un-tucks it too. ---- */
+  function stripPinned(){ return H.getAttribute('data-land')==='top'&&LQ.matches; }
+  function unhideStrip(){ if(strip&&stripPinned()&&strip.classList.contains('m-hide')) strip.classList.remove('m-hide'); }
+  if(strip&&window.MutationObserver) new MutationObserver(unhideStrip).observe(strip,{attributes:true,attributeFilter:['class']});
+  if(LQ.addEventListener) LQ.addEventListener('change',unhideStrip); else if(LQ.addListener) LQ.addListener(unhideStrip);
+  unhideStrip(); window.GL48.stripPinned=stripPinned;
   function orbOn(){ return H.getAttribute('data-land')==='orb'&&LQ.matches; }
   dock.addEventListener('click',function(e){                                  /* capture: a closed orb opens instead of navigating */
     if(!orbOn()) return;
@@ -13679,8 +13798,9 @@ html[data-gl] .aibo-box .aibo-strip .glt-row:active{background:rgba(255,255,255,
        Settings card). Nothing stock is rewritten: one pointer is added right under that row, Glass only (the shim never runs with the theme off). */
     if(hc&&!$('#glLensNote')){
       var badge=hc.querySelector('.hl'); if(badge){
-        var ln=el('p','hsub','Under Glass the lens is set once for every view, in <b>Settings › Appearance › Grades shown</b> (Expansion by default) — the strip no longer carries it. Every company card always shows both grades.');
-        ln.id='glLensNote'; ln.style.margin='4px 0 8px'; badge.parentNode.insertBefore(ln,badge.nextSibling); }
+        /* §27: plain foot grammar (.gl-foot, skin.css) — no bold run, no accent, nothing that can read as a highlight */
+        var ln=el('p','hsub gl-foot'); ln.textContent='Under Glass the lens is set once for every view, in Settings › Appearance › Grades shown (Expansion by default) — the strip no longer carries it. Every company card always shows both grades.';
+        ln.id='glLensNote'; badge.parentNode.insertBefore(ln,badge.nextSibling); }
     }
     if(hc&&!$('#glTapeHelpWide')){
       var box=el('div',null); box.id='glTapeHelpWide';
@@ -13767,6 +13887,13 @@ html[data-gl] .aibo-box .aibo-strip .glt-row:active{background:rgba(255,255,255,
       var own=pill.querySelector('[data-scope="own"]'), on=!!(own&&own.classList.contains('on'));
       d.classList.toggle('gl-show',on&&noTok);
     });
+    /* §25 (round 6): the RING vs-aim | 100% and P&L pills stay visible — dimmed, inert — while the own side is lit without connected
+       positions (stock hides them with .hidden; skin.css re-shows them at .35 under body.gl-own-side). The title says how to light
+       them; it is only carried while dimmed, so a connected pill reads as the stock one. */
+    var cp=$('#ownPill [data-scope="own"]'), side=!!(cp&&cp.classList.contains('on')); B.classList.toggle('gl-own-side',side);
+    ['#ownScalePill','#ownPnlPill'].forEach(function(sel){ var p=$(sel); if(!p) return; var dim=side&&p.classList.contains('hidden');
+      if(dim){ p.setAttribute('title','connect your positions token to use this'); p.setAttribute('aria-disabled','true'); }
+      else { p.removeAttribute('title'); p.removeAttribute('aria-disabled'); } });
   }
   buildOwnEmpty(); refreshOwnEmpty();
   document.addEventListener('click',function(e){
@@ -13792,12 +13919,13 @@ html[data-gl] .aibo-box .aibo-strip .glt-row:active{background:rgba(255,255,255,
       var b=document.createElement('button'); b.type='button'; b.className='gl-theme'; b.setAttribute('data-gltheme',p[0]);
       b.innerHTML='<i style="background:'+p[2]+'"></i><span>'+p[1]+'</span>'; row.appendChild(b); });
     card.appendChild(row);
-    var foot=document.createElement('div'); foot.className='st8-foot'; foot.textContent='Colour only — sleeve and grade colours never change, so a chart always reads the same. Saved on this device.';
+    var foot=document.createElement('div'); foot.className='st8-foot gl-foot'; foot.textContent='Colour only — sleeve and grade colours never change, so a chart always reads the same. Saved on this device.';
     /* §17 "Grades shown" — one universal lens, in the sheet's own grammar */
     var gcap=document.createElement('div'); gcap.className='st8-cap'; gcap.textContent='Grades shown';
     var gcard=document.createElement('div'); gcard.className='dk-group st8-card'; gcard.id='glGrades';
     gcard.innerHTML='<div class="st8-row st8-static gl-lensrow"><div class="gl-seg" role="group" aria-label="Grades shown"><button type="button" data-gllens="exp">Expansion</button><button type="button" data-gllens="rec">Recession</button></div></div>';
-    var gfoot=document.createElement('div'); gfoot.className='st8-foot'; gfoot.textContent='Which roll grade the wheel, scorecard, tape and chips wear. Every company card always shows both. Saved on this device.';
+    /* §27 (round 6): explicit foot grammar (.gl-foot, skin.css) — the owner saw this line "like highlighted text" on the phone */
+    var gfoot=document.createElement('div'); gfoot.className='st8-foot gl-foot'; gfoot.textContent='Which roll grade the wheel, scorecard, tape and chips wear. Every company card always shows both. Saved on this device.';
     [[cap,card,foot],[gcap,gcard,gfoot]].forEach(function(trio){ trio.forEach(function(n){ if(about) main.insertBefore(n,about); else main.appendChild(n); }); });
     card.addEventListener('click',function(e){ var b=e.target.closest('[data-gltheme]'); if(b){ e.stopPropagation(); setTheme(b.getAttribute('data-gltheme')); } });
     gcard.addEventListener('click',function(e){ var b=e.target.closest('[data-gllens]'); if(b){ e.stopPropagation(); setLens(b.getAttribute('data-gllens')); } });
