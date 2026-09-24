@@ -2713,8 +2713,10 @@ function tfExt(arr){
 function tfCandleSVG(bars,w,h,tailN){
   /* tailN (Stage 21): the panes pass a shared window so all four rows align bar-for-bar;
      minis omit it and stay width-density-driven. Min lowered to 8 bars so a short frame
-     (crypto monthly at the public 365d cap) still draws an honest close line. */
-  if(!bars || bars.length<8) return '';
+     (crypto monthly at the public 365d cap) still draws an honest close line; round 7 (§31)
+     lowered it again to 6 so a Coins 500 name draws its first week of REAL daily bars (the
+     backend ledger starts at 7 and grows a day per day). Fewer than 6 stays blank. */
+  if(!bars || bars.length<6) return '';
   var closes=tfCloses(bars), e55=tfEma(closes,55);
   var tail=tailN?Math.min(bars.length,tailN):Math.max(20,Math.min(bars.length,Math.floor(w/4.5)));
   var B=bars.slice(-tail), M=e55.slice(-tail);
