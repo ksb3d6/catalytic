@@ -9619,49 +9619,190 @@ window.MktView = (function(){
   var MK={data:null, at:0, err:null, busy:false};
   function isMk(r){ return r.kind==='mk'||r.kind==='mkc'; }
   function isMkUni(){ return state.uni==='mk'||state.uni==='mkc'; }   /* round 6 §21: either Market chip */
+  /* round 7 §31: a graded watchlist name inside a Market universe rides as a CLONE of its graded row
+     (r.mkFam = 'mk' | 'mkc'): kind stays 'eq' / 'cr' so it renders its grade, five frames, bullet and card,
+     yet it belongs to the Market family only — never to the Watchlist cuts, which keep the original row */
+  function isMkAny(r){ return isMk(r)||!!r.mkFam; }
   function inFamily(r){
-    if(state.uni==='mk') return r.kind==='mk';
-    if(state.uni==='mkc') return r.kind==='mkc';
-    return !isMk(r);
+    if(state.uni==='mk') return r.kind==='mk'||r.mkFam==='mk';
+    if(state.uni==='mkc') return r.kind==='mkc'||r.mkFam==='mkc';
+    return !isMkAny(r);
   }
   function mkNum(v){ return (v==null||v===''||!isFinite(+v))?null:+v; }
   function mkShapeOk(j){ return !!(j&&j.schemaVersion===1&&j.equities&&Array.isArray(j.equities.rows)); }
   function mkRowCount(j){ return !j?0:((j.equities&&Array.isArray(j.equities.rows))?j.equities.rows.length:0)+((j.crypto&&Array.isArray(j.crypto.rows))?j.crypto.rows.length:0); }
+  /* round 7 §31: the graded row a Market symbol stands for, or null. Namespaced like heldKey — US 500 looks
+     only at the EQUITY roster (never funds, never coins), Coins 500 only at the crypto roster — so a same-ticker
+     stock/coin (AI, AR, WAL) can never cross-match. Equities: exact ticker, then the US/OTC alias table when the
+     graded key is not itself a Market row (SKHY -> 000660; GOOG never folds into a listed GOOGL twin). Coins:
+     CoinGecko symbols are NOT unique (two "AI"s, two "USDF"s in a real top 500) and the graded live feed carries
+     no CoinGecko id, so a symbol match is confirmed by the two CoinGecko market caps agreeing within 3x — both
+     sides are CoinGecko caps of the same coin, refreshed hours apart; no cap on the graded side = no promotion.
+     Where several feed rows share a symbol, only the closest cap is promoted. */
+  function mkGradedIndex(fam){
+    var ix={};
+    ROWS.forEach(function(r){
+      if(isMkAny(r)) return;
+      if(fam==='mk'&&r.kind==='eq') ix[String(r.sym).toUpperCase()]=r;
+      else if(fam==='mkc'&&r.kind==='cr') ix[String(r.sym).toUpperCase()]=r;
+    });
+    return ix;
+  }
+  function mkCapClose(a,b){ if(a==null||b==null||!(a>0)||!(b>0)) return null; var q=a/b; return (q>1?q:1/q); }
+  function mkGradedClone(g,fam,x,sym){
+    var c={}; for(var k in g) if(Object.prototype.hasOwnProperty.call(g,k)) c[k]=g[k];
+    c.tr=null; c.charted=false; c.rank=null; c.mkFam=fam; c.mkSym=sym;
+    /* ranked by cap among the 500 like everyone else: the FEED's cap, so the order is apples to apples */
+    var fm=mkNum(x.mcap);
+    if(fm!=null){
+      c.mcap=fm;
+      if(fam==='mk'){ var ex=x.exch?String(x.exch):''; c.mcapSub=ex||null; c.mcapTitle='market cap from the quote feed'+(ex?' · '+ex:'')+' — graded name: grade, price and frames from the watchlist feed'; }
+      else { c.mcapSub=(x.rank!=null?'CG #'+x.rank:null); c.mcapTitle='CoinGecko market cap — graded name: grade, price and frames from the watchlist feed'; }
+    }
+    return c;
+  }
   function mkAssemble(){
     var d=MK.data, out=[]; if(!d) return out;
+    mkCdFromCache('mk'); mkCdFromCache('mkc');   /* §31: a reload builds the rows from the market cache BEFORE the chip handler runs — the day's candles must ride along */
     var er=(d.equities&&Array.isArray(d.equities.rows))?d.equities.rows:[];
+    var gEq=mkGradedIndex('mk'), eqSyms={};
+    er.forEach(function(x){ if(x&&x.sym) eqSyms[String(x.sym).toUpperCase()]=1; });
     er.forEach(function(x){
       if(!x||!x.sym) return;
       var sym=String(x.sym).toUpperCase(), st=!!x.stale, ex=x.exch?String(x.exch):'';
+      var g=gEq[sym]||null;
+      if(!g&&Object.prototype.hasOwnProperty.call(MK_EQ_ALIAS,sym)){ var al=MK_EQ_ALIAS[sym]; if(gEq[al]&&!eqSyms[al]) g=gEq[al]; }
+      if(g){ out.push(mkGradedClone(g,'mk',x,sym)); return; }
+      var tf=mkCdTf('mk',sym);
       out.push({
         kind:'mk', key:sym, sym:sym, name:String(x.name||sym), cat:null, tint:null,
         choke:false, us:false, gExp:null, gRec:null, grade:null, tok:null,
         px:mkNum(x.px), pxStale:st, pxTitle:st?'carried from an earlier pull — this quote did not refresh':null,
         chg1h:null, hStale:false, hLabel:'', chg24:mkNum(x.chg1d), chg24Note:null, chg7:mkNum(x.chg7d),
         mcap:mkNum(x.mcap), mcapSub:ex||null, mcapTitle:'market cap from the quote feed'+(ex?' · '+ex:''),
-        vol:null, vol20:null, tech:null, sentO:null, range:null, tf:null
+        vol:null, vol20:null, tech:null, sentO:null, range:tf?rangePos(tfParse(tf),mkNum(x.px)):null, tf:tf
       });
     });
     var cr=(d.crypto&&Array.isArray(d.crypto.rows))?d.crypto.rows:[];
+    var gCr=mkGradedIndex('mkc'), pick={};   /* graded sym -> the one feed row it is */
+    cr.forEach(function(x){
+      if(!x||!x.sym) return;
+      var sym=String(x.sym).toUpperCase(), g=gCr[sym]; if(!g) return;
+      var q=mkCapClose(g.mcap,mkNum(x.mcap)); if(q==null||q>3) return;
+      if(!pick[sym]||q<pick[sym].q) pick[sym]={x:x,q:q};
+    });
     cr.forEach(function(x){
       if(!x||!x.sym) return;
       var sym=String(x.sym).toUpperCase(), st=!!x.stale;
+      if(pick[sym]&&pick[sym].x===x){ out.push(mkGradedClone(gCr[sym],'mkc',x,sym)); return; }
+      var tf=mkCdTf('mkc',sym);
       out.push({
         kind:'mkc', key:String(x.id||sym), sym:sym, name:String(x.name||sym), cat:null, tint:null,
         choke:false, us:false, gExp:null, gRec:null, grade:null, tok:null,
         px:mkNum(x.usd), pxStale:st, pxTitle:st?'carried from an earlier pull — this quote did not refresh':null,
         chg1h:null, hStale:false, hLabel:'', chg24:mkNum(x.chg24h), chg24Note:null, chg7:mkNum(x.chg7d),
         mcap:mkNum(x.mcap), mcapSub:(x.rank!=null?'CG #'+x.rank:null), mcapTitle:'CoinGecko market cap',
-        vol:null, vol20:null, tech:null, sentO:null, range:null, tf:null
+        vol:null, vol20:null, tech:null, sentO:null, range:tf?rangePos(tfParse(tf),mkNum(x.usd)):null, tf:tf
       });
     });
     /* round 6 §21: US 500 and Coins 500 are separate chips now — rank each family on its own
        market cap, not stocks and coins pooled into one sequence */
-    var eqRanked=out.filter(function(r){return r.kind==='mk'&&r.mcap!=null;}).sort(function(a,b){return b.mcap-a.mcap;});
+    var eqRanked=out.filter(function(r){return (r.kind==='mk'||r.mkFam==='mk')&&r.mcap!=null;}).sort(function(a,b){return b.mcap-a.mcap;});
     eqRanked.forEach(function(r,i){ r.rank=i+1; });
-    var crRanked=out.filter(function(r){return r.kind==='mkc'&&r.mcap!=null;}).sort(function(a,b){return b.mcap-a.mcap;});
+    var crRanked=out.filter(function(r){return (r.kind==='mkc'||r.mkFam==='mkc')&&r.mcap!=null;}).sort(function(a,b){return b.mcap-a.mcap;});
     crRanked.forEach(function(r,i){ r.rank=i+1; });
     return out;
+  }
+  /* ---------- round 7 §31: daily candles for the Market rows (backend v4.4) ----------
+     GET <backend>/market_candles_eq.json | /market_candles_cr.json — {schemaVersion:1, asOf, days, cols:["d","o","h","l","c"],
+     rows:{SYM:[[yyyymmdd,o,h,l,c],... oldest->newest]}, coverage:{n, withCandles, notes}}. Fetched ONCE per UTC day per family
+     when its chip is chosen (memory, then localStorage 'aibo.mk.candles.v1.<fam>' holding {day,data} — a cache from another day
+     is ignored), 12s abort like mkLoad, a failed pull backs off five minutes. Each Market row gets a D-only tf ({d:"o,h,l,c;…"})
+     built from its rows, drawn by the SAME candle renderer as the graded D mini; fewer than 2 bars (or fewer than the renderer's
+     own 8-bar floor) -> the honest "no chart" placeholder. Never invented. */
+  var MK_CD_LS='aibo.mk.candles.v1', MK_CD_BACKOFF=5*60*1000;
+  function mkCdBlank(){ return {data:null,day:null,busy:false,err:null,triedAt:0,cacheRead:false}; }
+  var MK_CD={mk:mkCdBlank(), mkc:mkCdBlank()};
+  function mkCdDay(){ return new Date().toISOString().slice(0,10); }
+  function mkCdFile(fam){ return '/market_candles_'+(fam==='mkc'?'cr':'eq')+'.json'; }
+  function mkCdShapeOk(j){ return !!(j&&j.schemaVersion===1&&j.rows&&typeof j.rows==='object'&&!Array.isArray(j.rows)); }
+  function mkCdFromCache(fam){
+    var S=MK_CD[fam]; if(!S||S.data||S.cacheRead) return;   /* one localStorage read per family per page life (forget() re-arms it) */
+    S.cacheRead=true;
+    try{
+      var j=JSON.parse(localStorage.getItem(MK_CD_LS+'.'+fam)||'null');
+      if(j&&j.day===mkCdDay()&&mkCdShapeOk(j.data)){ S.data=j.data; S.day=j.day; }
+    }catch(_){}
+  }
+  function mkCdTf(fam,sym){
+    var S=MK_CD[fam], d=S&&S.data; if(!d) return null;
+    var rows=d.rows[sym]; if(!Array.isArray(rows)||rows.length<2) return null;
+    var cols=Array.isArray(d.cols)?d.cols:['d','o','h','l','c'];
+    var id=cols.indexOf('d'), io=cols.indexOf('o'), ih=cols.indexOf('h'), il=cols.indexOf('l'), ic=cols.indexOf('c');
+    if(io<0||ih<0||il<0||ic<0) return null;
+    var bars=[];
+    for(var i=0;i<rows.length;i++){
+      var b=rows[i]; if(!Array.isArray(b)) return null;
+      var o=+b[io],h=+b[ih],l=+b[il],c=+b[ic];
+      if(!isFinite(o)||!isFinite(h)||!isFinite(l)||!isFinite(c)) return null;   /* a broken bar voids the frame — no patching */
+      bars.push({t:(id>=0?+b[id]:i), s:o+','+h+','+l+','+c});
+    }
+    if(id>=0) bars.sort(function(a,b){ return a.t-b.t; });
+    return {d:bars.map(function(b){ return b.s; }).join(';'), d_asOf:(typeof d.asOf==='string'?d.asOf:null)};
+  }
+  function mkCdLoad(fam,force){
+    var S=MK_CD[fam]; if(!S) return;
+    mkCdFromCache(fam);
+    var today=mkCdDay();
+    if(S.busy) return;
+    if(S.data&&S.day===today&&!force) return;
+    if(!force&&S.triedAt&&(Date.now()-S.triedAt<MK_CD_BACKOFF)) return;
+    S.busy=true; S.err=null; S.triedAt=Date.now();
+    if(built) renderStats();
+    var ctl=('AbortController' in window)?new AbortController():null;
+    var to=ctl?setTimeout(function(){ try{ ctl.abort(); }catch(_){} },MK_FETCH_MS):null;
+    var done=function(){ if(to){ clearTimeout(to); to=null; } S.busy=false; };
+    var p;
+    try{ p=fetch(MK_BASE+mkCdFile(fam),{cache:'no-store', signal: ctl&&ctl.signal}); }catch(e){ p=Promise.reject(e); }
+    p.then(function(r){
+      if(!r.ok) throw new Error(r.status===404?'not published yet (404)':'HTTP '+r.status);
+      return r.json();
+    }).then(function(j){
+      if(!mkCdShapeOk(j)) throw new Error('unexpected candles shape');
+      S.data=j; S.day=today; S.err=null;
+      try{ localStorage.setItem(MK_CD_LS+'.'+fam,JSON.stringify({day:today,data:j})); }catch(_){}
+      done();
+      if(built&&MK.data) mkApply(); else if(built) renderStats();
+    }).catch(function(e){
+      S.err=String(e&&e.message||e||'unreachable');
+      if(/failed to fetch|networkerror|load failed|typeerror|abort/i.test(S.err)) S.err='feed unreachable';
+      done(); if(built) renderStats();
+    });
+  }
+  function mkCdTick(){
+    if(!built||!isMkUni()) return;
+    var S=MK_CD[state.uni]; if(!S||S.busy) return;
+    if(S.day!==mkCdDay()) mkCdLoad(state.uni,false);   /* the day rolled over while the chip was up — the backoff paces failures */
+  }
+  function mkFmtD(iso){
+    if(typeof iso!=='string') return '';
+    var dOnly=/^\d{4}-\d{2}-\d{2}$/.test(iso), t=Date.parse(iso); if(!isFinite(t)) return '';
+    var D=new Date(t);
+    return dOnly?(MK_MON[D.getUTCMonth()]+' '+D.getUTCDate()):(MK_MON[D.getMonth()]+' '+D.getDate());
+  }
+  /* the honest coverage line: "daily candles · 498 of 500 · as of Sep 23" (or loading / unavailable) */
+  function mkCdNote(){
+    if(!isMkUni()) return '';
+    var S=MK_CD[state.uni]; if(!S) return '';
+    if(S.data){
+      var d=S.data, c=d.coverage||{}, n=Object.keys(d.rows||{}).length;
+      var cov=(c.withCandles!=null&&c.n!=null)?(c.withCandles+' of '+c.n):(n+' names');
+      var at=mkFmtD(d.asOf);
+      return 'daily candles · '+cov+(at?' · as of '+at:'');
+    }
+    if(S.busy) return 'daily candles loading…';
+    if(S.err) return 'daily candles unavailable — '+S.err;
+    return '';
   }
   function mkFromCache(){
     if(MK.data) return;
@@ -9676,12 +9817,13 @@ window.MktView = (function(){
     if(!built) return;
     /* R27: a background refresh (the watcher's TTL tick) must not yank the view — keep both scroll positions */
     var tw=document.querySelector('#mktView .twrap'), st=tw?tw.scrollTop:0, sl=tw?tw.scrollLeft:0, wy=window.scrollY||0;
-    ROWS.forEach(function(r){ if(isMk(r)&&r.tr&&r.tr.parentNode) r.tr.parentNode.removeChild(r.tr); });
-    ROWS=ROWS.filter(function(r){ return !isMk(r); });
+    ROWS.forEach(function(r){ if(isMkAny(r)&&r.tr&&r.tr.parentNode) r.tr.parentNode.removeChild(r.tr); });
+    ROWS=ROWS.filter(function(r){ return !isMkAny(r); });
     var add=mkAssemble();
     add.forEach(function(r){ buildRow(r); r.tr._row=r; tbody.appendChild(r.tr); });
     ROWS=ROWS.concat(add);
     applySort(); rebuildCats(); applyFilter();
+    if(isMkUni()) mkCdLoad(state.uni,false);   /* §31: rows rebuilt under a Market chip (Retry, a refresh, a reload) ask for today's candles; fresh = no-op, a failure backs off */
     if(tw){ if(tw.scrollTop!==st) tw.scrollTop=st; if(tw.scrollLeft!==sl) tw.scrollLeft=sl; }
     if((window.scrollY||0)!==wy) try{ window.scrollTo(window.scrollX||0,wy); }catch(_){}
   }
@@ -9726,9 +9868,10 @@ window.MktView = (function(){
   function mkForget(){
     MK.data=null; MK.at=0; MK.err=null;
     try{ localStorage.removeItem(MK_LS); }catch(_){}
+    ['mk','mkc'].forEach(function(f){ MK_CD[f]=mkCdBlank(); try{ localStorage.removeItem(MK_CD_LS+'.'+f); }catch(_){} });
     if(built){
-      ROWS.forEach(function(r){ if(isMk(r)&&r.tr&&r.tr.parentNode) r.tr.parentNode.removeChild(r.tr); });
-      ROWS=ROWS.filter(function(r){ return !isMk(r); });
+      ROWS.forEach(function(r){ if(isMkAny(r)&&r.tr&&r.tr.parentNode) r.tr.parentNode.removeChild(r.tr); });
+      ROWS=ROWS.filter(function(r){ return !isMkAny(r); });
       applyFilter();
     }
   }
@@ -9891,20 +10034,20 @@ window.MktView = (function(){
       +'<td class="c-bullet" title="30-day range bullet — track = month of open/close bodies, nested week + day bands, MA20 line, dot = price (day direction)">'
         +(function(){ var vb=''; try{ vb=r.tf?vbulletSVG(r.tf,r.px):''; }catch(e){}
            return vb?('<span class="mk-vb">'+vb+'</span>'):'<span class="mk-gap">—</span>'; })()+'</td>'
-      +'<td class="c-chart"><div class="mstrip">'+(isMk(r)
-        ?'<div class="mk-chph mk-nochart" title="no chart — Market names carry price, 1D, 7D and cap only">no chart</div>'
+      +'<td class="c-chart"><div class="mstrip">'+((isMk(r)&&!r.tf)
+        ?MK_NOCHART
         :'<div class="mk-chph">· · ·</div>')+'</div></td>';
     if(isMk(r)) tr.classList.add('mk-row');
     tr.addEventListener('click',function(ev){
-      /* §19: a Market name has no card — say so, open nothing */
-      if(isMk(r)){ mkToast('Not a graded name — no card yet'); return; }
       /* Stage 38 ZEN two-step on phones: first tap breathes the row open
          (one at a time); tapping the OPENED charts/bullet/cap goes to the
          card; tapping the opened data line closes. Desktop: straight to
          the card, unchanged. Stage 48 (the owner 09-23): a tap on the NAME cell
-         goes straight to the card on the phone too — at rest and opened. */
+         goes straight to the card on the phone too — at rest and opened.
+         Round 7 §31: a Market row WITH a daily candle breathes open too (the D
+         frame grows, the cap climbs into the hero slot); one without stays shut. */
       var onName=!!(ev.target&&ev.target.closest&&ev.target.closest('td.c-name'));
-      if(window.matchMedia('(max-width:480px)').matches && !onName){
+      if(window.matchMedia('(max-width:480px)').matches && !onName && (!isMk(r)||r.tf)){
         if(!tr.classList.contains('mx-open')){
           var prev=tbody?tbody.querySelector('tr.mx-open'):null;
           if(prev) prev.classList.remove('mx-open');
@@ -9915,20 +10058,52 @@ window.MktView = (function(){
         var deeper=t&&t.closest&&(t.closest('td.c-chart')||t.closest('td.c-bullet')||t.closest('td.c-mcap'));
         if(!deeper){ tr.classList.remove('mx-open'); return; }
       }
+      /* §19: a Market name has no card — say so, open nothing */
+      if(isMk(r)){ mkToast('Not a graded name — no card yet'); return; }
       /* THE point of this view: open the real deep-dive card */
       try{
         if(r.kind==='cr'){ if(Crypto&&Crypto.api&&Crypto.api.openSheet) Crypto.api.openSheet(r.key,tr); }
         else if(typeof openSheet==='function') openSheet(r.key,tr);
       }catch(e){}
     });
-    r.tr=tr; r.charted=isMk(r);   /* §19: Market rows never chart — the placeholder IS the cell */
+    r.tr=tr; r.charted=isMk(r)&&!r.tf;   /* §19/§31: a Market row without candles never charts — the placeholder IS the cell */
     return tr;
+  }
+  var MK_NOCHART='<div class="mk-chph mk-nochart" title="no chart — no daily candles for this name yet (price, 1D, 7D and cap only)">no chart</div>';
+  /* round 7 §33: the Tape's own frame builder — the SAME tfParse + tfCandleSVG the card strip's tfMiniRow uses
+     (identical bars, identical drawing), but carrying the two variants the Tape actually shows: mn-n (64×34 — the
+     phone rest hero and the wide s3 column) and mn-t (64×MK_TH — the phone opened row's taller frames; the viewBox
+     follows the opened height so the drawing fills it instead of letterboxing). The card's mn-w never renders here.
+     ?mnh=60|68|76 (read once at mount) sets the opened height for the owner's three-height comparison; absent = 68. */
+  var MK_OH=(function(){ try{ var m=/[?&]mnh=(\d+)/.exec(String(location.search||'')); var v=m?+m[1]:68; return (v>=40&&v<=120)?v:68; }catch(_){ return 68; } })();
+  var MK_TH=Math.max(34,Math.round(64*MK_OH/102));
+  function mkFrame(lab,bars){
+    var a=bars?tfCandleSVG(bars,64,34):'';
+    if(!a) return '<span class="as-tbo"><i>'+lab+'</i><b class="as-tbo-gap">–</b></span>';
+    var t=tfCandleSVG(bars,64,MK_TH)||a;
+    return '<span class="as-tbo"><i>'+lab+'</i><span class="mn-n">'+a+'</span><span class="mn-t">'+t+'</span></span>';
+  }
+  function mkMiniRow(tf){
+    var P=tfParse(tf); if(!P) return '';
+    var defs=[['m','M'],['w','W'],['d','D'],['h4','4H'],['h','H']],s='',any=false;
+    for(var i=0;i<defs.length;i++){
+      var f=mkFrame(defs[i][1],P[defs[i][0]]);
+      if(f.indexOf('mn-n')>=0) any=true;
+      s+=f;
+    }
+    return any?('<span class="as-mrow">'+s+'</span>'):'';
+  }
+  /* §31: ONE daily frame for a Market row — the graded D mini's exact builder, labelled D */
+  function mkDFrame(tf){
+    var P=tfParse(tf); if(!P||!P.d) return '';
+    var f=mkFrame('D',P.d);
+    return f.indexOf('mn-n')>=0?('<span class="as-mrow mk-d1">'+f+'</span>'):'';
   }
   function fillChart(r){
     if(r.charted) return;
     var cell=r.tr.querySelector('.mstrip'), html='';
-    try{ html=r.tf?tfMiniRow(r.tf,r.kind==='cr'?'crypto':'equity'):''; }catch(e){ html=''; }
-    cell.innerHTML=html||'<b class="as-tbo-gap">no frames</b>';
+    try{ html=r.tf?(isMk(r)?mkDFrame(r.tf):mkMiniRow(r.tf)):''; }catch(e){ html=''; }
+    cell.innerHTML=html||(isMk(r)?MK_NOCHART:'<b class="as-tbo-gap">no frames</b>');
     wireStrip(cell);
     alignStrip(cell);
     r.charted=true;
@@ -10178,6 +10353,9 @@ window.MktView = (function(){
       /* §19/§21: the ungraded universe says what it is (US 500 / Coins 500, real vis.length) and how
          old its feed is; no Σ cap / median (a top-500 sum is not a read) */
       parts.push(['<span class="st-n"><b>'+vis.length+'</b> '+(state.own?'held':mkFamNoun())+'</span>', vis.length+(state.own?' held':' '+mkFamNoun())]);
+      /* round 7 §31: how many of the visible Market names are graded watchlist names (full row + card) */
+      var nGr=0; vis.forEach(function(r){ if(r.mkFam) nGr++; });
+      if(nGr) parts.push(['<span class="st-gr">· <b>'+nGr+'</b> graded</span>', '· '+nGr+' graded']);
       if(state.own&&heldNotGraded) parts.push(['<span class="st-ng">· <b>'+heldNotGraded+'</b> not listed</span>', '· '+heldNotGraded+' not listed']);
       parts.push(['<span class="st-uni">· '+mkFamTag()+'</span>', '· '+mkFamTag()]);
       /* portrait phone: the strip clips the stats' tail, so the time loses its word and the breadth (title keeps both) */
@@ -10185,6 +10363,9 @@ window.MktView = (function(){
       if(ft) parts.push(['<span class="st-at" title="'+esc(mkFeedTitle())+'">'+(tight?'· ':'feed ')+esc(ft)+'</span>', 'feed '+ft]);
       if(!tight) parts.push(['<span class="st-brd">1D <b class="up">'+up+'▲</b>/<b class="dn">'+dn+'▼</b></span>', '1D '+up+'▲/'+dn+'▼']);
       else stEl_title_extra='  1D '+up+'▲/'+dn+'▼';
+      /* §31 coverage note — in the row on wide, title-only on the clipped phone row, and the Filters sheet's foot everywhere */
+      var cdn=mkCdNote();
+      if(cdn){ if(!tight) parts.push(['<span class="st-cd">· '+esc(cdn)+'</span>', '· '+cdn]); else stEl_title_extra+='  '+cdn; }
     } else {
     parts.push(['<span class="st-n"><b>'+vis.length+'</b> '+(state.own?'held':'assets')+'</span>', vis.length+(state.own?' held':' assets')]);
     if(state.own&&heldNotGraded) parts.push(['<span class="st-ng">· <b>'+heldNotGraded+'</b> not graded</span>', '· '+heldNotGraded+' not graded']);
@@ -10195,6 +10376,8 @@ window.MktView = (function(){
     var stEl=document.getElementById('mkStat');
     stEl.innerHTML=parts.map(function(p){ return p[0]; }).join('');
     stEl.title=parts.map(function(p){ return p[1]; }).join('  ')+stEl_title_extra;
+    var cn=document.getElementById('mkCdNote'), cdt=mkCdNote();
+    if(cn){ cn.hidden=!cdt; cn.textContent=cdt; }
   }
   function rebuildCats(){
     var sel=document.getElementById('mkCat');
@@ -10229,7 +10412,7 @@ window.MktView = (function(){
 
   /* ---------- css (runtime element; source keeps one style block) ------- */
   var CSS =
-  '#mktView{padding:8px 10px 20px}'
+  '#mktView{padding:8px 10px 20px;--mk-oh:'+MK_OH+'px}'
   /* Stage 34 deck: ONE control row; on phones the marks/category/movers live in a
      drop-over Filters sheet and search expands in place (controls are REPARENTED
      by placeCtls(), never duplicated) */
@@ -10268,6 +10451,9 @@ window.MktView = (function(){
      shares the slot, so the select must shrink or the button clips off-sheet */
   +'#mktView #mkSlotSort .mk-sel{width:auto;flex:1 1 auto;min-width:0}'
   +'#mktView #mkSortDir{flex:none;font-size:11px}'
+  /* round 7 §31: the daily-candles coverage line at the foot of the sheet */
+  +'#mktView .mk-shfoot{margin:10px 0 0;font-size:10px;color:var(--muted);letter-spacing:.02em}'
+  +'#mktView .mk-shfoot[hidden]{display:none}'
   /* Stage 48: the Universe dropdown menu, re-homed into the Filters sheet on
      phones by placeCtls(), renders as a row of inline chips */
   +'#mktView .mk-slot #mkUni{display:flex;flex-direction:row;flex-wrap:wrap;position:static;box-shadow:none;border:0;padding:0;gap:4px;min-width:0;background:transparent}'
@@ -10283,16 +10469,22 @@ window.MktView = (function(){
   +'#mktView .mk-uni-mk .mk-udot,#mktView .mk-uni-mkc .mk-udot{background:transparent;border:1px solid #7AB0EA;box-sizing:border-box}'
   +'#mktView .mk-uni-mkc .mk-udot{border-color:var(--gl-acci,#5eead4)}'
   +'#mktView .mk-chph.mk-nochart{justify-content:center;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#3d4b60}'
-  +'#mktView .twrap.mk-market .c-vol,#mktView .twrap.mk-market .c-tech,#mktView .twrap.mk-market .c-sent,#mktView .twrap.mk-market .c-bullet{display:none}'
+  +'#mktView .twrap.mk-market .c-vol,#mktView .twrap.mk-market .c-tech,#mktView .twrap.mk-market .c-sent{display:none}'
+  /* round 7 §31: the 30d bullet column stays under Market on wide — a Market row with its 22 daily candles draws one (the
+     graded clones always do); the honest dash remains for names without candles */
   /* wide only — the <=900 block keeps 610px and the phone block's min-width:0 must win (specificity trap) */
   +'@media(min-width:901px){#mktView .twrap.mk-market table.mkt{min-width:760px}}'
   /* <=900 under Market: the 1H column can never carry a value there (no intraday frames) — it leaves too, so a
      sideways phone fits more of the table; the phone rest row already swaps it for the cap line */
-  +'@media(max-width:900px){#mktView .twrap.mk-market th.c-1h,#mktView .twrap.mk-market td.c-1h{display:none}}'
+  +'@media(max-width:900px){#mktView .twrap.mk-market th.c-1h,#mktView .twrap.mk-market tr.mk-row td.c-1h{display:none}}'
+  /* round 7 §31: a graded clone inside US 500 / Coins 500 DOES carry 1H — the phone grid (<=480) keeps its line; the 481–900
+     TABLE still drops the whole column (every row must hide the same cells or the columns misalign) */
+  +'@media(min-width:481px) and (max-width:900px){#mktView .twrap.mk-market td.c-1h{display:none}}'
   /* 481–900 under Market: tighter side padding so a sideways phone (667) fits the whole Market table; NOT the phone grid (its tds are padding 0) */
   +'@media(min-width:481px) and (max-width:900px){#mktView .twrap.mk-market .mkt th,#mktView .twrap.mk-market .mkt td{padding-left:7px;padding-right:7px}'
   /* …and the Chart column (a placeholder only) leaves at these widths; the phone rest row and wide widths keep it */
-  +'#mktView .twrap.mk-market th.c-chart,#mktView .twrap.mk-market td.c-chart{display:none}}'
+  +'#mktView .twrap.mk-market th.c-chart,#mktView .twrap.mk-market td.c-chart{display:none}'
+  +'#mktView .twrap.mk-market th.c-bullet,#mktView .twrap.mk-market td.c-bullet{display:none}}'
   +'#mktView .twrap.mk-market td.c-chart{min-width:0}'
   +'#mktView .twrap.mk-market th.c-chart{font-size:0}'
   +'#mktView .twrap.mk-market th.c-chart::after{content:"Chart";font-size:10px}'
@@ -10345,7 +10537,9 @@ window.MktView = (function(){
   +'#mktView .mstrip .as-tbo i{font-style:normal;font-size:8px;font-weight:800;letter-spacing:.4px;color:var(--muted);opacity:.75}'
   +'#mktView .mstrip .as-tbo svg{display:block}'
   +'#mktView .mstrip .as-tbo-gap{color:#5A6678;font-weight:700;font-size:10px;align-self:center}'
-  +'#mktView .mstrip .mn-w svg,#mktView .mstrip .mn-n svg{display:block;width:100%;height:auto}'
+  +'#mktView .mstrip .mn-w svg,#mktView .mstrip .mn-n svg,#mktView .mstrip .mn-t svg{display:block;width:100%;height:auto}'
+  /* round 7 §33: mn-t = the taller phone opened-row variant (mkFrame); never on wide */
+  +'#mktView .mstrip .mn-t{display:none}'
   +'#mktView .mode-s3 .mstrip .as-tbo{flex:0 0 calc((100% - 20px)/3.25)}'
   +'#mktView .mode-s3 .mstrip .mn-w{display:none}'
   +'#mktView .mode-s3 .mstrip .mn-n{display:block;width:100%}'
@@ -10387,7 +10581,7 @@ window.MktView = (function(){
   +'@media(max-width:480px){'
   +'#mktView .mkt td.c-mcap,'
   +'#mktView .mkt td.c-vol,#mktView .mkt td.c-tech,#mktView .mkt td.c-sent,'
-  +'#mktView .mkt td.c-rank,#mktView .mkt td.c-bullet{display:none}'
+  +'#mktView .mkt td.c-rank{display:none}'
   /* Stage 48 (the owner 09-23): 1h and 7d ride the rest row — nothing lost on the phone */
   +'#mktView .mkt td.c-1h,#mktView .mkt td.c-7d{display:block}'
   +'#mktView table.mkt,#mktView .mkt tbody{display:block;min-width:0;width:100%}'
@@ -10395,12 +10589,16 @@ window.MktView = (function(){
   +'#mktView .twrap{overflow-x:hidden;max-height:calc(100dvh - 175px)}'
   /* Stage 38 ZEN (the owner 08-20, sandbox pick: Z1's row + Z3's breathe-open,
      sizes between the two): rest rows = ticker/name over the grade pill,
-     ONE hero daily chart, price over 24h — no rank, no leader, no bullet.
-     Tap a row → .mx-open expands it in place to the full 5-frame wrap +
-     30d bullet + market cap; tapping the OPENED charts goes to the real
-     deep-dive card (wired in buildRow). Divider stays the 37b bright line. */
-  +'#mktView .mkt tbody tr{display:grid;grid-template-columns:minmax(96px,116px) minmax(0,1fr) 92px;'
-  +'grid-auto-rows:min-content;column-gap:8px;align-items:center;padding:5px 6px 6px 10px;'
+     ONE hero daily chart, price over 24h — no rank, no leader.
+     Round 7 §33 (the owner 09-24: "all the way to the right after the prices… we
+     could actually keep it up there when it expands"): a FOURTH column — the
+     30-day bullet as a thin vertical at the far right, in BOTH states; the
+     opened row's old "basement" line (cap + shares + the stout bullet) is gone,
+     the cap climbs into the hero slot the chart vacates, the frames grow taller.
+     Tap a row → .mx-open expands it in place; tapping the OPENED charts goes
+     to the real deep-dive card (wired in buildRow). Divider stays the 37b bright line. */
+  +'#mktView .mkt tbody tr{display:grid;grid-template-columns:minmax(92px,112px) minmax(0,1fr) 88px 14px;'
+  +'grid-auto-rows:min-content;column-gap:6px;align-items:center;padding:5px 6px 6px 10px;'
   +'border-bottom:1px solid rgba(126,160,205,.42)}'
   +'#mktView .mkt tbody tr.mk-empty{display:block;padding:0}'
   +'#mktView .mkt tbody tr:active{background:rgba(var(--gl-acc-rgb,31,198,220),.08)}'
@@ -10420,6 +10618,14 @@ window.MktView = (function(){
   +'#mktView .mkt td.c-24h::before{content:"1D ";font-size:9.5px}'
   +'#mktView .mkt td.c-1h::before{content:"1H "}'
   +'#mktView .mkt td.c-7d::before{content:"7D "}'
+  /* §33: column 4 = the 30-day bullet, thin and tall at the far right (vb-n is vbulletSVG's
+     narrow-tall phone geometry; the stout vb-w stays off here). td.c-bullet specificity
+     beats the <=900 hiders; line-height 0 so the svg alone sets the cell's height. */
+  +'#mktView .mkt td.c-bullet{display:block;grid-area:1/4/5/5;align-self:center;justify-self:end;min-width:0;text-align:right;line-height:0;padding:0}'
+  +'#mktView .mkt td.c-bullet .mk-vb,#mktView .mkt td.c-bullet .as-vb{display:block}'
+  +'#mktView .mkt td.c-bullet .mk-vb svg.vb-w{display:none}'
+  +'#mktView .mkt td.c-bullet .mk-vb svg.vb-n{display:block;height:58px;width:auto;margin:0 0 0 auto}'
+  +'#mktView .mkt td.c-bullet .mk-gap{display:block;font-size:10px;line-height:1}'
   +'#mktView .mk-sym{font-size:14px}'
   +'#mktView .mk-co{-webkit-line-clamp:1;max-width:none;line-height:1.25}'
   +'#mktView .mk-cat{display:none}'
@@ -10427,28 +10633,33 @@ window.MktView = (function(){
   /* rest state: the strip cell shows ONLY the daily frame — label off, hero
      size, mode classes overruled (the 3×|5 toggle is hidden on phones; both
      modes render the same zen row). .as-mrow children: M(1) W(2) D(3) 4H(4)
-     H(5). Strip sync stays desktop-only (nothing scrolls here). */
-  +'#mktView .mkt td.c-chart .mn-w{display:none}'
+     H(5); a Market row's .mk-d1 mrow has the D frame as its only child (§31).
+     Strip sync stays desktop-only (nothing scrolls here). */
+  +'#mktView .mkt td.c-chart .mn-w,#mktView .mkt td.c-chart .mn-t{display:none}'
   +'#mktView .mkt td.c-chart .mn-n{display:block;width:100%}'
   +'#mktView .mkt td.c-chart .as-tbo{display:none}'
-  +'#mktView .mkt td.c-chart .as-tbo:nth-child(3){display:inline-flex;flex:1 1 100%}'
+  +'#mktView .mkt td.c-chart .as-tbo:nth-child(3),#mktView .mkt td.c-chart .mk-d1 .as-tbo{display:inline-flex;flex:1 1 100%}'
   +'#mktView .mkt td.c-chart .as-tbo i{display:none}'
   +'#mktView .mkt td.c-chart .mn-n svg{height:44px}'
   +'#mktView .mk-chph{height:44px}#mktView .mode-s3 .mk-chph{height:44px}'
   /* open state (round 6 §21, the owner 09-24: "keep scrolling them… whole bar scrolls more
-     that's absolutely fine" — reverted to Stage 38b): ONE line of BIG frames, ~3.25
-     visible + a .25 peek that cues the thumb-scroll (the mode-s3 fraction), M W D 4H H
-     a drag away. The scroll lives only inside the opened row; rest rows stay scroll-free.
-     Bullet sits under the strip's right end at its native stout size, cap line bottom-left. */
-  +'#mktView .mkt tbody tr.mx-open td.c-chart{grid-area:5/1/6/4;padding-top:5px}'
+     that's absolutely fine" — Stage 38b): ONE line of BIG frames, ~3.25 visible + a .25
+     peek that cues the thumb-scroll (the mode-s3 fraction), M W D 4H H a drag away. The
+     scroll lives only inside the opened row; rest rows stay scroll-free. Round 7 §33:
+     the frames span all four columns and grow to --mk-oh (68px; ?mnh= overrides) using
+     the taller mn-t drawing; the bullet KEEPS column 4 (a little taller); the cap sits
+     centred in the vacated hero slot with a small MARKET CAP label over it and the
+     shares sub under it — no sixth line below the frames. */
+  +'#mktView .mkt tbody tr.mx-open td.c-chart{grid-area:5/1/6/5;padding-top:5px}'
   +'#mktView .mkt tbody tr.mx-open td.c-chart .as-tbo{display:inline-flex;flex:0 0 calc((100% - 20px)/3.25)}'
   +'#mktView .mkt tbody tr.mx-open td.c-chart .as-tbo i{display:block}'
-  +'#mktView .mkt tbody tr.mx-open td.c-chart .mn-n svg{height:52px}'
-  +'#mktView .mkt tbody tr.mx-open td.c-bullet{display:block;grid-area:6/3/7/4;align-self:center;text-align:right;padding-top:4px}'
-  +'#mktView .mkt tbody tr.mx-open .mk-vb svg.vb-w{display:block;height:64px;margin:0 0 0 auto}'
-  +'#mktView .mkt tbody tr.mx-open td.c-mcap{display:block;grid-area:6/1/7/3;align-self:center;font-size:10.5px;color:var(--muted);text-align:left;padding-top:4px}'
-  +'#mktView .mkt tbody tr.mx-open td.c-mcap::before{content:"market cap  ";opacity:.75}'
-  +'#mktView .mkt tbody tr.mx-open td.c-mcap .mk-sub{display:inline;margin-left:6px}'
+  +'#mktView .mkt tbody tr.mx-open td.c-chart .mn-n{display:none}'
+  +'#mktView .mkt tbody tr.mx-open td.c-chart .mn-t{display:block;width:100%}'
+  +'#mktView .mkt tbody tr.mx-open td.c-chart .mn-t svg{height:var(--mk-oh,68px)}'
+  +'#mktView .mkt tbody tr.mx-open td.c-bullet .mk-vb svg.vb-n{height:64px}'
+  +'#mktView .mkt tbody tr.mx-open td.c-mcap{display:flex;flex-direction:column;align-items:center;justify-content:center;grid-area:1/2/5/3;align-self:stretch;text-align:center;font-size:13px;font-weight:700;line-height:1.15;color:var(--ink);padding:0}'
+  +'#mktView .mkt tbody tr.mx-open td.c-mcap::before{content:"Market cap";display:block;font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);opacity:.85;margin:0 0 2px}'
+  +'#mktView .mkt tbody tr.mx-open td.c-mcap .mk-sub{display:block;margin:2px 0 0;font-size:10px;font-weight:500}'
   /* §19/§21 Market-family rows on the phone: the always-empty 1H line yields to 1D + 7D
      shifting up, and the cap fills the freed fourth line (price / 1D / 7D / CAP) */
   +'#mktView .mkt tbody tr.mk-row td.c-1h{display:none}'
@@ -10457,6 +10668,11 @@ window.MktView = (function(){
   +'#mktView .mkt tbody tr.mk-row td.c-mcap{display:block;grid-area:4/3;font-size:10px;line-height:1.15;align-self:start;text-align:right;color:var(--muted);padding:0}'
   +'#mktView .mkt tbody tr.mk-row td.c-mcap::before{content:"CAP ";font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);opacity:.85;margin-right:2px}'
   +'#mktView .mkt tbody tr.mk-row td.c-mcap .mk-sub{display:none}'
+  /* §31/§33: a Market row breathed open (it has a daily candle): its D frame drops to the frames line and the
+     cap climbs into the hero slot exactly like a graded row's (the stack keeps price / 1D / 7D) */
+  +'#mktView .mkt tbody tr.mk-row.mx-open td.c-mcap{display:flex;flex-direction:column;align-items:center;justify-content:center;grid-area:1/2/5/3;align-self:stretch;text-align:center;font-size:13px;font-weight:700;line-height:1.15;color:var(--ink);padding:0}'
+  +'#mktView .mkt tbody tr.mk-row.mx-open td.c-mcap::before{content:"Market cap";display:block;font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);opacity:.85;margin:0 0 2px}'
+  +'#mktView .mkt tbody tr.mk-row.mx-open td.c-mcap .mk-sub{display:block;margin:2px 0 0;font-size:10px;font-weight:500}'
   +'#mktView .mk-stats .st-cap{display:none}}';
 
   /* ---------- mount + wiring ---------- */
@@ -10470,14 +10686,15 @@ window.MktView = (function(){
     m.innerHTML=
       '<div class="mk-deck" id="mkDeck">'
       +'<div class="mk-ctl" id="mkCtl">'
-      +'<div class="dd" id="mkUniDD"><button type="button" class="dd-btn"><span class="dd-lab">Uni</span><b class="dd-val" id="mkUniVal">All</b><i class="dd-car">▾</i></button>'
+      +'<div class="dd" id="mkUniDD"><button type="button" class="dd-btn"><span class="dd-lab">Uni</span><b class="dd-val" id="mkUniVal">Watchlist</b><i class="dd-car">▾</i></button>'
       +'<div class="dd-menu" id="mkUni">'
-      +'<button data-u="all" class="on">All</button><button data-u="eq">Equities</button>'
+      /* round 7 §32 (the owner 09-24): the whole graded roster is the "Watchlist"; Equities / Crypto / Funds are its cuts */
+      +'<button data-u="all" class="on" title="Every graded name — Equities, Crypto and Funds are its cuts">Watchlist</button><button data-u="eq">Equities</button>'
       +'<button data-u="cr">Crypto</button><button data-u="fd">Funds</button>'
       /* Stage 48 round 6 (§21, the owner 09-24: "US 500" and "Coins 500" as two chips): the ungraded
          Market universe, split — each fetches the same /market.json (shared cache), shows only its own kind */
-      +'<button data-u="mk" title="Top 500 US stocks by market cap — ungraded, no cards yet">US 500</button>'
-      +'<button data-u="mkc" title="Top 500 coins by market cap — ungraded, no cards yet">Coins 500</button></div></div>'
+      +'<button data-u="mk" title="Top 500 US stocks by market cap — graded watchlist names carry their full row and card; the rest are ungraded">US 500</button>'
+      +'<button data-u="mkc" title="Top 500 coins by market cap — graded watchlist names carry their full row and card; the rest are ungraded">Coins 500</button></div></div>'
       +'<button type="button" class="mk-ico mk-ph" id="mkQBtn" aria-label="Search">🔍</button>'
       +'<button type="button" class="dd-btn mk-ph" id="mkFBtn"><b class="dd-val">Filters</b><span class="mk-fbdg" id="mkFBadge" hidden></span><i class="dd-car">▾</i></button>'
       /* Stage 48 §13: scope seg — the whole watchlist, or only what the positions layer says you hold */
@@ -10509,6 +10726,8 @@ window.MktView = (function(){
       +'<option value="sent">Sent</option><option value="range">30d position</option></select>'
       +'<button type="button" class="mk-ico" id="mkSortDir" aria-label="Flip sort direction">▼</button>'
       +'</span></div>'
+      /* round 7 §31: the daily-candles coverage line (US 500 / Coins 500 only; hidden otherwise) */
+      +'<div class="mk-shfoot" id="mkCdNote" hidden></div>'
       +'</div>'
       +'</div>'
       +'<div class="twrap mode-'+state.mode+'"><table class="mkt"><thead><tr id="mkHead"></tr></thead><tbody id="mkBody"></tbody></table></div>'
@@ -10540,7 +10759,7 @@ window.MktView = (function(){
         document.getElementById('mkUniVal').textContent=b.textContent;
         document.getElementById('mkUniDD').classList.remove('open');
         syncMarketCls();
-        if(isMkUni()) mkLoad(false);   /* §19/§21: cache first (memory, then localStorage), fetch when stale — one fetch feeds both chips */
+        if(isMkUni()){ mkLoad(false); mkCdLoad(state.uni,false); }   /* §19/§21: cache first (memory, then localStorage), fetch when stale — one fetch feeds both chips; §31: this family's daily candles, once per UTC day */
         rebuildCats(); applyFilter();
       });
     });
@@ -10732,6 +10951,7 @@ window.MktView = (function(){
           if(at!==lastAt) rebuild();
           posTick();
           mkTick();   /* R27: the Market feed's TTL */
+          mkCdTick(); /* §31: a new UTC day fetches that day's candles */
         }
       }catch(_){}
       mkWatch();
@@ -10788,7 +11008,9 @@ window.MktView = (function(){
 
   return { render: render,
            /* §19: the Market feed — reload(force) refetches, forget() drops memory + localStorage, state = MK */
-           market: { reload: function(f){ mkLoad(f!==false); }, forget: mkForget, state: MK } };
+           market: { reload: function(f){ mkLoad(f!==false); }, forget: mkForget, state: MK,
+                     /* §31: the daily candles — reloadCandles(force) refetches the current chip's family, candles = per-family state */
+                     reloadCandles: function(f){ if(isMkUni()) mkCdLoad(state.uni,f!==false); }, candles: MK_CD } };
 })();
 
 /* Stage 43 R2 (lens F2 — Touch Truth lite): the app's whole glyph grammar
@@ -11210,9 +11432,11 @@ html[data-gl] .gl-own-empty button{appearance:none;flex:none;border:1px solid rg
   border-radius:999px;padding:6px 11px;font:600 11.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 /* §25 (round 6) the RING vs-aim | 100% and P&L pills while the own side is lit WITHOUT connected positions: dimmed and inert, not
    gone (stock hides them). body.gl-own-side is set by shim.js from the cockpit's SCOPE pill; .hidden is the stock verdict "not
-   connected" — when a payload lands, stock removes .hidden and the pills return to full strength by themselves. */
+   connected" — when a payload lands, stock removes .hidden and the pills return to full strength by themselves.
+   §29 (round 7): .35 was invisible to the owner ("dimmed is fine but I do wanna see it… maybe I'm just missing it") — .6 now, still inert;
+   the selected segment keeps its accent (the .own-pill button.on rule above) so it reads as a pill, not a smudge. */
 html[data-gl] body.gl-own-side #studioView #ownSub.hidden{display:flex;}
-html[data-gl] body.gl-own-side #studioView :is(#ownScalePill,#ownPnlPill).hidden{display:inline-flex;opacity:.35;pointer-events:none;}   /* outranks stock's .own-sub .own-pill{opacity:.9} */
+html[data-gl] body.gl-own-side #studioView :is(#ownScalePill,#ownPnlPill).hidden{display:inline-flex;opacity:.6;pointer-events:none;}   /* outranks stock's .own-sub .own-pill{opacity:.9} */
 
 /* §27 (round 6) the Glass-only footnotes — Settings › Appearance / Grades shown, and the help sheet's lens line — in the sheet's own
    foot grammar made EXPLICIT: 11.5px, muted, no background, no accent, no border, and no iOS tap-highlight or selection wash (what
@@ -13332,7 +13556,10 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
    Settings card (aibo.gl.lens), the strip's ? is gone (the wheel + scorecard carry one), the Tape's control row
    rides the strip, a shorter bar, ?probe=1, and the zoom is put back when a card closes.
    Round 6 (§20/§23–§27, the owner's 09-24 morning verdict): the strip never tucks away in top-mode landscape (the doors live there),
-   the zoom-compensated card (the page zoom is never touched), the dimmed RING/P&L pills, and the explicit foot grammar. */
+   the zoom-compensated card (the page zoom is never touched), the dimmed RING/P&L pills, and the explicit foot grammar.
+   Round 7 (§29/§30/§34, the owner's 09-24 pm verdict): the card's mapping reads the LAYOUT viewport (iOS innerWidth/innerHeight are the
+   pinched visual size — that is what put the card off-screen on the public host), a Settings row "Card when zoomed in" (Keep my zoom |
+   Zoom out, aibo.gl.cardzoom) as the fallback to the stock reset pulse, and the Atlas door lit while its sheet is open. */
 (function(){
   'use strict';
   var H=document.documentElement, B=document.body, META=window.GL48||{palettes:[],default:'violet'};
@@ -13403,22 +13630,43 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
      visualViewport resize/scroll while open; on close the card slides out through the same geometry and every inline style is
      cleared, so the stock geometry returns. The scrim is inset:0 of the LAYOUT viewport, which always contains the visual one:
      nothing to do there. Registered above the theme==='off' early return like §10 was. Cannot be proven on a Mac; the WebKit
-     smoke stubs the top visualViewport and asserts the mapped rect + an untouched meta. ---- */
+     smoke stubs the top visualViewport and asserts the mapped rect + an untouched meta.
+     §30 (round 7) THE iOS TRAP: window.innerWidth/innerHeight on iOS Safari are the PINCHED VISUAL size, not the layout viewport
+     (Chromium keeps the layout size, which is why every emulation pass was green while the card was off-screen on the owner's phone — the
+     public host is unframed, so the old unframed branch read them). The mapping now reads the LAYOUT viewport only:
+     documentElement.clientWidth/Height first (the fixed-position containing block once pinched in), vv.width×scale as the fallback;
+     innerWidth/innerHeight appear nowhere in this path. matchMedia is layout-based and stays. Proven in Chromium two ways
+     (qa_stage48_nav.py): a real CDP pinch on the shell AND on the build direct, and the same with innerWidth/innerHeight
+     monkey-patched to the visual size — the iOS quirk itself.
+     §30 fallback (the owner: "go back to the way it was last time… it zooms out for the full card"): Settings › "Card when zoomed in" =
+     Keep my zoom (default: this mapping) | Zoom out (the stock reset pulse, resetZoom(true), on every card open and no fitCard at all).
+     Persisted as aibo.gl.cardzoom; read here, above the theme gate, so the observer honours it with the theme off too. ---- */
   var cardSheet=$('#sheet'), fitOn=false, fitVV=null, fitClearT=0, FIT_PROPS=['position','left','top','right','bottom','width','maxWidth','maxHeight','transform','transformOrigin'];
-  function frameRect(){                                    /* this frame's box in the TOP layout viewport; unframed = the window itself */
-    try{ if(window.top&&window.top!==window&&window.frameElement){ var r=window.frameElement.getBoundingClientRect(); if(r&&r.width>0) return r; } }catch(_){}
-    return {left:0,top:0,right:window.innerWidth,bottom:window.innerHeight};
+  var LSZ='aibo.gl.cardzoom';
+  function cardZoomSaved(){ try{ return localStorage.getItem(LSZ)==='reset'?'reset':'keep'; }catch(_){ return 'keep'; } }
+  function paintCardZoom(){ var m=cardZoomSaved(); [].forEach.call(document.querySelectorAll('[data-glcardzoom]'),function(b){ var on=b.getAttribute('data-glcardzoom')===m; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); }); }
+  function setCardZoom(m,persist){ m=(m==='reset')?'reset':'keep'; if(persist!==false){ try{ localStorage.setItem(LSZ,m); }catch(_){} } paintCardZoom(); return m; }
+  window.GL48.cardZoom=setCardZoom; window.GL48.cardZoomSaved=cardZoomSaved;
+  function layoutBox(){                                    /* this frame's LAYOUT viewport in its own CSS px — never innerWidth/innerHeight (§30) */
+    var w=0,h=0; try{ w=H.clientWidth; h=H.clientHeight; }catch(_){ w=h=0; }
+    if(!(w>0&&h>0)){ var vv=window.visualViewport; if(vv&&vv.width>0&&vv.height>0){ w=vv.width*(vv.scale||1); h=vv.height*(vv.scale||1); } }
+    return {w:w,h:h};
+  }
+  function frameRect(){                                    /* this frame's box in the TOP layout viewport; unframed = the layout viewport itself */
+    try{ if(window.top&&window.top!==window&&window.frameElement){ var r=window.frameElement.getBoundingClientRect(); if(r&&r.width>0) return {left:r.left,top:r.top,right:r.right,bottom:r.bottom}; } }catch(_){}
+    var lb=layoutBox(); return {left:0,top:0,right:lb.w,bottom:lb.h};
   }
   function fitCard(){
     if(!cardSheet||!fitOn) return false;
     var vv=topVV(), s=vv?vv.scale:1;
     if(!(s>1.001)){ clearFit(false); return false; }      /* pinched back to 1 while open: the stock geometry is right again */
-    var fr=frameRect(), ox=vv.offsetLeft||0, oy=vv.offsetTop||0;
+    var fr=frameRect(), lb=layoutBox(), ox=vv.offsetLeft||0, oy=vv.offsetTop||0;
     var l=Math.max(ox,fr.left)-fr.left, t=Math.max(oy,fr.top)-fr.top, r=Math.min(ox+vv.width,fr.right)-fr.left, b=Math.min(oy+vv.height,fr.bottom)-fr.top;
-    var vw=r-l, vh=b-t; if(!(vw>0)||!(vh>0)) return false;
+    var vw=r-l, vh=b-t; if(!(vw>0)||!(vh>0)||!(lb.h>0)) return false;
     var full=window.matchMedia&&window.matchMedia('(min-width:768px)').matches, cw=full?vw*s:Math.min(560,vw*s);
     var st=cardSheet.style;
-    st.position='fixed'; st.left=(l+(vw-cw/s)/2).toFixed(2)+'px'; st.top='auto'; st.right='auto'; st.bottom=(window.innerHeight-b).toFixed(2)+'px';
+    /* bottom = the layout viewport's height (this frame's fixed-position containing block) minus the visual bottom, both in layout px */
+    st.position='fixed'; st.left=(l+(vw-cw/s)/2).toFixed(2)+'px'; st.top='auto'; st.right='auto'; st.bottom=(lb.h-b).toFixed(2)+'px';
     st.width=cw.toFixed(2)+'px'; st.maxWidth='none'; st.maxHeight=(vh*s*.92).toFixed(2)+'px';
     st.transformOrigin='0 100%'; st.transform='scale('+(1/s)+')';
     return true;
@@ -13431,14 +13679,17 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     } else wipe();
   }
   window.GL48.fitCard=fitCard;
+  var cardWasOpen=!!(cardSheet&&cardSheet.classList.contains('show'));
   if(cardSheet&&window.MutationObserver) new MutationObserver(function(){
     var open=cardSheet.classList.contains('show');
-    if(open&&!fitOn){ fitOn=true; clearTimeout(fitClearT); fitClearT=0; fitVV=topVV();
+    if(open&&!cardWasOpen&&cardZoomSaved()==='reset'){ cardWasOpen=true; resetZoom(true); return; }   /* §30 Zoom out: the stock pulse, never fitCard */
+    if(open&&!fitOn&&!cardWasOpen){ cardWasOpen=true; fitOn=true; clearTimeout(fitClearT); fitClearT=0; fitVV=topVV();
       if(fitVV){ try{ fitVV.addEventListener('resize',fitCard); fitVV.addEventListener('scroll',fitCard); }catch(_){ fitVV=null; } }
       fitCard(); }
-    else if(!open&&fitOn){ fitOn=false;
-      if(fitVV){ try{ fitVV.removeEventListener('resize',fitCard); fitVV.removeEventListener('scroll',fitCard); }catch(_){} fitVV=null; }
-      clearFit(true); }
+    else if(!open&&cardWasOpen){ cardWasOpen=false;
+      if(fitOn){ fitOn=false;
+        if(fitVV){ try{ fitVV.removeEventListener('resize',fitCard); fitVV.removeEventListener('scroll',fitCard); }catch(_){} fitVV=null; }
+        clearFit(true); } }
   }).observe(cardSheet,{attributes:true,attributeFilter:['class']});
 
   /* ---- theme ---- */
@@ -13683,8 +13934,13 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     var v=(($('#viewSeg .on')||{}).dataset||{}).v||'mkt', p=(($('#stSeg .dk-on')||{}).dataset||{}).pane||'cockpit';
     var door=B.classList.contains('gl-settings')?'settings':B.classList.contains('gl-cal')?'calendar':
              (B.classList.contains('gl-fin')||B.classList.contains('gl-grid'))?'atlas':inStudio()?'studio':v==='mkt'?'tape':'atlas';
+    /* §34 (round 7): the Atlas sheet is an overlay, not a view, so `door` (the surface underneath — title, gl-tape, the fade key) keeps
+       reading the surface; only the LIGHT moves: while body.m-atlas-open the Atlas door is the one .on (dock and, in top-mode
+       landscape, the strip — same node), no other is, and the previous light returns on close. Grid mode is a view: unchanged. */
+    var atlasUp=B.classList.contains('m-atlas-open'), lit=atlasUp?'atlas':door;
     [].forEach.call(dock.querySelectorAll('[data-gldoor]'),function(b){
-      var on=b.getAttribute('data-gldoor')===door; b.classList.toggle('on',on); if(on) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current');});
+      var k=b.getAttribute('data-gldoor'), on=k===lit; b.classList.toggle('on',on); if(on) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current');
+      if(k==='atlas') b.setAttribute('aria-expanded',atlasUp?'true':'false');});
     [].forEach.call(sub.querySelectorAll('[data-glpane]'),function(b){
       var on=b.getAttribute('data-glpane')===p; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false');});
     if(title){ var t=titleFor(door,v); if(title.textContent!==t) title.textContent=t; }
@@ -13702,8 +13958,11 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
   window.GL48.sync=sync;                                   /* fin.js / grid.js call it from their Escape close: no click means no re-sync otherwise */
   /* techlab.js owns body.gl-tech and opens without a click (?techlab=, the card's row): follow it, once per flip (sync() toggling
      gl-tape re-enters this observer with gl-tech unchanged, so it cannot loop) */
-  var lastTech=B.classList.contains('gl-tech');
-  if(window.MutationObserver) new MutationObserver(function(){ var t=B.classList.contains('gl-tech'); if(t!==lastTech){ lastTech=t; sync(); } }).observe(B,{attributes:true,attributeFilter:['class']});
+  /* §34: body.m-atlas-open is followed the same way — the stock sheet can close without a click reaching the document (Escape, a
+     programmatic atlasSheet(false)), and the door's light must go back with it. */
+  var lastTech=B.classList.contains('gl-tech'), lastAtlasUp=B.classList.contains('m-atlas-open');
+  if(window.MutationObserver) new MutationObserver(function(){ var t=B.classList.contains('gl-tech'), a=B.classList.contains('m-atlas-open');
+    if(t!==lastTech||a!==lastAtlasUp){ lastTech=t; lastAtlasUp=a; sync(); } }).observe(B,{attributes:true,attributeFilter:['class']});
   document.addEventListener('click',function(){ requestAnimationFrame(function(){ requestAnimationFrame(sync); }); },true);
   window.addEventListener('resize',sync);
   document.addEventListener('touchstart',function(){},{passive:true});   /* iOS only honours :active with a touch listener */
@@ -13857,6 +14116,7 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
         var d=dock.getBoundingClientRect(), lines=[
           'safe-b '+(H.style.getPropertyValue('--gl-safe-b')||'—')+' · land '+(H.getAttribute('data-land')||'—')+' · dpr '+(window.devicePixelRatio||1),
           'innerH '+window.innerHeight+(framed?' · top.innerH '+tw.innerHeight:'')+' · screen.h '+screen.height+' · '+window.innerWidth+'×'+window.innerHeight,
+          'doc '+H.clientWidth+'×'+H.clientHeight+(framed?' · top.doc '+tw.document.documentElement.clientWidth+'×'+tw.document.documentElement.clientHeight:'')+' · cardzoom '+cardZoomSaved(),   /* §30: the layout viewport the card maps onto */
           'vv.h '+(vv?Math.round(vv.height):'—')+' · vv.scale '+(vv?vv.scale.toFixed(3):'—')+(tvv?' · top.vv.h '+Math.round(tvv.height)+' · top.scale '+tvv.scale.toFixed(3):''),
           'bar top '+Math.round(d.top)+' bottom '+Math.round(d.bottom)+' h '+Math.round(d.height)+' · innerH−bottom '+Math.round(window.innerHeight-d.bottom),
           'framed '+framed];
@@ -13926,10 +14186,17 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     gcard.innerHTML='<div class="st8-row st8-static gl-lensrow"><div class="gl-seg" role="group" aria-label="Grades shown"><button type="button" data-gllens="exp">Expansion</button><button type="button" data-gllens="rec">Recession</button></div></div>';
     /* §27 (round 6): explicit foot grammar (.gl-foot, skin.css) — the owner saw this line "like highlighted text" on the phone */
     var gfoot=document.createElement('div'); gfoot.className='st8-foot gl-foot'; gfoot.textContent='Which roll grade the wheel, scorecard, tape and chips wear. Every company card always shows both. Saved on this device.';
-    [[cap,card,foot],[gcap,gcard,gfoot]].forEach(function(trio){ trio.forEach(function(n){ if(about) main.insertBefore(n,about); else main.appendChild(n); }); });
+    /* §30 (round 7) "Card when zoomed in" — Keep my zoom (the card is fitted to what is on screen, the page zoom untouched) | Zoom out
+       (the stock reset pulse on open: the page snaps to full size and the card fills it). Same grammar as Grades shown; aibo.gl.cardzoom. */
+    var zcap=document.createElement('div'); zcap.className='st8-cap'; zcap.textContent='Card when zoomed in';
+    var zcard=document.createElement('div'); zcard.className='dk-group st8-card'; zcard.id='glCardZoom';
+    zcard.innerHTML='<div class="st8-row st8-static gl-lensrow"><div class="gl-seg" role="group" aria-label="Card when zoomed in"><button type="button" data-glcardzoom="keep">Keep my zoom</button><button type="button" data-glcardzoom="reset">Zoom out</button></div></div>';
+    var zfoot=document.createElement('div'); zfoot.className='st8-foot gl-foot'; zfoot.textContent='What a company card does when you open it pinch-zoomed. Keep my zoom fits the card to the part of the page you can see and leaves the zoom as it was. Zoom out snaps the page back to full size first. Saved on this device.';
+    [[cap,card,foot],[gcap,gcard,gfoot],[zcap,zcard,zfoot]].forEach(function(trio){ trio.forEach(function(n){ if(about) main.insertBefore(n,about); else main.appendChild(n); }); });
     card.addEventListener('click',function(e){ var b=e.target.closest('[data-gltheme]'); if(b){ e.stopPropagation(); setTheme(b.getAttribute('data-gltheme')); } });
     gcard.addEventListener('click',function(e){ var b=e.target.closest('[data-gllens]'); if(b){ e.stopPropagation(); setLens(b.getAttribute('data-gllens')); } });
-    paintLens();
+    zcard.addEventListener('click',function(e){ var b=e.target.closest('[data-glcardzoom]'); if(b){ e.stopPropagation(); setCardZoom(b.getAttribute('data-glcardzoom')); } });
+    paintLens(); paintCardZoom();
     applyTheme(window.GL48.get());
   }
   /* desktop reaches Settings through the stock gear, so watch for that path too */
