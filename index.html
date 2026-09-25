@@ -2709,20 +2709,37 @@ function tfExt(arr){
   return (mx>mn)?[mn,mx]:(isFinite(mn)?[mn-1,mx+1]:null);
 }
 
-/* pane 1 — candles + 55 EMA (close-line + EMA when the frame is close-only) */
-function tfCandleSVG(bars,w,h,tailN){
+/* pane 1 — candles + 55 EMA (close-line + EMA when the frame is close-only).
+   Round 9b (spec §53/§54/§56 — the RENDERER CONTRACT): an optional 5th argument `opts`.
+     opts.line === true  → the CLOSE LINE with a soft area under it instead of candles (crypto, §54). Line + area take the
+                           frame's direction: TF_UP when the last drawn close ≥ the first drawn close, TF_DN otherwise; the
+                           area is a top-down gradient of that colour (.30 → .02 alpha) from the line to the plot floor
+                           (h−p); the 55 EMA is drawn exactly as the candle frame draws it (the same polyline, only where
+                           it exists — bars ≥ 55, or opts.ema); the same p=1 padding, slot grid and Y mapping, so the row
+                           stays aligned with the three rows beside it. The range is closes (+ EMA), as the close-only mode.
+     opts.ema  = [...]   → a precomputed EMA aligned 1:1 with `bars` (numbers or null — §53's backend `e` column), used
+                           instead of tfEma(closes,55) and drawn where non-null. A non-array or a wrong length is ignored
+                           (the renderer computes its own, as before); a non-number entry counts as null. Never a guess.
+   Any call WITHOUT opts (or with neither key set) is byte-identical to the round-9 output — the theme-off invariant and
+   the graded equity minis depend on it; tools/qa_stage48_tech.py diffs this against the frozen pre-9b source. */
+var TF_GID=0;   /* the line mode's gradient id, one per call: ids are document-wide and a red frame must never borrow a green one's */
+function tfCandleSVG(bars,w,h,tailN,opts){
   /* tailN (Stage 21): the panes pass a shared window so all four rows align bar-for-bar;
      minis omit it and stay width-density-driven. Min lowered to 8 bars so a short frame
      (crypto monthly at the public 365d cap) still draws an honest close line; round 7 (§31)
      lowered it again to 6 so a Coins 500 name draws its first week of REAL daily bars (the
      backend ledger starts at 7 and grows a day per day). Fewer than 6 stays blank. */
   if(!bars || bars.length<6) return '';
-  var closes=tfCloses(bars), e55=tfEma(closes,55);
+  var line=!!(opts&&opts.line===true), given=null;
+  if(opts&&Array.isArray(opts.ema)&&opts.ema.length===bars.length){
+    given=[]; for(var gi=0;gi<opts.ema.length;gi++){ var ev=opts.ema[gi]; given.push((typeof ev==='number'&&isFinite(ev))?ev:null); }
+  }
+  var closes=tfCloses(bars), e55=given||tfEma(closes,55);
   var tail=tailN?Math.min(bars.length,tailN):Math.max(20,Math.min(bars.length,Math.floor(w/4.5)));
   var B=bars.slice(-tail), M=e55.slice(-tail);
   var ohlc=0;
   for(var i=0;i<B.length;i++){ if(B[i].o!=null&&B[i].h!=null&&B[i].l!=null)ohlc++; }
-  var candle=ohlc>=B.length*0.8;
+  var candle=!line&&ohlc>=B.length*0.8;
   var lo=Infinity,hi=-Infinity;
   for(var i2=0;i2<B.length;i2++){
     var b=B[i2];
@@ -2751,6 +2768,15 @@ function tfCandleSVG(bars,w,h,tailN){
       s+='<line x1="'+x.toFixed(1)+'" y1="'+Y(b2.h).toFixed(1)+'" x2="'+x.toFixed(1)+'" y2="'+Y(b2.l).toFixed(1)+'" stroke="'+col+'" stroke-width="1"/>';
       s+='<rect x="'+(x-bw/2).toFixed(1)+'" y="'+top.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="'+col+'"/>';
     }
+  }else if(line){
+    /* §54 line mode: the gradient area first (under everything), then the EMA (already in s — as the candle frame
+       draws it), then the close line on top. One path for the area, one for the line; no bodies, no wicks. */
+    var lc=B[n-1].c>=B[0].c?TF_UP:TF_DN, d='', x0='', xn='', fl=(h-p).toFixed(1), gid='tfg'+(++TF_GID);
+    for(var j3=0;j3<n;j3++){ var xx=(p+j3*slot+slot/2).toFixed(1); d+=(j3?' L':'M')+xx+','+Y(B[j3].c).toFixed(1); if(!j3)x0=xx; xn=xx; }
+    s='<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+lc+'" stop-opacity=".3"/><stop offset="1" stop-color="'+lc+'" stop-opacity=".02"/></linearGradient></defs>'
+     +'<path d="'+d+' L'+xn+','+fl+' L'+x0+','+fl+' Z" fill="url(#'+gid+')" stroke="none"/>'
+     +s
+     +'<path d="'+d+'" fill="none" stroke="'+lc+'" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
   }else{
     /* Stage 27d: close-only mode (crypto) draws the price in neutral gray — direction
        already lives in the day-change number and the bullet dot; the line stays calm. */
@@ -2975,8 +3001,10 @@ function tfMiniRow(tf,kind){
   for(var i=0;i<defs.length;i++){
     var bars=P[defs[i][0]],svg='',svgT='';
     if(bars){
-      svg=tfCandleSVG(bars,64,26);   /* Stage 27j: iPad stout mini a bit taller, fed by the reclaimed MA row */
-      svgT=tfCandleSVG(bars,64,34);   /* Stage 27e: taller variant for portrait phones */
+      /* round 9b §54: a CRYPTO strip draws the close line + soft area (opts.line) — equities/funds pass no opts and stay byte-identical */
+      var mo=(kind==='cr')?{line:true}:undefined;
+      svg=tfCandleSVG(bars,64,26,null,mo);   /* Stage 27j: iPad stout mini a bit taller, fed by the reclaimed MA row */
+      svgT=tfCandleSVG(bars,64,34,null,mo);   /* Stage 27e: taller variant for portrait phones */
     }
     if(svg)any=true;
     s+='<span class="as-tbo"><i>'+defs[i][1]+'</i>'
@@ -3065,14 +3093,16 @@ function vbulletSVG(tf,pxLast,variant){
     o+='<circle cx="'+cx+'" cy="'+Yv(last).toFixed(1)+'" r="'+dr+'" fill="'+col+'" stroke="#0D1320" stroke-width="'+rim+'"/>';
     return '<svg class="'+cls+'" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" aria-hidden="true">'+o+'</svg>';
   }
-  /* Stage 48 round 8 §37 (the owner 09-24: "I love the little bullet graph on the far right, but it's so thin…
-     make it thicker all around"): the Tape asks for the STOUT pair instead — vb-s 22×64 for the phone's
-     column 4 (track 4.5 / week 7.5 / day 10.5 wide, a 19px MA20 tick at 2.2, a r=5 price dot — every part
-     scaled up, drawn at natural size so the lines stay crisp) and vb-sw 30×64 for the wide table's cell.
-     The card strips keep the classic pair below, untouched. */
-  if(variant==='stout') return '<span class="as-vb">'
-       + draw(22,64,7,4.5,7.5,10.5,9.5,2.2,5,1.4,'vb-s')
-       + draw(30,64,8,5.5,9,13,13,2.4,6,1.5,'vb-sw')
+  /* Stage 48 round 8 §37 asked for a STOUT pair (vb-s 22×64 phone / vb-sw 30×64 wide). Round 9 (the owner 09-25):
+     §45 "split the difference with the pixel width, now it's looking a little too fat" -> the phone's column 4
+     draws vb-m, 16×64 — track 3.5 / week 5.5 / day 7.5 wide, a 14px MA20 tick at 1.9, a r=4.2 dot: every part
+     halfway between the classic vb-n and the stout vb-s, drawn at natural size so the lines stay crisp;
+     §47 "you also stretched the bullet horizontally on that one; they were perfect the way they were before" ->
+     every wide layout draws the CLASSIC vb-w (the same 30×64 drawing the card gets, displayed at 56px tall as
+     before round 8). The stout pair is retired. The card strips keep the classic pair below, untouched. */
+  if(variant==='tape') return '<span class="as-vb">'
+       + draw(30,64,6,3,4.5,6,9.5,1.8,4.5,1.3,'vb-w')
+       + draw(16,64,7,3.5,5.5,7.5,7,1.9,4.2,1.2,'vb-m')
        + '</span>';
   return '<span class="as-vb">'
        + draw(30,64,6,3,4.5,6,9.5,1.8,4.5,1.3,'vb-w')
@@ -9674,7 +9704,7 @@ window.MktView = (function(){
   }
   function mkAssemble(){
     var d=MK.data, out=[]; if(!d) return out;
-    mkCdFromCache('mk'); mkCdFromCache('mkc'); mkAgFromCache();   /* §31/§41: a reload builds the rows from the market cache BEFORE the chip handler runs — the day's candles and auto grades must ride along */
+    mkCdFromCache('mk'); mkCdFromCache('mkc'); mkAgFromCache(); mkFrFromCache();   /* §31/§41/§56: a reload builds the rows from the market cache BEFORE the chip handler runs — the day's candles, auto grades and frames page 1 must ride along */
     var er=(d.equities&&Array.isArray(d.equities.rows))?d.equities.rows:[];
     var gEq=mkGradedIndex('mk'), eqSyms={};
     er.forEach(function(x){ if(x&&x.sym) eqSyms[String(x.sym).toUpperCase()]=1; });
@@ -9707,14 +9737,19 @@ window.MktView = (function(){
       if(!x||!x.sym) return;
       var sym=String(x.sym).toUpperCase(), st=!!x.stale;
       if(pick[sym]&&pick[sym].x===x){ out.push(mkGradedClone(gCr[sym],'mkc',x,sym)); return; }
-      var tf=mkCdTf('mkc',sym);
+      /* round 9b §56: a symbol on a landed frames page carries the served five frames + tech (r.fr) — the row renders like a curated
+         coin's (line frames, the bullet, the tech gauge, 1H from the H frame, the thin card); otherwise the daily-candles frame (§31) */
+      var fx=mkFrRow(sym), ftf=fx?mkFrTf(fx):null, te=(ftf&&fx.tech&&typeof fx.tech==='object'&&!Array.isArray(fx.tech))?fx.tech:null;
+      var tf=ftf||mkCdTf('mkc',sym), P=tf?tfParse(tf):null, px=mkNum(x.usd), hf=ftf?hFreshInfo(tf,'cr'):null;
+      var c7=mkNum(x.chg7d); if(c7==null&&ftf&&P) c7=lastPct(P.d,7);
       out.push({
         kind:'mkc', key:String(x.id||sym), sym:sym, name:String(x.name||sym), cat:null, tint:null,
         choke:false, us:false, gExp:null, gRec:null, grade:null, tok:null,
-        px:mkNum(x.usd), pxStale:st, pxTitle:st?'carried from an earlier pull — this quote did not refresh':null,
-        chg1h:null, hStale:false, hLabel:'', chg24:mkNum(x.chg24h), chg24Note:null, chg7:mkNum(x.chg7d),
+        px:px, pxStale:st, pxTitle:st?'carried from an earlier pull — this quote did not refresh':null,
+        chg1h:(ftf&&P)?lastPct(P.h,1):null, hStale:hf?hf.stale:false, hLabel:hf?hf.label:'', chg24:mkNum(x.chg24h), chg24Note:null, chg7:c7,
         mcap:mkNum(x.mcap), mcapSub:(x.rank!=null?'CG #'+x.rank:null), mcapTitle:'CoinGecko market cap',
-        vol:null, vol20:null, tech:null, sentO:null, range:tf?rangePos(tfParse(tf),mkNum(x.usd)):null, tf:tf
+        vol:null, vol20:te?te.vol_vs_20d_pct:null, tech:ftf?techScore(te):null, sentO:null, range:P?rangePos(P,px):null, tf:tf,
+        fr:!!ftf, frTech:te   /* §56: served frames on board; frTech = the served tech read (the thin card's MA distances) */
       });
     });
     /* round 6 §21: US 500 and Coins 500 are separate chips now — rank each family on its own
@@ -9726,7 +9761,7 @@ window.MktView = (function(){
     return out;
   }
   /* ---------- round 7 §31: daily candles for the Market rows (backend v4.4) ----------
-     GET <backend>/market_candles_eq.json | /market_candles_cr.json — {schemaVersion:1, asOf, days, cols:["d","o","h","l","c"],
+     GET <backend>/market_candles_eq.json | /market_candles_cr.json — {schemaVersion:1, asOf, days, cols:["d","o","h","l","c"(,"e" — §53)],
      rows:{SYM:[[yyyymmdd,o,h,l,c],... oldest->newest]}, coverage:{n, withCandles, notes}}. Fetched ONCE per UTC day per family
      when its chip is chosen (memory, then localStorage 'aibo.mk.candles.v1.<fam>' holding {day,data} — a cache from another day
      is ignored), 12s abort like mkLoad, a failed pull backs off five minutes. Each Market row gets a D-only tf ({d:"o,h,l,c;…"})
@@ -9750,17 +9785,22 @@ window.MktView = (function(){
     var S=MK_CD[fam], d=S&&S.data; if(!d) return null;
     var rows=d.rows[sym]; if(!Array.isArray(rows)||rows.length<2) return null;
     var cols=Array.isArray(d.cols)?d.cols:['d','o','h','l','c'];
-    var id=cols.indexOf('d'), io=cols.indexOf('o'), ih=cols.indexOf('h'), il=cols.indexOf('l'), ic=cols.indexOf('c');
+    var id=cols.indexOf('d'), io=cols.indexOf('o'), ih=cols.indexOf('h'), il=cols.indexOf('l'), ic=cols.indexOf('c'), ie=cols.indexOf('e');
     if(io<0||ih<0||il<0||ic<0) return null;
     var bars=[];
     for(var i=0;i<rows.length;i++){
       var b=rows[i]; if(!Array.isArray(b)) return null;
       var o=+b[io],h=+b[ih],l=+b[il],c=+b[ic];
       if(!isFinite(o)||!isFinite(h)||!isFinite(l)||!isFinite(c)) return null;   /* a broken bar voids the frame — no patching */
-      bars.push({t:(id>=0?+b[id]:i), s:o+','+h+','+l+','+c});
+      /* round 9b §53: the 55-session EMA column `e` (backend v4.6) — a number, or null while fewer than 55 sessions exist. A file
+         without the column (the coins file; the equities file until its next daily pass) carries no EMA at all. Never seeded here. */
+      var ev=(ie>=0)?b[ie]:null; if(typeof ev!=='number'||!isFinite(ev)) ev=null;
+      bars.push({t:(id>=0?+b[id]:i), s:o+','+h+','+l+','+c, e:ev});
     }
     if(id>=0) bars.sort(function(a,b){ return a.t-b.t; });
-    return {d:bars.map(function(b){ return b.s; }).join(';'), d_asOf:(typeof d.asOf==='string'?d.asOf:null)};
+    var tf={d:bars.map(function(b){ return b.s; }).join(';'), d_asOf:(typeof d.asOf==='string'?d.asOf:null)};
+    if(ie>=0) tf.ema={d:bars.map(function(b){ return b.e; })};   /* aligned 1:1 with the d bars (tfParse keeps every bar or voids the frame) */
+    return tf;
   }
   function mkCdLoad(fam,force){
     var S=MK_CD[fam]; if(!S) return;
@@ -9889,6 +9929,118 @@ window.MktView = (function(){
     if(S.err) return 'auto grades unavailable — '+S.err;
     return '';
   }
+  /* ---------- round 9b §56: five frames + tech reads for the Coins 500 (backend v4.7) ----------
+     GET <backend>/market_frames_cr_p1.json … _p5.json — 100 coins per page by cap rank: {schemaVersion:1, asOf, page, pages,
+     rows:{SYM:{id, tf:{m,w,d,h4,h,d_asOf,h_asOf}, tech:{…the curated coin's tech shape…}}}, coverage:{n, withFrames, backfilled,
+     pendingBackfill, notes}}; 503 until the backfill has built a page. Page 1 is fetched with the Coins 500 chip (memory, then
+     localStorage 'aibo.mk.frames.v1.p1' holding {day,data} — another day's cache is ignored); pages 2–5 are MEMORY-ONLY (five ~1 MB
+     pages would crowd the localStorage quota the market / candles / grades caches share) and are fetched LAZILY as the reader's
+     viewport reaches rank 100 / 200 / 300 / 400 (mkFrWant, on the same scroll pass that fills the charts). 12s abort like the other
+     files; a failed pull backs off five minutes. A row whose symbol is on a landed page carries r.fr=true, the served tf (five frames,
+     drawn as LINES — §54), tech, 1H from the H frame — it renders like a curated coin row; the rest keep the daily-candles frame (§31).
+     Rows re-render as pages land (mkApply). Never invented: a page's row must parse (tfParse) or it is no row. */
+  var MK_FR_LS='aibo.mk.frames.v1', MK_FR_PAGES=5, MK_FR_PER=100;
+  var MK_FR={pages:{}, wanted:{}};   /* pages[n] = one mkCdBlank() state per page; wanted[n] = the reader reached this page's ranks */
+  function mkFrPage(n){ var S=MK_FR.pages[n]; if(!S){ S=MK_FR.pages[n]=mkCdBlank(); } return S; }
+  function mkFrShapeOk(j){ return !!(j&&j.schemaVersion===1&&j.rows&&typeof j.rows==='object'&&!Array.isArray(j.rows)); }
+  function mkFrPagesN(){ var S=MK_FR.pages[1], p1=S&&S.data, n=p1&&+p1.pages; return (n>=1&&n<=20)?Math.floor(n):MK_FR_PAGES; }   /* reads only — never creates a page state */
+  function mkFrHas(){ for(var n=1;n<=MK_FR_PAGES;n++){ var S=MK_FR.pages[n]; if(S&&S.data) return true; } return false; }
+  function mkFrFromCache(){
+    var S=mkFrPage(1); if(S.data||S.cacheRead) return;   /* one localStorage read per page life (forget() re-arms it) */
+    S.cacheRead=true;
+    try{
+      var j=JSON.parse(localStorage.getItem(MK_FR_LS+'.p1')||'null');
+      if(j&&j.day===mkCdDay()&&mkFrShapeOk(j.data)){ S.data=j.data; S.day=j.day; }
+    }catch(_){}
+  }
+  /* the served row for a symbol on any landed page, or null */
+  function mkFrRow(sym){
+    for(var n=1;n<=MK_FR_PAGES;n++){
+      var S=MK_FR.pages[n]; if(!S||!S.data) continue;
+      var x=S.data.rows[sym]; if(x&&typeof x==='object'&&x.tf&&typeof x.tf==='object') return x;
+    }
+    return null;
+  }
+  /* the tf object of a served row — the five frame strings + the two stamps, validated by tfParse; null when nothing draws */
+  function mkFrTf(x){
+    if(!x||!x.tf||typeof x.tf!=='object') return null;
+    var t=x.tf, tf={}, ks=['m','w','d','h4','h'], any=false;
+    for(var i=0;i<ks.length;i++){ if(typeof t[ks[i]]==='string'&&t[ks[i]]){ tf[ks[i]]=t[ks[i]]; any=true; } }
+    if(!any) return null;
+    if(typeof t.d_asOf==='string') tf.d_asOf=t.d_asOf;
+    if(typeof t.h_asOf==='string') tf.h_asOf=t.h_asOf;
+    return tfParse(tf)?tf:null;
+  }
+  function mkFrLoad(n,force){
+    n=+n; if(!(n>=1&&n<=MK_FR_PAGES)) return;
+    var S=mkFrPage(n);
+    if(n===1) mkFrFromCache();
+    var today=mkCdDay();
+    if(S.busy) return;
+    if(S.data&&S.day===today&&!force) return;
+    if(!force&&S.triedAt&&(Date.now()-S.triedAt<MK_CD_BACKOFF)) return;
+    S.busy=true; S.err=null; S.triedAt=Date.now();
+    if(built) renderStats();
+    var ctl=('AbortController' in window)?new AbortController():null;
+    var to=ctl?setTimeout(function(){ try{ ctl.abort(); }catch(_){} },MK_FETCH_MS):null;
+    var done=function(){ if(to){ clearTimeout(to); to=null; } S.busy=false; };
+    var p;
+    try{ p=fetch(MK_BASE+'/market_frames_cr_p'+n+'.json',{cache:'no-store', signal: ctl&&ctl.signal}); }catch(e){ p=Promise.reject(e); }
+    p.then(function(r){
+      if(!r.ok) throw new Error(r.status===503?'not built yet (503)':(r.status===404?'not published yet (404)':'HTTP '+r.status));
+      return r.json();
+    }).then(function(j){
+      if(!mkFrShapeOk(j)) throw new Error('unexpected frames shape');
+      S.data=j; S.day=today; S.err=null;
+      if(n===1){ try{ localStorage.setItem(MK_FR_LS+'.p1',JSON.stringify({day:today,data:j})); }catch(_){} }
+      done();
+      if(built&&MK.data) mkApply(); else if(built) renderStats();
+    }).catch(function(e){
+      S.err=String(e&&e.message||e||'unreachable');
+      if(/failed to fetch|networkerror|load failed|typeerror|abort/i.test(S.err)) S.err='feed unreachable';
+      done(); if(built) renderStats();
+    });
+  }
+  /* lazy pages 2..N: the highest cap rank in (or within 600px of) the viewport says which pages the reader has reached — runs on
+     every fillVisible pass (scroll, filter, sort, rebuild) under the Coins 500 chip; page 1 first (it carries `pages`) */
+  function mkFrWant(){
+    var p1=MK_FR.pages[1]; if(!built||state.uni!=='mkc'||!p1||!p1.data) return;   /* reads only: a scroll pass must not create a page state (forget() leaves pages empty) */
+    var tw=document.querySelector('#mktView .twrap'); if(!tw) return;
+    var twr=tw.getBoundingClientRect(); if(twr.width===0&&twr.height===0) return;
+    var top=Math.max(twr.top,0)-600, bot=Math.min(twr.bottom,(window.innerHeight||twr.bottom))+600, maxRank=0;
+    ROWS.forEach(function(r){
+      if(!(r.kind==='mkc'||r.mkFam==='mkc')||r.rank==null||!r.tr||r.tr.style.display==='none') return;
+      var b=r.tr.getBoundingClientRect();
+      if(b.bottom>top&&b.top<bot&&r.rank>maxRank) maxRank=r.rank;
+    });
+    var need=Math.min(mkFrPagesN(),Math.ceil(maxRank/MK_FR_PER));
+    for(var n=2;n<=need;n++){ MK_FR.wanted[n]=1; mkFrLoad(n,false); }
+  }
+  function mkFrReload(force){ mkFrLoad(1,force); Object.keys(MK_FR.wanted).forEach(function(n){ mkFrLoad(+n,force); }); }
+  function mkFrTick(){
+    if(!built||state.uni!=='mkc') return;
+    var today=mkCdDay();
+    for(var n=1;n<=MK_FR_PAGES;n++){ var S=MK_FR.pages[n]; if(S&&S.data&&!S.busy&&S.day!==today) mkFrLoad(n,false); }   /* the day rolled over under the chip — the backoff paces failures */
+  }
+  function mkFrReset(){ MK_FR.pages={}; MK_FR.wanted={}; try{ localStorage.removeItem(MK_FR_LS+'.p1'); }catch(_){} }
+  /* the honest coverage line: "frames · 98 of 100 on this page · as of Sep 25" (two pages: "… on 2 pages …"; loading / unavailable); Coins 500 only */
+  function mkFrNote(){
+    if(state.uni!=='mkc') return '';
+    var loaded=0, busy=false, err=null, withF=0, n=0, at='';
+    for(var p=1;p<=MK_FR_PAGES;p++){
+      var S=MK_FR.pages[p]; if(!S) continue;
+      if(S.data){
+        loaded++; var c=S.data.coverage||{}, rowsN=Object.keys(S.data.rows||{}).length;
+        withF+=(c.withFrames!=null?+c.withFrames:rowsN); n+=(c.n!=null?+c.n:rowsN);
+        if(!at) at=mkFmtD(S.data.asOf);
+      } else if(S.busy) busy=true;
+      else if(S.err&&!err) err=S.err;
+    }
+    if(loaded) return 'frames · '+withF+' of '+n+(loaded===1?' on this page':' on '+loaded+' pages')+(at?' · as of '+at:'');
+    if(busy) return 'frames loading…';
+    if(err) return 'frames unavailable — '+err;
+    return '';
+  }
   function mkFromCache(){
     if(MK.data) return;
     try{
@@ -9910,6 +10062,8 @@ window.MktView = (function(){
     applySort(); rebuildCats(); applyFilter();
     if(isMkUni()) mkCdLoad(state.uni,false);   /* §31: rows rebuilt under a Market chip (Retry, a refresh, a reload) ask for today's candles; fresh = no-op, a failure backs off */
     if(state.uni==='mk') mkAgLoad(false);       /* §41: …and the US 500 chip asks for today's auto grades the same way */
+    if(state.uni==='mkc') mkFrLoad(1,false);    /* §56: …and the Coins 500 chip asks for the first frames page (pages 2–5 follow the reader's scroll — mkFrWant) */
+    syncMarketCls();                            /* §56: the mk-cfr flag (the Tech column returns on wide once frames are on board) */
     if(tw){ if(tw.scrollTop!==st) tw.scrollTop=st; if(tw.scrollLeft!==sl) tw.scrollLeft=sl; }
     if((window.scrollY||0)!==wy) try{ window.scrollTo(window.scrollX||0,wy); }catch(_){}
   }
@@ -9956,6 +10110,7 @@ window.MktView = (function(){
     try{ localStorage.removeItem(MK_LS); }catch(_){}
     ['mk','mkc'].forEach(function(f){ MK_CD[f]=mkCdBlank(); try{ localStorage.removeItem(MK_CD_LS+'.'+f); }catch(_){} });
     mkAgReset(); try{ localStorage.removeItem(MK_AG_LS); }catch(_){}   /* §41 */
+    mkFrReset();   /* §56: the frames pages + page 1's cache */
     if(built){
       ROWS.forEach(function(r){ if(isMkAny(r)&&r.tr&&r.tr.parentNode) r.tr.parentNode.removeChild(r.tr); });
       ROWS=ROWS.filter(function(r){ return !isMkAny(r); });
@@ -9990,7 +10145,8 @@ window.MktView = (function(){
     return 0;
   }
   function syncMarketCls(){
-    var mk=isMkUni(), tw=document.querySelector('#mktView .twrap'); if(tw) tw.classList.toggle('mk-market',mk);
+    var mk=isMkUni(), tw=document.querySelector('#mktView .twrap');
+    if(tw){ tw.classList.toggle('mk-market',mk); tw.classList.toggle('mk-cfr',state.uni==='mkc'&&mkFrHas()); }   /* §56: mk-cfr = Coins 500 with served frames on board */
     /* R12: Market rows carry no marks (choke:false, us:false on every row) — under either Market chip
        the two mark buttons are disabled (dimmed + titled) rather than cleared: their state is kept,
        ignored by visible() and the Filters badge, and comes back untouched with the graded universes */
@@ -10126,12 +10282,12 @@ window.MktView = (function(){
       +'<td class="c-tech">'+techGauge(r.tech)+'</td>'
       +'<td class="c-sent">'+sentCell(r.sentO)+'</td>'
       +'<td class="c-bullet" title="30-day range bullet — track = month of open/close bodies, nested week + day bands, MA20 line, dot = price (day direction)">'
-        +(function(){ var vb=''; try{ vb=r.tf?vbulletSVG(r.tf,r.px,'stout'):''; }catch(e){}   /* §37: the stout pair */
+        +(function(){ var vb=''; try{ vb=r.tf?vbulletSVG(r.tf,r.px,'tape'):''; }catch(e){}   /* round 9 §45/§47: classic vb-w on wide, vb-m on the phone */
            return vb?('<span class="mk-vb">'+vb+'</span>'):'<span class="mk-gap">—</span>'; })()+'</td>'
       +'<td class="c-chart"><div class="mstrip">'+((isMk(r)&&!r.tf)
         ?MK_NOCHART
         :'<div class="mk-chph">· · ·</div>')+'</div></td>';
-    if(isMk(r)) tr.classList.add('mk-row');
+    if(isMk(r)) tr.classList.add(r.fr?'mk-cfr':'mk-row');   /* §56: a Coins 500 row WITH served frames lays out like a curated row (mk-cfr), not like a lone-candle Market row */
     tr.addEventListener('click',function(ev){
       /* Stage 38 ZEN two-step on phones: first tap breathes the row open (one at a time). Desktop: straight to
          the card, unchanged. Stage 48 (the owner 09-23): a tap on the NAME cell goes straight to the card on the
@@ -10148,13 +10304,16 @@ window.MktView = (function(){
           var prev=tbody?tbody.querySelector('tr.mx-open'):null;
           if(prev) prev.classList.remove('mx-open');
           tr.classList.add('mx-open');
-          if(isMk(r)) mkWideFrame(r);   /* §43: the lone daily frame, drawn wide at the measured line width */
+          if(isMk(r)&&!r.fr) mkWideFrame(r);   /* §43: the lone daily frame, drawn wide at the measured line width (§56: a framed Coins 500 row opens like a curated row — three frames, no wide lone frame) */
           return;
         }
         if(open&&!onName&&!onGrade){ tr.classList.remove('mx-open'); return; }
       }
       /* §19/§41: a Market name has no card — say so, open nothing (an auto-graded one names the grade it wears) */
-      if(isMk(r)){ mkToast(r.auto?'auto grade — no card yet':'Not a graded name — no card yet'); return; }
+      if(isMk(r)){
+        if(r.fr){ mkThinCard(r,tr); return; }   /* §56: a Coins 500 name with frames opens its THIN card (strip + Technicals; no thesis, no grade) */
+        mkToast(r.auto?'auto grade — no card yet':'Not a graded name — no card yet'); return;
+      }
       /* THE point of this view: open the real deep-dive card */
       try{
         if(r.kind==='cr'){ if(Crypto&&Crypto.api&&Crypto.api.openSheet) Crypto.api.openSheet(r.key,tr); }
@@ -10169,35 +10328,44 @@ window.MktView = (function(){
      (identical bars, identical drawing), but carrying the two variants the Tape actually shows: mn-n (64×34 — the
      phone rest hero and the wide s3 column) and mn-t (64×MK_TH — the phone opened row's taller frames; the viewBox
      follows the opened height so the drawing fills it instead of letterboxing). The card's mn-w never renders here.
-     ?mnh=60|68|76 (read once at mount) sets the opened height for the owner's three-height comparison; absent = 68. */
-  var MK_OH=(function(){ try{ var m=/[?&]mnh=(\d+)/.exec(String(location.search||'')); var v=m?+m[1]:68; return (v>=40&&v<=120)?v:68; }catch(_){ return 68; } })();
+     ?mnh=60|68|76 (read once at mount) sets the opened height for the owner's three-height comparison; absent = 62
+     (round 9 §46, the owner 09-25: "squish them a little top to bottom so they don't look so stretched vertically" — was 68). */
+  var MK_OH=(function(){ try{ var m=/[?&]mnh=(\d+)/.exec(String(location.search||'')); var v=m?+m[1]:62; return (v>=40&&v<=120)?v:62; }catch(_){ return 62; } })();
   var MK_TH=Math.max(34,Math.round(64*MK_OH/102));
-  function mkFrame(lab,bars){
-    var a=bars?tfCandleSVG(bars,64,34):'';
+  /* round 9b §53/§54: the renderer options a row's frames take — crypto (a curated coin or a Coins 500 name) = the close line + soft
+     area (opts.line); a US 500 daily frame = the served 55 EMA (opts.ema from mkCdTf's tf.ema.d — absent until the equities file
+     carries `e`, then no line, no error); equities/funds pass nothing, so their frames stay byte-identical (the theme-off invariant). */
+  function mkOpts(r){
+    if(r.kind==='cr'||r.kind==='mkc') return {line:true};
+    if(r.kind==='mk'&&r.tf&&r.tf.ema&&Array.isArray(r.tf.ema.d)) return {ema:r.tf.ema.d};
+    return undefined;
+  }
+  function mkFrame(lab,bars,opts){
+    var a=bars?tfCandleSVG(bars,64,34,null,opts):'';
     if(!a) return '<span class="as-tbo"><i>'+lab+'</i><b class="as-tbo-gap">–</b></span>';
-    var t=tfCandleSVG(bars,64,MK_TH)||a;
+    var t=tfCandleSVG(bars,64,MK_TH,null,opts)||a;
     return '<span class="as-tbo"><i>'+lab+'</i><span class="mn-n">'+a+'</span><span class="mn-t">'+t+'</span></span>';
   }
-  function mkMiniRow(tf){
+  function mkMiniRow(tf,opts){
     var P=tfParse(tf); if(!P) return '';
     var defs=[['m','M'],['w','W'],['d','D'],['h4','4H'],['h','H']],s='',any=false;
     for(var i=0;i<defs.length;i++){
-      var f=mkFrame(defs[i][1],P[defs[i][0]]);
+      var f=mkFrame(defs[i][1],P[defs[i][0]],opts);
       if(f.indexOf('mn-n')>=0) any=true;
       s+=f;
     }
     return any?('<span class="as-mrow">'+s+'</span>'):'';
   }
   /* §31: ONE daily frame for a Market row — the graded D mini's exact builder, labelled D */
-  function mkDFrame(tf){
+  function mkDFrame(tf,opts){
     var P=tfParse(tf); if(!P||!P.d) return '';
-    var f=mkFrame('D',P.d);
+    var f=mkFrame('D',P.d,opts);
     return f.indexOf('mn-n')>=0?('<span class="as-mrow mk-d1">'+f+'</span>'):'';
   }
   function fillChart(r){
     if(r.charted) return;
     var cell=r.tr.querySelector('.mstrip'), html='';
-    try{ html=r.tf?(isMk(r)?mkDFrame(r.tf):mkMiniRow(r.tf)):''; }catch(e){ html=''; }
+    try{ html=r.tf?((isMk(r)&&!r.fr)?mkDFrame(r.tf,mkOpts(r)):mkMiniRow(r.tf,mkOpts(r))):''; }catch(e){ html=''; }   /* §56: a framed Coins 500 row draws its five frames like a curated row */
     cell.innerHTML=html||(isMk(r)?MK_NOCHART:'<b class="as-tbo-gap">no frames</b>');
     wireStrip(cell);
     alignStrip(cell);
@@ -10210,7 +10378,7 @@ window.MktView = (function(){
      Measured when the row opens (phone only — rows open there) and redrawn on resize / rotation; the 3.25-fraction mn-t
      steps aside (CSS .mk-wide). A row with no drawable frame (no .mk-d1) is left alone. */
   function mkWideFrame(r){
-    var tr=r&&r.tr; if(!tr||!isMk(r)||!r.tf||!tr.classList.contains('mx-open')) return;
+    var tr=r&&r.tr; if(!tr||!isMk(r)||r.fr||!r.tf||!tr.classList.contains('mx-open')) return;   /* §56: a framed row has no lone frame to widen */
     if(!r.charted) fillChart(r);
     var tbo=tr.querySelector('td.c-chart .mk-d1 .as-tbo'); if(!tbo) return;
     var mr=tbo.parentNode, lab=tbo.querySelector('i');
@@ -10218,7 +10386,7 @@ window.MktView = (function(){
     var x=tbo.querySelector('.mn-x'); if(!x){ x=document.createElement('span'); x.className='mn-x'; tbo.appendChild(x); }
     var key=W+'x'+MK_OH; if(x.getAttribute('data-w')===key) return;
     var P=null, bars=null, svg='';
-    try{ P=tfParse(r.tf); bars=P&&P.d||null; svg=bars?(tfCandleSVG(bars,W,MK_OH,bars.length)||''):''; }catch(_){ svg=''; }
+    try{ P=tfParse(r.tf); bars=P&&P.d||null; svg=bars?(tfCandleSVG(bars,W,MK_OH,bars.length,mkOpts(r))||''):''; }catch(_){ svg=''; }   /* §53: the wide daily frame carries the served EMA too */
     x.innerHTML=svg; x.setAttribute('data-w',key); tbo.classList.toggle('mk-wide',!!svg);
   }
   (function(){ var t=0; window.addEventListener('resize',function(){ clearTimeout(t); t=setTimeout(function(){
@@ -10235,9 +10403,16 @@ window.MktView = (function(){
      again on iPad/desktop; the phone opened row thumb-scrolls (Stage 38b). The
      STRIP_SYNC flag stays (kept, not deleted) in case a no-scroll layout ever returns. */
   var STRIP_SYNC=true;
+  /* round 9 §48 (the owner 09-25: "I don't want scrolling within that scrolling… I want five of them in there static, and I
+     just scroll the whole bar over more"): between 481 and 1023px (landscape phone, iPad portrait) the chart cell holds
+     all five frames side by side (CSS: .as-mrow a fixed 469px, overflow visible) and the TABLE scrolls — there is nothing
+     to sync, so the shared-X machinery stands down at these widths. >= 1024 (desktop, iPad landscape) keeps the strip
+     scroll and the sync exactly as before; the listeners stay wired so a rotation into >= 1024 syncs again. */
+  var STRIP_STATIC_MQ='(min-width:481px) and (max-width:1023px)';
+  function stripStatic(){ try{ return !!(window.matchMedia&&window.matchMedia(STRIP_STATIC_MQ).matches); }catch(_){ return false; } }
   var stripX=0, stripRaf=0;
   function alignAllStrips(){
-    if(!STRIP_SYNC) return;
+    if(!STRIP_SYNC||stripStatic()) return;
     var all=document.querySelectorAll('#mktView td.c-chart .as-mrow');
     for(var i=0;i<all.length;i++){
       var o=all[i];
@@ -10249,12 +10424,12 @@ window.MktView = (function(){
     stripRaf=requestAnimationFrame(function(){ stripRaf=0; alignAllStrips(); });
   }
   function alignStrip(cell){
-    if(!STRIP_SYNC||!stripX) return;
+    if(!STRIP_SYNC||!stripX||stripStatic()) return;
     var mr=cell.querySelector('.as-mrow');
     if(mr&&Math.abs(mr.scrollLeft-stripX)>=1) mr.scrollLeft=stripX;
   }
   function onStripScroll(e){
-    if(!STRIP_SYNC) return;
+    if(!STRIP_SYNC||stripStatic()) return;
     var el=e.target;
     if(!el||el.nodeType!==1||!el.classList||!el.classList.contains('as-mrow')||!el.closest) return;
     if(!el.closest('td.c-chart')) return;
@@ -10286,6 +10461,7 @@ window.MktView = (function(){
       var b=r.tr.getBoundingClientRect();
       if(b.bottom>twr.top-600 && b.top<twr.bottom+600) fillChart(r);
     });
+    mkFrWant();   /* §56: the same pass says which frames pages the reader has reached */
   }
   function fillSoon(){
     if(fillPend) return;
@@ -10474,6 +10650,9 @@ window.MktView = (function(){
       /* round 8 §41: how many visible Market names wear an AUTO grade under the current lens (US 500 only) */
       var nAu=0; vis.forEach(function(r){ if(r.kind==='mk'&&gradeOf(r)) nAu++; });
       if(nAu) parts.push(['<span class="st-au">· <b>'+nAu+'</b> auto</span>', '· '+nAu+' auto']);
+      /* round 9b §56: how many visible Coins 500 names carry served frames (five line frames + the tech read) */
+      var nFr=0; vis.forEach(function(r){ if(r.kind==='mkc'&&r.fr) nFr++; });
+      if(nFr) parts.push(['<span class="st-fr">· <b>'+nFr+'</b> with frames</span>', '· '+nFr+' with frames']);
       if(state.own&&heldNotGraded) parts.push(['<span class="st-ng">· <b>'+heldNotGraded+'</b> not listed</span>', '· '+heldNotGraded+' not listed']);
       parts.push(['<span class="st-uni">· '+mkFamTag()+'</span>', '· '+mkFamTag()]);
       /* portrait phone: the strip clips the stats' tail, so the time loses its word and the breadth (title keeps both) */
@@ -10486,6 +10665,9 @@ window.MktView = (function(){
       if(cdn){ if(!tight) parts.push(['<span class="st-cd">· '+esc(cdn)+'</span>', '· '+cdn]); else stEl_title_extra+='  '+cdn; }
       var agn=mkAgNote();   /* §41: the auto-grades coverage line rides the same way */
       if(agn){ if(!tight) parts.push(['<span class="st-ag">· '+esc(agn)+'</span>', '· '+agn]); else stEl_title_extra+='  '+agn; }
+      /* §56: the frames coverage line is TITLE-ONLY in the row at every width (the sheet foot carries it) — a third note in the wide
+         row ran #mkStat into the inline Owned seg at 1440 (round 9b QA: the stats box intercepted the seg's clicks) */
+      var frn=mkFrNote(); if(frn) stEl_title_extra+='  '+frn;
     } else {
     parts.push(['<span class="st-n"><b>'+vis.length+'</b> '+(state.own?'held':'assets')+'</span>', vis.length+(state.own?' held':' assets')]);
     if(state.own&&heldNotGraded) parts.push(['<span class="st-ng">· <b>'+heldNotGraded+'</b> not graded</span>', '· '+heldNotGraded+' not graded']);
@@ -10500,6 +10682,13 @@ window.MktView = (function(){
     if(cn){ cn.hidden=!cdt; cn.textContent=cdt; }
     var an=document.getElementById('mkAgNote'), agt=mkAgNote();
     if(an){ an.hidden=!agt; an.textContent=agt; }
+    var fn=document.getElementById('mkFrNote'), frt=mkFrNote();   /* §56 */
+    if(fn){ fn.hidden=!frt; fn.textContent=frt; }
+    /* the owner 09-25: the stats line leaves the phone's top strip (the strip buttons hid it) — it is the FIRST row of the Filters
+       sheet: the same span list and the same title as #mkStat, updated here every time #mkStat is. #mkStat itself stays in the
+       stock control row for the wide (> 900) layout. */
+    var ss=document.getElementById('mkSheetStat');
+    if(ss){ ss.innerHTML=stEl.innerHTML; ss.title=stEl.title; }
   }
   function rebuildCats(){
     var sel=document.getElementById('mkCat');
@@ -10541,7 +10730,9 @@ window.MktView = (function(){
   +'#mktView .mk-deck{position:relative;margin:2px 0 8px}'
   +'#mktView .mk-ctl{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;min-height:38px}'
   +'#mktView .mk-inline{display:flex;gap:6px;align-items:center;flex:1 1 auto;min-width:0}'
-  +'#mktView .mk-stats{margin-left:auto;display:flex;gap:9px;align-items:baseline;font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;flex:0 1 auto}'
+  /* round 9b: flex-shrink 4 — when the wide row is tight the STATS box yields (its tail clips; the title keeps the full text) before the
+     inline controls do, so a long coverage line can never push the Owned seg under it */
+  +'#mktView .mk-stats{margin-left:auto;display:flex;gap:9px;align-items:baseline;font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;flex:0 4 auto;min-width:0}'
   +'#mktView .mk-stats b{color:var(--ink)}'
   +'#mktView .mk-grp{display:flex;background:rgba(var(--gl-d12-rgb,16,27,43),.9);border:1px solid var(--hair);border-radius:10px;padding:2px;gap:2px;flex:none}'
   +'#mktView .mk-grp button{appearance:none;background:transparent;border:0;color:var(--muted);font:700 11px/1 inherit;letter-spacing:.3px;padding:7px 10px;border-radius:7px;cursor:pointer;white-space:nowrap}'
@@ -10576,6 +10767,10 @@ window.MktView = (function(){
   /* round 7 §31: the daily-candles coverage line at the foot of the sheet */
   +'#mktView .mk-shfoot{margin:10px 0 0;font-size:10px;color:var(--muted);letter-spacing:.02em}'
   +'#mktView .mk-shfoot[hidden]{display:none}'
+  /* the owner 09-25: the stats line as the sheet's FIRST row — quiet, muted, one line that wraps cleanly at 360 (renderStats mirrors #mkStat) */
+  +'#mktView .mk-shstat{display:flex;flex-wrap:wrap;gap:3px 8px;align-items:baseline;margin:0 0 10px;padding:0 0 9px;border-bottom:1px solid rgba(255,255,255,.07);font-size:10.5px;line-height:1.35;color:var(--muted);white-space:normal;letter-spacing:.01em}'
+  +'#mktView .mk-shstat b{color:var(--ink)}'
+  +'#mktView .mk-shstat:empty{display:none}'
   /* Stage 48: the Universe dropdown menu, re-homed into the Filters sheet on
      phones by placeCtls(), renders as a row of inline chips */
   +'#mktView .mk-slot #mkUni{display:flex;flex-direction:row;flex-wrap:wrap;position:static;box-shadow:none;border:0;padding:0;gap:4px;min-width:0;background:transparent}'
@@ -10602,6 +10797,10 @@ window.MktView = (function(){
   /* round 7 §31: a graded clone inside US 500 / Coins 500 DOES carry 1H — the phone grid (<=480) keeps its line; the 481–900
      TABLE still drops the whole column (every row must hide the same cells or the columns misalign) */
   +'@media(min-width:481px) and (max-width:900px){#mktView .twrap.mk-market td.c-1h{display:none}}'
+  /* round 9b §56: Coins 500 with served frames (twrap.mk-cfr) — the Tech column returns on wide (the gauge reads the served tech), and at
+     481–900 the Chart + 30d columns return too (five static frames, §48 — the table scrolls sideways exactly like the Watchlist's does) */
+  +'@media(min-width:901px){#mktView .twrap.mk-market.mk-cfr th.c-tech,#mktView .twrap.mk-market.mk-cfr td.c-tech{display:table-cell}}'
+  +'@media(min-width:481px) and (max-width:900px){#mktView .twrap.mk-market.mk-cfr th.c-chart,#mktView .twrap.mk-market.mk-cfr td.c-chart,#mktView .twrap.mk-market.mk-cfr th.c-bullet,#mktView .twrap.mk-market.mk-cfr td.c-bullet{display:table-cell}}'
   /* 481–900 under Market: tighter side padding so a sideways phone (667) fits the whole Market table; NOT the phone grid (its tds are padding 0) */
   +'@media(min-width:481px) and (max-width:900px){#mktView .twrap.mk-market .mkt th,#mktView .twrap.mk-market .mkt td{padding-left:7px;padding-right:7px}'
   /* …and the Chart column (a placeholder only) leaves at these widths; the phone rest row and wide widths keep it */
@@ -10674,15 +10873,38 @@ window.MktView = (function(){
   +'#mktView .mode-s3 .mstrip .mn-n{display:block;width:100%}'
   +'#mktView .mk-chph{height:24px;display:flex;align-items:center;color:#3d4b60;font-size:10px;font-weight:700}'
   +'#mktView .mode-s3 .mk-chph{height:52px}'
-  /* the range bullet — round 8 §37: the Tape draws vbulletSVG's STOUT pair, vb-sw (30×64) in the wide table's cell and
-     vb-s (22×64) in the phone's column 4, both at natural size (no CSS scaling: crisp bands); vb-w / vb-n never render here */
+  /* the range bullet — round 9 §47 (the owner 09-25: "you also stretched the bullet horizontally on that one; they were
+     perfect the way they were before. I was talking just about the vertical"): every wide layout (> 480) is back to the
+     pre-round-8 rules VERBATIM — the classic vb-w (30×64) scaled to 56px tall under mode-s3 (a 26×56 display); the
+     phone's vb-m and the retired stout pair never render here */
   +'#mktView td.c-bullet{text-align:center;min-width:46px}'
-  +'#mktView .mk-vb{display:block;width:30px;margin:0 auto}'   /* a block: no inline-block descent gap under the 64px svg */
-  +'#mktView .mk-vb svg.vb-w,#mktView .mk-vb svg.vb-n,#mktView .mk-vb svg.vb-s{display:none}'
-  +'#mktView .mk-vb svg.vb-sw{display:block;width:30px;height:64px;margin:0 auto}'
+  +'#mktView .mk-vb{display:inline-block}'
+  +'#mktView .mk-vb svg.vb-w{display:block;height:44px;width:auto;margin:0 auto}'
+  +'#mktView .mk-vb svg.vb-n,#mktView .mk-vb svg.vb-m,#mktView .mk-vb svg.vb-s,#mktView .mk-vb svg.vb-sw{display:none}'
+  +'#mktView .mode-s3 td.c-bullet .mk-vb svg.vb-w{height:56px}'
+  /* round 9 §48 (the owner 09-25: "I thought we took away the scrolling side to side on the minis in horizontal iPhone… I want
+     five of them in there static, and I just scroll the whole bar over more"): 481–1023 (landscape phone 844/667, iPad
+     portrait 820) — the strip is a FIXED 469px line (5 × 87.4px frames + 4 × 8px gaps: exactly the mode-s3 frame size these
+     widths draw today, so row heights do not move), overflow visible (no inner scroll; stripStatic() parks the sync), and
+     the chart cell grows to hold it (495 border-box); the table's own .twrap scroll carries the reader across. >= 1024
+     (desktop, iPad landscape) keeps the 330px cell and the scrolling strip exactly as before. */
+  +'@media(min-width:481px) and (max-width:1023px){#mktView .twrap .mkt td.c-chart{min-width:495px}'
+  +'#mktView .mstrip .as-mrow{flex:0 0 469px;width:469px;overflow-x:visible}'
+  +'#mktView .mode-s3 .mstrip .as-tbo{flex:0 0 calc((100% - 32px)/5)}}'
   +'#mktView .mk-note{margin:10px 4px 0;font-size:10.5px;color:var(--muted);line-height:1.55}'
   +'@media(max-width:900px){#mktView .c-vol,#mktView .c-tech,#mktView .c-sent{display:none}'
   +'#mktView table.mkt{min-width:610px}}'
+  /* round 9b §56: the THIN card for a Coins 500 name (mkThinCard renders it into the stock #sheet) — the boxed Technicals entry is
+     Markets' own button (techlab's decorateCard keys off .aibo-box, which this card never uses, so nothing doubles) + one honest line */
+  +'#sheet .mk-thin .mk-thin-tech{appearance:none;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"ttl go" "sub go" "fr go";align-items:center;column-gap:8px;box-sizing:border-box;width:calc(100% - 8px);margin:10px 4px 0;padding:9px 12px;border:1px solid rgba(var(--gl-acc-rgb,31,198,220),.55);border-radius:12px;background:rgba(var(--gl-acc-rgb,31,198,220),.10);color:var(--ink);text-align:left;cursor:pointer;font:inherit}'
+  +'#sheet .mk-thin .mk-thin-tech .ttl{grid-area:ttl;font-weight:800;font-size:13.5px;line-height:1.15;color:var(--gl-acc,#1FC6DC)}'
+  +'#sheet .mk-thin .mk-thin-tech .sub{grid-area:sub;font-size:10.5px;line-height:1.25;color:var(--muted)}'
+  +'#sheet .mk-thin .mk-thin-tech em{grid-area:fr;justify-self:start;font-style:normal;font:700 10px/1.25 ui-monospace,Menlo,monospace;letter-spacing:.06em;color:var(--gl-acc,#1FC6DC);opacity:.92}'
+  +'#sheet .mk-thin .mk-thin-tech em i{font-style:normal;margin-right:5px}'
+  +'#sheet .mk-thin .mk-thin-tech em i.off{opacity:.32}'
+  +'#sheet .mk-thin .mk-thin-tech .go{grid-area:go;font-size:18px;font-weight:700;line-height:1;color:var(--gl-acc,#1FC6DC)}'
+  +'#sheet .mk-thin .mk-thin-tech:active{transform:scale(.985)}'
+  +'#sheet .mk-thin .mk-thin-note{margin:12px 4px 4px;font-size:11.5px;line-height:1.4;color:var(--muted);font-style:italic}'
   /* phone deck: phone-only chips appear, inline slot retires to the sheet.
      Stage 48 (the owner 09-23): the pattern runs to 900px (iPad portrait, sideways
      phone) — MUST equal the matchMedia in placeCtls(). ONE compact row:
@@ -10726,7 +10948,7 @@ window.MktView = (function(){
      the cap climbs into the hero slot the chart vacates, the frames grow taller.
      Tap a row → .mx-open expands it in place; tapping the OPENED charts goes
      to the real deep-dive card (wired in buildRow). Divider stays the 37b bright line. */
-  +'#mktView .mkt tbody tr{display:grid;grid-template-columns:minmax(92px,112px) minmax(0,1fr) 88px 22px;'
+  +'#mktView .mkt tbody tr{display:grid;grid-template-columns:minmax(92px,112px) minmax(0,1fr) 88px 16px;'
   +'grid-auto-rows:min-content;column-gap:6px;align-items:center;padding:5px 6px 6px 10px;'
   +'border-bottom:1px solid rgba(126,160,205,.42)}'
   +'#mktView .mkt tbody tr.mk-empty{display:block;padding:0}'
@@ -10747,15 +10969,16 @@ window.MktView = (function(){
   +'#mktView .mkt td.c-24h::before{content:"1D ";font-size:9.5px}'
   +'#mktView .mkt td.c-1h::before{content:"1H "}'
   +'#mktView .mkt td.c-7d::before{content:"7D "}'
-  /* §33: column 4 = the 30-day bullet at the far right, in BOTH states. Round 8 §37 (the owner: "so thin… make it
-     thicker all around"): the column grew 14 -> 22px and the bullet is vbulletSVG's STOUT vb-s (22×64: track,
-     week/day bands, MA20 tick and price dot all scaled up), drawn at natural size — crisp, never CSS-scaled.
+  /* §33: column 4 = the 30-day bullet at the far right, in BOTH states. Round 8 §37 grew it 14 -> 22px (the stout vb-s);
+     round 9 §45 (the owner 09-25: "split the difference with the pixel width, now it's looking a little too fat"): the column
+     is 16px and the bullet is vbulletSVG's MIDDLE vb-m (16×64: track, week/day bands, MA20 tick and price dot halfway
+     between the classic and the stout), drawn at natural size — crisp, never CSS-scaled.
      td.c-bullet specificity beats the <=900 hiders; line-height 0 so the svg alone sets the cell's height. */
   +'#mktView .mkt td.c-bullet{display:block;grid-area:1/4/5/5;align-self:center;justify-self:end;min-width:0;text-align:right;line-height:0;padding:0}'
   +'#mktView .mkt td.c-bullet .mk-vb,#mktView .mkt td.c-bullet .as-vb{display:block}'
-  +'#mktView .mkt td.c-bullet .mk-vb{width:22px;margin:0 0 0 auto}'   /* the wide 30px wrapper must not leak into the 22px column */
-  +'#mktView .mkt td.c-bullet .mk-vb svg.vb-w,#mktView .mkt td.c-bullet .mk-vb svg.vb-n,#mktView .mkt td.c-bullet .mk-vb svg.vb-sw{display:none}'
-  +'#mktView .mkt td.c-bullet .mk-vb svg.vb-s{display:block;width:22px;height:64px;margin:0 0 0 auto}'
+  +'#mktView .mkt td.c-bullet .mk-vb{width:16px;margin:0 0 0 auto}'   /* the wide inline-block wrapper must not leak into the 16px column */
+  +'#mktView .mkt td.c-bullet .mk-vb svg.vb-w,#mktView .mkt td.c-bullet .mk-vb svg.vb-n,#mktView .mkt td.c-bullet .mk-vb svg.vb-s,#mktView .mkt td.c-bullet .mk-vb svg.vb-sw{display:none}'
+  +'#mktView .mkt td.c-bullet .mk-vb svg.vb-m{display:block;width:16px;height:64px;margin:0 0 0 auto}'
   +'#mktView .mkt td.c-bullet .mk-gap{display:block;font-size:10px;line-height:1}'
   +'#mktView .mk-sym{font-size:14px}'
   +'#mktView .mk-co{-webkit-line-clamp:1;max-width:none;line-height:1.25}'
@@ -10774,19 +10997,22 @@ window.MktView = (function(){
   +'#mktView .mkt td.c-chart .mn-n svg{height:44px}'
   +'#mktView .mk-chph{height:44px}#mktView .mode-s3 .mk-chph{height:44px}'
   /* open state (round 6 §21, the owner 09-24: "keep scrolling them… whole bar scrolls more
-     that's absolutely fine" — Stage 38b): ONE line of BIG frames, ~3.25 visible + a .25
-     peek that cues the thumb-scroll (the mode-s3 fraction), M W D 4H H a drag away. The
+     that's absolutely fine" — Stage 38b): ONE line of BIG frames, M W D 4H H a thumb-scroll away. The
      scroll lives only inside the opened row; rest rows stay scroll-free. Round 7 §33:
-     the frames span all four columns and grow to --mk-oh (68px; ?mnh= overrides) using
-     the taller mn-t drawing; the bullet KEEPS column 4 (round 8 §37: the same stout 22×64); the cap sits
+     the frames span all four columns and grow to --mk-oh (?mnh= overrides) using
+     the taller mn-t drawing; the bullet KEEPS column 4 (round 9 §45: the 16×64 vb-m); the cap sits
      centred in the vacated hero slot with a small MARKET CAP label over it and the
-     shares sub under it — no sixth line below the frames. */
+     shares sub under it — no sixth line below the frames.
+     Round 9 §46 (the owner 09-25: "a little too smushed sideways. I see a little bit of the fourth chart, we don't
+     need that; just three… squish them a little top to bottom"): EXACTLY three frames fill the line (the 3.25
+     fraction + .25 peek is gone), scroll-snap so a thumb-scroll lands on the next frame, --mk-oh 62 (was 68). */
   +'#mktView .mkt tbody tr.mx-open td.c-chart{grid-area:5/1/6/5;padding-top:5px}'
-  +'#mktView .mkt tbody tr.mx-open td.c-chart .as-tbo{display:inline-flex;flex:0 0 calc((100% - 20px)/3.25)}'
+  +'#mktView .mkt tbody tr.mx-open td.c-chart .as-mrow{scroll-snap-type:x mandatory}'
+  +'#mktView .mkt tbody tr.mx-open td.c-chart .as-tbo{display:inline-flex;flex:0 0 calc((100% - 16px)/3);scroll-snap-align:start}'
   +'#mktView .mkt tbody tr.mx-open td.c-chart .as-tbo i{display:block}'
   +'#mktView .mkt tbody tr.mx-open td.c-chart .mn-n{display:none}'
   +'#mktView .mkt tbody tr.mx-open td.c-chart .mn-t{display:block;width:100%}'
-  +'#mktView .mkt tbody tr.mx-open td.c-chart .mn-t svg{height:var(--mk-oh,68px)}'
+  +'#mktView .mkt tbody tr.mx-open td.c-chart .mn-t svg{height:var(--mk-oh,62px)}'
   +'#mktView .mkt tbody tr.mx-open td.c-mcap{display:flex;flex-direction:column;align-items:center;justify-content:center;grid-area:1/2/5/3;align-self:stretch;text-align:center;font-size:13px;font-weight:700;line-height:1.15;color:var(--ink);padding:0}'
   +'#mktView .mkt tbody tr.mx-open td.c-mcap::before{content:"Market cap";display:block;font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);opacity:.85;margin:0 0 2px}'
   +'#mktView .mkt tbody tr.mx-open td.c-mcap .mk-sub{display:block;margin:2px 0 0;font-size:10px;font-weight:500}'
@@ -10809,6 +11035,108 @@ window.MktView = (function(){
   +'#mktView .mkt tbody tr.mk-row.mx-open td.c-chart .mk-d1 .as-tbo.mk-wide .mn-t{display:none}'
   +'#mktView .mkt tbody tr.mk-row.mx-open td.c-chart .mk-d1 .as-tbo.mk-wide .mn-x{display:block}'
   +'#mktView .mk-stats .st-cap{display:none}}';
+
+  /* ---------- round 9b §56: the THIN card for a Coins 500 name with frames ----------
+     Opened into the stock #sheet — the one node every card uses, so the scrim, the ×, the Technicals page's closeCard and the
+     chrome's zoom-out pulse (a class observer on #sheet) all keep working. A Markets-owned template replaces #sheetBody's content:
+     the head (symbol · name · Coins 500 rank), the price strip built by the card's OWN builders (tfMiniRow(tf,'cr') = five LINE
+     frames, the MA distances from the served tech, vbulletSVG's bullet), the boxed Technicals entry — Markets' own button calling
+     GLTech.show(sym,{name,kind:'cr',fam:'mkc',px,chg}); techlab's decorateCard keys off .aibo-box, which this card never uses, so
+     nothing doubles — and ONE honest line. No thesis, no grade, no fundamentals (fund.js wraps openSheet, which this never calls).
+     Restored on close: when #sheet loses 'show' with the thin template still in the body, the body is cleared once the slide-out
+     is over (~450ms); the next openSheet overwrites it anyway. The observer is armed once, at the first thin open. */
+  var mkThinObs=null;
+  function mkThinArm(){
+    if(mkThinObs||!window.MutationObserver) return;
+    var sh=document.getElementById('sheet'); if(!sh) return;
+    mkThinObs=new MutationObserver(function(){
+      if(sh.classList.contains('show')) return;
+      setTimeout(function(){ var b=document.getElementById('sheetBody'); if(b&&!sh.classList.contains('show')&&b.querySelector('#mkThin')) b.innerHTML=''; },450);
+    });
+    mkThinObs.observe(sh,{attributes:true,attributeFilter:['class']});
+  }
+  function mkThinStrip(r){
+    var te=r.frTech||{}, tf=r.tf;
+    var cell=function(lbl,val){
+      if(val==null||!isFinite(+val)) return '';
+      var c=(+val)>=0?'up':'dn', s=(+val)>=0?'+':'';
+      return '<span class="as-ma"><i>'+lbl+'</i><b class="'+c+'">'+s+(+val).toFixed(1)+'%</b></span>';
+    };
+    var mas;
+    if(te.dist_ma20_pct!=null||te.dist_ma50_pct!=null||te.dist_ma200_pct!=null){
+      mas='<span class="as-mas">'+cell('MA20',te.dist_ma20_pct)+cell('MA50',te.dist_ma50_pct)+cell('MA200',te.dist_ma200_pct)
+         +(te.direction?'<span class="as-dir">'+esc(String(te.direction))+'</span>':'')+'</span>';
+    } else mas='<span class="as-gap">history gap</span>';
+    var at=(tf&&typeof tf.d_asOf==='string')?mkFmtT(tf.d_asOf):'', minis='', vb='', ah='';
+    try{ minis=(typeof tfMiniRow==='function')?tfMiniRow(tf,'cr'):''; }catch(_){ minis=''; }
+    try{ vb=(typeof vbulletSVG==='function')?vbulletSVG(tf,r.px):''; }catch(_){ vb=''; }
+    try{ ah=(typeof tfAfterHrs==='function')?tfAfterHrs(tf,'cr'):''; }catch(_){ ah=''; }
+    return '<div class="aibo-strip mk-thin-strip">'
+      +'<span class="as-px">'+fmtPrice(r.px)+'</span>'
+      +'<span class="as-chg '+pctCls(r.chg24)+'">'+fmtPct(r.chg24)+' <i style="font-style:normal;opacity:.6;font-size:10px">1D</i></span>'
+      +minis+mas
+      +'<span class="as-t'+(r.pxStale?' st':'')+'" title="quote from the Market feed · frames from the daily CoinGecko backfill">'+(r.pxStale?'CARRIED':'FEED')+(at?' · frames '+esc(at):'')+'</span>'
+      +ah+vb+'</div>';
+  }
+  function mkThinCard(r,tr){
+    var body=document.getElementById('sheetBody'), sh=document.getElementById('sheet'), sc=document.getElementById('scrim'); if(!body||!sh) return;
+    mkThinArm();
+    if(typeof liveStripCSS==='function') try{ liveStripCSS(); }catch(_){}
+    var P=null; try{ P=tfParse(r.tf)||{}; }catch(_){ P={}; }
+    var gl=!!document.documentElement.getAttribute('data-gl'), tfs=[['m','M'],['w','W'],['d','D'],['h4','4H'],['h','H']];
+    /* the entry only where the Technicals page exists (Glass) — under theme-off the page is a no-op and a dead button is worse than none */
+    var techBtn=gl?('<button type="button" class="mk-thin-tech" data-mkthintech aria-label="Open the Technicals page"><b class="ttl">Technicals</b>'
+      +'<span class="sub">candles · TBO cloud · divergence · Bollinger</span><em>'
+      +tfs.map(function(t){ return '<i'+(P[t[0]]?'':' class="off"')+'>'+t[1]+'</i>'; }).join('')+'</em><b class="go" aria-hidden="true">↗</b></button>'):'';
+    body.innerHTML='<div class="mk-thin" id="mkThin" data-sym="'+esc(r.sym)+'">'
+      +'<div class="sh-head"><div class="sh-tk">'+esc(r.sym)+'</div><div class="sh-meta"><div class="sh-name">'+esc(r.name)+'</div>'
+      +'<div class="sh-tags"><span class="tag">Coins 500'+(r.rank!=null?' · #'+r.rank:'')+'</span>'+(r.mcapSub?'<span class="tag">'+esc(r.mcapSub)+'</span>':'')+'</div></div></div>'
+      +mkThinStrip(r)+techBtn
+      +'<p class="mk-thin-note">Market name — no thesis, no grade</p></div>';
+    var b=body.querySelector('[data-mkthintech]');
+    if(b) b.addEventListener('click',function(ev){
+      ev.preventDefault(); ev.stopPropagation();
+      try{ if(window.GLTech&&typeof GLTech.show==='function') GLTech.show(r.sym,{name:r.name, kind:'cr', fam:'mkc', px:r.px, chg:r.chg24}); }catch(_){}
+    });
+    document.querySelectorAll('.chip.sel').forEach(function(c){ c.classList.remove('sel'); });
+    sh.scrollTop=0;
+    if(sc) sc.classList.add('show');
+    sh.classList.add('show');
+  }
+  /* ---------- round 9b §56: THE CONTRACT for the technicals page ----------
+     frames(fam, sym) -> the tf object or null. 'mkc': {m,w,d,h4,h,d_asOf,h_asOf} from a landed frames page; until the coin's page
+     lands, {d, d_asOf} from the coin candles ledger (the page it should be on is asked for — page 1 first, then the page its cap
+     rank names — so a deep link fills in on the page's own 4s clock). 'mk': {d, d_asOf, ema:{d:[…]}} from the candles file (ema only
+     once the file carries `e`). rowOf(fam, sym) -> {sym, name, px, kind} for the page head: the live row when the Tape has built
+     it (kind 'cr' / 'eq' for a graded clone, 'mkc' / 'mk' otherwise), else the cached Market payload, else null. */
+  function mkFrEnsure(sym){
+    var p1=MK_FR.pages[1]; if(!p1||!p1.data){ mkFrLoad(1,false); return; }
+    mkFromCache(); var d=MK.data, cr=(d&&d.crypto&&Array.isArray(d.crypto.rows))?d.crypto.rows:[], caps=[];
+    cr.forEach(function(x){ var c=mkNum(x&&x.mcap); if(x&&x.sym&&c!=null) caps.push([String(x.sym).toUpperCase(),c]); });
+    caps.sort(function(a,b){ return b[1]-a[1]; });
+    var rank=0; for(var i=0;i<caps.length;i++){ if(caps[i][0]===sym){ rank=i+1; break; } }
+    if(!rank) return;
+    var n=Math.min(mkFrPagesN(),Math.ceil(rank/MK_FR_PER)); if(n>=2){ MK_FR.wanted[n]=1; mkFrLoad(n,false); }
+  }
+  function mkFramesOf(fam,sym){
+    sym=String(sym==null?'':sym).replace(/^\$/,'').toUpperCase(); if(!sym) return null;
+    if(fam==='mkc'){
+      mkFrFromCache();
+      var x=mkFrRow(sym), t=x?mkFrTf(x):null; if(t) return t;
+      try{ mkFrEnsure(sym); }catch(_){}
+      mkCdFromCache('mkc'); return mkCdTf('mkc',sym);
+    }
+    if(fam==='mk'){ mkCdFromCache('mk'); return mkCdTf('mk',sym); }
+    return null;
+  }
+  function mkRowOf(fam,sym){
+    sym=String(sym==null?'':sym).replace(/^\$/,'').toUpperCase(); if(!sym||(fam!=='mk'&&fam!=='mkc')) return null;
+    for(var i=0;i<ROWS.length;i++){ var r=ROWS[i]; if((r.kind===fam||r.mkFam===fam)&&String(r.sym).toUpperCase()===sym) return {sym:r.sym, name:r.name, px:r.px, kind:r.kind}; }
+    mkFromCache(); var d=MK.data; if(!d) return null;
+    var rows=(fam==='mk')?((d.equities&&Array.isArray(d.equities.rows))?d.equities.rows:[]):((d.crypto&&Array.isArray(d.crypto.rows))?d.crypto.rows:[]);
+    for(var j=0;j<rows.length;j++){ var x=rows[j]; if(x&&x.sym&&String(x.sym).toUpperCase()===sym) return {sym:sym, name:String(x.name||sym), px:mkNum(fam==='mk'?x.px:x.usd), kind:fam}; }
+    return null;
+  }
 
   /* ---------- mount + wiring ---------- */
   function mount(){
@@ -10845,6 +11173,8 @@ window.MktView = (function(){
       +'</div>'
       +'<div class="mk-qrow" id="mkQRow"><button type="button" class="mk-ico" id="mkQClose" aria-label="Close search">✕</button></div>'
       +'<div class="mk-sheet" id="mkSheet">'
+      /* the owner 09-25: the stats line, off the strip — the sheet's first row (renderStats keeps it equal to #mkStat) */
+      +'<div class="mk-shstat" id="mkSheetStat" role="status"></div>'
       +'<div class="mk-shrow"><span class="mk-shlab">Universe</span><span class="mk-slot" id="mkSlotUni"></span></div>'
       /* Stage 48 round 5 (§18): All | Owned lives in the sheet on phones (placeCtls moves #mkScope here) */
       +'<div class="mk-shrow"><span class="mk-shlab">Scope</span><span class="mk-slot" id="mkSlotScope"></span></div>'
@@ -10865,6 +11195,8 @@ window.MktView = (function(){
       +'<div class="mk-shfoot" id="mkCdNote" hidden></div>'
       /* round 8 §41: the auto-grades coverage line (US 500 only; hidden otherwise) */
       +'<div class="mk-shfoot" id="mkAgNote" hidden></div>'
+      /* round 9b §56: the frames coverage line (Coins 500 only; hidden otherwise) */
+      +'<div class="mk-shfoot" id="mkFrNote" hidden></div>'
       +'</div>'
       +'</div>'
       +'<div class="twrap mode-'+state.mode+'"><table class="mkt"><thead><tr id="mkHead"></tr></thead><tbody id="mkBody"></tbody></table></div>'
@@ -10896,7 +11228,7 @@ window.MktView = (function(){
         document.getElementById('mkUniVal').textContent=b.textContent;
         document.getElementById('mkUniDD').classList.remove('open');
         syncMarketCls();
-        if(isMkUni()){ mkLoad(false); mkCdLoad(state.uni,false); if(state.uni==='mk') mkAgLoad(false); }   /* §19/§21: cache first (memory, then localStorage), fetch when stale — one fetch feeds both chips; §31: this family's daily candles, once per UTC day; §41: US 500's auto grades likewise */
+        if(isMkUni()){ mkLoad(false); mkCdLoad(state.uni,false); if(state.uni==='mk') mkAgLoad(false); if(state.uni==='mkc') mkFrLoad(1,false); }   /* §19/§21: cache first (memory, then localStorage), fetch when stale — one fetch feeds both chips; §31: this family's daily candles, once per UTC day; §41: US 500's auto grades likewise; §56: Coins 500's first frames page likewise (pages 2–5 follow the scroll) */
         rebuildCats(); applyFilter();
       });
     });
@@ -11090,6 +11422,7 @@ window.MktView = (function(){
           mkTick();   /* R27: the Market feed's TTL */
           mkCdTick(); /* §31: a new UTC day fetches that day's candles */
           mkAgTick(); /* §41: …and that day's auto grades under US 500 */
+          mkFrTick(); /* §56: …and that day's frames pages under Coins 500 */
         }
       }catch(_){}
       mkWatch();
@@ -11150,7 +11483,11 @@ window.MktView = (function(){
                      /* §31: the daily candles — reloadCandles(force) refetches the current chip's family, candles = per-family state */
                      reloadCandles: function(f){ if(isMkUni()) mkCdLoad(state.uni,f!==false); }, candles: MK_CD,
                      /* §41: the auto grades — reloadGrades(force) refetches (US 500 chip up), grades = its state */
-                     reloadGrades: function(f){ if(state.uni==='mk') mkAgLoad(f!==false); }, grades: MK_AG } };
+                     reloadGrades: function(f){ if(state.uni==='mk') mkAgLoad(f!==false); }, grades: MK_AG,
+                     /* §56: the frames pages — reloadFrames(force) refetches page 1 + every page the reader has reached (Coins 500 chip up); framesState = the per-page state */
+                     reloadFrames: function(f){ if(state.uni==='mkc') mkFrReload(f!==false); }, framesState: MK_FR,
+                     /* §56 THE CONTRACT for the technicals page (see mkFramesOf / mkRowOf): frames(fam, sym) -> tf object or null; rowOf(fam, sym) -> {sym,name,px,kind} or null */
+                     frames: mkFramesOf, rowOf: mkRowOf } };
 })();
 
 /* Stage 43 R2 (lens F2 — Touch Truth lite): the app's whole glyph grammar
@@ -11375,11 +11712,8 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
   html[data-gl] .gl-tf i{font-style:normal;font-size:9px;opacity:.7;}
   html[data-gl] .gl-tbadge{background:var(--gl-acc);color:var(--gl-on-acc);font-size:9px;font-weight:800;border-radius:999px;padding:1px 5px;}
   html[data-gl] .gl-tbadge[hidden]{display:none;}
-  html[data-gl] .gl-tstat{flex:0 1 auto;min-width:0;display:flex;gap:7px;align-items:baseline;font-size:9.5px;color:var(--muted);white-space:nowrap;overflow:hidden;}
-  html[data-gl] .gl-tstat b{color:var(--ink);font-weight:700;}
-  html[data-gl] .gl-tstat .up{color:#39d07f;} html[data-gl] .gl-tstat .dn{color:#f0685f;} html[data-gl] .gl-tstat .fl{color:#8A93A5;}   /* value colours, as the stock tape */
-  html[data-gl] .gl-tstat .st-med{display:none;}                                    /* the stock phone row drops the median too */
-  @media (max-width:479px){ html[data-gl] .gl-tstat .st-cap{display:none;} }        /* ≤480 keeps N assets · 1D up/down, as stock */
+  /* round 9: the stats line ("195 assets · 1D 85▲/98▼") no longer rides the strip — the owner: "maybe we just don't have that text on the top"
+     (it differed per universe and the strip's buttons obscured it); the Markets module carries it at the head of the Filters sheet */
   @media (max-width:900px){
     html[data-gl] body.gl-tape #mStrip .gl-tctl{display:flex;flex:1 1 auto;min-width:0;align-items:center;gap:6px;}
     html[data-gl] body.gl-tape #mStrip .gl-title{display:none;}
@@ -11428,8 +11762,10 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
 
   /* the Atlas chapter sheet, frosted — and GROUPED (the owner 09-23: the grades "in their own grading subcategory… more open
      space to check out all of the new financial stuff"). The stock rows are never re-parented: shim.js drops captions
-     and the two new rows in beside them, and CSS `order` on a flex column arranges Capital flow · Financials · Grading ·
-     Study · Macro. Round 5: no segs at the bottom any more (Universe is in each view, Grades is a Settings card). */
+     and the two new rows in beside them, and CSS `order` on a flex column arranges Capital flow · Grading & financials ·
+     Study · Macro. Round 5: no segs at the bottom any more (Universe is in each view, Grades is a Settings card).
+     §50 (round 9, the owner: "Financials, grade wheel and the scorecard can all go under the same subcategory"): the separate
+     Financials caption is gone; ONE caption "Grading & financials" holds Company financials, Grade wheel, Scorecard, in that order. */
   html[data-gl] .m-atlas{background:rgba(var(--gl-d12-rgb),.86);-webkit-backdrop-filter:blur(34px) saturate(1.5);backdrop-filter:blur(34px) saturate(1.5);
     border-top-left-radius:22px;border-top-right-radius:22px;padding-bottom:calc(var(--gl-dock-h) + var(--gl-safe-b,env(safe-area-inset-bottom,0px)) + 16px);
     max-height:calc(100dvh - 40px);overflow:auto;-webkit-overflow-scrolling:touch;}
@@ -11448,11 +11784,11 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
   html[data-gl] .m-atlas .gl-ma-row:active{transform:scale(.985);background-color:rgba(255,255,255,.07);}
   html[data-gl] .gl-ma-cap[data-glcap="flow"]{order:1;padding-top:2px;}
   html[data-gl] .m-atlas .ma-row[data-av="wf"]{order:2;}   html[data-gl] .m-atlas .ma-row[data-av="flow"]{order:3;}   html[data-gl] .m-atlas .ma-row[data-av="web"]{order:4;}
-  html[data-gl] .gl-ma-cap[data-glcap="fin"]{order:5;}     html[data-gl] .m-atlas .gl-ma-row[data-glfin]{order:6;}
-  html[data-gl] .gl-ma-cap[data-glcap="grade"]{order:7;}
-  html[data-gl] .m-atlas .ma-row[data-av="donut"]{order:8;} html[data-gl] .m-atlas .ma-row[data-av="sc"]{order:9;}
-  html[data-gl] .gl-ma-cap[data-glcap="study"]{order:10;}  html[data-gl] .m-atlas .ma-row[data-av="cards"]{order:11;}
-  html[data-gl] .gl-ma-cap[data-glcap="macro"]{order:12;}  html[data-gl] .m-atlas .ma-row[data-av="yd"]{order:13;}
+  /* §50 (round 9, the owner's second word: "the financials as its own tab on the bar… the company financials, the grade wheel and the scorecard
+     there"): the wheel + scorecard rows LEAVE the sheet — hidden, never removed (they are stock nodes) — and live under the Financials door */
+  html[data-gl] .m-atlas .ma-row[data-av="donut"],html[data-gl] .m-atlas .ma-row[data-av="sc"]{display:none;}
+  html[data-gl] .gl-ma-cap[data-glcap="study"]{order:5;}   html[data-gl] .m-atlas .ma-row[data-av="cards"]{order:6;}
+  html[data-gl] .gl-ma-cap[data-glcap="macro"]{order:7;}   html[data-gl] .m-atlas .ma-row[data-av="yd"]{order:8;}
   html[data-gl] body.m-atlas-open #aibo-live-chip{opacity:0!important;pointer-events:none!important;}   /* it rode over the sheet's last rows */
 }
 
@@ -11530,11 +11866,8 @@ html[data-gl] body.gl-chrome #mktView .twrap{max-height:calc(100dvh - var(--gl-t
     box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;border-radius:0;transition:transform .18s ease;}
   html[data-gl][data-land="top"] .gl-tab{flex:none;width:46px;height:36px;min-height:0;padding:0;justify-content:center;border-radius:12px;}
   html[data-gl][data-land="top"] body.gl-chrome #mStrip .gl-title{visibility:hidden;}           /* the doors own the strip's middle; visibility (not display) keeps its flex:1 so the HUD stays at the right */
-  /* §18 the Tape's controls share the strip with the doors sideways: the stats give up Σ cap and stop short of the centred doors
-     (238px wide) — and below 740px they go entirely; below 700px the HUD goes too (the owner: "extra extra cautious of the top and bottom bars") */
-  html[data-gl][data-land="top"] body.gl-tape #mStrip .gl-tstat{max-width:calc(50vw - 282px);}
-  html[data-gl][data-land="top"] body.gl-tape #mStrip .gl-tstat .st-cap{display:none;}
-  @media (max-width:739px){ html[data-gl] body.gl-tape #mStrip .gl-tstat{display:none;} }
+  /* §18 the Tape's controls share the strip with the doors sideways (round 9: SIX doors, 286px wide centred; the stats line is gone from the
+     strip altogether, so only 🔍 + Filters sit left of the doors); below 700px the HUD goes too (the owner: "extra extra cautious of the top and bottom bars") */
   @media (max-width:699px){ html[data-gl] body.gl-chrome #mStrip .m-hud{display:none;} }
   /* §20/§23 STANDING RULE (round 6): sideways in top mode the doors LIVE in the strip, so nothing may tuck the strip away. Two things
      did: the stock scroll handler toggles #mStrip.m-hide on every body scroll (Waterfall / Flow) and techlab.js adds it 1.5s after the
@@ -11588,6 +11921,57 @@ html[data-gl] .gl-foot{font:400 11.5px/1.55 -apple-system,BlinkMacSystemFont,"Se
   box-shadow:none;text-shadow:none;letter-spacing:normal;text-transform:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
 html[data-gl] #help #glLensNote.gl-foot{margin:4px 0 8px;font-size:11.5px;color:#61748a;}   /* by id: the stock #help .hsub outranks a class */
 
+/* ---- §49 (round 9) THE SLEEVE READ LINE (Settings › under the sleeves, #readLine — the owner: "the colouring is like a highlight over
+   text, looks very not polished"). Stock paints the blended letter and the A/B/C/D counts with the GLOBAL grade-chip rules
+   (.g-a{background:var(--g-a)} …): a green/olive/orange/red box behind inline text. Under Glass it is a quiet ledger line: the
+   label in the sheet's foot grammar (11.5px, muted), every value in tabular mono ink with NO background, the blended letter and
+   the counts as plain coloured text in the Studio's own grade text colours (literals: skin.css is not tokenised, so they never
+   drift with the palette). shim.js wraps the four clauses in .gl-rl (inline-block) so the line breaks BETWEEN clauses at 390 —
+   never "26 / names" across two lines. The first rule outranks stock's #studioView .read (1,1,0) by id + the html gate. ---- */
+html[data-gl] #studioView #readLine{font:400 11.5px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#61748a;letter-spacing:normal;
+  border-top:1px solid rgba(255,255,255,.08);padding-top:9px;margin-top:4px;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
+html[data-gl] #studioView #readLine :is(b,.g-a,.g-b,.g-c,.g-d){background:none;padding:0;border:0;border-radius:0;box-shadow:none;text-shadow:none;
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;font-weight:600;font-size:11.5px;color:var(--ink);}
+html[data-gl] #studioView #readLine .g-a{color:#79e2c6;}
+html[data-gl] #studioView #readLine .g-b{color:#7fb6ff;}
+html[data-gl] #studioView #readLine .g-c{color:#fbbf24;}
+html[data-gl] #studioView #readLine .g-d{color:#f98a8a;}
+html[data-gl] #studioView #readLine .gl-rl{display:inline-block;white-space:nowrap;}
+html[data-gl] #studioView #readLine .gl-rl-dot{display:inline-block;font-style:normal;opacity:.55;margin:0 6px 0 2px;}   /* leads its clause (shim.js) */
+
+/* ---- §52 (round 9) THE FLOW CHART'S Fit width | 100% ON THE iPHONE (the owner: "when I toggle it on the iPhone it's really glitchy").
+   Reproduced at 390 (Chromium + WebKit, build direct + latest.html shell), three things, none of them page-level overflow:
+   (1) at Fit width the stage is scaled by transform, which never shrinks its LAYOUT box — the wrap was still 1604 px of scrollable
+       content behind a 390 px chart, so a sideways thumb slid the fitted chart off screen into blank space; and stock fits to
+       clientWidth (gutters included), so 22 px of the chart always hung off the right edge;
+   (2) the wrap's scrollLeft survived the 100% → Fit toggle: after panning at 100% and tapping Fit width the chart came back
+       scrolled hundreds of px to the left — a blank wrap where the chart should be (THE toggle glitch);
+   (3) a 2066 px-tall horizontal scroller under the thumb: every wobble of a sideways drag also scrolls the page, and the stock
+       scroll rule flaps the strip in and out (transform .18s) on each change of direction.
+   shim.js wraps applyZoom() under Glass: marks the wrap data-glzoom, fits to the CONTENT box, returns the wrap to scrollLeft 0 at
+   Fit and restores the remembered pan at 100%, and holds body.gl-flow100 while the Flow view is at 100% (the strip is pinned
+   through stripPinned(), same lever as landscape top). These rules are the belt: the Fit wrap cannot scroll sideways, a 100% pan
+   that hits the end of the chart never chains into the page, and the strip cannot move while gl-flow100 even if the class lands. */
+html[data-gl] #flowWrap{overscroll-behavior-x:contain;}
+html[data-gl] #flowWrap[data-glzoom="fit"]{overflow-x:hidden;}
+@media (max-width:740px), (pointer:coarse){
+  html[data-gl] body.gl-flow100 #mStrip.m-hide{transform:none;}
+  html[data-gl] body.gl-flow100 #mStrip.m-hide ~ #glSub{transform:none;}
+}
+
+/* ---- §50 (round 9) THE FINANCIALS DOOR (the owner: "let's do the financials as its own tab on the bar, I think we have room for it: the company
+   financials, the grade wheel and the scorecard there"). A SIXTH door (chrome.html) — six 40px tabs: ≈61px each at 390, ≈56px at 360, both
+   above the 44px touch minimum, labels stay 9px (8.5px under 375). The door's three sub-views share one three-way seg, .gl-fseg: fin.js renders
+   it at the head of the company page; shim.js drops one at the top of #donutView and #scView (above the §17 Universe row), shown only while
+   body.gl-findoor — the door's context, which shim.js holds while any of the three shows, so sync() lights THIS door, not Atlas. ---- */
+.gl-fseg{display:none;}
+html[data-gl] body.gl-findoor .gl-fseg{display:flex;justify-content:center;padding:8px 12px 0;}
+html[data-gl] body:is(.gl-cal,.gl-fin,.gl-grid,.gl-tech,.gl-settings) .gl-fseg,html[data-gl] body.deck-studio .gl-fseg{display:none;}
+html[data-gl] .gl-fseg .gl-seg{width:min(400px,100%);margin:0;}
+html[data-gl] .gl-fseg .gl-seg button{font-size:11.5px;padding:6px 2px;white-space:nowrap;}
+@media (max-width:374px){ html[data-gl] .gl-fseg .gl-seg button{font-size:10.5px;} }
+html[data-gl] body.gl-findoor :is(#donutView,#scView) .gl-uni{padding-top:6px;}   /* the Universe row sits right under the seg */
+
 /* ---- theme picker (Settings > Appearance) ---- */
 html[data-gl] .gl-themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px;padding:12px;}
 html[data-gl] .gl-theme{appearance:none;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.05);border-radius:14px;padding:10px 4px 8px;
@@ -11611,15 +11995,21 @@ html[data-gl] :is(.ma-row,.st8-row.st8-act):active{transform:scale(.985);backgro
 }
 
 </style>
-<!-- Stage 48 Glass chrome. ONE constant FIVE-door bar — Tape · Atlas · Studio · Calendar · Settings —
+<!-- Stage 48 Glass chrome. ONE constant SIX-door bar — Tape · Atlas · Financials · Studio · Calendar · Settings —
      replaces the two docks that used to swap by deck (Yields left the bar 09-23: it is a Macro chapter
      inside the Atlas sheet now). Every door forwards to a control the app already has — see shim.js.
-     Icons are cloned from the stock dock at boot, so they can never drift from it.
+     Icons are cloned from the stock dock at boot, so they can never drift from it (Calendar and Financials
+     have no stock door, so theirs are inline, drawn in the same stroke).
      Round 5 (09-23 late): the bar is 40px tabs on 2px + max(4px, 40% of the inset) — sunk into the home-indicator
-     band; skin.css owns the geometry, shim.js measures the inset (--gl-safe-b) and prints it with ?probe=1. -->
+     band; skin.css owns the geometry, shim.js measures the inset (--gl-safe-b) and prints it with ?probe=1.
+     Round 9 §50 (09-25 pm, the owner: "let's do the financials as its own tab on the bar… the company financials, the grade
+     wheel and the scorecard there"): the Financials door — the company page (fin.js) with a three-way seg at its head:
+     Company financials | Grade wheel | Scorecard; the wheel and the scorecard are the stock Atlas views shown under this
+     door (shim.js holds body.gl-findoor, the door stays lit, and leaving restores the view that was under). -->
 <nav id="glDock" aria-label="Main" hidden>
   <button type="button" class="gl-tab" data-gldoor="tape"><i></i><span>Tape</span></button>
   <button type="button" class="gl-tab" data-gldoor="atlas"><i></i><span>Atlas</span></button>
+  <button type="button" class="gl-tab" data-gldoor="fin"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20v-8M10 20V5M16 20v-6"/><path d="M2 20h20"/></svg></i><span>Financials</span></button>
   <button type="button" class="gl-tab" data-gldoor="studio"><i></i><span>Studio</span></button>
   <button type="button" class="gl-tab" data-gldoor="calendar"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M8 3v4M16 3v4"/><path d="M8.5 14h.01M12 14h.01M15.5 14h.01M8.5 17h.01M12 17h.01"/></svg></i><span>Calendar</span></button>
   <button type="button" class="gl-tab" data-gldoor="settings"><i></i><span>Settings</span></button>
@@ -12590,9 +12980,13 @@ html[data-gl] body.gl-fin #aibo-live-chip{display:none!important;}      /* it re
 }
 @media (prefers-reduced-motion:reduce){html[data-gl] #glFin{animation:none!important;}}
 
-/* ---- head: who + close, search + sort note, the company chips ---- */
+/* ---- head: the door's three-way seg (round 9 §50), who + close, search + sort note, the company chips ---- */
 html[data-gl] .glfn-head{flex:none;padding:8px 10px 0;border-bottom:1px solid rgba(255,255,255,.07);}
 html[data-gl] .glfn-row{display:flex;align-items:center;gap:8px;min-height:36px;margin-bottom:6px;}
+html[data-gl] .glfn-seg{min-height:0;margin-bottom:8px;}
+html[data-gl] .glfn-seg .gl-seg{flex:1 1 auto;max-width:520px;margin:0 auto;}
+html[data-gl] .glfn-seg .gl-seg button{font-size:11.5px;padding:7px 2px;white-space:nowrap;}
+@media (max-width:374px){ html[data-gl] .glfn-seg .gl-seg button{font-size:10.5px;} }
 html[data-gl] .glfn-who{display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
 html[data-gl] .glfn-who .t{font:800 19px/1 ui-monospace,"SF Mono",Menlo,monospace;color:#fff;letter-spacing:.01em;flex:none;}
 html[data-gl] .glfn-who .n{font-size:13px;font-weight:500;color:rgba(234,238,245,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto;}
@@ -12718,7 +13112,10 @@ html[data-gl] .glf-page .glf-stats{margin-bottom:16px;}
 
   function build(){
     if(S.built) return; S.built=true;
+    /* round 9 §50: the Financials DOOR's three-way seg heads the page — Company financials | Grade wheel | Scorecard. The buttons only
+       carry data-glfsub; shim.js owns the taps (GL48.go('fin', sub)) and paints .on, so this page never needs to know the other two. */
     root.innerHTML='<div class="glfn-head">'
+      +'<div class="glfn-row glfn-seg"><div class="gl-seg" role="tablist" aria-label="Financials"><button type="button" role="tab" data-glfsub="company" class="on">Company financials</button><button type="button" role="tab" data-glfsub="donut">Grade wheel</button><button type="button" role="tab" data-glfsub="sc">Scorecard</button></div></div>'
       +'<div class="glfn-row"><div class="glfn-who" data-finwho></div><button type="button" class="glfn-x" data-finclose aria-label="Close Financials">×</button></div>'
       +'<div class="glfn-row"><label class="glfn-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>'
       +'<input type="search" data-finq placeholder="Find a company" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"></label>'
@@ -12879,9 +13276,9 @@ html[data-gl] .glg-end{height:calc(var(--gl-dock-h,52px) + var(--gl-safe-b, env(
     {id:'wf',       n:'Waterfall',    fam:'market',          go:['atlas','wf']},
     {id:'flow',     n:'Flow chart',   fam:'market',          go:['atlas','flow']},
     {id:'web',      n:'Web',          fam:'market',          go:['atlas','web']},
-    {id:'fin',      n:'Financials',   fam:'market',          go:['fin']},
-    {id:'donut',    n:'Grade wheel',  fam:'grading',         go:['atlas','donut']},
-    {id:'sc',       n:'Scorecard',    fam:'grading',         go:['atlas','sc']},
+    {id:'fin',      n:'Financials',   fam:'market',          go:['fin','company']},   /* round 9 §50: the company page itself (a bare go('fin') would reopen the door's LAST sub-view) */
+    {id:'donut',    n:'Grade wheel',  fam:'grading',         go:['fin','donut']},   /* round 9 §50: the wheel + scorecard live under the Financials door */
+    {id:'sc',       n:'Scorecard',    fam:'grading',         go:['fin','sc']},
     {id:'cards',    n:'Flashcards',   fam:'grading',         go:['atlas','cards']},
     {id:'yd',       n:'Yield curves', fam:'macro',           go:['atlas','yd']},
     {id:'cal',      n:'Calendar',     fam:'macro',   wide:1, go:['calendar']},   /* wide: 10 cells precede it, 12 precede Cockpit — no hole at 2/3/4 cols (C23) */
@@ -13128,8 +13525,9 @@ html[data-gl] .glg-end{height:calc(var(--gl-dock-h,52px) + var(--gl-safe-b, env(
    Colour by value only: green = bullish, red = bearish, grey = neutral. The theme accent marks UI state (the chosen name,
    the card box), never a series. In landscape the strip auto-hides (#mStrip.m-hide, the stock class) and this layer takes
    its 40px — the sibling selector follows the strip's real state. Landscape Wall (R6 §22): three timeframes per screen.
-   R8 §36: every plot with a finer frame wears a faint band (.nx, ~4% ink, no border) hugging its right edge — the next frame's span; it
-   sits UNDER the SVG so the bars' colours are never tinted, and under the pill. R8 §38: landscape Stack plots fill the content height
+   R8 §36: every plot with a finer frame wears a faint band (.nx, no border) hugging its right edge — the next frame's span; it
+   sits UNDER the SVG so the bars' colours are never tinted, and under the pill. R9b (the owner 09-25: "I love the slightly shaded area on the
+   stacks, could you make it a little less noticeable… split the difference") — ~2% ink (was 4%), the one rule covers the Wall and the Stack. R8 §38: landscape Stack plots fill the content height
    (--glt-th, set by techlab.js sizeStack()); portrait keeps the fixed heights. */
 #glTech{display:none;}
 html[data-gl] body.gl-tech #glTech{display:block;position:fixed;left:0;right:0;top:47px;bottom:0;z-index:52;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
@@ -13208,7 +13606,7 @@ html[data-gl] .glt-inds{max-width:none;margin:0 0 8px;}
 /* a plot: the SVG fills the frame; ONE read pill at the top-left; nothing on the right */
 html[data-gl] .glt-plot{position:relative;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);overflow:hidden;box-sizing:border-box;}
 html[data-gl] .glt-plot .sv{position:absolute;inset:0;}
-html[data-gl] .glt-plot .nx{position:absolute;top:0;bottom:0;right:2px;width:0;background:rgba(255,255,255,.04);border:0;border-radius:0;pointer-events:none;}   /* §36: first in the frame = beneath the SVG and the pill; fit() sets right (the renderer's gutter) + width (the fraction of the bar span) */
+html[data-gl] .glt-plot .nx{position:absolute;top:0;bottom:0;right:2px;width:0;background:rgba(255,255,255,.02);border:0;border-radius:0;pointer-events:none;}   /* §36: first in the frame = beneath the SVG and the pill; fit() sets right (the renderer's gutter) + width (the fraction of the bar span) */
 html[data-gl] .glt-plot .nx[hidden]{display:none;}
 html[data-gl] .glt-plot .sv svg{display:block;width:100%;height:100%;}
 html[data-gl] .glt-plot.tall{height:150px;margin-bottom:8px;}
@@ -13327,6 +13725,9 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
             THREE timeframes per screen: cell width = (wall − label − 2 gaps)/3 (≈242×64–74 on an 844 phone, ≈190×62–64 on
             a 667), still snapping per column; the height follows the four-row fit, capped at h/w .34 so it stays a rectangle.
      Stack  one indicator (a seg), its five timeframes stacked coarse→fine as tall full-width plots.
+   Round 9b (§54/§56): a CRYPTO candle row asks the stock renderer for its line mode (tfCandleSVG(bars,w,h,tail,{line:true}) — the
+   close line + a soft area, coloured by the frame's direction); TBO / divergence / Bollinger are untouched. A Market name (Coins 500
+   'mkc' / US 500 'mk') routes through MktView.market.frames(fam, sym) when the curated sources miss — see resolve()/mkFrames().
    Every plot carries ONE small read pill at its top-left and nothing else over the data — no hi/lo, no bar count, nothing
    on the right. A frame a renderer cannot draw is a dashed cell that says "no intraday yet" / "short history"; a plot is
    never invented. Colour by value only (green / red / grey); the theme accent marks UI state.
@@ -13393,25 +13794,44 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
   function saveLook(){ try{ localStorage.setItem(LSL,S.look); }catch(_){} }
   S.look=savedLook();
 
-  /* a name → {key, kind}. '$TAO' is the card's crypto grammar; a bare key tries the graded universe first, then crypto. */
-  function resolve(key){
+  /* a name → {key, kind}. '$TAO' is the card's crypto grammar; a bare key tries the graded universe first, then crypto, then (§56)
+     the Market universe through MktView.market.frames(fam, sym) — Coins 500 ('mkc') before US 500 ('mk'); a '$' key asks Coins 500 only.
+     `opt` (show()'s second argument, optional): {name, kind:'cr'|'eq', fam:'mkc'|'mk', px, chg} — the Tape can hand over what it knows;
+     `fam` is tried first. A Market hit carries {mk:true, fam, name, px, chg}: frames only — no record, no grade, no thesis. */
+  function resolve(key,opt){
     if(key==null) return null; key=String(key).trim(); if(!key) return null;
-    var cl=CL(), bare=key.charAt(0)==='$'?key.slice(1):key;
-    if(key.charAt(0)==='$') return (cl&&cl[bare]&&!cl[bare].pretoken&&cl[bare].usd!=null)?{key:bare,kind:'cr'}:null;
+    var cl=CL(), dollar=key.charAt(0)==='$', bare=dollar?key.slice(1):key;
+    if(dollar) return (cl&&cl[bare]&&!cl[bare].pretoken&&cl[bare].usd!=null)?{key:bare,kind:'cr'}:resolveMarket(bare,opt,['mkc']);
     var lk=null; try{ lk=window.lookup(key); }catch(_){}
     if(lk&&lk.type==='co') return {key:lk.key,kind:'eq'};
     if(lk&&lk.type==='fund') return {key:lk.key,kind:'fund'};
     if(cl&&cl[bare]&&!cl[bare].pretoken&&cl[bare].usd!=null) return {key:bare,kind:'cr'};
+    return resolveMarket(bare,opt,['mkc','mk']);
+  }
+  function mkFrames(fam,sym){                              /* §56: MktView.market.frames(fam, sym) → {m,w,d,h4,h,d_asOf} or null. The function may not
+                                                              exist yet (another agent's): never throw, never invent. An optional `ema` map on the tf
+                                                              object ({d:[…]} aligned with the d bars — §53's backend `e`) rides along as P.ema. */
+    try{ var M=window.MktView, mk=M&&M.market; if(!mk||typeof mk.frames!=='function') return null;
+      var t=mk.frames(fam,sym); if(!t||typeof t!=='object') return null;
+      var P=window.tfParse(t); if(!P) return null; if(t.ema&&typeof t.ema==='object') P.ema=t.ema; return P; }catch(_){ return null; }
+  }
+  function resolveMarket(bare,opt,fams){
+    if(!bare) return null;
+    if(opt&&opt.fam&&fams.indexOf(opt.fam)>=0) fams=[opt.fam].concat(fams.filter(function(f){ return f!==opt.fam; }));
+    for(var i=0;i<fams.length;i++){ if(!mkFrames(fams[i],bare)) continue;
+      var fam=fams[i], kind=(opt&&(opt.kind==='cr'||opt.kind==='eq'))?opt.kind:(fam==='mkc'?'cr':'eq');
+      return {key:bare,kind:kind,mk:true,fam:fam,name:(opt&&opt.name!=null)?String(opt.name):'',px:(opt&&typeof opt.px==='number'&&isFinite(opt.px))?opt.px:null,chg:(opt&&typeof opt.chg==='number'&&isFinite(opt.chg))?opt.chg:null}; }
     return null;
   }
-  function same(a,b){ return !!a&&!!b&&a.kind===b.kind&&a.key===b.key; }
+  function famLabel(c){ return c&&c.mk?(c.fam==='mkc'?'Coins 500':'US 500'):''; }
+  function same(a,b){ return !!a&&!!b&&a.kind===b.kind&&a.key===b.key&&(a.fam||null)===(b.fam||null); }
   function rec(c){
     if(!c) return null;
     if(c.kind==='eq'){ var r=D()[c.key]; return (r&&r.live)||null; }
     if(c.kind==='fund'){ var f=FL(); return (f&&f[c.key])||null; }
     var t=CL(), v=t&&t[c.key]; return (v&&!v.pretoken&&v.usd!=null)?v:null;
   }
-  function frames(c){ var r=rec(c); if(!r) return null; return window.tfParse(r.tech&&r.tech.tf)||null; }
+  function frames(c){ if(c&&c.mk) return mkFrames(c.fam,c.key); var r=rec(c); if(!r) return null; return window.tfParse(r.tech&&r.tech.tf)||null; }
   var tapeNamesAt=0, tapeNamesMap={};
   function tapeNames(){                                    /* crypto names live inside the crypto module; the Tape's row records carry them */
     if(Date.now()-tapeNamesAt<30000) return tapeNamesMap;
@@ -13420,6 +13840,7 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     if(Object.keys(m).length) tapeNamesMap=m; return tapeNamesMap;
   }
   function nameOf(c){
+    if(c.mk) return c.name||tapeNames()[c.key]||'';
     if(c.kind==='eq'){ var r=D()[c.key]; return (r&&r.name)||c.key; }
     if(c.kind==='fund'){ var f=FU()[c.key]; return (f&&f.name)||c.key; }
     return tapeNames()[c.key]||'';
@@ -13537,9 +13958,13 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     [].forEach.call(root.querySelectorAll('.glt-plot'),function(el){
       var I=byId(el.getAttribute('data-ind')), tf=el.getAttribute('data-tf'), mode=el.getAttribute('data-mode'), bars=P[tf]||null;
       var w=el.clientWidth, h=el.clientHeight; if(w<40||h<20) return;
-      var key=w+'x'+h+'|'+S.cur.kind+':'+S.cur.key+'|'+st; if(el.getAttribute('data-fit')===key) return; el.setAttribute('data-fit',key);
-      var tail=tailFor(w);
-      var svg=(bars&&bars.length>=I.min)?window[I.fn](bars,w,h,tail):'';
+      var key=w+'x'+h+'|'+S.cur.kind+':'+(S.cur.fam?S.cur.fam+'/':'')+S.cur.key+'|'+st; if(el.getAttribute('data-fit')===key) return; el.setAttribute('data-fit',key);
+      var tail=tailFor(w), o=null;
+      if(I.id==='candle'){                                 /* the renderer contract (§56): only the candle row takes opts; the other three rows are called as before */
+        if(S.cur.kind==='cr') o={line:true};               /* §54: crypto = the close line + area, never candles */
+        if(P.ema&&Array.isArray(P.ema[tf])){ o=o||{}; o.ema=P.ema[tf]; }   /* §53: a Market frame that carries its EMA draws that one */
+      }
+      var svg=(bars&&bars.length>=I.min)?(o?window[I.fn](bars,w,h,tail,o):window[I.fn](bars,w,h,tail)):'';
       var sv=el.querySelector('.sv'), gp=el.querySelector('.gp'), nx=el.querySelector('.nx');
       if(!svg){ el.classList.add('gap'); sv.innerHTML=''; gp.hidden=false; gp.textContent=bars?'short history':(tf==='h'||tf==='h4')?'no intraday yet':'short history'; setRead(el,null,mode,tf);
         if(nx){ nx.hidden=true; } el.removeAttribute('data-next'); el.removeAttribute('title'); return; }
@@ -13615,9 +14040,11 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
   function paintWho(){
     var c=S.cur, r=rec(c), who=root.querySelector('[data-techwho]'), px=root.querySelector('[data-techpx]'); if(!who||!c) return;
     var L=window.AIBO_LIVE||{}, num=L.num||function(x,d){ return (x==null||isNaN(x))?'—':Number(x).toFixed(d==null?2:d); };
-    who.innerHTML='<b class="t">'+esc(c.kind==='cr'?'$'+c.key:c.key)+'</b>'+(c.kind!=='eq'?'<em class="kd">'+(c.kind==='cr'?'crypto':'fund')+'</em>':'')+'<span class="n">'+esc(nameOf(c))+'</span>';
+    var kd=c.mk?famLabel(c):c.kind==='cr'?'crypto':c.kind==='fund'?'fund':'';   /* §56: a Market name says its universe; no grade chip — it has none */
+    who.innerHTML='<b class="t">'+esc(chipKey(c))+'</b>'+(kd?'<em class="kd">'+esc(kd)+'</em>':'')+'<span class="n">'+esc(nameOf(c))+'</span>';
     var lastPx=null, chg=null, lab='';
-    if(r){ if(c.kind==='cr'){ lastPx=r.usd; chg=r.chg24h_pct; lab='24h'; } else { lastPx=r.px&&r.px.last; chg=typeof L.dayChg==='function'?L.dayChg(r):(r.px&&r.px.chg1d_pct); lab='1d'; } }
+    if(c.mk){ lastPx=c.px; chg=c.chg; lab=c.kind==='cr'?'24h':'1d'; }
+    else if(r){ if(c.kind==='cr'){ lastPx=r.usd; chg=r.chg24h_pct; lab='24h'; } else { lastPx=r.px&&r.px.last; chg=typeof L.dayChg==='function'?L.dayChg(r):(r.px&&r.px.chg1d_pct); lab='1d'; } }
     var cc=chg==null?'flat':chg>0.049?'up':chg<-0.049?'dn':'flat', arr=chg==null?'':chg>0.049?'▲':chg<-0.049?'▼':'•';
     px.innerHTML=(lastPx==null)?'<u>—</u>':'<u>'+(lastPx>=1?num(lastPx,2):esc(String(parseFloat(Number(lastPx).toPrecision(4)))))+'</u>'
       +'<span class="'+cc+'">'+(chg==null?'—':arr+' '+Math.abs(chg).toFixed(2)+'%')+'<i>'+lab+'</i></span>';
@@ -13627,7 +14054,7 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     var body=root.querySelector('[data-techlook]'); if(!body||!S.cur) return;
     var P=frames(S.cur); S.stamp=stamp();
     body.setAttribute('data-look',S.look);
-    if(!P){ body.innerHTML='<div class="glt-none">No technical frames for '+esc(chipKey(S.cur))+' yet — the live feed has not arrived.</div>'; return; }
+    if(!P){ body.innerHTML='<div class="glt-none">No technical frames for '+esc(chipKey(S.cur))+' yet — '+(S.cur.mk?'the '+esc(famLabel(S.cur))+' frames have not arrived.':'the live feed has not arrived.')+'</div>'; return; }
     body.innerHTML=S.look==='wall'?wallHTML():stackHTML();
     if(anim){ body.classList.remove('in'); void body.offsetWidth; body.classList.add('in'); }
     schedule();
@@ -13661,9 +14088,9 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
   if(LQ&&LQ.addEventListener) LQ.addEventListener('change',function(){ if(!S.open) return; if(landOn()) armIdle(); else restoreStrip(); schedule(); });
   else if(LQ&&LQ.addListener) LQ.addListener(function(){ if(!S.open) return; if(landOn()) armIdle(); else restoreStrip(); schedule(); });
 
-  function show(key,opt){
+  function show(key,opt){                                 /* opt: {look, ind} as before; §56 adds {name, kind, fam, px, chg} for a Market name (see resolve()) */
     if(!H.getAttribute('data-gl')) return;                 /* theme off = exact Stage 43 */
-    var c=resolve(key);
+    var c=null; try{ c=resolve(key,opt); }catch(_){ c=null; }
     if(!c&&key!=null&&S.open) return;                      /* an explicit name the page cannot show while it is open: stay put */
     c=c||resolve(last())||resolve(DEF); if(!c){ var Dd=D(); for(var k in Dd){ if(Object.prototype.hasOwnProperty.call(Dd,k)){ c={key:k,kind:'eq'}; break; } } } if(!c) return;
     build();
@@ -13672,6 +14099,7 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     B.classList.add('gl-tech');
     if(!landOn()) restoreStrip();                          /* R5: the auto-hide is landscape-only — a portrait open never inherits the Tape's tucked strip */
     if(!isSame){ S.cur=c; remember(c); }
+    else if(c.mk){ S.cur.name=c.name||S.cur.name; if(c.px!=null) S.cur.px=c.px; if(c.chg!=null) S.cur.chg=c.chg; }
     if(opt&&opt.look&&LOOKS.indexOf(opt.look)>=0){ S.look=opt.look; saveLook(); }
     if(opt&&opt.ind&&byId(opt.ind).id===opt.ind) S.ind=opt.ind;
     if(S.finding) closeFind();
@@ -13716,7 +14144,9 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
 
   /* ---------- keep up: widths, the feed's refresh, the URL flag ---------- */
   window.addEventListener('resize',function(){ if(!S.open) return; clearTimeout(S.rt); S.rt=setTimeout(function(){ schedule(); },120); });
-  setInterval(function(){ if(!S.open||!S.cur) return; if(stamp()===S.stamp) return;                   /* a fresh feed (or the first one) redraws; otherwise nothing */
+  setInterval(function(){ if(!S.open||!S.cur) return;
+    if(S.cur.mk&&!root.querySelector('.glt-plot')&&frames(S.cur)){ paintLook(false); return; }         /* §56: a Market name's frames (paged, lazy) arrive on their own clock, not the feed's */
+    if(stamp()===S.stamp) return;                                                                        /* a fresh feed (or the first one) redraws; otherwise nothing */
     /* R4: the plots already on the page redraw IN PLACE (fit() keys every frame on the stamp) — the Wall keeps its scroller element and
        swipe position, the Stack its indicator + scroll. Only the no-frames ⇄ frames transition rebuilds the look. */
     if(frames(S.cur)&&root.querySelector('.glt-plot')){ S.stamp=stamp(); schedule(); } else paintLook(false); },4000);
@@ -13745,7 +14175,13 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
    Zoom out, aibo.gl.cardzoom) as the fallback to the stock reset pulse, and the Atlas door lit while its sheet is open.
    Round 8 (§39, the owner's 09-25 verdict — "try one last time… then let's just go back"): the fit self-checks ON THE DEVICE (rect vs the visual
    viewport, ±4 px, at open/120/400/800 ms + slide-end) and clears itself + pulses the stock zoom-out when the phone disagrees; ?probe=1 prints
-   the verdict and the numbers; the Settings foot says so. */
+   the verdict and the numbers; the Settings foot says so.
+   Round 9 (§49–§52, the owner's 09-25 pm verdict): the sleeve read line dressed as a ledger line (clauses wrapped, no highlight boxes); a SIXTH
+   door, Financials — the company page (fin.js) + the Grade wheel + the Scorecard under one three-way seg, the wheel/scorecard rows gone from
+   the Atlas sheet (the owner's second word: "the financials as its own tab on the bar"); the card ALWAYS opens the old way (the zoom-out pulse) —
+   the Settings row is gone, the fit machinery stays behind ?cardzoom=keep / GL48.cardZoom('keep') for testing only; the Flow chart's
+   Fit | 100% toggle made honest on the phone (applyZoom wrapped: content-box fit, scrollLeft 0 at Fit, the pan remembered at 100%, the strip
+   pinned at 100%); and the stats line left the Tape strip ("maybe we just don't have that text on the top"). */
 (function(){
   'use strict';
   var H=document.documentElement, B=document.body, META=window.GL48||{palettes:[],default:'violet'};
@@ -13824,14 +14260,19 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
      innerWidth/innerHeight appear nowhere in this path. matchMedia is layout-based and stays. Proven in Chromium two ways
      (qa_stage48_nav.py): a real CDP pinch on the shell AND on the build direct, and the same with innerWidth/innerHeight
      monkey-patched to the visual size — the iOS quirk itself.
-     §30 fallback (the owner: "go back to the way it was last time… it zooms out for the full card"): Settings › "Card when zoomed in" =
-     Keep my zoom (default: this mapping) | Zoom out (the stock reset pulse, resetZoom(true), on every card open and no fitCard at all).
-     Persisted as aibo.gl.cardzoom; read here, above the theme gate, so the observer honours it with the theme off too. ---- */
+     §30 fallback (the owner: "go back to the way it was last time… it zooms out for the full card"): Zoom out = the stock reset pulse
+     (resetZoom(true)) on every card open and no fitCard at all.
+     §51 (round 9, the owner: "back to where it was before, and this is fine, it is workable" — then: the Settings toggle "is extra noise that will
+     confuse people"): ZOOM OUT IS THE ONLY BEHAVIOUR IN NORMAL USE. There is no Settings row any more. The fit + the §39 self-check stay in the
+     code behind a switch that no user sees: `?cardzoom=keep` (read once from this window's or the top window's query, never persisted) or
+     GL48.cardZoom('keep') from the console — for testing the fit later. A stored aibo.gl.cardzoom (round 7/8 phones) is IGNORED: it is never
+     read and never written, so a phone that once picked Keep gets the zoom-out like everyone else. Read here, above the theme gate, so the
+     observer behaves the same with the theme off. ---- */
   var cardSheet=$('#sheet'), fitOn=false, fitVV=null, fitClearT=0, FIT_PROPS=['position','left','top','right','bottom','width','maxWidth','maxHeight','transform','transformOrigin'];
-  var LSZ='aibo.gl.cardzoom';
-  function cardZoomSaved(){ try{ return localStorage.getItem(LSZ)==='reset'?'reset':'keep'; }catch(_){ return 'keep'; } }
-  function paintCardZoom(){ var m=cardZoomSaved(); [].forEach.call(document.querySelectorAll('[data-glcardzoom]'),function(b){ var on=b.getAttribute('data-glcardzoom')===m; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); }); }
-  function setCardZoom(m,persist){ m=(m==='reset')?'reset':'keep'; if(persist!==false){ try{ localStorage.setItem(LSZ,m); }catch(_){} } paintCardZoom(); return m; }
+  var cardZoomMode='reset', cardZoomFrom='default';
+  (function(){ var q=(QS.match(/[?&]cardzoom=(keep|reset)/)||[])[1]; if(q){ cardZoomMode=q; cardZoomFrom='query'; } })();
+  function cardZoomSaved(){ return cardZoomMode; }                                    /* the EFFECTIVE mode (name kept: the probe + QA read it) */
+  function setCardZoom(m){ cardZoomMode=(m==='keep')?'keep':'reset'; cardZoomFrom='console'; return cardZoomMode; }   /* this page load only — nothing is stored */
   window.GL48.cardZoom=setCardZoom; window.GL48.cardZoomSaved=cardZoomSaved;
   /* ---- §39 (round 8) THE SELF-CHECK — the last zoom attempt, with a guarantee. the owner: "that zoom thing is still not working out… try one
      last time to fix it, but then let's just go back to where we had it. I really hate being zoomed in and then clicking on an asset and
@@ -13948,8 +14389,8 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
   if(cardSheet&&window.MutationObserver) new MutationObserver(function(){
     var open=cardSheet.classList.contains('show');
     if(open&&!cardWasOpen){ cardWasOpen=true;
-      if(cardZoomSaved()==='reset'){                        /* §30 Zoom out: the stock pulse, never fitCard */
-        S.open=true; S.mode='reset'; S.fitted=false; S.fitFailed=false; S.verdict='zoom out (setting)'; S.why=''; S.tick=''; S.checks=0; S.settled=0; S.at=0;
+      if(cardZoomMode!=='keep'){                            /* §51 the old way, for everyone: the stock pulse, never fitCard */
+        S.open=true; S.mode='reset'; S.fitted=false; S.fitFailed=false; S.verdict='zoom out'; S.why=cardZoomFrom; S.tick=''; S.checks=0; S.settled=0; S.at=0;
         S.pulsed=resetZoom(true); fitNotify(); return; }
       fitStart(); }
     else if(!open&&cardWasOpen){ cardWasOpen=false; S.open=false; fitNotify();
@@ -14010,19 +14451,58 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     B.classList.remove('gl-settings'); origin=null;
     if(window.Studio&&window.Studio.closeConsole) window.Studio.closeConsole();
   }
-  function openCalendar(){ B.classList.add('gl-cal'); if(window.GLCal) window.GLCal.show(); }
+  function openCalendar(){ leaveFinDoor(); B.classList.add('gl-cal'); if(window.GLCal) window.GLCal.show(); }   /* §50: every direct way into another surface ends the Financials context */
   function leaveCalendar(){ if(!B.classList.contains('gl-cal')) return; B.classList.remove('gl-cal'); if(window.GLCal) window.GLCal.hide(); }
   /* the Financials page (fin.js) and the Grid dashboard (grid.js) are fixed layers like the Calendar. Either module
      may be absent (they land in their own parcels): then the door is a logged no-op and no body class is stranded. */
-  function openFin(key){
-    leaveSettings(); leaveCalendar(); leaveGrid(); B.classList.remove('m-atlas-open');
-    if(window.GLFin&&window.GLFin.show){ B.classList.add('gl-fin'); window.GLFin.show(key); }
-    else log('openFin: GLFin not mounted',key);
-    sync(); resetZoom();
-  }
   function leaveFin(){ if(!B.classList.contains('gl-fin')) return; B.classList.remove('gl-fin'); if(window.GLFin&&window.GLFin.hide) window.GLFin.hide(); }
+  /* ---- §50 (round 9) THE FINANCIALS DOOR (the owner: "let's do the financials as its own tab on the bar, I think we have room for it: the company
+     financials, the grade wheel and the scorecard there"). One door, three sub-views under one three-way seg (.gl-fseg / [data-glfsub]):
+       company = the Financials page (fin.js, body.gl-fin — fin.js still owns that class);
+       donut / sc = the STOCK Grade wheel / Scorecard views, forwarded through the hidden #viewSeg like any Atlas chapter.
+     body.gl-findoor is the door's CONTEXT: held while any of the three shows, so sync() lights this door (not Atlas) and the seg row at the
+     top of #donutView / #scView is visible. finPrev remembers the view that was under when the context opened; leaving the door (any other
+     door, an Atlas sheet row, the page's own ×) puts that view back — "leaving them restores whatever was under". GL48.go('fin', opt):
+     opt = 'donut' | 'sc' | a company key | nothing (the last sub-view, Company financials at first). GL48.openFin(key) stays the contract for
+     the Grid / the card. go('atlas','donut'|'sc') is routed here too: whenever the wheel or the scorecard shows, Financials is the lit door. ---- */
+  var FIN_SUBS={company:1,donut:1,sc:1}, finSub='company', finPrev=null;
+  function finDoorUp(){ return B.classList.contains('gl-findoor'); }
+  function viewNow(){ return (($('#viewSeg .on')||{}).dataset||{}).v||'mkt'; }
+  function paintFinSeg(){ var up=finDoorUp(); [].forEach.call(document.querySelectorAll('[data-glfsub]'),function(b){ var on=up&&b.getAttribute('data-glfsub')===finSub; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); }); }
+  function enterFinDoor(sub,key){
+    sub=FIN_SUBS[sub]?sub:'company';
+    leaveSettings(); leaveCalendar(); leaveGrid(); B.classList.remove('m-atlas-open');
+    if(!finDoorUp()){ var cur=viewNow(); finPrev=(cur==='donut'||cur==='sc')?'mkt':cur; B.classList.add('gl-findoor'); }
+    finSub=sub;
+    if(sub==='company'){
+      if(window.GLFin&&window.GLFin.show){ B.classList.add('gl-fin'); window.GLFin.show(key); }
+      else log('openFin: GLFin not mounted',key);
+    } else { leaveFin(); toAtlasDeck(); fwd('#viewSeg [data-v="'+sub+'"]'); }   /* the company layer gives way to the stock view */
+    paintFinSeg(); sync(); resetZoom();
+  }
+  function leaveFinDoor(restore){
+    if(!finDoorUp()) return;
+    B.classList.remove('gl-findoor'); leaveFin();
+    var cur=viewNow(), back=finPrev; finPrev=null;
+    if(restore!==false&&(cur==='donut'||cur==='sc')&&back&&back!==cur) fwd('#viewSeg [data-v="'+back+'"]');
+    paintFinSeg();
+  }
+  function openFin(key){ enterFinDoor('company',key); }
+  function buildFinSegs(){
+    ['donutView','scView'].forEach(function(id){
+      var v=document.getElementById(id); if(!v||v.querySelector('.gl-fseg')) return;
+      var row=el('div','gl-fseg','<div class="gl-seg" role="tablist" aria-label="Financials"><button type="button" role="tab" data-glfsub="company">Company financials</button>'
+        +'<button type="button" role="tab" data-glfsub="donut">Grade wheel</button><button type="button" role="tab" data-glfsub="sc">Scorecard</button></div>');
+      v.insertBefore(row,v.querySelector('.gl-uni')||v.firstChild);   /* above the §17 Universe row (built first — the call sits after buildViewSegs) */
+    });
+  }
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('[data-glfsub]'); if(!b) return;
+    e.stopPropagation(); go('fin',b.getAttribute('data-glfsub'));
+  });
+  window.GL48.finDoor=function(){ return {up:finDoorUp(), sub:finSub, prev:finPrev}; };
   function openGrid(){
-    leaveSettings(); leaveCalendar(); leaveFin(); B.classList.remove('m-atlas-open');
+    leaveFinDoor(); leaveSettings(); leaveCalendar(); leaveFin(); B.classList.remove('m-atlas-open');
     if(window.GLGrid&&window.GLGrid.show){ B.classList.add('gl-grid'); window.GLGrid.show(); }
     else log('openGrid: GLGrid not mounted');
     sync(); resetZoom();
@@ -14033,7 +14513,7 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     /* The console sheet lives INSIDE #studioView, which is display:none outside the Studio deck —
        so the gear is dead everywhere else. Enter the Studio, open it as a full page (skin.css),
        and remember the way back. */
-    leaveFin(); leaveGrid(); B.classList.remove('m-atlas-open');
+    leaveFinDoor(); leaveFin(); leaveGrid(); B.classList.remove('m-atlas-open');
     origin={deck:inStudio()?'studio':'atlas', cal:!!fromCal};
     B.classList.add('gl-settings');
     if(!inStudio()) fwd('#deckSeg [data-d="studio"]');
@@ -14043,7 +14523,7 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
   /* §6 the Atlas door remembers List | Grid on this device */
   var LSA='aibo.gl.atlas';
   function atlasSaved(){ try{ return localStorage.getItem(LSA)==='grid'?'grid':'list'; }catch(_){ return 'list'; } }
-  function openAtlasSheet(){ leaveFin(); leaveGrid(); B.classList.add('m-atlas-open'); paintAtlasSheet(); resetZoom(); }
+  function openAtlasSheet(){ leaveFinDoor(); leaveFin(); leaveGrid(); B.classList.add('m-atlas-open'); paintAtlasSheet(); resetZoom(); }
   function atlasMode(mode){
     mode=(mode==='grid')?'grid':'list';
     try{ localStorage.setItem(LSA,mode); }catch(_){}
@@ -14057,11 +14537,15 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
      donut, sc, cards, yd), a pane for studio (cockpit, build, exposure, book), a company key for fin. ---- */
   function go(door,opt){
     B.classList.remove('m-atlas-open');
+    /* §50: the wheel and the scorecard always show under the Financials door; every other door leaves that door's context first
+       (and puts back the view that was under it) */
+    if(door==='atlas'&&(opt==='donut'||opt==='sc')) door='fin';
+    if(door==='fin'){ enterFinDoor(FIN_SUBS[opt]?opt:(opt?'company':finSub), FIN_SUBS[opt]?null:opt); return; }
+    leaveFinDoor();
     if(door==='settings'){ var wasCal=B.classList.contains('gl-cal'); leaveCalendar(); openSettings(wasCal); sync(); resetZoom(); return; }
     leaveSettings();
     if(door==='calendar'){ leaveFin(); leaveGrid(); openCalendar(); sync(); resetZoom(); return; }
     leaveCalendar();
-    if(door==='fin'){ openFin(opt); return; }
     if(door==='grid'){ openGrid(); return; }
     leaveFin(); leaveGrid();
     if(door==='tape'){ toAtlasDeck(); fwd('#viewSeg [data-v="mkt"]'); }
@@ -14081,7 +14565,7 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
   /* Door repair (proven in the 08-27 re-wrap): an Atlas chapter picked while the Studio deck is
      up must also flip the deck. Registered after the app's own delegates, so it runs after them. */
   document.addEventListener('click',function(e){
-    if(e.target.closest('#mAtlasSheet .ma-row')){ leaveSettings(); leaveCalendar(); leaveFin(); leaveGrid(); toAtlasDeck(); }
+    if(e.target.closest('#mAtlasSheet .ma-row')){ leaveFinDoor(false); leaveSettings(); leaveCalendar(); leaveFin(); leaveGrid(); toAtlasDeck(); }   /* §50: a chapter pick ends the Financials context without restoring (a new view was chosen) */
   });
   /* Settings closed with its own X means "go back where I came from". Any OTHER close (picking a
      portfolio, reset...) is the app deliberately landing on the Cockpit, and is left alone.
@@ -14107,7 +14591,10 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
   if(strip&&glyph){ title=document.createElement('b'); title.id='glTitle'; title.className='gl-title'; glyph.parentNode.insertBefore(title,glyph.nextSibling); }
   function titleFor(door,v){
     if(door==='settings') return 'Settings'; if(door==='calendar') return 'Calendar'; if(door==='studio') return 'Studio';
-    if(B.classList.contains('gl-fin')) return 'Financials'; if(B.classList.contains('gl-grid')) return 'Atlas';
+    /* §50: under the Financials door the title names the sub-view — Financials (the company page), Grade wheel, Scorecard (+ · Crypto) */
+    if(B.classList.contains('gl-fin')) return 'Financials';
+    if(door==='fin'&&(v==='donut'||v==='sc')){ var sb=$('#viewSeg .on'); return (sb?sb.textContent.trim():'Financials')+(B.classList.contains('uni-crypto')?' · Crypto':''); }
+    if(door==='fin') return 'Financials'; if(B.classList.contains('gl-grid')) return 'Atlas';
     if(door==='tape') return 'Tape';
     var b=$('#viewSeg .on'), t=b?b.textContent.trim():'Atlas';
     return t+(B.classList.contains('uni-crypto')?' · Crypto':'');
@@ -14125,18 +14612,16 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
       seg.setAttribute('role','group'); seg.setAttribute('aria-label','Atlas layout'); head.insertBefore(seg,x||null); }
     function cap(key,text,before){ var c=el('div','gl-ma-cap',text); c.setAttribute('data-glcap',key); atlas.insertBefore(c,before||null); }
     cap('flow','Capital flow',atlas.querySelector('.ma-row[data-av="wf"]'));
-    cap('grade','Grading',atlas.querySelector('.ma-row[data-av="donut"]'));
+    /* §50 (round 9): the Grade wheel and the Scorecard rows are HIDDEN here (skin.css — stock nodes are never removed) and the Company
+       financials row is not made at all: all three live under the Financials DOOR now (the owner: "the financials as its own tab on the bar…
+       the company financials, the grade wheel and the scorecard there"). The sheet is Capital flow · Study · Macro. */
     cap('study','Study',atlas.querySelector('.ma-row[data-av="cards"]'));     /* the owner: "flashcards should not be under grading. It should be its own thing" */
-    cap('fin','Financials');
-    var fin=el('button','gl-ma-row','<b>Company financials</b><span>15 years of filings, charted — every graded company</span>');
-    fin.type='button'; fin.setAttribute('data-glfin',''); atlas.appendChild(fin);
     cap('macro','Macro');
     if(!atlas.querySelector('.ma-row[data-av="yd"]')){
       var yd=el('button','ma-row','<b>Yield curves</b><span>the Treasury curve and its inversions</span>'); yd.type='button'; yd.setAttribute('data-av','yd'); atlas.appendChild(yd); }
     atlas.addEventListener('click',function(e){
-      var b=e.target.closest('[data-glatlas],[data-glfin]'); if(!b) return;
-      e.stopPropagation();                                     /* neither carries .ma-row; the stock delegate must not see a bubble either */
-      if(b.hasAttribute('data-glfin')){ openFin(); return; }
+      var b=e.target.closest('[data-glatlas]'); if(!b) return;
+      e.stopPropagation();                                     /* it carries no .ma-row; the stock delegate must not see a bubble either */
       atlasMode(b.getAttribute('data-glatlas'));
     });
   }
@@ -14166,7 +14651,7 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     var u=(($('#uniSeg .on')||{}).dataset||{}).u||'equity';
     [].forEach.call(document.querySelectorAll('.gl-uni [data-glvu]'),function(b){ var on=b.getAttribute('data-glvu')===u; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); });
   }
-  buildViewSegs();
+  buildViewSegs(); buildFinSegs();                           /* §50: the Financials seg goes in above the Universe row on the wheel / scorecard */
   document.addEventListener('click',function(e){
     var b=e.target.closest('.gl-uni [data-glvu],.gl-uni [data-glhelp]'); if(!b) return;
     if(b.hasAttribute('data-glhelp')){ fwd('#helpBtn'); return; }
@@ -14195,9 +14680,12 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
   /* ---- mirror state back onto the new chrome + fade the surface when it really changes ---- */
   var VIEWS=['mktView','wfView','flowView','webView','donutView','cardsView','scView','ydView'], lastKey='';
   function sync(){
+    /* §50: the company page closed itself (its × / Escape, then GL48.sync()) while the door's context was on its company sub-view — the
+       context ends with it and the view that was under comes back. Re-entrant-safe: leaveFinDoor() is a no-op once the class is gone. */
+    if(finDoorUp()&&finSub==='company'&&!B.classList.contains('gl-fin')) leaveFinDoor();
     var v=(($('#viewSeg .on')||{}).dataset||{}).v||'mkt', p=(($('#stSeg .dk-on')||{}).dataset||{}).pane||'cockpit';
     var door=B.classList.contains('gl-settings')?'settings':B.classList.contains('gl-cal')?'calendar':
-             (B.classList.contains('gl-fin')||B.classList.contains('gl-grid'))?'atlas':inStudio()?'studio':v==='mkt'?'tape':'atlas';
+             (B.classList.contains('gl-fin')||finDoorUp())?'fin':B.classList.contains('gl-grid')?'atlas':inStudio()?'studio':v==='mkt'?'tape':'atlas';
     /* §34 (round 7): the Atlas sheet is an overlay, not a view, so `door` (the surface underneath — title, gl-tape, the fade key) keeps
        reading the surface; only the LIGHT moves: while body.m-atlas-open the Atlas door is the one .on (dock and, in top-mode
        landscape, the strip — same node), no other is, and the previous light returns on close. Grid mode is a view: unchanged. */
@@ -14209,7 +14697,7 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
       var on=b.getAttribute('data-glpane')===p; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false');});
     if(title){ var t=titleFor(door,v); if(title.textContent!==t) title.textContent=t; }
     B.classList.toggle('gl-tape',door==='tape'&&!B.classList.contains('gl-tech'));   /* §18: the Tape's controls ride the strip (skin.css) */
-    paintAtlasSheet(); paintViewSegs(); paintLens(); mirrorTape(); refreshOwnEmpty();
+    paintAtlasSheet(); paintViewSegs(); paintLens(); paintFinSeg(); mirrorTape(); refreshOwnEmpty(); dressFlowZoom();
     fitTape();                                             /* filters / universe can re-wrap the controls above the table */
     var key=door+'|'+v+'|'+p+'|'+((($('#uniSeg .on')||{}).dataset||{}).u||'');
     if(key===lastKey) return; var first=!lastKey; lastKey=key; if(first) return;
@@ -14248,11 +14736,57 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
      strip); skin.css neutralises the class as well, should one ever slip through. Portrait and rail/orb/bar are untouched: there
      the doors are not in the strip and the stock hide is welcome. Rotating into top-mode landscape with the strip already tucked
      (a scrolled portrait Waterfall) un-tucks it too. ---- */
-  function stripPinned(){ return H.getAttribute('data-land')==='top'&&LQ.matches; }
+  function stripPinned(){ return (H.getAttribute('data-land')==='top'&&LQ.matches)||B.classList.contains('gl-flow100'); }   /* §52: pinned at 100% on the Flow chart too */
   function unhideStrip(){ if(strip&&stripPinned()&&strip.classList.contains('m-hide')) strip.classList.remove('m-hide'); }
   if(strip&&window.MutationObserver) new MutationObserver(unhideStrip).observe(strip,{attributes:true,attributeFilter:['class']});
   if(LQ.addEventListener) LQ.addEventListener('change',unhideStrip); else if(LQ.addListener) LQ.addListener(unhideStrip);
   unhideStrip(); window.GL48.stripPinned=stripPinned;
+
+  /* ---- §52 (round 9) THE FLOW CHART'S Fit width | 100% ON THE iPHONE (the owner: "I like that the 100% is there, but when I toggle it on the
+     iPhone it's really glitchy"). Reproduced at 390 in Chromium AND WebKit, build direct AND the latest.html shell — the page never overflowed
+     sideways (documentElement.scrollWidth stayed 390 in every state); what did happen:
+       (1) Fit width scales #flowStage by transform, which leaves its 1560 px LAYOUT box alone — the wrap stayed 1604 px of scrollable content
+           behind a 390 px chart (scrollLeft=400 took at Fit), so a sideways thumb slid the fitted chart off into blank space; and stock fits to
+           wrap.clientWidth, gutters included, so 22 px of the fitted chart hung off the right edge, reachable only by that drag;
+       (2) the wrap's scrollLeft SURVIVED the 100% → Fit toggle (605/651/500 px measured): pan at 100%, tap Fit width, and the chart came back
+           scrolled hundreds of px to the left — a blank wrap where the chart should be. That is the toggle glitch;
+       (3) at 100% the wrap is a 2066 px-tall horizontal scroller: any wobble in a sideways drag also scrolls the page, and the stock scroll
+           rule flapped #mStrip.m-hide on every change of direction (measured: hide at scrollY 120→400, show at 400→380).
+     The fix wraps applyZoom() — a stock top-level function declaration, so window.applyZoom IS the binding every stock call site resolves —
+     and only while Glass is on (this shim never runs with the theme off; the stock function runs first, untouched): the wrap is marked
+     data-glzoom (skin.css: overflow-x hidden at Fit, overscroll-behavior-x contain always), Fit is re-computed against the CONTENT box so the
+     whole chart is on screen, the wrap returns to scrollLeft 0 at Fit and the 100% pan is remembered and put back on the next 100%, and
+     body.gl-flow100 is held while the Flow view shows at 100% — stripPinned() then keeps the strip put through the same MutationObserver as
+     landscape top (skin.css neutralises the class as the belt). touch-action is NOT touched: he pinch-zooms the chart (§51). ---- */
+  var fwrap=$('#flowWrap'), fstage=$('#flowStage'), pan100=0;
+  function flowZoomMode(){ var on=$('#zoomSeg button.on'); return (on&&on.getAttribute('data-z')==='1')?'1':'fit'; }
+  function flowShowing(){
+    var fv=$('#flowView'); if(!fv||fv.classList.contains('hidden')||inStudio()) return false;
+    return !(B.classList.contains('gl-tech')||B.classList.contains('gl-fin')||B.classList.contains('gl-grid')||B.classList.contains('gl-cal')||B.classList.contains('gl-settings'));
+  }
+  function dressFlowZoom(){
+    if(!fwrap) return; var m=flowZoomMode(), on100=(m==='1')&&flowShowing();
+    if(fwrap.getAttribute('data-glzoom')!==m) fwrap.setAttribute('data-glzoom',m);
+    if(B.classList.contains('gl-flow100')!==on100){ B.classList.toggle('gl-flow100',on100); if(on100) unhideStrip(); }
+  }
+  if(fwrap&&fstage&&typeof window.applyZoom==='function'&&!window.applyZoom.gl48){
+    var stockApplyZoom=window.applyZoom;
+    var glApplyZoom=function(){
+      var was=flowZoomMode(), r=stockApplyZoom.apply(this,arguments), now=flowZoomMode();
+      try{
+        if(now==='fit'){
+          var cs=getComputedStyle(fwrap), inner=fwrap.clientWidth-(parseFloat(cs.paddingLeft)||0)-(parseFloat(cs.paddingRight)||0);
+          var stageH=fstage.offsetHeight||parseFloat(fstage.style.height)||0, k=Math.min(2.5,inner/1560);
+          if(inner>0&&stageH>0){ fstage.style.transform=(k===1)?'none':'scale('+k+')'; fwrap.style.height=(stageH*k+8)+'px'; }
+          if(was==='1') pan100=fwrap.scrollLeft;
+          if(fwrap.scrollLeft!==0) fwrap.scrollLeft=0;
+        } else if(was!=='1'&&pan100>0){ fwrap.scrollLeft=pan100; }
+      }catch(_){}
+      dressFlowZoom(); return r;
+    };
+    glApplyZoom.gl48=true; window.applyZoom=glApplyZoom;   /* every entry into the Flow view goes through showView → applyZoom, so the first dress is never missed */
+  }
+  window.GL48.flowZoom=function(){ return {mode:flowZoomMode(), on100:B.classList.contains('gl-flow100'), pan:pan100, scrollLeft:fwrap?fwrap.scrollLeft:null}; };
   function orbOn(){ return H.getAttribute('data-land')==='orb'&&LQ.matches; }
   dock.addEventListener('click',function(e){                                  /* capture: a closed orb opens instead of navigating */
     if(!orbOn()) return;
@@ -14337,14 +14871,15 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
      vital real estate"). Under body.gl-tape (set in sync(), ≤900px = the phone control pattern) skin.css hides the stock
      #mkCtl and shows this mirror: 🔍 → #mkQBtn, Filters ▾ (+ badge) → #mkFBtn, the stats copied from #mkStat by a
      MutationObserver. Nothing stock moves: the search row and the Filters sheet still open under the strip. ---- */
-  var tctl=null, tstat=null, tbadge=null, tapeObs=null;
+  /* round 9 (the owner: the stats text "differs per universe and the strip buttons obscure it… maybe we just don't have that text on the top"):
+     the mirror carries the 🔍 and Filters (+ badge) only — NO stats span; the Markets module carries that line at the head of the Filters sheet. */
+  var tctl=null, tbadge=null, tapeObs=null;
   function buildTapeCtl(){
     if(tctl||!strip||!glyph) return;
     tctl=el('div','gl-tctl','<button type="button" class="gl-tbtn gl-tq" data-gltq aria-label="Search">🔍</button>'
-      +'<button type="button" class="gl-tbtn gl-tf" data-gltf aria-label="Filters"><b>Filters</b><span class="gl-tbadge" hidden></span><i aria-hidden="true">▾</i></button>'
-      +'<span class="gl-tstat"></span>');
+      +'<button type="button" class="gl-tbtn gl-tf" data-gltf aria-label="Filters"><b>Filters</b><span class="gl-tbadge" hidden></span><i aria-hidden="true">▾</i></button>');
     tctl.id='glTapeCtl'; strip.insertBefore(tctl,(title||glyph).nextSibling);
-    tstat=tctl.querySelector('.gl-tstat'); tbadge=tctl.querySelector('.gl-tbadge');
+    tbadge=tctl.querySelector('.gl-tbadge');
     tctl.addEventListener('click',function(e){
       var b=e.target.closest('[data-gltq],[data-gltf]'); if(!b) return;
       if(b.hasAttribute('data-gltf')){ e.stopPropagation(); fwd('#mkFBtn'); }   /* the stock document-level closer would shut the sheet in the same tick */
@@ -14353,9 +14888,8 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     });
   }
   function mirrorTape(){
-    if(!tstat) return;
-    var st=$('#mkStat'), bd=$('#mkFBadge');
-    if(st){ if(tstat.innerHTML!==st.innerHTML) tstat.innerHTML=st.innerHTML; if(tstat.title!==st.title) tstat.title=st.title; }
+    if(!tbadge) return;
+    var bd=$('#mkFBadge');
     if(bd){ if(tbadge.hidden!==bd.hidden) tbadge.hidden=bd.hidden; if(tbadge.textContent!==bd.textContent) tbadge.textContent=bd.textContent; }
   }
   function watchTape(){
@@ -14381,7 +14915,7 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
         var d=dock.getBoundingClientRect(), lines=[
           'safe-b '+(H.style.getPropertyValue('--gl-safe-b')||'—')+' · land '+(H.getAttribute('data-land')||'—')+' · dpr '+(window.devicePixelRatio||1),
           'innerH '+window.innerHeight+(framed?' · top.innerH '+tw.innerHeight:'')+' · screen.h '+screen.height+' · '+window.innerWidth+'×'+window.innerHeight,
-          'doc '+H.clientWidth+'×'+H.clientHeight+(framed?' · top.doc '+tw.document.documentElement.clientWidth+'×'+tw.document.documentElement.clientHeight:'')+' · cardzoom '+cardZoomSaved(),   /* §30: the layout viewport the card maps onto */
+          'doc '+H.clientWidth+'×'+H.clientHeight+(framed?' · top.doc '+tw.document.documentElement.clientWidth+'×'+tw.document.documentElement.clientHeight:'')+' · cardzoom '+cardZoomSaved()+' ('+cardZoomFrom+')',   /* §30: the layout viewport the card maps onto; §51: the mode + where it came from */
           'vv.h '+(vv?Math.round(vv.height):'—')+' · vv.scale '+(vv?vv.scale.toFixed(3):'—')+(tvv?' · top.vv.h '+Math.round(tvv.height)+' · top.scale '+tvv.scale.toFixed(3):''),
           'bar top '+Math.round(d.top)+' bottom '+Math.round(d.bottom)+' h '+Math.round(d.height)+' · innerH−bottom '+Math.round(window.innerHeight-d.bottom),
           'framed '+framed,
@@ -14438,6 +14972,24 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     window.Studio.posSync=function(){ var r=_ps.apply(this,arguments); refreshOwnEmpty(); return r; };
   }
 
+  /* ---- §49 (round 9) THE SLEEVE READ LINE, dressed. Stock writes #readLine as one run of text with four clauses glued by
+     "&nbsp;·&nbsp;" (Sleeve read · blended quality … | N names + M ETFs | A-tier names = x% of sleeve $ | A n / B n / C n / D n). At 390
+     the run broke mid-clause ("26" on one line, "names" on the next) and the grade letter + counts wore the global grade-chip
+     backgrounds. Each clause is wrapped in a .gl-rl (inline-block: the line breaks only BETWEEN clauses) with a quiet dot between;
+     skin.css does the rest (no backgrounds, mono tabular values, grade text colours). Re-applied whenever stock repaints the line
+     (a MutationObserver on its children; the guard is the .gl-rl already present, so the shim's own write never re-enters). Nothing
+     is read back from #readLine anywhere in stock. Glass only — this code never runs with the theme off. ---- */
+  var readLine=$('#readLine');
+  function dressReadLine(){
+    if(!readLine||readLine.querySelector('.gl-rl')) return;
+    var html=readLine.innerHTML; if(!html||!/·/.test(html)) return;
+    var parts=html.split(/\s*(?:&nbsp;| )·(?:&nbsp;| )\s*/); if(parts.length<2) return;
+    /* the dot rides INSIDE the clause it introduces, so a wrapped line starts with a quiet marker rather than ending on a dangling one */
+    readLine.innerHTML=parts.map(function(p,i){ return '<span class="gl-rl">'+(i?'<i class="gl-rl-dot" aria-hidden="true">·</i>':'')+p.trim()+'</span>'; }).join(' ');
+  }
+  if(readLine&&window.MutationObserver) new MutationObserver(dressReadLine).observe(readLine,{childList:true});
+  dressReadLine();
+
   /* ---- Settings > Appearance: the theme picker, in the sheet's own grammar ---- */
   function injectAppearance(){
     if($('#glAppearance')) return;
@@ -14458,18 +15010,12 @@ html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(va
     gcard.innerHTML='<div class="st8-row st8-static gl-lensrow"><div class="gl-seg" role="group" aria-label="Grades shown"><button type="button" data-gllens="exp">Expansion</button><button type="button" data-gllens="rec">Recession</button></div></div>';
     /* §27 (round 6): explicit foot grammar (.gl-foot, skin.css) — the owner saw this line "like highlighted text" on the phone */
     var gfoot=document.createElement('div'); gfoot.className='st8-foot gl-foot'; gfoot.textContent='Which roll grade the wheel, scorecard, tape and chips wear. Every company card always shows both. Saved on this device.';
-    /* §30 (round 7) "Card when zoomed in" — Keep my zoom (the card is fitted to what is on screen, the page zoom untouched) | Zoom out
-       (the stock reset pulse on open: the page snaps to full size and the card fills it). Same grammar as Grades shown; aibo.gl.cardzoom.
-       §39 (round 8): the foot says Keep falls back to the zoom-out by itself when the device-side self-check disagrees. */
-    var zcap=document.createElement('div'); zcap.className='st8-cap'; zcap.textContent='Card when zoomed in';
-    var zcard=document.createElement('div'); zcard.className='dk-group st8-card'; zcard.id='glCardZoom';
-    zcard.innerHTML='<div class="st8-row st8-static gl-lensrow"><div class="gl-seg" role="group" aria-label="Card when zoomed in"><button type="button" data-glcardzoom="keep">Keep my zoom</button><button type="button" data-glcardzoom="reset">Zoom out</button></div></div>';
-    var zfoot=document.createElement('div'); zfoot.className='st8-foot gl-foot'; zfoot.textContent='What a company card does when you open it pinch-zoomed. Keep my zoom fits the card to the part of the page you can see and leaves the zoom as it was — and if your phone disagrees with the fit, it zooms out by itself instead. Zoom out always zooms the page out first. Saved on this device.';
-    [[cap,card,foot],[gcap,gcard,gfoot],[zcap,zcard,zfoot]].forEach(function(trio){ trio.forEach(function(n){ if(about) main.insertBefore(n,about); else main.appendChild(n); }); });
+    /* §30/§39 (rounds 7–8) put a "Card when zoomed in" row here (Keep my zoom | Zoom out). §51 (round 9): the owner called it "extra noise that will
+       confuse people" — the row is GONE; the card always opens the old way (see the cardZoomMode block at the top). */
+    [[cap,card,foot],[gcap,gcard,gfoot]].forEach(function(trio){ trio.forEach(function(n){ if(about) main.insertBefore(n,about); else main.appendChild(n); }); });
     card.addEventListener('click',function(e){ var b=e.target.closest('[data-gltheme]'); if(b){ e.stopPropagation(); setTheme(b.getAttribute('data-gltheme')); } });
     gcard.addEventListener('click',function(e){ var b=e.target.closest('[data-gllens]'); if(b){ e.stopPropagation(); setLens(b.getAttribute('data-gllens')); } });
-    zcard.addEventListener('click',function(e){ var b=e.target.closest('[data-glcardzoom]'); if(b){ e.stopPropagation(); setCardZoom(b.getAttribute('data-glcardzoom')); } });
-    paintLens(); paintCardZoom();
+    paintLens();
     applyTheme(window.GL48.get());
   }
   /* desktop reaches Settings through the stock gear, so watch for that path too */
