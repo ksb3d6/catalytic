@@ -2658,21 +2658,29 @@ function tfTboSVG(bars,w,h,tailN){
     top.push(Math.max(s21[k2],s40[k2]));bot.push(Math.min(s21[k2],s40[k2]));
   }
   function mode(i){ if(top[i]==null)return null; return c[i]>top[i]?1:(c[i]<bot[i]?-1:0); }
+  /* 10-05 (the owner): the marks are O / X. GREEN O = a long opens (the close breaks ABOVE the 21/40 spread), GREEN X = that long
+     closes (the close falls back into / through it); RED O = a short opens (the close breaks BELOW), RED X = that short closes.
+     Long marks ride above the line, short marks below it, so a straight flip (green X + red O on one bar) never overlaps.
+     The newest marks only: two on a mini, four on a plot wide enough to read them. */
   var evs=[];
   for(var k3=1;k3<n;k3++){
     var m0=mode(k3-1),m1=mode(k3);
-    if(m0==null||m1==null)continue;
-    if(m1===1&&m0<1)evs.push({i:k3,t:1});
-    if(m1===-1&&m0>-1)evs.push({i:k3,t:-1});
+    if(m0==null||m1==null||m0===m1)continue;
+    if(m0===1)evs.push({i:k3,side:1,open:false});
+    if(m0===-1)evs.push({i:k3,side:-1,open:false});
+    if(m1===1)evs.push({i:k3,side:1,open:true});
+    if(m1===-1)evs.push({i:k3,side:-1,open:true});
   }
-  evs=evs.slice(-2);
+  evs=evs.slice(w>=120?-4:-2);
+  var mr=w>=120?2.6:2;
   for(var k4=0;k4<evs.length;k4++){
-    var v=evs[k4],x=X(v.i),y=Y(c[v.i]);
-    if(v.t===1){
-      var ay=Math.max(4,y-5);
-      s+='<path d="M'+(x-2.4).toFixed(1)+','+ay.toFixed(1)+' L'+(x+2.4).toFixed(1)+','+ay.toFixed(1)+' L'+x.toFixed(1)+','+(ay-3.8).toFixed(1)+' Z" fill="'+TF_UP+'"/>';
+    var v=evs[k4],x=Math.max(mr+1,Math.min(w-mr-1,X(v.i))),y=Y(c[v.i]);
+    var my=v.side===1?Math.max(mr+1.5,y-mr-4):Math.min(h-mr-1.5,y+mr+4), mc=v.side===1?TF_UP:TF_DN;
+    if(v.open){
+      s+='<circle class="tf-mk" data-mk="'+(v.side===1?'ol':'os')+'" cx="'+x.toFixed(1)+'" cy="'+my.toFixed(1)+'" r="'+mr+'" fill="none" stroke="'+mc+'" stroke-width="1.3"/>';
     }else{
-      s+='<circle cx="'+x.toFixed(1)+'" cy="'+Math.min(h-4,y+5).toFixed(1)+'" r="2" fill="none" stroke="'+TF_DN+'" stroke-width="1.2"/>';
+      s+='<path class="tf-mk" data-mk="'+(v.side===1?'cl':'cs')+'" d="M'+(x-mr).toFixed(1)+','+(my-mr).toFixed(1)+' L'+(x+mr).toFixed(1)+','+(my+mr).toFixed(1)
+        +' M'+(x-mr).toFixed(1)+','+(my+mr).toFixed(1)+' L'+(x+mr).toFixed(1)+','+(my-mr).toFixed(1)+'" fill="none" stroke="'+mc+'" stroke-width="1.3" stroke-linecap="round"/>';
     }
   }
   return tfSvg(w,h)+s+'</svg>';
@@ -2997,7 +3005,7 @@ function techBox(strip,panel){
   if(!panel) return strip||'';
   if(!strip) return panel;
   var btn='<button type="button" class="as-xp" data-xp aria-expanded="false">Technicals'
-        +'<span>candles \u00b7 TBO \u00b7 divergence \u00b7 Bollinger \u2014 M/W/D/4H/H</span>'
+        +'<span>candles \u00b7 EMA spread \u00b7 divergence \u00b7 Bollinger \u2014 M/W/D/4H/H</span>'
         +'<b class="xp-ch">\u25BE</b></button>';
   strip=strip.replace(/<\/div>$/, btn+'</div>');
   return '<div class="aibo-box">'+strip+panel+'</div>';
@@ -3036,7 +3044,7 @@ function techPanel(tk,kind){
   liveStripCSS();
   var METS=[
     {l:'CANDLES·55EMA', fn:tfCandleSVG},
-    {l:'TBO CLOUD',     fn:tfTboSVG},
+    {l:'EMA SPREAD',    fn:tfTboSVG},
     {l:'DIVERGENCE',    fn:tfDivSVG},
     {l:'BOLLINGER',     fn:tfBbSVG}
   ];
@@ -3057,7 +3065,7 @@ function techPanel(tk,kind){
         :'<span class="tp-gap">'+(j>=3?'no intraday yet':'short history')+'</span>')+'</div>';
     }
   }
-  return '<details class="aibo-tech"><summary>Technicals <span>candles · TBO · divergence · Bollinger — M/W/D/H</span></summary>'
+  return '<details class="aibo-tech"><summary>Technicals <span>candles · EMA spread · divergence · Bollinger — M/W/D/H</span></summary>'
        + '<div class="tp-scroll"><div class="tp-grid tp-grid5">'+out+'</div></div></details>';
 }
 function liveStrip(tk){
@@ -5511,21 +5519,42 @@ const POS_EQ_ALIAS={GOOG:'GOOGL',
    Checked BEFORE metals and the stock segments (posGroupOf) — so no metal ETFs
    (GLD/SLV stay in Metals) and no operating companies (NDAQ = Nasdaq Inc, a
    stock; CME, ICE likewise) may ever be added here. */
-const POS_INDEXISH={
- /* S&P 500 */            SPY:1,IVV:1,SPLG:1,RSP:1,FXAIX:1,SWPPX:1,VFIAX:1,VFINX:1,
- /* Nasdaq */             QQQ:1,ONEQ:1,QQQE:1,
- /* leveraged index */    TQQQ:1,QLD:1,SSO:1,UPRO:1,SPXL:1,
- /* inverse index */      PSQ:1,SH:1,SQQQ:1,
- /* total US market */    VTI:1,ITOT:1,SCHB:1,SPTM:1,FSKAX:1,SWTSX:1,VTSAX:1,VTSMX:1,FZROX:1,FNILX:1,
- /* Dow / mid / small */  DIA:1,IWM:1,VTWO:1,IJR:1,SPSM:1,VB:1,SCHA:1,IJH:1,MDY:1,SPMD:1,VO:1,VXF:1,
- /* world & intl (VXUS is already a sleeve fund via FUND_NAME) */
-                          VT:1,ACWI:1,IXUS:1,VEA:1,IEFA:1,EFA:1,SCHF:1,SPDW:1,VWO:1,IEMG:1,EEM:1,SCHE:1,SPEM:1,VEU:1,FTIHX:1,FZILX:1,VTIAX:1,SWISX:1,
- /* country majors */     EWJ:1,EWU:1,EWG:1,EWY:1,EWT:1,INDA:1,MCHI:1,FXI:1,
- /* style index */        VUG:1,VTV:1,IWF:1,IWD:1,SCHG:1,SCHV:1,SPYG:1,SPYV:1,VBK:1,VBR:1,MGK:1,QUAL:1,VLUE:1,MTUM:1,USMV:1,SPLV:1,
- /* dividend index */     VIG:1,VYM:1,DGRO:1,SDY:1,NOBL:1,
- /* bond index */         BND:1,AGG:1,FXNAX:1,SWAGX:1,VBTLX:1,BNDX:1,SCHZ:1,BSV:1,BIV:1,VGIT:1,VGSH:1,IEF:1,TLT:1,SHY:1,GOVT:1,LQD:1,HYG:1,TIP:1,VTIP:1,VCIT:1,VCSH:1,MUB:1,
- /* T-bill index */       SGOV:1,BIL:1,USFR:1,TFLO:1
-};
+/* 10-05 (the owner: "future proof for consumer-facing with the index and the cash and cash-equivalent products… categorize the many different
+   indexes trading with the Nasdaq and the Dow and the S&P, make sure they're all covered and sorted into the indexes part of the
+   portfolio builder"): ONE catalog, by family. Every ticker here rides the INDICES sleeve whatever broker holds it, and its Book row
+   names the family. ETFs and the big index mutual funds both. Still no metal ETFs (GLD/SLV stay in Metals), no operating companies
+   (NDAQ, CME, ICE, SPGI, MSCI are stocks), and no sector / thematic funds (those are Stocks › funds). */
+const INDEX_FAMILIES=[
+ ['S&P 500',              'SPY IVV VOO SPLG SPYM FXAIX SWPPX VFIAX VFINX SNXFX RSP EQL XLG OEF IVW IVE SPYG SPYV VOOG VOOV SPXN SPXT'],
+ ['Nasdaq',               'QQQ QQQM ONEQ QQQE QQEW QQQJ QQJG FNCMX NASDX USNQX'],
+ ['Dow',                  'DIA DJD EDOW DJIA'],
+ ['Russell & small / mid','IWM VTWO IWB IWV VONE VTHR IWF IWD IWO IWN IWP IWS IWR VONG VONV IJR SPSM VB SCHA VIOO IJH MDY SPMD VO SCHM IVOO VXF FSMAX FSSNX FSMDX SWSSX NAESX VSMAX VIMAX'],
+ ['Total US market',      'VTI ITOT SCHB SPTM IYY FSKAX SWTSX VTSAX VTSMX FZROX FNILX SCHX SCHK VV'],
+ ['World & international','VT ACWI VXUS IXUS VEA IEFA EFA SCHF SPDW VWO IEMG EEM SCHE SPEM VEU ACWX URTH FTIHX FZILX VTIAX VTWAX SWISX FSPSX FSGGX VFWAX'],
+ ['Country',              'EWJ EWU EWG EWY EWT EWZ EWC EWA EWW EWH EWL EWQ EWP EWI INDA INDY MCHI FXI KWEB ASHR FLJP FLKR'],
+ ['Style & factor',       'VUG VTV SCHG SCHV VBK VBR MGK MGV QUAL VLUE MTUM USMV SPLV SPHQ COWZ AVUV AVUS DFAC DFUS'],
+ ['Dividend',             'SCHD VIG VYM DGRO SDY NOBL DVY HDV SPYD DGRW VYMI'],
+ ['Bonds',                'BND AGG FXNAX SWAGX VBTLX VBMFX BNDX BNDW SCHZ BSV BIV BLV VGIT VGSH VGLT IEF IEI TLT TLH SHY GOVT SPTL SPTS SCHO SCHR LQD HYG JNK USHY TIP VTIP SCHP VCIT VCSH VCLT IGIB IGSB MUB VTEB EMB'],
+ ['Leveraged index',      'TQQQ QLD SSO UPRO SPXL UDOW DDM TNA UWM SPUU'],
+ ['Inverse index',        'PSQ SH SQQQ QID SDS SPXU SPXS DOG DXD SDOW RWM TWM TZA']
+];
+const POS_INDEXISH={}, INDEX_FAM={};
+INDEX_FAMILIES.forEach(([fam,list])=>list.split(' ').forEach(t=>{ if(t&&!POS_INDEXISH[t]){ POS_INDEXISH[t]=1; INDEX_FAM[t]=fam; } }));
+/* CASH EQUIVALENTS ride the CASH sleeve: money-market funds, T-bill and ultra-short ETFs — and, inside a crypto account only, the
+   dollar stablecoins (the same tickers can be something else at a stock broker). A broker's own cash line is already cash (`cash` flag). */
+const CASH_FAMILIES=[
+ ['Money market fund',    'SPAXX FDRXX FZFXX SPRXX FDLXX FZDXX FTEXX VMFXX VMRXX VUSXX VMSXX VYFXX SWVXX SNVXX SNSXX SNOXX SWTXX TTTXX WMPXX TFDXX GOFXX FRGXX MJLXX AFAXX'],
+ ['T-bill ETF',           'SGOV BIL SHV USFR TFLO BILS XBIL TBIL CLIP GBIL TBLL XHLF OBIL BOXX VBIL'],
+ ['Ultra-short bond ETF', 'JPST MINT ICSH NEAR GSY VUSB PULS FLOT FLRN FTSM']
+];
+const STABLE_USD={USDC:1,USDT:1,DAI:1,PYUSD:1,USDS:1,FDUSD:1,TUSD:1,RLUSD:1,USDG:1,GUSD:1,USDP:1};
+const POS_CASHEQ={}, CASHEQ_FAM={};
+CASH_FAMILIES.forEach(([fam,list])=>list.split(' ').forEach(t=>{ if(t){ POS_CASHEQ[t]=1; CASHEQ_FAM[t]=fam; } }));
+function cashEqOf(sym,provider,kind){               /* -> the family name, or null */
+  const s=String(sym||'').toUpperCase();
+  if(provider==='kraken'||kind==='crypto') return hasOwn(STABLE_USD,s)?'Dollar stablecoin':null;
+  return hasOwn(POS_CASHEQ,s)?CASHEQ_FAM[s]:null;
+}
 function posLayer(){ return window.AIBO_POS||null; }
 function posT(iso){ if(!iso)return ''; const d=new Date(iso); if(isNaN(d))return '';
   const hm=String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0');
@@ -5538,6 +5567,7 @@ function posQty(q){ if(typeof q!=='number'||!isFinite(q))return ''; return Strin
 function posGroupOf(sym,cash,provider,kind){
   const s=String(sym||'').toUpperCase();
   if(cash) return {id:'pcash',name:'Cash & sweep',col:'#4fae84'};
+  if(cashEqOf(s,provider,kind)) return {id:'pcash',name:'Cash & sweep',col:'#4fae84'};   /* 10-05: cash equivalents (money market, T-bills, stablecoins in a crypto account) */
   if(kind==='metals') return {id:'pmetal',name:'Metals',col:'#c2a33a'};  /* physical metals account (v3.9): classify by KIND so XAG/XAU/any future
      metal rides the Metals sleeve + slider — never Unclassified-under-Stocks */
   if(provider==='kraken'||kind==='crypto'){       /* crypto only from crypto accounts — AI/AR/ATOM/QNT are also real equity tickers */
@@ -5646,7 +5676,9 @@ function offAimBits(offBy){                                         /* stable sl
    summed per name — overlap is the point, never netted. Crypto/metals/cash are
    tracked for totals only; unpriced & debits never reach the math (posModel
    already segregates them — the header lists them, never draws them). ---- */
-const INDEX_ALIAS={SPY:'VOO', IVV:'VOO', VTI:'VOO', QQQ:'QQQM'};   /* owned broad funds ≈ nearest baked basket */
+const INDEX_ALIAS={SPY:'VOO', IVV:'VOO', SPLG:'VOO', SPYM:'VOO', FXAIX:'VOO', SWPPX:'VOO', VFIAX:'VOO', VFINX:'VOO',   /* the same index: the same basket */
+  VTI:'VOO', ITOT:'VOO', SCHB:'VOO', FSKAX:'VOO', SWTSX:'VOO', VTSAX:'VOO', FZROX:'VOO', SCHX:'VOO', VV:'VOO',                /* total market / large cap ≈ the S&P's top names */
+  QQQ:'QQQM', QQQE:'QQQM', IXUS:'VXUS', VEU:'VXUS', VTIAX:'VXUS', FTIHX:'VXUS', FZILX:'VXUS', ACWX:'VXUS'};   /* owned broad funds ≈ nearest baked basket */
 let _pxCache=null,_pxKey=null;                                     /* memo per positions payload — paint() runs on every slider drag */
 function posExposure(){
   const A=posLayer(), key=(A&&A.state)?A.state.data:null;
@@ -5659,7 +5691,7 @@ function posExposure(){
     const isCryptoGrp = g.id==='pcother' || hasOwn(CRYPTO_BYID,g.id);
     for(const as of g.aorder){
       const usd=as.usd; if(!(usd>0)) continue;                     /* unpriced/debits never reach groups — belt & suspenders */
-      if(g.id==='pcash'){ tot.cash+=usd; cashRows.push({sym:String(as.sym).toUpperCase(), usd, prov:as.prov||''}); continue; }
+      if(g.id==='pcash'){ tot.cash+=usd; cashRows.push({sym:String(as.sym).toUpperCase(), usd, prov:as.prov||'', eq:(function(k){ return hasOwn(CASHEQ_FAM,k)?CASHEQ_FAM[k]:(hasOwn(STABLE_USD,k)?'Dollar stablecoin':null); })(String(as.sym).toUpperCase())}); continue; }
       if(isCryptoGrp){ tot.crypto+=usd; cryptoRows.push({sym:String(as.sym).toUpperCase(), usd, grp:g.name}); continue; }                /* crypto never joins equity look-through (AI/AR/ATOM/QNT collide) */
       if(g.id==='pmetal'){ tot.metals+=usd; metalRows.push({sym:String(as.sym).toUpperCase(), usd}); continue; }
       let s=String(as.sym).toUpperCase();
@@ -6995,13 +7027,13 @@ function buildBookAllOwn(el){
     rows.push({sl:'ai',t,role:(g?g[0]:'direct \u00b7 not in the graded universe'),usd:px.dir[t],mark:'',
       rec:g?gletter(t,'rec'):'\u2014', exp:g?gletter(t,'exp'):'\u2014', val:g?g[3]:'\u2014'}); });
   px.fundRows.forEach(f=>rows.push({sl:f.kind==='idx'?'indices':'ai', t:f.sym,
-    role:(FUND_NAME[f.sym]||ETFS[f.sym]||'fund')+(f.kind==='idx'?' \u00b7 index fund':' \u00b7 ETF')+(f.mapped?'':' \u00b7 no look-through mapped'),
+    role:(FUND_NAME[f.sym]||ETFS[f.sym]||'fund')+(f.kind==='idx'?' \u00b7 index'+(INDEX_FAM[f.sym]?' \u00b7 '+INDEX_FAM[f.sym]:' fund'):' \u00b7 ETF')+(f.mapped?'':' \u00b7 no look-through mapped'),
     usd:f.usd, mark:'etf', rec:'\u2014', exp:'\u2014', val:'\u2014'}));
   px.cryptoRows.forEach(c=>rows.push({sl:'crypto',t:c.sym,role:(CRYPTO_NAMES[c.sym]||c.grp),usd:c.usd,mark:'coin',rec:'\u2014',exp:'\u2014',val:'\u2014'}));
   px.metalRows.forEach(c=>rows.push({sl:'metals',t:c.sym,role:(METAL_NAME[c.sym]||'metal'),usd:c.usd,
     mark:(c.sym==='XAU'||c.sym==='XAG'||c.sym==='XPT'||c.sym==='XPD')?'phys':'etf', /* physical coins must not wear the ETF diamond */
     rec:'\u2014',exp:'\u2014',val:'\u2014'}));
-  px.cashRows.forEach(c=>rows.push({sl:'cash',t:c.sym,role:'cash \u00b7 '+c.prov,usd:c.usd,mark:'cash',rec:'\u2014',exp:'\u2014',val:'\u2014'}));
+  px.cashRows.forEach(c=>rows.push({sl:'cash',t:c.sym,role:(c.eq?'cash equivalent \u00b7 '+c.eq:'cash \u00b7 '+c.prov),usd:c.usd,mark:'cash',rec:'\u2014',exp:'\u2014',val:'\u2014'}));
   /* Stage 36: drop every row whose sleeve slider sits at $0 \u2014 same single rule as the
      donut. Spliced in place so all downstream `rows` maths (mix bars, sort, % book,
      tfoot count) operate on the on-aim book only. The excluded money is reported in
@@ -8087,7 +8119,12 @@ window.MktView = (function(){
       var tf=te&&te.tf||null, P=tf?tfParse(tf):null;
       var fromTech=!(px&&px.last!=null)&&te&&te.price!=null;
       var price=px&&px.last!=null?px.last:(fromTech?te.price:null);
-      var cap=CAPS[t], mc=(cap&&price!=null)?price*cap.sh:null;
+      /* 10-05 (the owner: "SpaceX doesn't have a market cap… everything is subject to change"): the feed's own cap first — backend v4.14 carries
+         the quote's market cap on px.mcap for every USD listing, refreshed with the price every hour. The share counts baked into this
+         page (CAPS, SEC filings at build time) are only the fallback: a foreign listing, or a feed that has not answered. */
+      var cap=CAPS[t], live=(px&&typeof px.mcap==='number'&&isFinite(px.mcap)&&px.mcap>0)?px.mcap:null;
+      var mc=live!=null?live:((cap&&price!=null)?price*cap.sh:null);
+      var shN=(live!=null&&price)?live/price:(cap?cap.sh:null);
       var hf=hFreshInfo(tf,'eq'), dc=dChg(lv);
       out.push({
         kind:'eq', key:t, sym:t, name:r.name, cat:r.layer, tint:null,
@@ -8097,8 +8134,9 @@ window.MktView = (function(){
         pxTitle:fromTech?'price from nightly technicals — no live quote':(px&&px.stale?'stale quote':null),
         chg1h:P?lastPct(P.h,1):null, hStale:hf.stale, hLabel:hf.label,
         chg24:dc.v, chg24Note:dc.note, chg7:P?lastPct(P.d,5):null,
-        mcap:mc, mcapSub:cap?fmtCount(cap.sh)+' sh':null,
-        mcapTitle:cap?((fromTech?'last px × ':'live px × ')+fmtCount(cap.sh)+' sh — '+cap.src+' '+(cap.asOf||'')):'no US filing — cap unavailable',
+        mcap:mc, mcapSub:shN!=null?fmtCount(shN)+' sh':null,
+        mcapTitle:live!=null?'market cap from the live quote feed — refreshed every hour'
+          :(cap?((fromTech?'last px × ':'live px × ')+fmtCount(cap.sh)+' sh — '+cap.src+' '+(cap.asOf||'')):'no cap in the feed yet for this listing'),
         vol:(px&&px.volume!=null&&price!=null)?px.volume*price:null,
         vol20:te?te.vol_vs_20d_pct:null, tech:techScore(te),
         sentO:sentObj(lv.news&&lv.news.sent), range:rangePos(P,price), tf:tf
@@ -8831,11 +8869,12 @@ window.MktView = (function(){
     {k:'name', lab:'Asset',   cls:'c-name'},
     {k:'grade',lab:'Grade',   cls:'c-grade'},
     {k:'px',   lab:'Price',   cls:'c-price'},
+    /* 10-05 (the owner): cap and volume sit next to the price, then the 1H / 1D / 7D moves, then the two dials — every layout */
+    {k:'mcap', lab:'Mkt Cap', cls:'c-mcap'},
+    {k:'vol',  lab:'1D Vol',  cls:'c-vol'},
     {k:'chg1h',lab:'1H %',    cls:'c-1h'},
     {k:'chg24',lab:'1D %',    cls:'c-24h'},
     {k:'chg7', lab:'7D %',    cls:'c-7d'},
-    {k:'mcap', lab:'Mkt Cap', cls:'c-mcap'},
-    {k:'vol',  lab:'1D Vol',  cls:'c-vol'},
     {k:'tech', lab:'Tech',    cls:'c-tech'},
     {k:'sent', lab:'Sent',    cls:'c-sent'},
     {k:'range',lab:'30d',     cls:'c-bullet'},
@@ -8944,13 +8983,13 @@ window.MktView = (function(){
       +'<td class="c-name">'+nameCell(r)+'</td>'
       +'<td class="c-grade cell-grade">'+gradeCell(r)+'</td>'
       +'<td class="c-price'+(r.pxStale?' mk-dim':'')+'"'+(r.pxTitle?' title="'+esc(r.pxTitle)+'"':'')+'>'+fmtPrice(r.px)+'</td>'
-      +'<td class="c-1h">'+fmtPct(r.chg1h,r.hStale,r.hStale?r.hLabel:null)+'</td>'
-      +'<td class="c-24h">'+fmtPct(r.chg24,false,r.chg24Note)+'</td>'
-      +'<td class="c-7d">'+fmtPct(r.chg7)+'</td>'
       +'<td class="c-mcap" title="'+esc(r.mcapTitle)+'">'+(r.mcap!=null?fmtMoney(r.mcap):'<span class="mk-gap">—</span>')
         +(r.mcapSub?'<span class="mk-sub">'+esc(r.mcapSub)+'</span>':'')+'</td>'
       +'<td class="c-vol"'+(r.vol!=null?' title="session share volume × latest price (dollar-turnover approximation)"':'')+'>'
         +volHTML(r)+'</td>'
+      +'<td class="c-1h">'+fmtPct(r.chg1h,r.hStale,r.hStale?r.hLabel:null)+'</td>'
+      +'<td class="c-24h">'+fmtPct(r.chg24,false,r.chg24Note)+'</td>'
+      +'<td class="c-7d">'+fmtPct(r.chg7)+'</td>'
       +'<td class="c-tech">'+techGauge(r.tech)+'</td>'
       +'<td class="c-sent">'+sentCell(r.sentO)+'</td>'
       +'<td class="c-bullet" title="30-day range bullet — track = month of open/close bodies, nested week + day bands, MA20 line, dot = price (day direction)">'
@@ -9450,6 +9489,10 @@ window.MktView = (function(){
   +'#mktView .mk-shstat:empty{display:none}'
   /* Stage 48: the Universe dropdown menu, re-homed into the Filters sheet on
      phones by placeCtls(), renders as a row of inline chips */
+  +'#mktView #mkTypeDD.mk-off{display:none}'
+  +'#mktView .mk-slot #mkType{display:flex;flex-direction:row;flex-wrap:wrap;position:static;box-shadow:none;border:0;padding:0;gap:4px;min-width:0;background:transparent}'
+  +'#mktView .mk-slot #mkType button{border:1px solid var(--hair);border-radius:8px;padding:6px 9px;font-size:11px;font-weight:700;background:rgba(var(--gl-d12-rgb,16,27,43),.9)}'
+  +'#mktView .mk-slot #mkType button.on{background:var(--sel-bg);color:var(--sel-ink);box-shadow:inset 0 0 0 1px var(--sel-line)}'
   +'#mktView .mk-slot #mkUni{display:flex;flex-direction:row;flex-wrap:wrap;position:static;box-shadow:none;border:0;padding:0;gap:4px;min-width:0;background:transparent}'
   +'#mktView .mk-slot #mkUni button{border:1px solid var(--hair);border-radius:8px;padding:6px 9px;font-size:11px;font-weight:700;background:rgba(var(--gl-d12-rgb,16,27,43),.9)}'
   +'#mktView .mk-slot #mkUni button.on{background:var(--sel-bg);color:var(--sel-ink);box-shadow:inset 0 0 0 1px var(--sel-line)}'
@@ -9611,7 +9654,7 @@ window.MktView = (function(){
      are a contract: the Glass shim mirrors this row into the top strip. */
   +'@media(max-width:900px){#mktView .mk-ph{display:inline-flex}'
   +'#mktView .mk-inline{display:none}'
-  +'#mktView #mkUniDD{display:none}'
+  +'#mktView #mkUniDD,#mktView #mkTypeDD{display:none}'
   +'#mktView .mk-ctl{min-height:34px}'
   +'#mktView .mk-ico{width:30px;height:30px}'
   +'#mktView #mkFBtn{padding:5px 9px}'
@@ -9793,7 +9836,7 @@ window.MktView = (function(){
     var P=null; try{ P=tfParse(mkCtTf(r.sym)||r.tf)||{}; }catch(_){ P={}; }
     var tfs=[['m','M'],['w','W'],['d','D'],['h4','4H'],['h','H']];
     return '<button type="button" class="mk-thin-tech" data-mkthintech aria-label="Open the Technicals page"><b class="ttl">Technicals</b>'
-      +'<span class="sub">candles · TBO cloud · divergence · Bollinger</span><em>'
+      +'<span class="sub">candles · EMA spread · divergence · Bollinger</span><em>'
       +tfs.map(function(t){ return '<i'+(P[t[0]]?'':' class="off"')+'>'+t[1]+'</i>'; }).join('')+'</em><b class="go" aria-hidden="true">↗</b></button>';
   }
   function mkThinTechHtml(r){ return mkThinStrip(r)+mkThinBtn(r); }
@@ -10028,7 +10071,7 @@ window.MktView = (function(){
     var P=null; try{ P=tfParse(tf)||{}; }catch(_){ P={}; }
     var tfs=[['m','M'],['w','W'],['d','D'],['h4','4H'],['h','H']];
     return '<button type="button" class="mk-thin-tech" data-mkthintech aria-label="Open the Technicals page"><b class="ttl">Technicals</b>'
-      +'<span class="sub">candles · TBO cloud · divergence · Bollinger</span><em>'
+      +'<span class="sub">candles · EMA spread · divergence · Bollinger</span><em>'
       +tfs.map(function(t){ return '<i'+(P[t[0]]?'':' class="off"')+'>'+t[1]+'</i>'; }).join('')+'</em><b class="go" aria-hidden="true">↗</b></button>';
   }
   function mkEqTechHtml(r){ return mkEqStrip(r)+mkEqTechBtn(mkTeTf(r.sym)||r.tf); }
@@ -10122,15 +10165,19 @@ window.MktView = (function(){
     m.innerHTML=
       '<div class="mk-deck" id="mkDeck">'
       +'<div class="mk-ctl" id="mkCtl">'
-      +'<div class="dd" id="mkUniDD"><button type="button" class="dd-btn"><span class="dd-lab">Uni</span><b class="dd-val" id="mkUniVal">Watchlist</b><i class="dd-car">▾</i></button>'
+      +'<div class="dd" id="mkUniDD"><button type="button" class="dd-btn"><span class="dd-lab">List</span><b class="dd-val" id="mkUniVal">Watchlist</b><i class="dd-car">▾</i></button>'
       +'<div class="dd-menu" id="mkUni">'
       /* round 7 §32 (the owner 09-24): the whole graded roster is the "Watchlist"; Equities / Crypto / Funds are its cuts */
-      +'<button data-u="all" class="on" title="Every graded name — Equities, Crypto and Funds are its cuts">Watchlist</button><button data-u="eq">Equities</button>'
-      +'<button data-u="cr">Crypto</button><button data-u="fd">Funds</button>'
+      /* 10-05 (the owner: "US 500 and Coins 500 should be their own watchlists, then the stock watchlist, then the shared ones — moving between
+         equities, crypto and funds should be a way to search a watchlist… another drop-down next to it"): this menu is the LISTS only;
+         Equities | Crypto | Funds are the TYPE menu beside it (#mkTypeDD). The type buttons keep data-u — state.uni is unchanged. */
+      +'<button data-u="all" class="on" title="Every graded name — narrow it with Type">Watchlist</button>'
       /* Stage 48 round 6 (§21, the owner 09-24: "US 500" and "Coins 500" as two chips): the ungraded
          Market universe, split — each fetches the same /market.json (shared cache), shows only its own kind */
       +'<button data-u="mk" title="Top 500 US stocks by market cap — graded watchlist names carry their full row and card; the rest are ungraded">US 500</button>'
       +'<button data-u="mkc" title="Top 500 coins by market cap — graded watchlist names carry their full row and card; the rest are ungraded">Coins 500</button></div></div>'
+      +'<div class="dd" id="mkTypeDD"><button type="button" class="dd-btn"><span class="dd-lab">Type</span><b class="dd-val" id="mkTypeVal">All</b><i class="dd-car">▾</i></button>'
+      +'<div class="dd-menu" id="mkType"><button data-u="all" class="on">All types</button><button data-u="eq">Equities</button><button data-u="cr">Crypto</button><button data-u="fd">Funds</button></div></div>'
       +'<button type="button" class="mk-ico mk-ph" id="mkQBtn" aria-label="Search">🔍</button>'
       +'<button type="button" class="dd-btn mk-ph" id="mkFBtn"><b class="dd-val">Filters</b><span class="mk-fbdg" id="mkFBadge" hidden></span><i class="dd-car">▾</i></button>'
       /* Stage 48 §13: scope seg — the whole watchlist, or only what the positions layer says you hold */
@@ -10150,7 +10197,8 @@ window.MktView = (function(){
       +'<div class="mk-sheet" id="mkSheet">'
       /* the owner 09-25: the stats line, off the strip — the sheet's first row (renderStats keeps it equal to #mkStat) */
       +'<div class="mk-shstat" id="mkSheetStat" role="status"></div>'
-      +'<div class="mk-shrow"><span class="mk-shlab">Universe</span><span class="mk-slot" id="mkSlotUni"></span></div>'
+      +'<div class="mk-shrow"><span class="mk-shlab">List</span><span class="mk-slot" id="mkSlotUni"></span></div>'
+      +'<div class="mk-shrow" id="mkTypeRow"><span class="mk-shlab">Type</span><span class="mk-slot" id="mkSlotType"></span></div>'
       /* Stage 48 round 5 (§18): All | Owned lives in the sheet on phones (placeCtls moves #mkScope here) */
       +'<div class="mk-shrow"><span class="mk-shlab">Scope</span><span class="mk-slot" id="mkSlotScope"></span></div>'
       +'<div class="mk-shrow"><span class="mk-shlab">Marks</span><span class="mk-slot" id="mkSlotMarks"></span></div>'
@@ -10160,8 +10208,9 @@ window.MktView = (function(){
       +'<select class="mk-sel" id="mkSortSel">'
       +'<option value="rank"># Rank</option><option value="name">Ticker A–Z</option>'
       +'<option value="grade">Grade</option><option value="px">Price</option>'
+      +'<option value="mcap">Mkt Cap</option><option value="vol">1D Vol</option>'
       +'<option value="chg1h">1H %</option><option value="chg24">1D %</option><option value="chg7">7D %</option>'
-      +'<option value="mcap">Mkt Cap</option><option value="tech">Tech</option>'
+      +'<option value="tech">Tech</option>'
       +'<option value="sent">Sent</option><option value="range">30d position</option></select>'
       +'<button type="button" class="mk-ico" id="mkSortDir" aria-label="Flip sort direction">▼</button>'
       +'</span></div>'
@@ -10202,14 +10251,13 @@ window.MktView = (function(){
       });
       headRow.appendChild(th);
     });
-    document.querySelectorAll('#mkUni button').forEach(function(b){
+    document.querySelectorAll('#mkUni button, #mkType button').forEach(function(b){
       b.addEventListener('click',function(){
         if(!b.dataset.u) return;   /* 10-05: the shared-list entries in this menu are stage48/lists.js's own buttons */
         state.uni=b.dataset.u; state.cat=''; state.pick=null; state.pickEmpty='';
         try{ if(window.AIBO_LISTS&&AIBO_LISTS.onUni) AIBO_LISTS.onUni(); }catch(_){}
-        document.querySelectorAll('#mkUni button').forEach(function(x){x.classList.toggle('on',x===b);});
-        document.getElementById('mkUniVal').textContent=b.textContent;
-        document.getElementById('mkUniDD').classList.remove('open');
+        syncUniUI();
+        document.getElementById('mkUniDD').classList.remove('open'); document.getElementById('mkTypeDD').classList.remove('open');
         syncMarketCls();
         if(isMkUni()){ mkLoad(false); mkCdLoad(state.uni,false); if(state.uni==='mk') mkAgLoad(false); if(state.uni==='mkc') mkFrLoad(1,false); }   /* §19/§21: cache first (memory, then localStorage), fetch when stale — one fetch feeds both chips; §31: this family's daily candles, once per UTC day; §41: US 500's auto grades likewise; §56: Coins 500's first frames page likewise (pages 2–5 follow the scroll) */
         rebuildCats(); applyFilter();
@@ -10264,16 +10312,19 @@ window.MktView = (function(){
     syncSortUI();
     /* --- Stage 34 deck behaviors --- */
     var deck=document.getElementById('mkDeck'), sheet=document.getElementById('mkSheet'),
-        uniDD=document.getElementById('mkUniDD');
+        uniDD=document.getElementById('mkUniDD'), typeDD=document.getElementById('mkTypeDD');
+    document.querySelector('#mkTypeDD .dd-btn').addEventListener('click',function(e){
+      e.stopPropagation(); closeBarDDs(); sheet.classList.remove('open'); uniDD.classList.remove('open'); typeDD.classList.toggle('open');
+    });
     function closeBarDDs(){ var bar=document.querySelector('.appbar');
       if(bar){ bar.classList.remove('brand-open');
         bar.querySelectorAll('.dd.open').forEach(function(d){d.classList.remove('open');}); }
       var mp=document.getElementById('mPop'); if(mp) mp.classList.remove('open'); }
     document.querySelector('#mkUniDD .dd-btn').addEventListener('click',function(e){
-      e.stopPropagation(); closeBarDDs(); sheet.classList.remove('open'); uniDD.classList.toggle('open');
+      e.stopPropagation(); closeBarDDs(); sheet.classList.remove('open'); typeDD.classList.remove('open'); uniDD.classList.toggle('open');
     });
     document.getElementById('mkFBtn').addEventListener('click',function(e){
-      e.stopPropagation(); closeBarDDs(); uniDD.classList.remove('open'); sheet.classList.toggle('open');
+      e.stopPropagation(); closeBarDDs(); uniDD.classList.remove('open'); typeDD.classList.remove('open'); sheet.classList.toggle('open');
       syncSortUI();   /* Stage 37: reflect whatever a th tap or the sheet select set */
     });
     sheet.addEventListener('click',function(e){ e.stopPropagation(); });
@@ -10292,7 +10343,7 @@ window.MktView = (function(){
       deck.classList.remove('mk-searching');
       if(q.value){ q.value=''; state.q=''; applyFilter(); }
     });
-    document.addEventListener('click',function(){ uniDD.classList.remove('open'); sheet.classList.remove('open'); });
+    document.addEventListener('click',function(){ uniDD.classList.remove('open'); typeDD.classList.remove('open'); sheet.classList.remove('open'); });
     /* phone: marks/category live in the sheet and search in its own row (§79: no Movers row);
        wide: everything returns inline. Reparenting keeps listeners — no duplicates. */
     /* Stage 48: 900px — MUST equal the '@media(max-width:900px)' phone block in CSS */
@@ -10300,9 +10351,10 @@ window.MktView = (function(){
     function placeCtls(){
       var marks=document.getElementById('mkMarks'), cat=document.getElementById('mkCat'),
           q=document.getElementById('mkQ'),
-          uni=document.getElementById('mkUni'), scope=document.getElementById('mkScope');
+          uni=document.getElementById('mkUni'), scope=document.getElementById('mkScope'), type=document.getElementById('mkType');
       if(mql.matches){
         document.getElementById('mkSlotUni').appendChild(uni);
+        document.getElementById('mkSlotType').appendChild(type); typeDD.classList.remove('open');
         document.getElementById('mkSlotMarks').appendChild(marks);
         document.getElementById('mkSlotCat').appendChild(cat);
         document.getElementById('mkQRow').appendChild(q);
@@ -10311,7 +10363,7 @@ window.MktView = (function(){
         uniDD.classList.remove('open');
       } else {
         var inl=document.getElementById('mkInline');
-        uniDD.appendChild(uni);
+        uniDD.appendChild(uni); typeDD.appendChild(type);
         inl.appendChild(marks); inl.appendChild(cat); inl.appendChild(q); inl.appendChild(scope);
         deck.classList.remove('mk-searching'); sheet.classList.remove('open');
       }
@@ -10323,6 +10375,17 @@ window.MktView = (function(){
     try{ mqTight.addEventListener('change',onTight); }catch(_){ mqTight.addListener(onTight); }
     built=true;
     try{ if(window.AIBO_LISTS&&AIBO_LISTS.mount) AIBO_LISTS.mount(); }catch(_){}   /* 10-05 shared lists: the menu entries + the list bar (stage48/lists.js; absent = nothing) */
+  }
+  /* 10-05: the List menu and the Type menu both read state.uni — 'all' | 'eq' | 'cr' | 'fd' are the Watchlist cut by type; 'mk' / 'mkc'
+     (US 500 / Coins 500, or a shared list riding one of them) are single-type lists, so the Type menu steps out there. */
+  function syncUniUI(){
+    var u=state.uni, wl=(u==='all'||u==='eq'||u==='cr'||u==='fd'), list=wl?'all':u, ty=wl?u:'all';
+    document.querySelectorAll('#mkUni button').forEach(function(x){ if(x.dataset.u) x.classList.toggle('on',!state.pick&&x.dataset.u===list); });
+    document.querySelectorAll('#mkType button').forEach(function(x){ x.classList.toggle('on',x.dataset.u===ty); });
+    var v=document.getElementById('mkUniVal'); if(v&&!state.pick) v.textContent=wl?'Watchlist':(u==='mk'?'US 500':'Coins 500');
+    var tv=document.getElementById('mkTypeVal'); if(tv) tv.textContent={all:'All',eq:'Equities',cr:'Crypto',fd:'Funds'}[ty];
+    var td=document.getElementById('mkTypeDD'); if(td) td.classList.toggle('mk-off',!wl);
+    var tr=document.getElementById('mkTypeRow'); if(tr) tr.hidden=!wl;
   }
   function updateFBadge(){
     var el=document.getElementById('mkFBadge'); if(!el) return;
@@ -10471,8 +10534,8 @@ window.MktView = (function(){
     show:function(fam,test,label,emptyMsg){
       if(!built||(fam!=='mk'&&fam!=='mkc')||typeof test!=='function') return false;
       state.uni=fam; state.cat=''; state.pick=test; state.pickEmpty=String(emptyMsg||'');
-      document.querySelectorAll('#mkUni button').forEach(function(x){ if(x.dataset.u) x.classList.remove('on'); });
       var v=document.getElementById('mkUniVal'); if(v) v.textContent=String(label||'List');
+      syncUniUI();
       var dd=document.getElementById('mkUniDD'); if(dd) dd.classList.remove('open');
       syncMarketCls();
       mkLoad(false); mkCdLoad(fam,false); if(fam==='mk') mkAgLoad(false); if(fam==='mkc') mkFrLoad(1,false);
@@ -10753,7 +10816,7 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
   html[data-gl] .gl-help{position:absolute;right:12px;top:8px;width:30px;height:30px;appearance:none;display:flex;align-items:center;justify-content:center;
     border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.07);border-radius:9px;color:var(--ink);font:800 12px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     -webkit-tap-highlight-color:transparent;cursor:pointer;}
-  html[data-gl] body.deck-studio .gl-uni,html[data-gl] body:is(.gl-cal,.gl-fin,.gl-grid,.gl-tech,.gl-settings) .gl-uni{display:none;}
+  html[data-gl] body.deck-studio .gl-uni,html[data-gl] body:is(.gl-cal,.gl-fin,.gl-tech,.gl-settings) .gl-uni{display:none;}
   /* ---- §82 (round 13) the Grading face seg — Grade wheel | Scorecard — heads #donutView / #scView under the Research door, above the lens row
      (shim.js builds it; .gl-gface-row is display:none at the top of this file like every Glass row). The company page's Financials | Technicals
      grammar (fin.css .glfn-seg): 11.5px labels (the §82 cap), 7px pads, ≤360px wide, centred. Two labels fit at 360 with room to spare. ---- */
@@ -10761,7 +10824,7 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
   html[data-gl] .gl-gface-row .gl-seg{flex:1 1 auto;max-width:360px;margin:0 auto;}
   html[data-gl] .gl-gface-row .gl-seg button{font-size:11.5px;padding:7px 2px;white-space:nowrap;}
   html[data-gl] body.gl-findoor .gl-gface-row + .gl-uni{padding-top:6px;}   /* the two segs read as one head */
-  html[data-gl] body.deck-studio .gl-gface-row,html[data-gl] body:is(.gl-cal,.gl-fin,.gl-grid,.gl-tech,.gl-settings) .gl-gface-row{display:none;}
+  html[data-gl] body.deck-studio .gl-gface-row,html[data-gl] body:is(.gl-cal,.gl-fin,.gl-tech,.gl-settings) .gl-gface-row{display:none;}
 
   /* Studio's four panes: a segmented control under the strip (they used to BE the dock) */
   html[data-gl] body.gl-chrome.deck-studio:not(.gl-settings) #glSub:not([hidden]){display:block;position:fixed;top:40px;left:0;right:0;z-index:54;
@@ -10769,7 +10832,7 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
     border-bottom:1px solid rgba(255,255,255,.08);transition:transform .18s ease;}
   html[data-gl] #mStrip.m-hide ~ #glSub{transform:translateY(-40px);}
   /* the Calendar / Financials / Grid are fixed layers under the strip: entered from the Studio deck, the pane seg must not float over them */
-  html[data-gl] body:is(.gl-cal,.gl-fin,.gl-grid) #glSub{display:none!important;}
+  html[data-gl] body:is(.gl-cal,.gl-fin) #glSub{display:none!important;}
   html[data-gl] body.gl-chrome.deck-studio:not(.gl-settings) #studioView{padding-top:48px;}
 
   /* Settings is a DOOR now, so it is a page — not a sheet floating over a Studio you never asked for */
@@ -10883,7 +10946,7 @@ html[data-gl] body.gl-chrome #mktView .twrap{max-height:calc(100dvh - var(--gl-t
   html[data-gl][data-land="rail"] .gl-tab{flex:none;width:46px;height:44px;min-height:0;padding:0;justify-content:center;border-radius:16px;}
   html[data-gl][data-land="rail"] body.gl-chrome{padding-left:calc(64px + env(safe-area-inset-left));}
   html[data-gl][data-land="rail"] #glSub,html[data-gl][data-land="rail"] body.gl-cal #glCal,
-  html[data-gl][data-land="rail"] body.gl-fin #glFin,html[data-gl][data-land="rail"] body.gl-grid #glGrid,
+  html[data-gl][data-land="rail"] body.gl-fin #glFin,
   html[data-gl][data-land="rail"] body.gl-settings #studioView .dk-sheet{left:calc(64px + env(safe-area-inset-left));}
 
   /* top: the doors live IN the strip — its middle is empty in landscape */
@@ -11047,6 +11110,26 @@ html[data-gl] .gl-prose-fbody .gl-prose-p{color:rgba(234,238,245,.62);}
 html[data-gl] .gl-prose-fbody:empty::after{content:"nothing to read on this page";display:block;font:italic 12px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(234,238,245,.4);}
 
 /* ---- theme picker (Settings > Appearance) ---- */
+html[data-gl] .gl-dsum{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"d t" "d s";align-items:center;gap:2px 10px;padding:12px;}
+html[data-gl] .gl-dsum i{grid-area:d;width:10px;height:10px;border-radius:50%;background:rgba(234,238,245,.3);}
+html[data-gl] .gl-dsum.ok i{background:#39d07f;} html[data-gl] .gl-dsum.late i{background:#e0b048;}
+html[data-gl] .gl-dsum b{grid-area:t;font:600 13.5px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#eaeef5;}
+html[data-gl] .gl-dsum span{grid-area:s;font:400 11.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(234,238,245,.55);}
+html[data-gl] .gl-dfold{border-top:1px solid rgba(255,255,255,.07);}
+html[data-gl] .gl-dfold > summary{list-style:none;cursor:pointer;padding:11px 12px;font:600 12.5px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--gl-acci);}
+html[data-gl] .gl-dfold > summary::-webkit-details-marker{display:none;}
+html[data-gl] .gl-dfold > summary::after{content:" ▾";} html[data-gl] .gl-dfold[open] > summary::after{content:" ▴";}
+html[data-gl] .gl-drow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 10px;padding:9px 12px;border-top:1px solid rgba(255,255,255,.06);}
+html[data-gl] .gl-drow > i{width:8px;height:8px;border-radius:50%;margin-top:5px;background:rgba(234,238,245,.28);}
+html[data-gl] .gl-drow.fresh > i{background:#39d07f;} html[data-gl] .gl-drow:is(.late,.missing) > i{background:#e0b048;}
+html[data-gl] .gl-drow b{font:600 13px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#eaeef5;}
+html[data-gl] .gl-drow em{font:500 11.5px/1.3 ui-monospace,"SF Mono",Menlo,monospace;font-style:normal;color:rgba(234,238,245,.7);margin-left:8px;}
+html[data-gl] .gl-drow:is(.late,.missing) em{color:#e0b048;}
+html[data-gl] .gl-drow span{display:block;font:400 11.5px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(234,238,245,.5);}
+html[data-gl] .gl-lkrow{display:flex;align-items:center;gap:10px;padding:12px;}
+html[data-gl] .gl-lkin{flex:1 1 auto;min-width:0;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#eaeef5;padding:0 12px;font:500 16px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+html[data-gl] .gl-lkstat{flex:1 1 auto;font:600 13.5px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#39d07f;}
+html[data-gl] .gl-lkbtn{appearance:none;flex:none;height:38px;padding:0 14px;border-radius:10px;border:1px solid rgba(var(--gl-acc-rgb),.5);background:rgba(var(--gl-acc-rgb),.14);color:var(--gl-acci);font:700 13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;}
 html[data-gl] .gl-themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px;padding:12px;}
 html[data-gl] .gl-theme{appearance:none;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.05);border-radius:14px;padding:10px 4px 8px;
   display:flex;flex-direction:column;align-items:center;gap:7px;color:rgba(234,238,245,.7);font:600 11.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;}
@@ -11174,8 +11257,31 @@ html[data-gl][data-gldesk][data-glside] body.gl-tape:has(#sheet.show) #mktView .
   html[data-gl][data-gldesk][data-glside] body.gl-tape:has(#sheet.show) #mktView .mkt :is(.c-7d,.c-mcap,.c-tech,.c-sent,.c-bullet){display:none;}
 }
 
+/* SCROLLBARS (the owner 10-05: "on the Mac we just get this white scrollbar on the right that totally throws off the aesthetic — keep that in
+   the same colour scheme as the rest of the app"). Every scroller, on any device that draws a bar: a thin thumb in the theme accent on a
+   clear track. Standard properties for Firefox / new Chromium, the -webkit- pseudo-elements for Safari and older Chromium. */
+html[data-gl][data-gldesk]{scrollbar-color:rgba(var(--gl-acc-rgb),.38) transparent;}   /* inherited — one rule reaches every scroller; scrollers that hide their bar keep doing so. DESKTOP ONLY: on a phone a styled -webkit-scrollbar turns the overlay bar into a classic one that takes 10px of layout (the nav suite's WebKit strip went 390 -> 380 wide) */
+html[data-gl][data-gldesk] ::-webkit-scrollbar{width:10px;height:10px;background:transparent;}
+html[data-gl][data-gldesk] ::-webkit-scrollbar-track{background:transparent;}
+html[data-gl][data-gldesk] ::-webkit-scrollbar-corner{background:transparent;}
+html[data-gl][data-gldesk] ::-webkit-scrollbar-thumb{background:rgba(var(--gl-acc-rgb),.34);border-radius:999px;border:2px solid transparent;background-clip:padding-box;}
+html[data-gl][data-gldesk] ::-webkit-scrollbar-thumb:hover{background:rgba(var(--gl-acc-rgb),.6);border:2px solid transparent;background-clip:padding-box;}
+
+/* THE CATEGORY TAG STARTS UNDER THE RANK NUMBER (the owner 10-05: it ran past the line that ends the asset column — "move that little pill
+   starting underneath the number itself, we'll gain some more space"). From 1420px (the table fits, nothing scrolls sideways) the tag is
+   pulled left across the rank column and may run to the asset column's right edge — never past it. Narrower windows scroll the table
+   sideways under a sticky asset column, so there the tag stays inside the column (under the dot). One line, ellipsis, full text on hover. */
+html[data-gl][data-gldesk] #mktView .mk-nmtxt{min-width:0;}
+html[data-gl][data-gldesk] #mktView .mk-cat{width:fit-content;max-width:calc(100% + 14px);margin-left:-14px;box-sizing:border-box;}
+@media (min-width:1420px){
+  html[data-gl][data-gldesk] #mktView .mk-cat{max-width:calc(100% + 48px);margin-left:-48px;}
+}
+@media (min-width:1420px){
+  html[data-gl][data-gldesk] #mktView .mkt td.c-rank{vertical-align:top;padding-top:11px;}   /* the number clears the tag that now starts under it */
+}
+
 </style>
-<!-- Stage 48 Glass chrome. ONE constant SIX-door bar — Tape · Atlas · Research · Portfolio · Calendar · Settings —
+<!-- Stage 48 Glass chrome. ONE constant SIX-door bar — Tape · Research · Portfolio · Atlas · Calendar · Settings (the owner's order, 10-05) —
      replaces the two docks that used to swap by deck (Yields left the bar 09-23: it is a Macro chapter
      inside the Atlas sheet now). Every door forwards to a control the app already has — see shim.js.
      Icons are cloned from the stock dock at boot, so they can never drift from it (Calendar and Financials
@@ -11193,9 +11299,9 @@ html[data-gl][data-gldesk][data-glside] body.gl-tape:has(#sheet.show) #mktView .
      TWO rows — Company financials · Grading — and the wheel / scorecard views wear a Grade wheel | Scorecard face seg at their head (shim.js). -->
 <nav id="glDock" aria-label="Main" hidden>
   <button type="button" class="gl-tab" data-gldoor="tape"><i></i><span>Tape</span></button>
-  <button type="button" class="gl-tab" data-gldoor="atlas"><i></i><span>Atlas</span></button>
   <button type="button" class="gl-tab" data-gldoor="fin"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/><path d="M8 12.5v-3M10.5 12.5V7.5M13 12.5v-2"/></svg></i><span>Research</span></button>
   <button type="button" class="gl-tab" data-gldoor="studio"><i></i><span>Portfolio</span></button>
+  <button type="button" class="gl-tab" data-gldoor="atlas"><i></i><span>Atlas</span></button>
   <button type="button" class="gl-tab" data-gldoor="calendar"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M8 3v4M16 3v4"/><path d="M8.5 14h.01M12 14h.01M15.5 14h.01M8.5 17h.01M12 17h.01"/></svg></i><span>Calendar</span></button>
   <button type="button" class="gl-tab" data-gldoor="settings"><i></i><span>Settings</span></button>
 </nav>
@@ -12052,13 +12158,18 @@ html[data-gl] .glfs-spk{display:block;color:rgba(234,238,245,.35);}
     var nw=tmp.firstChild; if(old) old.parentNode.replaceChild(nw,old); else box.appendChild(nw);
     stmtScroll(box,keep);
   }
-  function openBtn(opts){ return opts.card?'<button type="button" class="glf-open" data-glfinopen aria-label="Open the full Financials page">Open full page ↗</button>':''; }
+  function openBtn(opts){ return ''; }
+  /* 10-05 (the owner: "I love the new button format for the expansion of the technicals — bring that same exact format in for the grades and
+     for expanding into the fundamentals"): in the card the head IS the boxed button (.glt-row, techlab.css) — it opens the full page. */
+  function ttlHtml(opts){ return opts.card
+    ?'<button type="button" class="glt-row glf-row" data-glfinopen aria-label="Open the full Financials page"><b class="ttl">Fundamentals</b><span class="sub">charts · ratios · full statements — the full page</span><b class="go" aria-hidden="true">↗</b></button>'
+    :'<div class="glf-ttl"><h5>Fundamentals</h5></div>'; }
   function segHtml(){
     return '<div class="gl-seg glf-per"><button type="button" data-per="q"'+(S.per==='q'?' class="on"':'')+'>Quarterly</button><button type="button" data-per="a"'+(S.per==='a'?' class="on"':'')+'>Annual</button></div>'
       +'<div class="gl-seg glf-rng">'+[[20,'5Y'],[40,'10Y'],[60,'15Y']].map(function(r){ return '<button type="button" data-rng="'+r[0]+'"'+(S.range===r[0]?' class="on"':'')+'>'+r[1]+'</button>'; }).join('')+'</div>';
   }
   function headHtml(opts){
-    return '<div class="glf-head"><div class="glf-ttl"><h5>Fundamentals</h5>'+openBtn(opts)+'</div>'+segHtml()
+    return '<div class="glf-head">'+ttlHtml(opts)+''+segHtml()
       +'<button type="button" class="glc-info" data-finfo="1" aria-label="Source and freshness">i</button>'
       +'<div class="glf-note" hidden></div></div>';   /* the (i) note wraps to a full row of the head: it opens under the button, in view (the page head is sticky) */
   }
@@ -12246,7 +12357,7 @@ html[data-gl] .glfs-spk{display:block;color:rgba(234,238,245,.35);}
      range are shared preferences (persisted). A tile tap opens the metric full-screen. Returns a small handle. */
   function attach(box,key,opts){
     opts=opts||{}; var data=null, alive=true, ctx={box:box, key:key, opts:opts, data:null};
-    box.classList.add('glf'); box.innerHTML='<div class="glf-head"><div class="glf-ttl"><h5>Fundamentals</h5>'+openBtn(opts)+'</div></div><div class="glf-load">Loading 15 years of filings…</div>';
+    box.classList.add('glf'); box.innerHTML='<div class="glf-head">'+ttlHtml(opts)+'</div><div class="glf-load">Loading 15 years of filings…</div>';
     box.addEventListener('click',function(e){ var b;
       if((b=e.target.closest('[data-per]'))){ S.per=b.getAttribute('data-per'); save(); if(data) paint(box,data,opts); return; }
       if((b=e.target.closest('[data-rng]'))){ S.range=+b.getAttribute('data-rng'); save(); if(data) paint(box,data,opts); return; }
@@ -12269,7 +12380,7 @@ html[data-gl] .glfs-spk{display:block;color:rgba(234,238,245,.35);}
     box.addEventListener('pointermove',scrub); box.addEventListener('touchmove',scrub,{passive:true});
     box.addEventListener('pointerleave',function(){ if(data&&scrubbed){ scrubbed=false; paint(box,data,opts); } });   /* scrub reset: the headline numbers and lit bars go back to rest */
     var pr=load(key).then(function(d){ data=d; ctx.data=d; if(alive&&document.body.contains(box)) paint(box,d,opts); return d; })
-      .catch(function(e){ if(alive&&document.body.contains(box)) box.innerHTML='<div class="glf-head"><div class="glf-ttl"><h5>Fundamentals</h5>'+openBtn(opts)+'</div></div><div class="glf-load">'+esc(/identity|graded|unknown/.test(e.message)?'No fundamentals for this name.':'Fundamentals are unreachable right now.')+'</div>'; });
+      .catch(function(e){ if(alive&&document.body.contains(box)) box.innerHTML='<div class="glf-head">'+ttlHtml(opts)+'</div><div class="glf-load">'+esc(/identity|graded|unknown/.test(e.message)?'No fundamentals for this name.':'Fundamentals are unreachable right now.')+'</div>'; });
     /* repaint(): bring a box that was painted under OLDER shared prefs up to date — the Financials page stays mounted while hidden,
        and the card (or the overlay) may have switched Quarterly|Annual / the range in the meantime. A no-op when nothing changed. */
     function repaint(force){ if(!alive||!data||!document.body.contains(box)) return false; if(!force&&box.getAttribute('data-glfpref')===S.per+':'+S.range) return false; paint(box,data,opts); return true; }
@@ -12586,332 +12697,6 @@ html[data-gl] .glf-page .glfs{margin-top:22px;padding-top:16px;}
 })();
 
 </script>
-<style id="gl48GridCss">
-/* Stage 48 — the Grid dashboard (round 4, 2026-09-23; spec §6). A fixed layer under the strip,
-   like the Calendar door, filled by grid.js. Scoped to html[data-gl]; inert with the theme off.
-   Grammar = sandbox/redesign/v2/09-grid-os.html rebuilt on the Glass tokens: ONE accent, tile
-   families told apart by accent OPACITY steps (never a hue per family); text -apple-system,
-   numbers ui-monospace; value colour only (green >= 0, red < 0). */
-#glGrid{display:none;}
-html[data-gl] body.gl-grid #glGrid{display:flex;flex-direction:column;position:fixed;left:0;right:0;top:47px;bottom:0;z-index:52;
-  background:rgb(var(--gl-bg-rgb));color:var(--ink);font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;animation:glIn .26s ease both;}
-html[data-gl] body.gl-grid{overflow:hidden;}
-html[data-gl] body.gl-grid #aibo-live-chip{display:none!important;}      /* the Grid carries its own one-line feed status */
-html[data-gl] body.gl-grid #glSub{display:none!important;}               /* the Studio's pane control (z 54) must not float over the Grid's head */
-html[data-gl] body.gl-grid #deckSeg button.on{background:transparent;color:var(--muted);border-color:transparent;box-shadow:none;}
-@media (max-width:740px), (pointer:coarse){
-  html[data-gl] body.gl-grid #glGrid{top:40px;}
-  html[data-gl] body.gl-grid #mStrip .atlas-only,html[data-gl] body.gl-grid #mStrip #mLens{visibility:hidden;}
-}
-
-/* ---- head: List | Grid, and a one-word universe cue ---- */
-html[data-gl] .glg-bar{display:flex;align-items:center;gap:10px;padding:8px 12px 6px;flex:none;width:100%;max-width:1212px;margin:0 auto;box-sizing:border-box;}
-html[data-gl] .glg-bar .gl-seg{flex:none;max-width:none;margin:0;display:inline-flex;}
-html[data-gl] .glg-bar .gl-seg button{flex:none;padding:7px 14px;}
-html[data-gl] .glg-uni{margin-left:auto;font:700 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(234,238,245,.42);}
-
-/* ---- body: the tiles ---- */
-html[data-gl] .glg-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:2px 12px 0;}
-html[data-gl] .glg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:1180px;margin:0 auto;}
-@media (min-width:700px){ html[data-gl] .glg-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;} html[data-gl] .glg-body{padding:4px 16px 0;} html[data-gl] .glg-bar{padding:8px 16px 6px;} }
-@media (min-width:1024px){ html[data-gl] .glg-grid{grid-template-columns:repeat(4,minmax(0,1fr));} }
-html[data-gl] .glg-tile{appearance:none;position:relative;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px 12px 10px;min-height:104px;
-  display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;text-align:left;overflow:hidden;color:inherit;font:inherit;cursor:pointer;
-  -webkit-tap-highlight-color:transparent;transition:transform .34s cubic-bezier(.3,1.9,.45,1),background-color .2s;
-  background:linear-gradient(140deg,rgba(var(--gl-acc-rgb),var(--glg-a1,.08)),rgba(var(--gl-acc-rgb),var(--glg-a2,.04))),rgba(255,255,255,.03);}
-html[data-gl] .glg-tile:active{transform:scale(.97);transition-duration:.05s;}
-html[data-gl] .glg-tile.wide{grid-column:span 2;}
-/* families = the same accent at stepped opacities. Studio (the book) is the brightest, Settings the quietest. */
-html[data-gl] .glg-tile[data-fam="market"]{--glg-a1:.17;--glg-a2:.08;}
-html[data-gl] .glg-tile[data-fam="grading"]{--glg-a1:.11;--glg-a2:.05;}
-html[data-gl] .glg-tile[data-fam="macro"]{--glg-a1:.07;--glg-a2:.03;}
-html[data-gl] .glg-tile[data-fam="studio"]{--glg-a1:.24;--glg-a2:.12;border-color:rgba(var(--gl-acc-rgb),.28);}
-html[data-gl] .glg-tile[data-fam="system"]{--glg-a1:.04;--glg-a2:.015;}
-html[data-gl] .glg-tile .tn{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(234,238,245,.55);}
-html[data-gl] .glg-tile .tb{display:block;min-width:0;padding-right:44px;}
-html[data-gl] .glg-tile .tv{display:block;font:700 21px/1.1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;}
-html[data-gl] .glg-tile .tv.up{color:#4be378;} html[data-gl] .glg-tile .tv.dn{color:#ff6b61;}
-html[data-gl] .glg-tile .tv.dim{color:rgba(234,238,245,.45);font-weight:600;}
-html[data-gl] .glg-tile .ts{display:block;font-size:10.5px;color:rgba(234,238,245,.5);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-html[data-gl] .glg-tile .tz{position:absolute;right:11px;bottom:10px;color:var(--gl-acci);opacity:.75;display:inline-flex;align-items:center;pointer-events:none;}
-html[data-gl] .glg-tile .tz svg{width:22px;height:22px;display:block;}
-html[data-gl] .glg-tile .tz .glg-dot{width:9px;height:9px;border-radius:50%;background:#5c6b7d;}
-html[data-gl] .glg-tile .tz .glg-dot.live{background:#16a34a;box-shadow:0 0 6px #16a34a;}
-html[data-gl] .glg-tile .tz .glg-dot.cache{background:#d4870f;}
-/* the Cockpit's sleeve bar: a clone of the Studio HUD's #dkBar, in the glyph slot */
-html[data-gl] .glg-tile .tz.glg-sleeves{width:78px;height:7px;border-radius:4px;overflow:hidden;background:rgba(255,255,255,.10);opacity:1;bottom:14px;}
-html[data-gl] .glg-tile .tz.glg-sleeves i{display:block;height:100%;flex:none;}
-@media (min-width:700px){ html[data-gl] .glg-tile{min-height:112px;padding:14px 14px 12px;} html[data-gl] .glg-tile .tv{font-size:23px;} html[data-gl] .glg-tile .tz.glg-sleeves{width:110px;} }
-
-/* ---- foot: one quiet line, then clearance for the bar (sideways there is no bar: skin.css's landscape block shrinks .glg-end to 8px + inset, R18) ---- */
-html[data-gl] .glg-status{padding:14px 4px 0;font:500 11px/1.2 ui-monospace,"SF Mono",Menlo,monospace;color:rgba(234,238,245,.38);text-align:center;letter-spacing:.02em;}
-html[data-gl] .glg-end{height:calc(var(--gl-dock-h,52px) + var(--gl-safe-b, env(safe-area-inset-bottom,0px)) + 12px);}
-
-</style>
-<script id="gl48Grid">
-/* Stage 48 — the Grid dashboard (round 4, 2026-09-23; spec §6). Self-contained: it builds its own
-   <section id="glGrid"> on document.body (never relies on chrome.html), OWNS body class 'gl-grid',
-   and exposes window.GLGrid = { show(), hide(), refresh() }.
-   Every number is read from state the app already holds — window.DATA / FUNDS / Crypto.api.P,
-   AIBO_LIVE / AIBO_CRYPTO_LIVE / AIBO_FUNDS_LIVE, AIBO_POS, the Studio HUD, the LIVE chip, the
-   Calendar's cached feed, the Yields embed — and is an honest '—' when that state is not there.
-   Taps forward through GL48.go(door, opt) when the shim exposes it; otherwise straight to the
-   stock hidden segs (the state machine). Refreshes on show and every 45 s while shown. */
-(function(){
-  'use strict';
-  var H=document.documentElement, B=document.body;
-  var LS_ATLAS='aibo.gl.atlas', LS_CAL='aibo.gl.cal.data.v1', LS_THEME='aibo.gl.theme', TICK_MS=45000;
-  var root=null, timer=null;
-  function $(s,c){ return (c||document).querySelector(s); }
-  function fwd(s){ var e=$(s); if(e) e.click(); return !!e; }
-  function themeOn(){ return H.hasAttribute('data-gl'); }
-  function themePref(){                                    /* mirrors shim.readTheme(): URL wins, then the device, then the default */
-    var meta=window.GL48||{}, keys=(meta.palettes||[]).map(function(p){ return p[0]; });
-    var q=(location.search.match(/[?&]gl=([a-z]+)/)||[])[1];
-    if(q==='off') return 'off'; if(keys.indexOf(q)>=0) return q;
-    try{ var s=localStorage.getItem(LS_THEME); if(s==='off'||keys.indexOf(s)>=0) return s; }catch(_){}
-    return meta['default']||'violet';
-  }
-
-  /* ---------- the tiles (order + sizes are the spec's) ---------- */
-  var TILES=[
-    {id:'tape',     n:'Tape',         fam:'market',  wide:1, go:['tape']},
-    {id:'flow',     n:'Flow chart',   fam:'market',          go:['atlas','flow']},
-    {id:'fin',      n:'Financials',   fam:'market',          go:['fin','company']},   /* round 9 §50: the company page itself (a bare go('fin') would reopen the door's LAST sub-view) */
-    {id:'donut',    n:'Grade wheel',  fam:'grading',         go:['fin','donut']},   /* round 9 §50: the wheel + scorecard live under the Financials door */
-    {id:'sc',       n:'Scorecard',    fam:'grading',         go:['fin','sc']},
-    /* 10-05: the Waterfall + Web tiles left with their views (archive/). With 8 cells before a wide Calendar the 3-column grid
-       holed (C23), so the Calendar moved up beside Yields and Flashcards closes the run (Study last, as in the Atlas sheet §81):
-       6 cells precede the Calendar, 10 precede Cockpit — no hole at 2/3/4 cols. */
-    {id:'cal',      n:'Calendar',     fam:'macro',   wide:1, go:['calendar']},
-    {id:'yd',       n:'Yield curves', fam:'macro',           go:['atlas','yd']},
-    {id:'cards',    n:'Flashcards',   fam:'grading',         go:['atlas','cards']},
-    {id:'cockpit',  n:'Cockpit',      fam:'studio',  wide:1, go:['studio','cockpit']},
-    {id:'build',    n:'Build',        fam:'studio',          go:['studio','build']},
-    {id:'exposure', n:'Exposure',     fam:'studio',          go:['studio','exposure']},
-    {id:'book',     n:'Book',         fam:'studio',          go:['studio','book']},
-    {id:'settings', n:'Settings',     fam:'system',          go:['settings']}
-  ];
-  var SV='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
-  var GLYPH={
-    tape:    SV+'<path d="M3 7h18M3 12h12M3 17h16"/></svg>',
-    flow:    SV+'<circle cx="6" cy="6" r="1.6"/><circle cx="12" cy="6" r="1.6"/><circle cx="18" cy="6" r="1.6"/><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/><circle cx="6" cy="18" r="1.6"/><circle cx="12" cy="18" r="1.6"/><circle cx="18" cy="18" r="1.6"/></svg>',
-    fin:     SV+'<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>',
-    donut:   SV+'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M12 4v4.5M17.7 6.3l-3.2 3.2"/></svg>',
-    sc:      SV+'<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M3 14.5h18M9 9.5V20"/></svg>',
-    cards:   SV+'<rect x="6" y="3" width="14" height="17" rx="2.5"/><path d="M4 7v13a1.5 1.5 0 0 0 1.5 1.5H16"/></svg>',
-    yd:      SV+'<path d="M3 17c4-1 6-8 9-9s5 2 9 0"/><path d="M3 20h18"/></svg>',
-    cal:     SV+'<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M8 3v4M16 3v4"/><path d="M8.5 14h.01M12 14h.01M15.5 14h.01"/></svg>',
-    cockpit: SV+'<path d="M4 16a8 8 0 0 1 16 0"/><path d="M12 16l4-5"/><path d="M3 20h18"/></svg>',
-    build:   SV+'<path d="M4 8h16M4 16h16"/><circle cx="9" cy="8" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="16" r="2" fill="currentColor" stroke="none"/></svg>',
-    exposure:SV+'<circle cx="9.5" cy="12" r="6"/><circle cx="14.5" cy="12" r="6"/></svg>',
-    book:    SV+'<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg>',
-    settings:'<span class="glg-dot"></span>'
-  };
-
-  /* ---------- app state readers (typeof-guarded: the app owns them) ---------- */
-  function eqData(){ return (typeof DATA!=='undefined'&&DATA&&typeof DATA==='object')?DATA:(window.DATA||null); }
-  function fundData(){ return (typeof FUNDS!=='undefined'&&FUNDS&&typeof FUNDS==='object')?FUNDS:(window.FUNDS||null); }
-  function capi(){ try{ return (typeof Crypto!=='undefined'&&Crypto&&Crypto.api&&Crypto.api.P)?Crypto.api:null; }catch(_){ return null; } }
-  function cryptoOn(){ return B.classList.contains('uni-crypto')||(typeof currentUniverse!=='undefined'&&currentUniverse==='crypto'); }
-  function lens(){ var b=$('#lensSeg .on'); var l=b&&b.getAttribute('data-l'); return l||(typeof currentLens!=='undefined'?currentLens:'exp'); }
-  function keys(o){ return o?Object.keys(o).filter(function(k){ return k!=='__proto__'&&k!=='constructor'&&k!=='prototype'; }):[]; }
-  function isA(g){ return typeof g==='string'&&/^A/.test(g); }
-  function pct(v){ return (v>0?'+':'')+(+v).toFixed(1)+'%'; }
-  function cls(v){ return v==null?'':(v>=0?'up':'dn'); }
-  function usdK(v){                                        /* compact dollars for a narrow tile: $9,999 · $12.3k · $183k · $1.23M · $12.3M · $123M */
-    var a=Math.abs(v), s=(v<0?'-':'')+'$', f=function(x,d){ return x.toFixed(d).replace(/\.0+$/,''); };
-    return a>=1e6?s+f(a/1e6,a>=1e8?0:a>=1e7?1:2)+'M':a>=1e4?s+f(a/1e3,a>=1e5?0:1)+'k':s+Math.round(a).toLocaleString('en-US'); }
-
-  /* Tape: the biggest |24h| mover in the current universe, + the roster size */
-  function tape(){
-    var best=null, n=0;
-    if(cryptoOn()){
-      var C=capi(); if(!C) return null; var L=window.AIBO_CRYPTO_LIVE||{};
-      keys(C.P).forEach(function(pk){ n++; var fid=pk.replace(/^\$/,''), v=L[fid], c=v&&v.chg24h_pct;
-        if(c!=null&&isFinite(c)&&(!best||Math.abs(c)>Math.abs(best.chg))) best={sym:fid,chg:+c}; });
-    } else {
-      var D=eqData(); if(!D) return null; var L2=window.AIBO_LIVE, FL=window.AIBO_FUNDS_LIVE||{};
-      keys(D).forEach(function(tk){ n++; var c=(L2&&D[tk]&&D[tk].live)?L2.dayChg(D[tk].live):null;
-        if(c!=null&&isFinite(c)&&(!best||Math.abs(c)>Math.abs(best.chg))) best={sym:tk,chg:+c}; });
-      keys(fundData()).forEach(function(tk){ n++; var c=(L2&&FL[tk])?L2.dayChg(FL[tk]):null;
-        if(c!=null&&isFinite(c)&&(!best||Math.abs(c)>Math.abs(best.chg))) best={sym:tk,chg:+c}; });
-    }
-    return {best:best,n:n};
-  }
-  function roster(){                                         /* the graded names of the current universe */
-    if(cryptoOn()){ var C=capi(); return C?keys(C.P).map(function(k){ return {g:C.P[k].grade||null}; }):null; }
-    var D=eqData(), l=lens(); return D?keys(D).map(function(k){ var r=D[k]||{}; return {g:r[l]||r.exp||r.rec||null, exp:r.exp, rec:r.rec}; }):null;
-  }
-  function ydSpread(){                                       /* only what the Yields embed already computed — no 650 KB fetch for a tile */
-    /* yields.html writes #spreadNow as three adjacent <span>s (10Y−2Y <b>v</b> · 10Y−3M <b>v</b> · at MM/DD/YY) with no
-       whitespace between them, so its textContent runs the numbers together — read the structured spans instead (C26/C29) */
-    try{ var f=document.getElementById('ydFrame'), d=f&&f.contentDocument, el=d&&d.getElementById('spreadNow'); if(!el) return null;
-      var sp=el.querySelectorAll('span'), s0=sp[0], b=s0&&s0.querySelector('b');
-      if(!b||!/10Y[−-]2Y/.test(s0.textContent||'')) return null;
-      var v=parseFloat((b.textContent||'').trim().replace('−','-')); if(!isFinite(v)) return null;   /* fmt2 prints '—' when unknown → NaN → null */
-      var at=((sp[2]&&sp[2].textContent)||'').replace(/^\s*at\s+/,'').trim();
-      return {v:v,at:at}; }catch(_){ return null; }
-  }
-  var NYD, SHORT={fomc:'FOMC',nfp:'NFP',cpi:'CPI',pce:'PCE',ppi:'PPI',gdp:'GDP',jobs:'Jobs'};
-  try{ NYD=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}); }catch(_){ NYD=null; }
-  function nextPrint(){
-    try{ var j=JSON.parse(localStorage.getItem(LS_CAL)||'null'), econ=(j&&j.pub&&j.pub.econ)||[], now=Date.now(), best=null;
-      econ.forEach(function(g){ if(!g||g.tier!==1) return; var t=Date.parse(g.t); if(isNaN(t)||t<=now) return; if(!best||t<best.t) best={t:t,key:g.key,title:g.title}; });
-      if(!best) return null;
-      var d=new Date(best.t), rel='';
-      if(NYD){ var a=NYD.format(d).split('-'), b=NYD.format(new Date()).split('-');
-        var n=Math.round((Date.UTC(+a[0],+a[1]-1,+a[2])-Date.UTC(+b[0],+b[1]-1,+b[2]))/864e5);
-        rel=n===0?'today':n===1?'tomorrow':'in '+n+'d'; }
-      var dow=''; try{ dow=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short'}).format(d); }catch(_){}
-      return {label:SHORT[best.key]||best.title||'—', sub:[dow,rel].filter(Boolean).join(' · ')}; }catch(_){ return null; }
-  }
-  function studioOwned(){                                  /* the Studio's ownedBook(): posModel minus margin debits/shorts, minus $0-slider sleeves (Stage 36) */
-    var S=window.Studio, ob=null;
-    try{ if(S&&typeof S.ownedBook==='function') ob=S.ownedBook(); else if(typeof ownedBook==='function') ob=ownedBook(); }catch(_){ ob=null; }
-    if(ob) return {owned:+ob.owned||0, off:+ob.offUsd||0, empty:!(ob.m&&ob.m.groups&&ob.m.groups.length)};
-    /* The Studio lives in its own closure (ownedBook is NOT a global), so until it exports one read the figure it PAINTS into
-       #posStatus — "LIVE · 12:00Z · $1,170 owned · $20,000 off-aim not counted" — the way the Cockpit tile reads #hudTotal.
-       paintPosStatus runs on every feed sync; a slider drag between syncs is the one moment it can lag the Book pane. */
-    var st=document.getElementById('posStatus'), t=(st&&st.textContent)||'', m=t.match(/\$([\d,]+) owned\b/);
-    if(!m) return null;
-    var o=t.match(/\$([\d,]+) off-aim/), owned=+m[1].replace(/,/g,''), off=o?+o[1].replace(/,/g,''):0;
-    return {owned:owned, off:off, empty:owned===0&&off===0};   /* ownedBook only keeps usd>0 groups: 0 on-aim + 0 off-aim = no groups */
-  }
-  function ownedTotal(){
-    var P=window.AIBO_POS; if(!P||typeof P.hasToken!=='function') return {v:null,sub:'not connected'};
-    if(!P.hasToken()) return {v:null,sub:'not connected'};
-    var acc=P.state&&P.state.data&&P.state.data.accounts; if(!acc) return {v:null,sub:P.state&&P.state.err?'positions unavailable':'fetching positions…'};
-    var accts=acc.length+(acc.length===1?' account':' accounts');
-    /* ONE owned number, never two (Stage 36, the owner): the Studio's figure first (C4/C24) */
-    var so=studioOwned();
-    if(so){ if(so.empty) return {v:null,sub:'no positions in the feed'};
-      return {v:so.owned,sub:'owned · '+accts+(so.off>0?' · '+usdK(so.off)+' off-aim':'')}; }
-    /* last resort when the Studio has painted nothing yet: positive-only, non-cash (mirrors posModel's usd<0 skip) */
-    var t=0, any=false; acc.forEach(function(a){ (a&&a.assets||[]).forEach(function(r){ if(r&&!r.cash&&typeof r.usd==='number'&&isFinite(r.usd)&&r.usd>0){ t+=r.usd; any=true; } }); });
-    return any?{v:t,sub:'owned · '+accts}:{v:null,sub:'no positions in the feed'};
-  }
-  function feed(){
-    var chip=document.getElementById('aibo-live-chip'), L=window.AIBO_LIVE, st=(L&&L.state)||{};
-    var src=chip?(chip.classList.contains('src-live')?'live':chip.classList.contains('src-cache')?'cache':'off'):(st.src==='live'?'live':st.src==='cache'?'cache':'off');
-    var t=''; try{ t=(L&&L.fmtT&&st.at)?L.fmtT(st.at):''; }catch(_){}
-    if(!t&&chip){ var m=(chip.textContent||'').match(/(\d\d:\d\d)/); t=m?m[1]:''; }
-    return {src:src,t:t};
-  }
-  function themeLabel(){
-    var cur=(window.GL48&&GL48.get)?GL48.get():H.getAttribute('data-gl'), P=(window.GL48&&GL48.palettes)||[];
-    for(var i=0;i<P.length;i++) if(P[i][0]===cur) return P[i][1]; return cur||'';
-  }
-
-  /* ---------- one tile's body: {v, cls, sub, z} — v is '—' when the app does not know ---------- */
-  function body(t){
-    var C, r, n, x;
-    switch(t.id){
-      case 'tape': x=tape(); if(!x) return {v:'—',sub:'names'};
-        return x.best?{v:x.best.sym+' '+pct(x.best.chg),cls:cls(x.best.chg),sub:x.n+' names · top 24h mover'}:{v:'—',cls:'dim',sub:x.n+' names · no quotes yet'};
-      case 'flow': n=cryptoOn()?0:document.querySelectorAll('#flowView .card').length; if(n) return {v:String(n),sub:'nodes'};   /* the DOM cards are the equity map's */
-        r=roster(); return r?{v:String(r.length),sub:'names'}:{v:'—',sub:'nodes'};
-      case 'fin': n=keys(eqData()).length; return n?{v:String(n),sub:'companies'}:{v:'—',sub:'companies'};
-      case 'donut': r=roster(); if(!r) return {v:'—',sub:'A-tier'};
-        n=r.filter(function(a){ return isA(a.g); }).length; return {v:String(n),sub:'A-tier · '+(cryptoOn()?'crypto':lens()==='rec'?'recession':'expansion')};
-      case 'sc': r=roster(); if(!r) return {v:'—',sub:'graded'};
-        n=r.filter(function(a){ return !!a.g; }).length; return {v:String(n),sub:'graded'};
-      case 'cards': r=roster(); return r?{v:String(r.length),sub:'deck'}:{v:'—',sub:'deck'};
-      case 'yd': x=ydSpread(); if(!x||x.v==null||isNaN(x.v)) return {v:'—',cls:'dim',sub:'10Y−2Y'};
-        return {v:(x.v>0?'+':'')+x.v.toFixed(2),cls:cls(x.v),sub:'10Y−2Y'+(x.at?' · '+x.at:'')};
-      case 'cal': x=nextPrint(); return x?{v:x.label,sub:x.sub?x.sub+' · tier-1':'tier-1 print'}:{v:'—',cls:'dim',sub:'next tier-1 print'};
-      case 'cockpit': { var tot=($('#hudTotal')||{}).textContent, sub=($('#hudSub')||{}).textContent, bar=$('#dkBar');
-        tot=(tot||'').trim(); sub=(sub||'').trim();
-        return {v:tot||'—',sub:sub||'book',z:(bar&&bar.innerHTML.trim())?bar.innerHTML:null}; }
-      case 'build': return {v:'2',sub:'lanes'};
-      case 'exposure': { var on=$('#expoScopePill button.on')||$('#ownPill button.on'), s=on&&on.getAttribute('data-scope');
-        return s?{v:s.toUpperCase(),sub:'scope · aim | own'}:{v:'—',sub:'scope · aim | own'}; }
-      case 'book': x=ownedTotal(); return {v:x.v==null?'—':usdK(x.v),cls:x.v==null?'dim':'',sub:x.sub};   /* compact: a six-figure book must fit a 360px tile (C25) */
-      case 'settings': x=feed(); return {v:x.src==='live'?'LIVE':x.src==='cache'?'CACHED':'OFFLINE',cls:x.src==='off'?'dim':'',sub:(themeLabel()?themeLabel()+' · ':'')+'feed'+(x.t?' '+x.t:''),dot:x.src};
-    }
-    return {v:'—',sub:''};
-  }
-
-  /* ---------- skeleton + paint ---------- */
-  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-  function mount(){
-    if(root) return root;
-    root=document.createElement('section'); root.id='glGrid'; root.setAttribute('aria-label','Atlas grid');
-    root.innerHTML=
-      '<div class="glg-bar"><div class="gl-seg glg-mode" role="tablist"><button type="button" role="tab" data-glgmode="list">List</button><button type="button" role="tab" data-glgmode="grid" class="on" aria-selected="true">Grid</button></div><span class="glg-uni" id="glgUni"></span></div>'
-     +'<div class="glg-body"><div class="glg-grid" id="glgGrid">'
-     + TILES.map(function(t){ return '<button type="button" class="glg-tile'+(t.wide?' wide':'')+'" data-tile="'+t.id+'" data-fam="'+t.fam+'">'
-         +'<span class="tn">'+esc(t.n)+'</span><span class="tb"><span class="tv">—</span><span class="ts"></span></span><span class="tz">'+GLYPH[t.id]+'</span></button>'; }).join('')
-     +'</div><div class="glg-status" id="glgStatus"></div><div class="glg-end"></div></div>';
-    root.addEventListener('click',onClick);
-    B.appendChild(root);
-    return root;
-  }
-  function paint(){
-    if(!root) return;
-    TILES.forEach(function(t){
-      var el=root.querySelector('[data-tile="'+t.id+'"]'); if(!el) return;
-      var b; try{ b=body(t); }catch(_){ b={v:'—',sub:''}; }
-      var tv=el.querySelector('.tv'), ts=el.querySelector('.ts'), tz=el.querySelector('.tz');
-      tv.textContent=(b.v==null||b.v==='')?'—':b.v; tv.className='tv'+(b.cls?' '+b.cls:''); ts.textContent=b.sub||'';
-      if(t.id==='cockpit'){ if(b.z){ tz.className='tz glg-sleeves'; tz.innerHTML=b.z; } else { tz.className='tz'; tz.innerHTML=GLYPH.cockpit||GLYPH.book; } }
-      if(t.id==='settings'){ var d=tz.querySelector('.glg-dot'); if(d) d.className='glg-dot'+(b.dot==='live'?' live':b.dot==='cache'?' cache':''); }
-    });
-    var u=$('#glgUni'); if(u) u.textContent=cryptoOn()?'Crypto':'Equities';
-    var f=feed(), st=$('#glgStatus');
-    if(st) st.textContent='feed '+(f.src==='live'?'live':f.src==='cache'?'cached':'offline')+(f.t?' · '+f.t:'');
-  }
-
-  /* ---------- navigation ---------- */
-  function inStudio(){ return B.classList.contains('deck-studio'); }
-  function toAtlasDeck(){ if(inStudio()) fwd('#deckSeg [data-d="atlas"]'); }
-  function go(t){
-    hide();
-    var d=t.go[0], o=t.go[1], G=window.GL48||{};
-    if(typeof G.go==='function'){ G.go(d,o); return; }
-    B.classList.remove('m-atlas-open');
-    if(d==='tape'){ toAtlasDeck(); fwd('#viewSeg [data-v="mkt"]'); }
-    else if(d==='atlas'){ toAtlasDeck(); fwd('#viewSeg [data-v="'+o+'"]'); }
-    else if(d==='studio'){ fwd('#deckSeg [data-d="studio"]'); if(o) fwd('#stSeg [data-pane="'+o+'"]'); }
-    else if(d==='settings'){ if(typeof G.settings==='function') G.settings(); else if(!fwd('#glDock [data-gldoor="settings"]')){ fwd('#deckSeg [data-d="studio"]'); fwd('#stGear'); } }
-    else if(d==='calendar'){ fwd('#glDock [data-gldoor="calendar"]'); }
-    else if(d==='fin'){ if(typeof G.openFin==='function') G.openFin(); else B.classList.add('m-atlas-open'); }   /* the Financials row lives in the Atlas sheet */
-  }
-  function toList(){
-    var G=window.GL48||{};
-    if(typeof G.atlasMode==='function'){ G.atlasMode('list'); return; }
-    hide(); try{ localStorage.setItem(LS_ATLAS,'list'); }catch(_){}
-    B.classList.add('m-atlas-open');
-  }
-  function onClick(e){
-    var m=e.target.closest('[data-glgmode]');
-    if(m){ if(m.getAttribute('data-glgmode')==='list') toList(); return; }
-    var b=e.target.closest('[data-tile]'); if(!b) return;
-    for(var i=0;i<TILES.length;i++) if(TILES[i].id===b.getAttribute('data-tile')){ go(TILES[i]); return; }
-  }
-
-  /* ---------- lifecycle ---------- */
-  function stop(){ if(timer){ clearInterval(timer); timer=null; } }
-  function show(){
-    if(!themeOn()) return false;                             /* theme off: stock chrome is in charge, mount nothing */
-    mount();
-    B.classList.remove('m-atlas-open');
-    B.classList.add('gl-grid');
-    try{ localStorage.setItem(LS_ATLAS,'grid'); }catch(_){}
-    var bd=root.querySelector('.glg-body'); if(bd) bd.scrollTop=0;
-    paint(); stop();
-    timer=setInterval(function(){ if(B.classList.contains('gl-grid')&&!document.hidden) paint(); },TICK_MS);
-    return true;
-  }
-  function hide(){ stop(); var was=B.classList.contains('gl-grid'); B.classList.remove('gl-grid');
-    if(was){ var G=window.GL48; if(G&&typeof G.sync==='function'){ try{ G.sync(); }catch(_){} } } }   /* a non-click close (hide() is public) still re-syncs the dock */
-  function refresh(){ if(root&&B.classList.contains('gl-grid')) paint(); }
-  window.GLGrid={show:show, hide:hide, refresh:refresh};
-  window.addEventListener('resize',function(){ if(B.classList.contains('gl-grid')) paint(); });
-  if(themePref()!=='off') mount();                           /* the root exists from load with the theme on; never with it off */
-})();
-
-</script>
 <style id="gl48TechCss">
 /* Stage 48 — the Technicals page (round 5, spec §16). Scoped to html[data-gl]; inert with the theme off.
    A fixed layer under the strip (40px on touch, 47px under the desktop appbar) that IS its own vertical scroller. One head
@@ -13021,7 +12806,7 @@ html[data-gl] .glt-plot .gp[hidden]{display:none;}
 html[data-gl] .glt-wall{--glt-lw:62px;--glt-cw:300px;--glt-ch:100px;--glt-gap:6px;--glt-hh:16px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
   scroll-snap-type:x mandatory;scroll-padding-left:calc(var(--glt-lw) + var(--glt-gap));}
 html[data-gl] .glt-wall::-webkit-scrollbar{display:none;}
-html[data-gl] .glt-wgrid{display:grid;grid-template-columns:var(--glt-lw) repeat(5,var(--glt-cw));grid-template-rows:var(--glt-hh) repeat(4,var(--glt-ch));gap:var(--glt-gap);width:max-content;}
+html[data-gl] .glt-wgrid{display:grid;grid-template-columns:var(--glt-lw) repeat(5,var(--glt-cw));grid-template-rows:var(--glt-hh) repeat(var(--glt-n,4),var(--glt-ch));gap:var(--glt-gap);width:max-content;}
 html[data-gl] .glt-corner,html[data-gl] .glt-rl{position:sticky;left:0;z-index:2;background:rgb(var(--gl-bg-rgb));}   /* the label column stays while the columns scroll under it */
 html[data-gl] .glt-rl{display:flex;flex-direction:column;justify-content:center;gap:3px;padding:0 4px 0 1px;border-right:1px solid rgba(255,255,255,.07);}
 html[data-gl] .glt-rl span{font:700 8px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.04em;color:rgba(234,238,245,.6);white-space:nowrap;overflow:hidden;}
@@ -13032,25 +12817,25 @@ html[data-gl] .glt-plot.cell .gp{font-size:10px;}
 
 /* ---- the card under Glass (R6 §22): the stock TECHNICALS toggle + inline grid hide (never removed); the entry is ITS OWN BOX — a full-width
    bordered, accent-tinted button that sits UNDER the price strip (a sibling in .aibo-box, so the strip's bullet lane never eats its right edge):
-   "Technicals" bold, "candles · TBO cloud · divergence · Bollinger — M W D 4H H" muted under it, an ↗ at the right, ≥44px, a pressed state, no caret.
+   "Technicals" bold, "candles · EMA spread · divergence · Bollinger — M W D 4H H" muted under it, an ↗ at the right, ≥44px, a pressed state, no caret.
    On a phone (≤480) the frames move up beside the title so the description keeps to ONE line; the same grammar as the fundamentals' pill. ---- */
 html[data-gl] #sheetBody .aibo-box details.aibo-tech,html[data-gl] #sheetBody .aibo-box .aibo-strip .as-xp{display:none!important;}
-html[data-gl] .aibo-box .glt-row{appearance:none;box-sizing:border-box;width:calc(100% - 24px);margin:0 12px 12px;min-height:44px;padding:8px 10px 8px 12px;
+html[data-gl] :is(.aibo-box,.sh-grades,.glf) .glt-row{appearance:none;box-sizing:border-box;width:calc(100% - 24px);margin:0 12px 12px;min-height:44px;padding:8px 10px 8px 12px;
   display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"ttl ttl go" "sub fr go";column-gap:8px;row-gap:3px;align-items:center;
   border:1px solid rgba(var(--gl-acc-rgb),.5);border-radius:11px;background:rgba(var(--gl-acc-rgb),.13);color:var(--gl-acci);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;
   font:600 12px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;transition:transform .34s cubic-bezier(.3,1.9,.45,1),background-color .2s,border-color .2s;}
-html[data-gl] .aibo-box .glt-row .ttl{grid-area:ttl;font-weight:800;font-size:13.5px;line-height:1.15;letter-spacing:.01em;color:var(--gl-acci);}
-html[data-gl] .aibo-box .glt-row .sub{grid-area:sub;font:500 10.5px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(234,238,245,.6);min-width:0;}
-html[data-gl] .aibo-box .glt-row em{grid-area:fr;justify-self:start;display:inline-flex;align-items:baseline;gap:5px;font:700 10px/1.25 ui-monospace,"SF Mono",Menlo,monospace;font-style:normal;letter-spacing:.06em;color:var(--gl-acci);opacity:.92;white-space:nowrap;}
-html[data-gl] .aibo-box .glt-row em::before{content:"\2014";font:500 10.5px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:0;color:rgba(234,238,245,.6);margin:0 1px 0 -3px;}   /* the dash lives here: it only makes sense when the frames END the description line */
-html[data-gl] .aibo-box .glt-row em i{font-style:normal;}
-html[data-gl] .aibo-box .glt-row em i.off{opacity:.32;}      /* a frame the feed has not got for this name (no intraday yet): dim, never invented */
-html[data-gl] .aibo-box .glt-row .go{grid-area:go;align-self:center;justify-self:end;font-weight:700;font-size:18px;line-height:1;color:var(--gl-acci);padding-left:2px;}
-html[data-gl] .aibo-box .glt-row:active{transform:scale(.985);background:rgba(var(--gl-acc-rgb),.28);border-color:rgba(var(--gl-acc-rgb),.75);transition-duration:.05s;}
+html[data-gl] :is(.aibo-box,.sh-grades,.glf) .glt-row .ttl{grid-area:ttl;font-weight:800;font-size:13.5px;line-height:1.15;letter-spacing:.01em;color:var(--gl-acci);}
+html[data-gl] :is(.aibo-box,.sh-grades,.glf) .glt-row .sub{grid-area:sub;font:500 10.5px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(234,238,245,.6);min-width:0;}
+html[data-gl] :is(.aibo-box,.sh-grades,.glf) .glt-row em{grid-area:fr;justify-self:start;display:inline-flex;align-items:baseline;gap:5px;font:700 10px/1.25 ui-monospace,"SF Mono",Menlo,monospace;font-style:normal;letter-spacing:.06em;color:var(--gl-acci);opacity:.92;white-space:nowrap;}
+html[data-gl] :is(.aibo-box,.sh-grades,.glf) .glt-row em::before{content:"\2014";font:500 10.5px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:0;color:rgba(234,238,245,.6);margin:0 1px 0 -3px;}   /* the dash lives here: it only makes sense when the frames END the description line */
+html[data-gl] :is(.aibo-box,.sh-grades,.glf) .glt-row em i{font-style:normal;}
+html[data-gl] :is(.aibo-box,.sh-grades,.glf) .glt-row em i.off{opacity:.32;}      /* a frame the feed has not got for this name (no intraday yet): dim, never invented */
+html[data-gl] :is(.aibo-box,.sh-grades,.glf) .glt-row .go{grid-area:go;align-self:center;justify-self:end;font-weight:700;font-size:18px;line-height:1;color:var(--gl-acci);padding-left:2px;}
+html[data-gl] :is(.aibo-box,.sh-grades,.glf) .glt-row:active{transform:scale(.985);background:rgba(var(--gl-acc-rgb),.28);border-color:rgba(var(--gl-acc-rgb),.75);transition-duration:.05s;}
 @media (max-width:480px){
-  html[data-gl] .aibo-box .glt-row{width:calc(100% - 18px);margin:0 9px 9px;padding:8px 9px 8px 11px;grid-template-areas:"ttl fr go" "sub sub go";}
-  html[data-gl] .aibo-box .glt-row em{justify-self:end;}
-  html[data-gl] .aibo-box .glt-row em::before{content:none;}
+  html[data-gl] :is(.aibo-box,.sh-grades,.glf) .glt-row{width:calc(100% - 18px);margin:0 9px 9px;padding:8px 9px 8px 11px;grid-template-areas:"ttl fr go" "sub sub go";}
+  html[data-gl] :is(.aibo-box,.sh-grades,.glf) .glt-row em{justify-self:end;}
+  html[data-gl] :is(.aibo-box,.sh-grades,.glf) .glt-row em::before{content:none;}
 }
 
 /* ---- widths / heights ---- */
@@ -13118,6 +12903,47 @@ html[data-gl] body.gl-tech.gl-fin #glTech{z-index:53;}
   html[data-gl] .glt-head.fin .glt-dial{flex:0 1 130px;}
 }
 
+/* 10-05 (the owner): the SAME boxed button opens the grades (a fold: the caret turns) and the fundamentals' full page (↗). The two big
+   grade tiles are lifted out of the fold's summary by techlab.js so they stay on the card; the summary itself is the button. */
+html[data-gl] #sheetBody details.sh-grades > summary{list-style:none;display:block;padding:0;cursor:pointer;}
+html[data-gl] #sheetBody details.sh-grades > summary::-webkit-details-marker{display:none;}
+html[data-gl] #sheetBody details.sh-grades > summary .glt-row{grid-template-areas:"ttl ttl go" "sub sub go";}
+html[data-gl] #sheetBody details.sh-grades > summary .glt-row .go{transition:transform .2s ease;}
+html[data-gl] #sheetBody details.sh-grades[open] > summary .glt-row .go{transform:rotate(180deg);}
+html[data-gl] #sheetBody details.sh-grades.gl-gbtn > summary > :not(.glt-row){display:none;}
+html[data-gl] #sheetBody .gl-rolls-out{margin:16px 4px 10px;}
+html[data-gl] #sheetBody details.sh-grades.gl-gbtn{border:0;padding:0;background:transparent;margin-top:0;}
+html[data-gl] #sheetBody details.sh-grades.gl-gbtn > summary .glt-row{width:100%;margin:0 0 10px;}
+html[data-gl] .glf .glt-row.glf-row{width:100%;margin:0 0 10px;grid-template-areas:"ttl ttl go" "sub sub go";}
+
+/* 10-05 the Indicators button + sheet (choose the rows; read what each shows). The sheet is a layer INSIDE #glTech — a centred card on
+   wide screens, full-height on a phone; it scrolls on its own, the page under it does not move. */
+html[data-gl] .glt-ibtn{appearance:none;flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:999px;border:1px solid rgba(var(--gl-acc-rgb),.45);background:rgba(var(--gl-acc-rgb),.12);
+  color:var(--gl-acci);font:700 11.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+html[data-gl] .glt-ibtn svg{width:14px;height:14px;}
+html[data-gl] .glt-ibtn:active{transform:scale(.94);}
+html[data-gl] .glt-head.finding .glt-ibtn{display:none;}
+html[data-gl] .glt-info{position:fixed;left:0;right:0;top:inherit;bottom:0;top:40px;z-index:60;background:rgba(4,6,12,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;justify-content:center;align-items:flex-start;padding:10px;box-sizing:border-box;}
+html[data-gl] .glt-info[hidden]{display:none;}
+html[data-gl] .glt-icard{width:min(720px,100%);max-height:100%;display:flex;flex-direction:column;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgb(var(--gl-bg-rgb));box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;}
+html[data-gl] .glt-ihead{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"t x" "s x";align-items:center;gap:1px 10px;padding:12px 12px 10px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+html[data-gl] .glt-ihead b{grid-area:t;font:800 15px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#eaeef5;}
+html[data-gl] .glt-ihead span{grid-area:s;font:500 11.5px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(234,238,245,.55);}
+html[data-gl] .glt-ix{grid-area:x;appearance:none;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(234,238,245,.8);font-size:20px;line-height:1;cursor:pointer;}
+html[data-gl] .glt-ilist{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:4px 16px calc(var(--gl-dock-h,0px) + var(--gl-safe-b,0px) + 28px);}
+html[data-gl] .glt-iitem{padding:12px 0 10px;border-bottom:1px solid rgba(255,255,255,.07);}
+html[data-gl] .glt-iitem:last-child{border-bottom:0;}
+html[data-gl] .glt-itog{appearance:none;display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:36px;padding:0;margin:0 0 4px;border:0;background:transparent;color:inherit;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;}
+html[data-gl] .glt-itog b{font:800 12px/1.2 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.05em;color:rgba(234,238,245,.6);}
+html[data-gl] .glt-iitem.on .glt-itog b{color:var(--gl-acci);}
+html[data-gl] .glt-itog i{flex:none;position:relative;width:40px;height:24px;border-radius:999px;background:rgba(255,255,255,.14);transition:background-color .18s;}
+html[data-gl] .glt-itog i::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#eaeef5;transition:transform .18s;}
+html[data-gl] .glt-iitem.on .glt-itog i{background:rgba(var(--gl-acc-rgb),.85);}
+html[data-gl] .glt-iitem.on .glt-itog i::after{transform:translateX(16px);}
+html[data-gl] .glt-iitem p{margin:6px 0 0;font:400 13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(234,238,245,.78);}
+@media (max-width:520px){ html[data-gl] .glt-ibtn span{display:none;} html[data-gl] .glt-ibtn{width:30px;padding:0;justify-content:center;} html[data-gl] .glt-info{padding:0;} html[data-gl] .glt-icard{border-radius:0;border-width:0;height:100%;} }
+@media (orientation:landscape) and (max-height:520px){ html[data-gl] .glt-ibtn span{display:none;} html[data-gl] .glt-ibtn{width:28px;height:28px;padding:0;justify-content:center;} html[data-gl] .glt-info{top:0;padding:0;} html[data-gl] .glt-icard{border-radius:0;height:100%;width:100%;} }
+
 </style>
 <script id="gl48Tech">
 /* Stage 48 — the Technicals page (round 5, 2026-09-23 late: the owner's overnight verdict, spec §16).
@@ -13138,7 +12964,7 @@ html[data-gl] body.gl-tech.gl-fin #glTech{z-index:53;}
             a 667), still snapping per column; the height follows the four-row fit, capped at h/w .34 so it stays a rectangle.
      Stack  one indicator (a seg), its five timeframes stacked coarse→fine as tall full-width plots.
    Round 9b (§54/§56): a CRYPTO candle row asks the stock renderer for its line mode (tfCandleSVG(bars,w,h,tail,{line:true}) — the
-   close line + a soft area, coloured by the frame's direction); TBO / divergence / Bollinger are untouched. A Market name (Coins 500
+   close line + a soft area, coloured by the frame's direction); EMA spread / divergence / Bollinger are untouched. A Market name (Coins 500
    'mkc' / US 500 'mk') routes through MktView.market.frames(fam, sym) when the curated sources miss — see resolve()/mkFrames().
    Every plot carries ONE small read pill at its top-left and nothing else over the data — no hi/lo, no bar count, nothing
    on the right. A frame a renderer cannot draw is a dashed cell that says "no intraday yet" / "short history"; a plot is
@@ -13152,7 +12978,7 @@ html[data-gl] body.gl-tech.gl-fin #glTech{z-index:53;}
    Landscape (touch, ≤520px tall): the app strip auto-hides 1.5s after the last touch (#mStrip.m-hide — the stock class,
    the top-mode doors follow it through skin.css) and the page takes its 40px; a tap on the top edge brings it back.
    The card: under Glass the stock TECHNICALS toggle + its inline grid are hidden (techlab.css) and ONE full-width BOX (R6 §22:
-   bordered, accent-tinted, "Technicals" bold over "candles · TBO cloud · divergence · Bollinger — M W D 4H H", the frames on
+   bordered, accent-tinted, "Technicals" bold over "candles · EMA spread · divergence · Bollinger — M W D 4H H", the frames on
    hand lit, ↗ at the right, ≥44px, pressed state) sits under the price strip and opens this page. Theme off = stock.
    Persisted: 'aibo.gl.tech.look' (the look) and 'aibo.gl.tech.last' (the name; '$'-prefixed for crypto).
 
@@ -13182,12 +13008,95 @@ html[data-gl] body.gl-tech.gl-fin #glTech{z-index:53;}
      (min(bars, clamp(round(w/6),30,90))). Truth over prettiness: a short frame (a 13-bar crypto monthly) gets a wide band. */
   var UNIT={eq:{m:21,w:5,d:1,h4:1/2,h:1/7}, cr:{m:30,w:7,d:1,h4:1/6,h:1/24}};
   var NEXT={m:'w',w:'d',d:'h4',h4:'h'};                   /* the next-finer frame; H has none */
-  var GUT={candle:1,tbo:2,div:2,bb:2};                    /* each renderer's side padding p: its bars span [p, w−p] (tfCandleSVG p=1, the rest p=2) */
+  var GUT={candle:1,tbo:2,div:2,bb:2,rsi:2,macd:2};                    /* each renderer's side padding p: its bars span [p, w−p] (tfCandleSVG p=1, the rest p=2) */
+  /* 10-05 (the owner): the EMA spread is the EMA SPREAD (it is built on EMAs: 8 / 13 / 21 / 40). Two standard oscillators join as OPTIONAL rows —
+     RSI 14 and MACD 12·26·9 (drawn by this file: tfRsiSVG / tfMacdSVG below) — and every indicator carries a plain description (`d`),
+     shown in the Indicators sheet (the "Indicators" button in the head), where each row is also switched on or off.
+     `opt:true` = off until switched on. The chosen set is kept on this device ('aibo.gl.tech.inds'). */
   var IND=[
-    {id:'candle', s:'CANDLES · 55 EMA', r:['CANDLES','55 EMA'], l:'Candles',    min:8,  fn:'tfCandleSVG', why:'last close vs the 55-EMA · arrow = the EMA’s own slope'},
-    {id:'tbo',    s:'TBO CLOUD',        r:['TBO','CLOUD'],      l:'TBO cloud',  min:45, fn:'tfTboSVG',    why:'last close vs the 21/40 EMA cloud'},
-    {id:'div',    s:'DIVERGENCE',       r:['DIVERGENCE'],      l:'Divergence', min:30, fn:'tfDivSVG',    why:'latest RSI-14 divergence inside the plotted window · bars since'},
-    {id:'bb',     s:'BOLLINGER',        r:['BOLLINGER'],        l:'Bollinger',  min:21, fn:'tfBbSVG',     why:'%B of the last close inside the 20/2 bands (1 = upper band, 0 = lower)'}];
+    {id:'candle', s:'CANDLES · 55 EMA', r:['CANDLES','55 EMA'], l:'Candles',    min:8,  fn:'tfCandleSVG', why:'last close vs the 55-EMA · arrow = the EMA’s own slope',
+      d:['Each candle is one period of the timeframe: the body runs from the open to the close (green = closed higher, red = closed lower), the wicks reach the high and the low. Crypto draws a close line instead.',
+         'The line is the 55-period exponential moving average (EMA) — an average of the last 55 closes that weights the recent ones more.',
+         'The label shows how far the last close is from that average, and the arrow is the direction the average itself is moving. Green: price above a rising average. Red: price below a falling one. Grey: mixed.']},
+    {id:'tbo',    s:'EMA SPREAD',       r:['EMA','SPREAD'],     l:'EMA spread', min:45, fn:'tfTboSVG',    why:'last close vs the 21/40 EMA band',
+      d:['Four exponential moving averages of the close — 8, 13, 21 and 40 periods — drawn as a ribbon under the grey price line.',
+         'The strong band is the gap between the 21 and the 40; the lighter band is the gap between the 13 and the 21; the thin line is the 8. A band is green while the faster average is above the slower one (trend up) and red while it is below (trend down). A wide band is a strong trend; a band that pinches shut is a trend running out or turning.',
+         'The marks: a green O is where the close broke ABOVE the 21/40 band (a long opens); a green X is where it fell back into it (that long closes). A red O is where the close broke BELOW the band (a short opens); a red X is where it climbed back (that short closes).',
+         'The label says where the last close sits: above the band, inside it, or below — and by how much. It is a rule read from the averages, not advice.']},
+    {id:'div',    s:'DIVERGENCE',       r:['DIVERGENCE'],      l:'Divergence', min:30, fn:'tfDivSVG',    why:'latest RSI-14 divergence inside the plotted window · bars since',
+      d:['Divergence is price and momentum disagreeing. Momentum here is the 14-period RSI.',
+         'How it is found: the swing highs and swing lows of the RSI are located (a bar higher, or lower, than the three bars either side of it). Two neighbouring swings 5 to 60 bars apart are compared. BEARISH: price made a higher high while the RSI made a lower high — the rise is losing force. BULLISH: price made a lower low while the RSI made a higher low — the fall is losing force.',
+         'How it is drawn: a solid line joins the two price points, a dashed line from the same start shows the slope the RSI took instead, and an arrow marks the newest one (red pointing down = bearish, green pointing up = bullish).',
+         'The strip along the bottom is the pressure lane. For every bar it compares the price change with the RSI change over the last 4, 8 and 14 bars and keeps the strongest disagreement: red when price rose while momentum fell, green when price fell while momentum rose, deeper colour for a bigger gap, grey when they agree. The price line is coloured the same way on those bars.',
+         'The label names the newest divergence still inside the plot and how many bars ago it completed ("bear · 6b"), or "none".']},
+    {id:'bb',     s:'BOLLINGER',        r:['BOLLINGER'],        l:'Bollinger',  min:21, fn:'tfBbSVG',     why:'%B of the last close inside the 20/2 bands (1 = upper band, 0 = lower)',
+      d:['Bollinger bands: the dashed line is the 20-period average of the close; the shaded band reaches two standard deviations above and below it, so it widens when price is volatile and squeezes when price goes quiet. A tight squeeze often comes before a large move.',
+         'The label is %B — where the last close sits inside the band: 1.00 is the upper band, 0.50 the middle, 0.00 the lower band. Above 1 or below 0 means the close is outside the band.']},
+    {id:'rsi',    s:'RSI 14',           r:['RSI','14'],         l:'RSI',        min:16, fn:'tfRsiSVG',    opt:true, why:'RSI-14 of the last close · above 70 overbought, below 30 oversold',
+      d:['The Relative Strength Index, 14 periods (Wilder’s standard). It compares the average size of the up-closes with the average size of the down-closes and prints the result from 0 to 100.',
+         'The dashed lines are 70 and 30, the faint one is 50. Above 70 the name is called overbought (the stretch is shaded red); below 30, oversold (shaded green). In a strong trend it can stay beyond a line for a long time — the line is a stretch warning, not a turn signal.',
+         'The label is the latest reading.']},
+    {id:'macd',   s:'MACD 12·26·9',     r:['MACD','12·26·9'],   l:'MACD',       min:35, fn:'tfMacdSVG',   opt:true, why:'MACD line vs its 9-period signal · bars = the gap between them',
+      d:['Moving Average Convergence Divergence, the standard 12 · 26 · 9. The grey MACD line is the 12-period EMA minus the 26-period EMA; the thin blue line is its signal — a 9-period EMA of the MACD line.',
+         'The bars are the gap between the two (the histogram): green above zero while the MACD line is over its signal (momentum building upward), red below zero while it is under (momentum building downward). Bars shrinking toward zero mean that momentum is fading; the two lines crossing is the classic signal.',
+         'The label says which side of the signal the MACD line is on, and the size of the gap as a percentage of the price.']}];
+  var LSI='aibo.gl.tech.inds';
+  function savedInds(){ var on={}; IND.forEach(function(i){ on[i.id]=!i.opt; });
+    try{ var v=localStorage.getItem(LSI); if(v){ var ids=v.split(',').filter(function(x){ return IND.some(function(i){ return i.id===x; }); });
+      if(ids.length){ IND.forEach(function(i){ on[i.id]=ids.indexOf(i.id)>=0; }); } } }catch(_){}
+    return on; }
+  var ON=savedInds();
+  function ACT(){ var a=IND.filter(function(i){ return ON[i.id]; }); return a.length?a:[IND[0]]; }
+  function saveInds(){ try{ localStorage.setItem(LSI,ACT().map(function(i){ return i.id; }).join(',')); }catch(_){} }
+
+  /* ---- the two oscillator renderers: the stock renderers' signature (bars, w, h, tailN) and conventions (p = 2, the tail window, tfSvg,
+     the TF_ colours — colour by value). They compute over the FULL history and draw the tail, so the first drawn bar is already warm. ---- */
+  var C_UP='#39d07f', C_DN='#f0685f', C_FL='#8A93A5', C_CY='#1FC6DC';
+  window.tfRsiSVG=function(bars,w,h,tailN){
+    if(!bars||bars.length<16) return '';
+    var cl=window.tfCloses(bars), r=window.tfRsi(cl,14), n=Math.min(tailN||60,cl.length), rr=r.slice(-n), p=2;
+    function X(i){ return p+i*(w-2*p)/(n-1); }
+    function Y(v){ return (h-p)-(v/100)*(h-2*p); }
+    var s='', y70=Y(70), y30=Y(30), i, seg='';
+    s+='<line x1="'+p+'" x2="'+(w-p)+'" y1="'+Y(50).toFixed(1)+'" y2="'+Y(50).toFixed(1)+'" stroke="'+C_FL+'" stroke-width=".6" opacity=".22"/>';
+    s+='<line x1="'+p+'" x2="'+(w-p)+'" y1="'+y70.toFixed(1)+'" y2="'+y70.toFixed(1)+'" stroke="'+C_DN+'" stroke-width=".7" stroke-dasharray="3 2.5" opacity=".5"/>';
+    s+='<line x1="'+p+'" x2="'+(w-p)+'" y1="'+y30.toFixed(1)+'" y2="'+y30.toFixed(1)+'" stroke="'+C_UP+'" stroke-width=".7" stroke-dasharray="3 2.5" opacity=".5"/>';
+    /* the stretches beyond a line, shaded between the curve and the line */
+    function zone(test,yl,col){ var d='', open=false, x0=0;
+      for(var k=0;k<n;k++){ var v=rr[k], inz=(v!=null&&test(v));
+        if(inz&&!open){ open=true; x0=X(k); d+='M'+x0.toFixed(1)+','+yl.toFixed(1); }
+        if(inz) d+=' L'+X(k).toFixed(1)+','+Y(v).toFixed(1);
+        if(open&&(!inz||k===n-1)){ d+=' L'+X(inz?k:k-1).toFixed(1)+','+yl.toFixed(1)+' Z '; open=false; } }
+      return d?'<path d="'+d+'" fill="'+col+'" opacity=".28"/>':''; }
+    s+=zone(function(v){ return v>70; },y70,C_DN)+zone(function(v){ return v<30; },y30,C_UP);
+    for(i=0;i<n;i++){ if(rr[i]==null) continue; seg+=(seg?' ':'')+X(i).toFixed(1)+','+Y(rr[i]).toFixed(1); }
+    if(!seg) return '';
+    var lastV=rr[n-1], col=lastV==null?C_FL:lastV>70?C_DN:lastV<30?C_UP:C_FL;
+    s+='<polyline points="'+seg+'" fill="none" stroke="'+C_FL+'" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
+    if(lastV!=null) s+='<circle cx="'+(w-p)+'" cy="'+Y(lastV).toFixed(1)+'" r="1.8" fill="'+col+'"/>';
+    return window.tfSvg(w,h)+s+'</svg>';
+  };
+  function macdOf(cl){ var e12=window.tfEma(cl,12), e26=window.tfEma(cl,26), m=[], i, ms=[], idx=[];
+    for(i=0;i<cl.length;i++){ var v=(e12[i]==null||e26[i]==null)?null:e12[i]-e26[i]; m.push(v); if(v!=null){ ms.push(v); idx.push(i); } }
+    var se=window.tfEma(ms,9), sig=cl.map(function(){ return null; }); for(i=0;i<idx.length;i++) sig[idx[i]]=se[i];
+    return {m:m, sig:sig}; }
+  window.tfMacdSVG=function(bars,w,h,tailN){
+    if(!bars||bars.length<35) return '';
+    var cl=window.tfCloses(bars), M=macdOf(cl), n=Math.min(tailN||60,cl.length), m=M.m.slice(-n), sg=M.sig.slice(-n), hs=[], i, p=2;
+    for(i=0;i<n;i++) hs.push((m[i]==null||sg[i]==null)?null:m[i]-sg[i]);
+    var all=m.concat(sg,hs).filter(function(v){ return v!=null; }); if(!all.length) return '';
+    var mx=Math.max.apply(null,all.map(Math.abs))||1;
+    function X(i){ return p+i*(w-2*p)/(n-1); }
+    function Y(v){ return h/2-(v/mx)*(h/2-p); }
+    var s='<line x1="'+p+'" x2="'+(w-p)+'" y1="'+(h/2).toFixed(1)+'" y2="'+(h/2).toFixed(1)+'" stroke="'+C_FL+'" stroke-width=".6" opacity=".3"/>';
+    var bw=Math.max(.8,(w-2*p)/n*.62);
+    for(i=0;i<n;i++){ if(hs[i]==null) continue; var y=Y(hs[i]), y0=h/2;
+      s+='<rect x="'+(X(i)-bw/2).toFixed(1)+'" y="'+Math.min(y,y0).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(.5,Math.abs(y-y0)).toFixed(1)+'" fill="'+(hs[i]>=0?C_UP:C_DN)+'" opacity=".62"/>'; }
+    function line(arr,col,sw,op){ var pts=''; for(var k=0;k<n;k++){ if(arr[k]==null) continue; pts+=(pts?' ':'')+X(k).toFixed(1)+','+Y(arr[k]).toFixed(1); }
+      return pts?'<polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="'+sw+'" stroke-linecap="round" stroke-linejoin="round" opacity="'+op+'"/>':''; }
+    s+=line(sg,C_CY,'.9','.85')+line(m,C_FL,'1.4','1');
+    return window.tfSvg(w,h)+s+'</svg>';
+  };
   var root=document.createElement('section'); root.id='glTech'; root.setAttribute('aria-label','Technicals'); B.appendChild(root);
   var LQ=window.matchMedia?window.matchMedia('(orientation:landscape) and (max-height:520px) and (pointer:coarse)'):null;
   /* §74 (round 11): `door` = 'fin' when the page opened as the Financials door's TECHNICALS FACE (GLFin's seg, show(key,{door:'fin'})): body.gl-fin
@@ -13271,7 +13180,7 @@ html[data-gl] body.gl-tech.gl-fin #glTech{z-index:53;}
   }
   function stamp(){ var L=window.AIBO_LIVE, s=(L&&L.state&&(L.state.at||'')+'|'+(L.state.src||''))||'';
     /* round 12 §68: a Market name's frames grow on their own clock (a frames page lands, a coin's DEEP technicals land) — MktView.market.rev()
-       ticks then, and the plots re-key on it: the 4s keep-up sees a new stamp and re-fits every plot in place (a weekly / monthly TBO cloud
+       ticks then, and the plots re-key on it: the 4s keep-up sees a new stamp and re-fits every plot in place (a weekly / monthly EMA spread
        that was a "short history" gap on the light frames draws once the deep ones are there). Curated names: the feed stamp alone, as before. */
     if(S.cur&&S.cur.mk){ try{ var M=window.MktView, mk=M&&M.market; if(mk&&typeof mk.rev==='function') s+='|mk'+mk.rev(); }catch(_){} }
     return s; }
@@ -13293,7 +13202,7 @@ html[data-gl] body.gl-tech.gl-fin #glTech{z-index:53;}
     var top=Math.max(a,b), bot=Math.min(a,b);
     if(c>top) return {v:1,  t:'above '+pct((c-top)/c).slice(1)};
     if(c<bot) return {v:-1, t:'below '+pct((c-bot)/c).slice(1)};
-    return {v:0, t:'in cloud'};
+    return {v:0, t:'in the band'};
   }
   function readDiv(bars,tail){
     if(!bars||bars.length<30) return null;
@@ -13309,7 +13218,17 @@ html[data-gl] body.gl-tech.gl-fin #glTech{z-index:53;}
     var cl=window.tfCloses(bars), n=cl.length, b=bbAt(cl,n-1), c=cl[n-1], pb=(b[1]>b[0])?(c-b[0])/(b[1]-b[0]):.5;
     return {v:pb>.8?1:pb<.2?-1:0, t:'%B '+pb.toFixed(2)};
   }
-  var READ={candle:readCandle, tbo:readTbo, div:readDiv, bb:readBb};
+  function readRsi(bars){
+    if(!bars||bars.length<16) return null;
+    var r=window.tfRsi(window.tfCloses(bars),14), v=r[r.length-1]; if(v==null) return null;
+    return {v:v>70?-1:v<30?1:0, t:v.toFixed(0)+(v>70?' overbought':v<30?' oversold':'')};
+  }
+  function readMacd(bars){
+    if(!bars||bars.length<35) return null;
+    var cl=window.tfCloses(bars), M=macdOf(cl), n=cl.length, m=M.m[n-1], sg=M.sig[n-1]; if(m==null||sg==null||!cl[n-1]) return null;
+    var g=m-sg; return {v:g>0?1:g<0?-1:0, t:(g>=0?'above signal ':'below signal ')+pct(g/cl[n-1])};
+  }
+  var READ={candle:readCandle, tbo:readTbo, div:readDiv, bb:readBb, rsi:readRsi, macd:readMacd};
   function readOf(ind,bars,tail){ return (bars&&bars.length>=ind.min)?READ[ind.id](bars,tail):null; }
   function cls(rd){ return !rd?'gap':rd.v>0?'up':rd.v<0?'dn':'flat'; }
 
@@ -13321,13 +13240,14 @@ html[data-gl] body.gl-tech.gl-fin #glTech{z-index:53;}
   }
   function seg(cl,attr,items,cur){ return '<div class="gl-seg '+cl+'" role="tablist">'+items.map(function(it){ return '<button type="button" role="tab" '+attr+'="'+it[0]+'"'+(cur===it[0]?' class="on" aria-selected="true"':' aria-selected="false"')+'>'+it[1]+'</button>'; }).join('')+'</div>'; }
   function wallHTML(){
-    var h='<div class="glt-wall" data-techwall><div class="glt-wgrid"><div class="glt-corner"></div>';
+    var h='<div class="glt-wall" data-techwall><div class="glt-wgrid" style="--glt-n:'+ACT().length+'"><div class="glt-corner"></div>';
     h+=TFS.map(function(t){ return '<div class="glt-th" data-tf="'+t[0]+'">'+t[2]+'</div>'; }).join('');
-    IND.forEach(function(i){ h+='<div class="glt-rl" title="'+esc(i.s)+'">'+i.r.map(function(x){ return '<span>'+x+'</span>'; }).join('')+'</div>'; TFS.forEach(function(t){ h+=plotHTML('cell',i.id,t[0],'ind'); }); });
+    ACT().forEach(function(i){ h+='<div class="glt-rl" title="'+esc(i.s)+'">'+i.r.map(function(x){ return '<span>'+x+'</span>'; }).join('')+'</div>'; TFS.forEach(function(t){ h+=plotHTML('cell',i.id,t[0],'ind'); }); });
     return h+'</div></div>';
   }
   function stackHTML(){
-    return seg('glt-inds','data-techind',IND.map(function(i){ return [i.id,i.l]; }),S.ind)
+    if(!ON[S.ind]) S.ind=ACT()[0].id;
+    return seg('glt-inds','data-techind',ACT().map(function(i){ return [i.id,i.l]; }),S.ind)
       +'<div class="glt-tall">'+TFS.map(function(t){ return plotHTML('tall',S.ind,t[0],'tf'); }).join('')+'</div>';
   }
 
@@ -13345,7 +13265,7 @@ html[data-gl] body.gl-tech.gl-fin #glTech{z-index:53;}
       cw=Math.floor((avail-2*gap)/3);                      /* avail = wall − label − its gap; two more gaps sit between the three columns */
       var head=root.querySelector('.glt-head'), body=root.querySelector('.glt-body'), end=root.querySelector('.glt-end');
       var used=(head?head.offsetHeight:34)+(body?parseFloat(getComputedStyle(body).paddingTop)||0:6)+(end?end.offsetHeight:8);
-      ch=Math.floor((root.clientHeight-used-hh-4*gap)/4);  /* the four-row fit, as before */
+      ch=Math.floor((root.clientHeight-used-hh-4*gap)/4);  /* the four-row fit, as before — a fifth / sixth row (RSI, MACD switched on) scrolls under */
       ch=Math.max(48,Math.min(ch,Math.floor(cw*.34)));     /* ...capped at the old rectangle (h/w ≤ .34): a 667-wide phone with the strip tucked would otherwise go 190×72 — squarer than the owner's "rectangles before" */
     } else if(W<700){ cw=avail; ch=Math.round(cw*.32); }                        /* portrait phone: one column */
     else if(W<1024){ cw=300; ch=100; }                                           /* iPad: ~2.4 columns, the next one peeking (R32: spec's 100px floor, h/w .33) */
@@ -13408,13 +13328,18 @@ html[data-gl] body.gl-tech.gl-fin #glTech{z-index:53;}
       +'<div class="gl-seg glt-face" role="tablist" aria-label="Company view" data-techfaces><button type="button" role="tab" data-techface="fin" aria-selected="false">Financials</button><button type="button" role="tab" data-techface="tech" class="on" aria-selected="true">Technicals</button></div>'
       +'<div class="glt-who" data-techwho></div><div class="glt-px" data-techpx></div>'
       +'<div class="glt-ctl">'+seg('glt-dial','data-techdial',LOOKS.map(function(l){ return [l,LOOKL[l]]; }),S.look)
+      +'<button type="button" class="glt-ibtn" data-techinfo aria-label="Indicators: choose them and read what each one shows"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span>Indicators</span></button>'
       +'<div class="glt-find"><button type="button" class="glt-fbtn" data-techfind aria-label="Find a name">'+SEARCH+'</button>'
       +'<label class="glt-search">'+SEARCH+'<input type="search" data-techq placeholder="Find a name" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"></label>'
       +'<div class="glt-drop" data-techdrop hidden></div></div></div>'
       +'<button type="button" class="glt-x" data-techclose aria-label="Close Technicals">×</button>'
       +'<button type="button" class="glt-edge" data-techedge aria-label="Show the app bar" tabindex="-1"></button></div>'
-      +'<div class="glt-body"><div class="glt-look" data-techlook></div><div class="glt-end"></div></div>';
+      +'<div class="glt-body"><div class="glt-look" data-techlook></div><div class="glt-end"></div></div>'
+      +'<div class="glt-info" data-techsheet hidden role="dialog" aria-label="Indicators"></div>';
     root.addEventListener('click',function(e){ var b, t=e.target; if(!t||!t.closest) return;
+      if(t.closest('[data-techinfox]')||(t.matches&&t.matches('[data-techsheet]'))){ closeInfo(); return; }
+      if((b=t.closest('[data-techtog]'))){ toggleInd(b.getAttribute('data-techtog')); return; }
+      if(t.closest('[data-techinfo]')){ openInfo(); return; }
       if(t.closest('[data-techclose]')){ hide(); return; }
       if((b=t.closest('[data-techface]'))){ if(b.getAttribute('data-techface')==='fin') toFin(); return; }
       if(t.closest('[data-techedge]')){ reveal(); return; }
@@ -13433,7 +13358,23 @@ html[data-gl] body.gl-tech.gl-fin #glTech{z-index:53;}
     root.addEventListener('wheel',function(){ if(!stripHidden()) armIdle(); },{passive:true,capture:true});
     if(window.ResizeObserver){ S.ro=new ResizeObserver(function(){ if(S.open) schedule(); }); S.ro.observe(root); }
   }
-  document.addEventListener('keydown',function(e){ if(e.key!=='Escape'||!S.open) return; var t=e.target; if(t&&t.matches&&t.matches('[data-techq]')) return; hide(); });   /* the layer never holds focus on a desktop: listen on the document */
+  document.addEventListener('keydown',function(e){ if(e.key!=='Escape'||!S.open) return; var t=e.target; if(t&&t.matches&&t.matches('[data-techq]')) return; if(closeInfo()) return; hide(); });   /* the layer never holds focus on a desktop: listen on the document */
+
+  /* ---- 10-05 the Indicators sheet: every indicator, a switch, and what it shows in plain words. At least one stays on. ---- */
+  function infoHTML(){
+    return '<div class="glt-icard"><div class="glt-ihead"><b>Indicators</b><span>Switch a row on or off · what each one shows</span><button type="button" class="glt-ix" data-techinfox aria-label="Close">×</button></div>'
+      +'<div class="glt-ilist">'+IND.map(function(i){ return '<section class="glt-iitem'+(ON[i.id]?' on':'')+'" data-ind="'+i.id+'">'
+        +'<button type="button" class="glt-itog" data-techtog="'+i.id+'" role="switch" aria-checked="'+(ON[i.id]?'true':'false')+'"><b>'+esc(i.s)+'</b><i aria-hidden="true"></i></button>'
+        +i.d.map(function(p){ return '<p>'+esc(p)+'</p>'; }).join('')+'</section>'; }).join('')+'</div></div>';
+  }
+  function openInfo(){ var el=root.querySelector('[data-techsheet]'); if(!el) return; el.innerHTML=infoHTML(); el.hidden=false; clearTimeout(S.idle); }
+  function closeInfo(){ var el=root.querySelector('[data-techsheet]'); if(!el||el.hidden) return false; el.hidden=true; el.innerHTML=''; armIdle(); return true; }
+  function toggleInd(id){ if(!byId(id)||byId(id).id!==id) return;
+    if(ON[id]&&ACT().length<=1) return;                    /* the last one stays */
+    ON[id]=!ON[id]; saveInds();
+    var el=root.querySelector('[data-techsheet]'), it=el&&el.querySelector('.glt-iitem[data-ind="'+id+'"]');
+    if(it){ it.classList.toggle('on',ON[id]); it.querySelector('[data-techtog]').setAttribute('aria-checked',ON[id]?'true':'false'); }
+    paintLook(false); }
 
   /* ---- the search: a glyph that opens a field; the list drops only while the field has focus ---- */
   function openFind(){ var head=root.querySelector('.glt-head'), q=root.querySelector('[data-techq]'), d=root.querySelector('[data-techdrop]'); if(!head) return;
@@ -13499,7 +13440,6 @@ html[data-gl] body.gl-tech.gl-fin #glTech{z-index:53;}
     try{ window.closeSheet(); }catch(_){} } }
   function leaveOthers(keepFin){                            /* one page at a time: the other Glass layers step aside (their own hide() is called after their class, the shim's order) */
     if(!keepFin&&B.classList.contains('gl-fin')){ B.classList.remove('gl-fin'); if(window.GLFin&&window.GLFin.hide){ try{ window.GLFin.hide(); }catch(_){} } }   /* §74: the Financials face stays under its Technicals face */
-    if(B.classList.contains('gl-grid')){ B.classList.remove('gl-grid'); if(window.GLGrid&&window.GLGrid.hide){ try{ window.GLGrid.hide(); }catch(_){} } }
     if(B.classList.contains('gl-cal')){ B.classList.remove('gl-cal'); if(window.GLCal&&window.GLCal.hide){ try{ window.GLCal.hide(); }catch(_){} } }
     B.classList.remove('m-atlas-open');
   }
@@ -13549,7 +13489,7 @@ html[data-gl] body.gl-tech.gl-fin #glTech{z-index:53;}
   function look(name){ if(LOOKS.indexOf(name)<0) return; var ch=name!==S.look; S.look=name; saveLook(); if(!S.built) return; paintDial(); if(S.open) paintLook(ch); }
   function current(){ return S.cur?chipKey(S.cur):null; }
   function door(){ return S.open?S.door:null; }
-  window.GLTech={show:show, hide:hide, look:look, current:current, door:door};
+  window.GLTech={show:show, hide:hide, look:look, current:current, door:door, inds:function(){ return ACT().map(function(i){ return i.id; }); }, setInd:function(id,on){ if(!!ON[id]!==!!on) toggleInd(id); }};
 
   /* ---------- the card (R6 §22): ONE box under the price strip opens the page — a full-width bordered, accent-tinted button, a sibling of the strip
      inside .aibo-box (the stock toggle + grid are hidden by techlab.css under Glass): "Technicals" bold / the four indicators muted / the frames on hand
@@ -13562,12 +13502,26 @@ html[data-gl] body.gl-tech.gl-fin #glTech{z-index:53;}
     var strip=box.querySelector('.aibo-strip'); if(!strip||box.querySelector('[data-gltechopen]')) return;
     var c=resolve(key), P=(c&&frames(c))||{};
     var b=document.createElement('button'); b.type='button'; b.className='glt-row'; b.setAttribute('data-gltechopen',''); b.setAttribute('aria-label','Open the Technicals page');
-    b.innerHTML='<b class="ttl">Technicals</b><span class="sub">candles · TBO cloud · divergence · Bollinger</span>'
+    b.innerHTML='<b class="ttl">Technicals</b><span class="sub">candles · EMA spread · divergence · Bollinger</span>'
       +'<em>'+TFS.map(function(t){ return '<i'+(P[t[0]]?'':' class="off"')+'>'+t[1]+'</i>'; }).join('')+'</em><b class="go" aria-hidden="true">↗</b>';
     strip.parentNode.insertBefore(b,strip.nextSibling);   /* directly under the strip, above the hidden stock grid */
   }
+  /* 10-05: the grades fold wears the same button. The two big grade tiles leave the summary (they stay on the card, above the button);
+     the summary's own content is hidden, never removed (theme off = the stock fold). A <div>, not a <button>: the summary does the toggling. */
+  function decorateGrades(){
+    if(!H.getAttribute('data-gl')) return;
+    var body=document.getElementById('sheetBody'); if(!body) return;
+    [].forEach.call(body.querySelectorAll('details.sh-grades:not(.gl-gbtn)'),function(d){
+      var sum=d.querySelector('summary'); if(!sum) return; d.classList.add('gl-gbtn');
+      var rolls=sum.querySelector('.sh-rolls');
+      if(rolls){ rolls.classList.add('gl-rolls-out'); d.parentNode.insertBefore(rolls,d); }
+      var b=document.createElement('div'); b.className='glt-row'; b.setAttribute('data-glgrades','');
+      b.innerHTML='<b class="ttl">Grades</b><span class="sub">the pillars behind the grade · valuation · confidence</span><b class="go" aria-hidden="true">▾</b>';
+      sum.appendChild(b);
+    });
+  }
   var sheet=document.getElementById('sheet');
-  if(sheet&&window.MutationObserver) new MutationObserver(function(){ if(sheet.classList.contains('show')) decorateCard(); }).observe(sheet,{attributes:true,attributeFilter:['class']});
+  if(sheet&&window.MutationObserver) new MutationObserver(function(){ if(sheet.classList.contains('show')){ decorateCard(); decorateGrades(); } }).observe(sheet,{attributes:true,attributeFilter:['class']});
   function fromCard(el){ var box=el.closest('.aibo-box'), key=(box&&box.getAttribute('data-gltech'))||cardKey(); if(!key) return; show(key); }
   document.addEventListener('click',function(e){
     var t=e.target, b; if(!t||!t.closest) return;
@@ -14059,7 +14013,6 @@ html[data-gl] .glr-end{flex:none;height:12px;}
   /* ---------- API ---------- */
   function leaveOthers(){                                   /* one page at a time: the other Glass layers step aside (class first, then their hide — the shim's order) */
     if(B.classList.contains('gl-fin')){ B.classList.remove('gl-fin'); if(window.GLFin&&window.GLFin.hide){ try{ window.GLFin.hide(); }catch(_){} } }
-    if(B.classList.contains('gl-grid')){ B.classList.remove('gl-grid'); if(window.GLGrid&&window.GLGrid.hide){ try{ window.GLGrid.hide(); }catch(_){} } }
     if(B.classList.contains('gl-cal')){ B.classList.remove('gl-cal'); if(window.GLCal&&window.GLCal.hide){ try{ window.GLCal.hide(); }catch(_){} } }
     if(B.classList.contains('gl-tech')){ if(window.GLTech&&window.GLTech.hide){ try{ window.GLTech.hide(); }catch(_){} } B.classList.remove('gl-tech'); }
     B.classList.remove('m-atlas-open');
@@ -15067,7 +15020,7 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"index":["Whole market","#C9CED8
     var t0=Date.now(); setTimeout(function(){ if(sideShown()&&sideOpened<t0) fwd('#sheetX'); },0);
   },true);
   function sideShown(){ var sh=$('#sheet'); return !!sh&&sh.classList.contains('show'); }
-  function sideOnTape(){ return B.classList.contains('gl-tape')&&!/\bgl-(cal|fin|grid|settings|tech|rot)\b/.test(B.className)&&!B.classList.contains('deck-studio'); }
+  function sideOnTape(){ return B.classList.contains('gl-tape')&&!/\bgl-(cal|fin|settings|tech|rot)\b/.test(B.className)&&!B.classList.contains('deck-studio'); }
   function sideMark(tr){ var c=$('#mktView .mkt tr.gl-cur'); if(c&&c!==tr) c.classList.remove('gl-cur'); if(tr) tr.classList.add('gl-cur'); }
   (function(){
     var sb=$('#sheetBody'), sh=$('#sheet'); if(!sb||!sh||!window.MutationObserver) return;
@@ -15171,7 +15124,7 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"index":["Whole market","#C9CED8
   function enterFinDoor(sub,key){
     if(sub==='grading') sub=gfaceSaved();
     sub=FIN_SUBS[sub]?sub:'company';
-    leaveSettings(); leaveCalendar(); leaveGrid(); B.classList.remove('m-atlas-open'); closeResearchSheet();
+    leaveSettings(); leaveCalendar(); B.classList.remove('m-atlas-open'); closeResearchSheet();
     if(!finDoorUp()){ var cur=viewNow(); finPrev=(cur==='donut'||cur==='sc')?'mkt':cur; B.classList.add('gl-findoor'); }
     finSub=sub; if(sub!=='company') gfaceSave(sub);
     if(sub==='company'){
@@ -15217,37 +15170,22 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"index":["Whole market","#C9CED8
     });
   }
   window.GL48.research=openResearchSheet;
-  function openGrid(){
-    leaveFinDoor(); leaveSettings(); leaveCalendar(); leaveFin(); B.classList.remove('m-atlas-open');
-    if(window.GLGrid&&window.GLGrid.show){ B.classList.add('gl-grid'); window.GLGrid.show(); }
-    else log('openGrid: GLGrid not mounted');
-    sync(); resetZoom();
-  }
-  function leaveGrid(){ if(!B.classList.contains('gl-grid')) return; B.classList.remove('gl-grid'); if(window.GLGrid&&window.GLGrid.hide) window.GLGrid.hide(); }
   function leaveRot(){ if(!B.classList.contains('gl-rot')) return; B.classList.remove('gl-rot'); if(window.GLRot&&window.GLRot.hide) window.GLRot.hide(); }   /* §69 the Sector rotation page (rotation.js owns the class) */
   function openSettings(fromCal){
     if(B.classList.contains('gl-settings')) return;
     /* The console sheet lives INSIDE #studioView, which is display:none outside the Studio deck —
        so the gear is dead everywhere else. Enter the Studio, open it as a full page (skin.css),
        and remember the way back. */
-    leaveFinDoor(); leaveFin(); leaveGrid(); B.classList.remove('m-atlas-open');
+    leaveFinDoor(); leaveFin(); B.classList.remove('m-atlas-open');
     origin={deck:inStudio()?'studio':'atlas', cal:!!fromCal};
     B.classList.add('gl-settings');
     if(!inStudio()) fwd('#deckSeg [data-d="studio"]');
     if(window.Studio&&window.Studio.openConsole) window.Studio.openConsole(); else fwd('#stGear');
     injectAppearance();
   }
-  /* §6 the Atlas door remembers List | Grid on this device */
-  var LSA='aibo.gl.atlas';
-  function atlasSaved(){ try{ return localStorage.getItem(LSA)==='grid'?'grid':'list'; }catch(_){ return 'list'; } }
-  function openAtlasSheet(){ leaveFinDoor(); leaveFin(); leaveGrid(); closeResearchSheet(); B.classList.add('m-atlas-open'); paintAtlasSheet(); resetZoom(); }
-  function atlasMode(mode){
-    mode=(mode==='grid')?'grid':'list';
-    try{ localStorage.setItem(LSA,mode); }catch(_){}
-    if(mode==='grid') openGrid(); else { leaveGrid(); openAtlasSheet(); }
-    sync();
-  }
-  function atlasDoor(){ if(atlasSaved()==='grid'&&window.GLGrid&&window.GLGrid.show) openGrid(); else openAtlasSheet(); }
+  /* 10-05 (the owner): the Atlas GRID view is removed (archive/grid-view/) — the Atlas door is its list, always. */
+  function openAtlasSheet(){ leaveFinDoor(); leaveFin(); closeResearchSheet(); B.classList.add('m-atlas-open'); paintAtlasSheet(); resetZoom(); }
+  function atlasDoor(){ openAtlasSheet(); }
 
   /* ---- ONE forwarder for every way in: the dock, the Grid's tiles (grid.js), the Financials page, QA.
      door: tape | atlas | studio | calendar | settings | fin | grid;  opt: a view id for atlas (flow,
@@ -15261,17 +15199,16 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"index":["Whole market","#C9CED8
     leaveFinDoor();
     if(door==='settings'){ var wasCal=B.classList.contains('gl-cal'); leaveCalendar(); openSettings(wasCal); sync(); resetZoom(); return; }
     leaveSettings();
-    if(door==='calendar'){ leaveFin(); leaveGrid(); openCalendar(); sync(); resetZoom(); return; }
+    if(door==='calendar'){ leaveFin(); openCalendar(); sync(); resetZoom(); return; }
     leaveCalendar();
-    if(door==='grid'){ openGrid(); return; }
-    leaveFin(); leaveGrid();
+    leaveFin();
     if(door==='tape'){ toAtlasDeck(); fwd('#viewSeg [data-v="mkt"]'); }
     else if(door==='studio'){ fwd('#deckSeg [data-d="studio"]'); if(opt) fwd('#stSeg [data-pane="'+opt+'"]'); }
     else if(door==='atlas'){ if(opt){ toAtlasDeck(); fwd('#viewSeg [data-v="'+opt+'"]'); } else atlasDoor(); }
     sync(); resetZoom();
   }
   window.GL48.go=go; window.GL48.settings=function(fromCal){ go('settings',fromCal); };
-  window.GL48.openFin=openFin; window.GL48.openGrid=openGrid; window.GL48.atlasMode=atlasMode;
+  window.GL48.openFin=openFin;
   dock.addEventListener('click',function(e){
     var b=e.target.closest('[data-gldoor]'); if(!b) return;
     var d=b.getAttribute('data-gldoor');
@@ -15284,7 +15221,7 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"index":["Whole market","#C9CED8
   /* Door repair (proven in the 08-27 re-wrap): an Atlas chapter picked while the Studio deck is
      up must also flip the deck. Registered after the app's own delegates, so it runs after them. */
   document.addEventListener('click',function(e){
-    if(e.target.closest('#mAtlasSheet .ma-row')){ leaveFinDoor(false); leaveSettings(); leaveCalendar(); leaveFin(); leaveGrid(); toAtlasDeck(); }   /* §50: a chapter pick ends the Financials context without restoring (a new view was chosen) */
+    if(e.target.closest('#mAtlasSheet .ma-row')){ leaveFinDoor(false); leaveSettings(); leaveCalendar(); leaveFin(); toAtlasDeck(); }   /* §50: a chapter pick ends the Financials context without restoring (a new view was chosen) */
   });
   /* Settings closed with its own X means "go back where I came from". Any OTHER close (picking a
      portfolio, reset...) is the app deliberately landing on the Cockpit, and is left alone.
@@ -15323,7 +15260,7 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"index":["Whole market","#C9CED8
        §82, "Grading" for the wheel and the scorecard alike (the face seg right under the strip already says which one is up) (+ · Crypto) */
     if(B.classList.contains('gl-fin')) return companyTitle();
     if(door==='fin'&&(v==='donut'||v==='sc')) return 'Grading'+(B.classList.contains('uni-crypto')?' · Crypto':'');
-    if(door==='fin') return 'Research'; if(B.classList.contains('gl-grid')) return 'Atlas';
+    if(door==='fin') return 'Research';
     if(door==='tape') return 'Tape';
     var b=$('#viewSeg .on'), t=b?b.textContent.trim():'Atlas';
     return t+(B.classList.contains('uni-crypto')?' · Crypto':'');
@@ -15337,8 +15274,6 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"index":["Whole market","#C9CED8
   function buildAtlasSheet(){
     if(!atlas||atlas.querySelector('.gl-ma-cap')) return;
     var head=atlas.querySelector('.ma-head'), x=head&&head.querySelector('.ma-x');
-    if(head){ var seg=el('div','gl-seg','<button type="button" data-glatlas="list">List</button><button type="button" data-glatlas="grid">Grid</button>');
-      seg.setAttribute('role','group'); seg.setAttribute('aria-label','Atlas layout'); head.insertBefore(seg,x||null); }
     function cap(key,text,before){ var c=el('div','gl-ma-cap',text); c.setAttribute('data-glcap',key); atlas.insertBefore(c,before||null); }
     cap('flow','Capital flow',atlas.querySelector('.ma-row[data-av="flow"]'));   /* 10-05: the Waterfall + Web rows are gone (archive/) — Flow chart is the chapter */
     /* §50 (round 9): the Grade wheel and the Scorecard rows are HIDDEN here (skin.css — stock nodes are never removed) and the Company
@@ -15357,15 +15292,9 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"index":["Whole market","#C9CED8
       var rt=el('button','ma-row','<b>Sector rotation</b><span>every sector rebased to zero — who is taking the capital</span>'); rt.type='button'; rt.setAttribute('data-glrot',''); rt.setAttribute('data-av','rot'); rt.style.order='9'; atlas.appendChild(rt); }   /* data-av names it in the sheet's row sequence (qa_stage48_nav.py); no #viewSeg view carries it, so the stock forward is a no-op */
     atlas.addEventListener('click',function(e){
       if(e.target.closest('[data-glrot]')){ if(window.GLRot&&window.GLRot.show) window.GLRot.show(); else log('rotation: GLRot not mounted'); return; }   /* the stock delegate still closes the sheet */
-      var b=e.target.closest('[data-glatlas]'); if(!b) return;
-      e.stopPropagation();                                     /* it carries no .ma-row; the stock delegate must not see a bubble either */
-      atlasMode(b.getAttribute('data-glatlas'));
     });
   }
-  function paintAtlasSheet(){
-    if(!atlas) return; var mode=atlasSaved();
-    [].forEach.call(atlas.querySelectorAll('[data-glatlas]'),function(b){ b.classList.toggle('on',b.getAttribute('data-glatlas')===(B.classList.contains('gl-grid')?'grid':mode)); });
-  }
+  function paintAtlasSheet(){}
   buildAtlasSheet(); buildResearchSheet();                  /* §74a: the Research sheet sits right behind the Atlas one */
 
   /* ---- §17 the Universe seg lives IN each Atlas view (the owner: "within each flow chart there should be a toggle… once
@@ -15526,7 +15455,7 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"index":["Whole market","#C9CED8
     if(finDoorUp()&&finSub==='company'&&!B.classList.contains('gl-fin')) leaveFinDoor();
     var v=(($('#viewSeg .on')||{}).dataset||{}).v||'mkt', p=(($('#stSeg .dk-on')||{}).dataset||{}).pane||'cockpit';
     var door=B.classList.contains('gl-settings')?'settings':B.classList.contains('gl-cal')?'calendar':
-             (B.classList.contains('gl-fin')||finDoorUp())?'fin':(B.classList.contains('gl-grid')||B.classList.contains('gl-rot'))?'atlas':inStudio()?'studio':v==='mkt'?'tape':'atlas';   /* §69: Sector rotation is an Atlas page */
+             (B.classList.contains('gl-fin')||finDoorUp())?'fin':B.classList.contains('gl-rot')?'atlas':inStudio()?'studio':v==='mkt'?'tape':'atlas';   /* §69: Sector rotation is an Atlas page */
     /* §34 (round 7): the Atlas sheet is an overlay, not a view, so `door` (the surface underneath — title, gl-tape, the fade key) keeps
        reading the surface; only the LIGHT moves: while body.m-atlas-open the Atlas door is the one .on (dock and, in top-mode
        landscape, the strip — same node), no other is, and the previous light returns on close. Grid mode is a view: unchanged. */
@@ -15606,7 +15535,7 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"index":["Whole market","#C9CED8
   function flowZoomMode(){ var on=$('#zoomSeg button.on'); return (on&&on.getAttribute('data-z')==='1')?'1':'fit'; }
   function flowShowing(){
     var fv=$('#flowView'); if(!fv||fv.classList.contains('hidden')||inStudio()) return false;
-    return !(B.classList.contains('gl-tech')||B.classList.contains('gl-fin')||B.classList.contains('gl-grid')||B.classList.contains('gl-cal')||B.classList.contains('gl-settings'));
+    return !(B.classList.contains('gl-tech')||B.classList.contains('gl-fin')||B.classList.contains('gl-cal')||B.classList.contains('gl-settings'));
   }
   function dressFlowZoom(){
     if(!fwrap) return; var m=flowZoomMode(), on100=(m==='1')&&flowShowing();
@@ -15835,8 +15764,33 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"index":["Whole market","#C9CED8
   dressReadLine();
 
   /* ---- Settings > Appearance: the theme picker, in the sheet's own grammar ---- */
+  /* 10-05 (the owner: "for any bit of data we have, we need a way and a timeline in which it all goes and gets fetched and updated"): the DATA card.
+     The backend keeps a register of every feed (v4.14 /freshness.json: what it covers, the source, the schedule, when it last landed, on
+     time or late). Settings shows ONE quiet line — "Every feed on schedule" or which ones are late — and the whole table behind a fold. */
+  function freshAgo(h){ if(h==null) return ''; if(h<1/60) return 'just now'; if(h<1) return Math.round(h*60)+' min ago'; if(h<48) return (Math.round(h*10)/10)+' h ago'; return Math.round(h/24)+' days ago'; }
+  function paintFresh(j,err){
+    var card=$('#glData'); if(!card) return;
+    var sum=card.querySelector('.gl-dsum'), list=card.querySelector('.gl-dlist');
+    if(!j||!Array.isArray(j.feeds)){ sum.className='gl-dsum na'; sum.innerHTML='<i></i><b>'+(err||'Checking the data feeds…')+'</b>'; list.innerHTML=''; return; }
+    var late=j.feeds.filter(function(f){ return f.state==='late'||f.state==='missing'; }), off=j.feeds.filter(function(f){ return f.state==='off'; });
+    var sched=j.feeds.filter(function(f){ return f.state!=='demand'&&f.state!=='off'; }).length;
+    sum.className='gl-dsum '+(late.length?'late':'ok');
+    sum.innerHTML='<i></i><b>'+(late.length?(late.length+' of '+sched+' feeds behind schedule'):('All '+sched+' scheduled feeds on time'))+'</b>'
+      +'<span>'+(late.length?late.map(function(f){ return f.label; }).join(' · '):'checked '+String(j.builtAt||'').slice(11,16)+' UTC')+(off.length?' · '+off.length+' switched off':'')+'</span>';
+    var esc=function(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+    list.innerHTML=j.feeds.map(function(f){
+      var when=f.state==='demand'?'on demand':f.state==='off'?'off':f.state==='missing'?'not landed yet':freshAgo(f.ageH);
+      return '<div class="gl-drow '+f.state+'"><i></i><div><b>'+esc(f.label)+'</b><em>'+esc(when)+(f.dataAsOf?' · data through '+esc(f.dataAsOf):'')+'</em>'
+        +'<span>'+esc(f.covers)+'</span><span>'+esc(f.schedule)+' · '+esc(f.source)+(f.why?' · '+esc(f.why):'')+'</span></div></div>'; }).join('');
+  }
+  function loadFresh(){
+    if(!$('#glData')) return;
+    var base=String(window.AIBO_LIVE_URL||'https://asset-grading-production.up.railway.app/universe.json').replace(/\/universe\.json.*$/,'');
+    try{ fetch(base+'/freshness.json',{cache:'no-store'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){ paintFresh(j); })
+      .catch(function(){ paintFresh(null,'The data register could not be reached'); }); }catch(_){ paintFresh(null,'The data register could not be reached'); }
+  }
   function injectAppearance(){
-    if($('#glAppearance')) return;
+    if($('#glAppearance')){ loadFresh(); return; }
     var main=$('#dkSheet [data-st8scr="main"]'); if(!main) return;
     var caps=main.querySelectorAll('.st8-cap'), about=null;
     for(var i=0;i<caps.length;i++) if(/about/i.test(caps[i].textContent)) about=caps[i];
@@ -15856,7 +15810,31 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"index":["Whole market","#C9CED8
     var gfoot=document.createElement('div'); gfoot.className='st8-foot gl-foot'; gfoot.textContent='Which roll grade the wheel, scorecard, tape and chips wear. Every company card always shows both. Saved on this device.';
     /* §30/§39 (rounds 7–8) put a "Card when zoomed in" row here (Keep my zoom | Zoom out). §51 (round 9): the owner called it "extra noise that will
        confuse people" — the row is GONE; the card always opens the old way (see the cardZoomMode block at the top). */
-    [[cap,card,foot],[gcap,gcard,gfoot]].forEach(function(trio){ trio.forEach(function(n){ if(about) main.insertBefore(n,about); else main.appendChild(n); }); });
+    /* 10-05 (the owner: "the watch list stuff is not present on the phone or the iPad… it needs to be across the entire application"): the shared
+       lists mount on any device that HOLDS THE KEY, and a key lives per browser — a home-screen app never sees the one Safari was given through
+       the private link. So the key can be given here, on every device: paste the key or the whole private link. (lists.js reads it at load.) */
+    var lcap=document.createElement('div'); lcap.className='st8-cap'; lcap.textContent='Shared lists';
+    var lcard=document.createElement('div'); lcard.className='dk-group st8-card'; lcard.id='glListsKey';
+    var hasKey=false; try{ hasKey=!!localStorage.getItem('aibo.lists.key'); }catch(_){}
+    lcard.innerHTML=hasKey
+      ?'<div class="st8-row st8-static gl-lkrow"><span class="gl-lkstat on">On for this device</span><button type="button" class="gl-lkbtn" data-gllkoff>Turn off here</button></div>'
+      :'<div class="st8-row st8-static gl-lkrow"><input type="password" class="gl-lkin" data-gllkin placeholder="Paste the key or the private link" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button type="button" class="gl-lkbtn" data-gllkon>Turn on</button></div>';
+    var lfoot=document.createElement('div'); lfoot.className='st8-foot gl-foot';
+    lfoot.textContent=hasKey?'The lists you and the people holding the link add show in the Tape’s List menu, on every screen size. Turning it off here only forgets the key on this device.'
+      :'Lists that you and the people holding the private link can add — they show in the Tape’s List menu. Each device needs the key once (a home-screen app does not share it with Safari).';
+    lcard.addEventListener('click',function(e){
+      if(e.target.closest('[data-gllkoff]')){ e.stopPropagation(); try{ localStorage.removeItem('aibo.lists.key'); }catch(_){} location.reload(); return; }
+      if(e.target.closest('[data-gllkon]')){ e.stopPropagation(); var inp=lcard.querySelector('[data-gllkin]'), raw=String(inp&&inp.value||'').trim();
+        var m=/[#&?]k=([A-Za-z0-9_\-]{3,128})/.exec(raw), k=m?m[1]:(/^[A-Za-z0-9_\-]{3,128}$/.test(raw)?raw:null);
+        if(!k||k==='off'){ if(inp){ inp.value=''; inp.placeholder='That is not a key or a link with one'; } return; }
+        try{ localStorage.setItem('aibo.lists.key',k); }catch(_){ return; } location.reload(); } });
+    var dcap=document.createElement('div'); dcap.className='st8-cap'; dcap.textContent='Data';
+    var dcard=document.createElement('div'); dcard.className='dk-group st8-card'; dcard.id='glData';
+    dcard.innerHTML='<div class="st8-row st8-static gl-dsum na"><i></i><b>Checking the data feeds…</b></div>'
+      +'<details class="gl-dfold"><summary>Every feed, its schedule and its source</summary><div class="gl-dlist"></div></details>';
+    var dfoot=document.createElement('div'); dfoot.className='st8-foot gl-foot'; dfoot.textContent='Every number in the app is fetched on a schedule by the server. This is the register of those fetches — when each last landed, and whether that is on time.';
+    [[cap,card,foot],[gcap,gcard,gfoot],[lcap,lcard,lfoot],[dcap,dcard,dfoot]].forEach(function(trio){ trio.forEach(function(n){ if(about) main.insertBefore(n,about); else main.appendChild(n); }); });
+    setTimeout(loadFresh,0);
     card.addEventListener('click',function(e){ var b=e.target.closest('[data-gltheme]'); if(b){ e.stopPropagation(); setTheme(b.getAttribute('data-gltheme')); } });
     gcard.addEventListener('click',function(e){ var b=e.target.closest('[data-gllens]'); if(b){ e.stopPropagation(); setLens(b.getAttribute('data-gllens')); } });
     paintLens();
@@ -15872,8 +15850,8 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"index":["Whole market","#C9CED8
   if(bar&&deckSeg){
     var cb=document.createElement('div'); cb.className='seg'; cb.id='glCalBtn'; cb.innerHTML='<button type="button">Calendar</button>';
     deckSeg.parentNode.insertBefore(cb,deckSeg.nextSibling);
-    cb.addEventListener('click',function(e){ e.stopPropagation(); if(B.classList.contains('gl-cal')) leaveCalendar(); else { leaveSettings(); leaveFin(); leaveGrid(); openCalendar(); } sync(); });
-    bar.addEventListener('click',function(e){ if(!e.target.closest('#glCalBtn')){ leaveCalendar(); leaveFin(); leaveGrid(); } },true);
+    cb.addEventListener('click',function(e){ e.stopPropagation(); if(B.classList.contains('gl-cal')) leaveCalendar(); else { leaveSettings(); leaveFin(); openCalendar(); } sync(); });
+    bar.addEventListener('click',function(e){ if(!e.target.closest('#glCalBtn')){ leaveCalendar(); leaveFin(); } },true);
   }
 
   /* ---- yields.html is a same-origin iframe with the app's own token names: hand it the theme ---- */

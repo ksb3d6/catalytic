@@ -47,6 +47,17 @@ svg{display:block;width:100%;height:auto;touch-action:pan-y}
 .spreadnow b{font-size:12.5px}
 .foot{font-size:10.5px;color:var(--muted2);line-height:1.6;margin-top:14px}
 .err{padding:30px 10px;color:var(--muted);font-size:13px;text-align:center}
+.wtab{width:100%;border-collapse:collapse;font-size:12px}
+.wtab th{font:700 9.5px/1.2 inherit;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:right;padding:5px 6px;border-bottom:1px solid var(--hair);white-space:nowrap}
+.wtab td{text-align:right;padding:6px 6px;border-bottom:1px solid rgba(42,54,71,.55);white-space:nowrap;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.wtab th:first-child,.wtab td:first-child{text-align:left;font-family:inherit;position:sticky;left:0;background:#121a26}
+.wtab td:first-child b{font-weight:700}
+.wtab td i{font-style:normal;color:var(--muted2);font-size:10px;margin-left:5px}
+.wtab .up{color:var(--up)} .wtab .dn{color:var(--dn)} .wtab .na{color:var(--muted2)}
+.wtab tr.us td{background:rgba(31,198,220,.06)} .wtab tr.us td:first-child{background:#12222e}
+.wscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px}
+.whead{font-size:13px;font-weight:700;letter-spacing:.02em;margin:18px 2px 8px;color:var(--ink)}
+html{scrollbar-color:rgba(31,198,220,.35) transparent}
 @media(min-width:741px){ .hdr h1{font-size:20px} .card{padding:16px 16px 12px} }
 </style>
 </head>
@@ -84,6 +95,21 @@ svg{display:block;width:100%;height:auto;touch-action:pan-y}
     <div class="spreadnow mono" id="spreadNow"></div>
   </div>
 
+  <div id="world" hidden>
+    <div class="whead">Around the world</div>
+    <div class="card">
+      <h2>10-year yields · the largest economies</h2>
+      <div class="sub">One line per country, monthly, on the same definition (the OECD long-term government bond yield). The range buttons at the top move this chart too. Tap a chip to hide or show a country.</div>
+      <div class="legend" id="wLegend" style="justify-content:flex-start;margin:0 0 8px"></div>
+      <svg id="wChart" viewBox="0 0 720 300" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="card">
+      <h2>Where each one stands</h2>
+      <div class="sub">Latest yields by maturity. <b style="color:var(--ink)">Daily</b> countries come from their own treasury or central bank; the rest carry the monthly 10-year only — a dash is a number that source does not publish, never a guess. Slope = 10Y − 2Y (red = inverted). vs US = that country’s 10Y minus the US 10Y.</div>
+      <div class="wscroll"><table class="wtab" id="wTable"></table></div>
+    </div>
+  </div>
+
   <div class="foot" id="foot"></div>
 </div>
 
@@ -107,16 +133,87 @@ function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
 function fmt2(x){return (x==null||!isFinite(x))?'—':x.toFixed(2);}
 function niceDate(iso){ var p=iso.split('-'); return p[1]+'/'+p[2]+'/'+p[0].slice(2); }
 
-fetch('yields.json').then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+/* 10-05: the curves come from the backend now (v4.14 jobs/yields.py — fetched from the Treasury four times a day). The file beside this
+   page is only the fallback when the backend cannot be reached; whichever answers, the page says how old its newest session is. */
+var API=(function(){ try{ var u=(window.parent&&window.parent.AIBO_LIVE_URL)||''; if(u) return String(u).replace(/\/universe\.json.*$/,''); }catch(_){}
+  return 'https://asset-grading-production.up.railway.app'; })();
+function getJSON(remote,local){
+  var ctl=('AbortController' in window)?new AbortController():null, t=setTimeout(function(){ if(ctl) ctl.abort(); },9000);
+  return fetch(API+remote,ctl?{signal:ctl.signal}:{}).then(function(r){ clearTimeout(t); if(!r.ok) throw 0; return r.json(); })
+    .then(function(j){ j._live=true; return j; })
+    .catch(function(){ clearTimeout(t); if(!local) throw 0; return fetch(local).then(function(r){ if(!r.ok) throw 0; return r.json(); }); });
+}
+var W=null, wVis={}, WCOL={US:'#1FC6DC',CN:'#f0685f',JP:'#e879f9',DE:'#e8b53c',IN:'#f0a24a',GB:'#7ab0ea',FR:'#8b9cf6',IT:'#39d07f',CA:'#ff8fa3',
+  BR:'#9ad36a',KR:'#c084fc',AU:'#5fd4b4',ES:'#d6a36c',MX:'#6d97c4',NL:'#b9c2d0',CH:'#ffffff'};
+var WDEF={US:1,CN:1,JP:1,DE:1,GB:1,FR:1,IT:1,CA:1};
+getJSON('/yields_intl.json','yields_intl.json').then(function(j){
+  if(!j||!j.countries||!j.monthly) return; W=j;
+  W.countries.forEach(function(c){ wVis[c.c]=!!WDEF[c.c]; });
+  document.getElementById('world').hidden=false;
+  document.getElementById('wLegend').innerHTML=W.countries.map(function(c){
+    return '<button class="lg'+(wVis[c.c]?'':' off')+'" data-c="'+c.c+'" style="--c:'+WCOL[c.c]+'"><i></i>'+esc(c.name)+'</button>'; }).join('');
+  document.getElementById('wLegend').addEventListener('click',function(e){ var b=e.target.closest('.lg'); if(!b) return;
+    var k=b.getAttribute('data-c'); wVis[k]=!wVis[k]; b.classList.toggle('off',!wVis[k]); paintWorld(); });
+  paintWorld(); paintWTable();
+}).catch(function(){});
+function paintWorld(){
+  if(!W) return;
+  var svg=document.getElementById('wChart'), Wd=720, H=300, pl=4, pr=34, pt=8, pb=18;
+  var months=W.monthly.months, n=months.length, take=rangeN===0?n:Math.max(12,Math.round(rangeN/21)), i0=Math.max(0,n-take), m=n-i0;
+  var keys=W.countries.map(function(c){ return c.c; }).filter(function(k){ return wVis[k]; });
+  var lo=Infinity, hi=-Infinity;
+  keys.forEach(function(k){ var a=W.monthly.series[k]||[]; for(var i=i0;i<n;i++){ var v=a[i]; if(v==null) continue; if(v<lo) lo=v; if(v>hi) hi=v; } });
+  if(!isFinite(lo)){ svg.innerHTML='<text x="360" y="150" fill="rgba(234,238,245,.5)" font-size="12" text-anchor="middle">no country selected</text>'; return; }
+  var pad=(hi-lo)*.06||.5; lo-=pad; hi+=pad;
+  function X(i){ return pl+(i-i0)*(Wd-pl-pr)/Math.max(1,m-1); }
+  function Y(v){ return pt+(hi-v)*(H-pt-pb)/(hi-lo); }
+  var out='', step=(hi-lo)>12?4:(hi-lo)>6?2:(hi-lo)>3?1:.5;
+  for(var g=Math.ceil(lo/step)*step; g<=hi; g+=step){
+    out+='<line x1="'+pl+'" x2="'+(Wd-pr)+'" y1="'+Y(g).toFixed(1)+'" y2="'+Y(g).toFixed(1)+'" stroke="'+(Math.abs(g)<1e-9?'rgba(234,238,245,.4)':'rgba(234,238,245,.08)')+'" stroke-width="1" vector-effect="non-scaling-stroke"/>'
+       +'<text x="'+(pl+3)+'" y="'+(Y(g)-3).toFixed(1)+'" fill="rgba(234,238,245,.45)" font-size="9.5" font-family="ui-monospace,Menlo,monospace">'+g.toFixed(step<1?1:0)+'%</text>'; }
+  var lastY=null, every=m<=14?1:m<=40?6:m<=130?12:60;
+  for(var i=i0;i<n;i++){ var p=months[i].split('-'); if((every===1)||(p[1]==='01'&&(+p[0])%(every/12||1)===0)||(every===6&&(p[1]==='01'||p[1]==='07'))){
+      var lab=every<12?(p[1]+'/'+p[0].slice(2)):p[0]; if(lab===lastY) continue; lastY=lab;
+      out+='<text x="'+X(i).toFixed(1)+'" y="'+(H-5)+'" fill="rgba(234,238,245,.45)" font-size="9.5" text-anchor="middle" font-family="ui-monospace,Menlo,monospace">'+lab+'</text>'; } }
+  var ends=[];
+  keys.forEach(function(k){ var a=W.monthly.series[k]||[], d='', pen=false, last=null;
+    for(var i=i0;i<n;i++){ var v=a[i]; if(v==null){ pen=false; continue; } d+=(pen?'L':'M')+X(i).toFixed(1)+','+Y(v).toFixed(1); pen=true; last=[i,v]; }
+    if(!d) return;
+    out+='<path d="'+d+'" fill="none" stroke="'+WCOL[k]+'" stroke-width="'+(k==='US'?2.4:1.5)+'" stroke-linejoin="round" vector-effect="non-scaling-stroke" opacity="'+(k==='US'?1:.9)+'"/>';
+    ends.push({k:k,y:Y(last[1])}); });
+  ends.sort(function(a,b){ return a.y-b.y; });
+  for(var e=1;e<ends.length;e++) if(ends[e].y-ends[e-1].y<10) ends[e].y=ends[e-1].y+10;
+  ends.forEach(function(en){ out+='<text x="'+(Wd-pr+4)+'" y="'+(en.y+3).toFixed(1)+'" fill="'+WCOL[en.k]+'" font-size="10" font-weight="700" font-family="ui-monospace,Menlo,monospace">'+en.k+'</text>'; });
+  svg.innerHTML=out;
+}
+function paintWTable(){
+  if(!W) return;
+  var us=null; W.countries.forEach(function(c){ if(c.c==='US') us=c; });
+  var us10=us&&us.latest?us.latest['10Y']:null, months=W.monthly.months;
+  function cell(v){ return v==null?'<td class="na">—</td>':'<td>'+v.toFixed(2)+'</td>'; }
+  function delta(v,unit){ if(v==null) return '<td class="na">—</td>'; var bp=Math.round(v*100); return '<td class="'+(bp>0?'up':bp<0?'dn':'na')+'">'+(bp>0?'+':'')+bp+'</td>'; }
+  var h='<thead><tr><th>Country</th><th>2Y</th><th>5Y</th><th>10Y</th><th>30Y</th><th title="10Y minus 2Y, in basis points">Slope bp</th><th title="10Y minus the US 10Y, in basis points">vs US bp</th><th title="change in the 10Y over the last year, basis points">1Y chg bp</th><th>As of</th></tr></thead><tbody>';
+  W.countries.forEach(function(c){ var L=c.latest||{}, ser=W.monthly.series[c.c]||[], nowM=null, agoM=null;
+    for(var i=ser.length-1;i>=0;i--){ if(ser[i]!=null){ nowM=ser[i]; agoM=(i>=12&&ser[i-12]!=null)?ser[i-12]:null; break; } }
+    var long=L['30Y']!=null?L['30Y']:null, longLab=(L['30Y']==null&&L['20Y']!=null)?'<td title="20-year (no 30-year published)">'+L['20Y'].toFixed(2)+'<i>20Y</i></td>':cell(long);
+    var slope=(L['10Y']!=null&&L['2Y']!=null)?L['10Y']-L['2Y']:null, vs=(c.c!=='US'&&L['10Y']!=null&&us10!=null)?L['10Y']-us10:null;
+    var sl=slope==null?'<td class="na">—</td>':'<td class="'+(slope<0?'dn':'')+'">'+(slope>0?'+':'')+Math.round(slope*100)+'</td>';
+    h+='<tr class="'+(c.c==='US'?'us':'')+'"><td><b style="color:'+WCOL[c.c]+'">'+c.c+'</b> '+esc(c.name)+'</td>'+cell(L['2Y'])+cell(L['5Y'])+cell(L['10Y'])+longLab+sl
+      +(vs==null?'<td class="na">—</td>':'<td>'+(vs>0?'+':'')+Math.round(vs*100)+'</td>')+delta((nowM!=null&&agoM!=null)?nowM-agoM:null)
+      +'<td>'+esc(c.asOf||'—')+'<i>'+(c.freq==='daily'?'daily':'monthly')+'</i></td></tr>'; });
+  document.getElementById('wTable').innerHTML=h+'</tbody>';
+}
+getJSON('/yields.json','yields.json').then(function(j){
   D=j;
   D.maturities.forEach(function(m){ vis[m.k]=true; });
   scrubIdx=D.days.length-1;
   document.getElementById('asof').textContent='through '+j.asOf;
-  document.getElementById('foot').innerHTML='Daily par yields · '+esc(j.source)+' · baked snapshot through <b class="mono">'+j.asOf+
-    '</b> — nothing interpolated, gaps stay gaps. Refresh: <span class="mono">python3 bake_yields.py</span> and republish.';
+  document.getElementById('foot').innerHTML='Daily par yields · '+esc(j.source)+' · through <b class="mono">'+j.asOf+'</b> · '
+    +(j._live?'fetched from the Treasury four times a day by the app’s server':'<b>offline copy</b> — the server could not be reached, this is the snapshot that ships with the page')
+    +' — nothing interpolated, gaps stay gaps. International: Ministry of Finance Japan, Bundesbank, Bank of England, Bank of Canada (daily) and the OECD (monthly).';
   buildLegend(); paintAll();
 }).catch(function(){
-  document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="err">Couldn’t load yields.json — it ships alongside this page; rerun bake_yields.py if it’s missing.</div>');
+  document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="err">The yield curves could not be loaded — neither the server nor the copy that ships with this page answered.</div>');
 });
 
 function buildLegend(){
@@ -135,7 +232,7 @@ document.getElementById('range').addEventListener('click',function(e){
   var b=e.target.closest('button'); if(!b) return;
   rangeN=+b.dataset.r;
   document.querySelectorAll('#range button').forEach(function(x){x.classList.toggle('on',x===b);});
-  paintAll();
+  paintAll(); paintWorld();
 });
 
 function windowDays(){
