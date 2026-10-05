@@ -783,6 +783,24 @@ body.deck-studio #flowView,body.deck-studio #donutView,body.deck-studio #cardsVi
 #studioView .seg-row{display:grid;grid-template-columns:34px 16px minmax(120px,1fr) minmax(120px,2.4fr) 132px;
   align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--gl-d12,#141d28)}
 #studioView .seg-row:last-child{border-bottom:0}
+#studioView .idx-nm{display:flex;align-items:baseline;gap:7px;min-width:0}
+#studioView .idx-nm b{font-weight:700;flex:none}
+#studioView .idx-nm i{font-style:normal;font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
+#studioView .idx-del{appearance:none;flex:none;width:22px;height:22px;border-radius:50%;border:1px solid var(--hair);background:transparent;color:var(--muted);font-size:14px;line-height:1;cursor:pointer;padding:0}
+#studioView .idx-del:hover{color:#f0685f;border-color:#f0685f}
+#studioView .idx-add{padding:10px 12px 12px}
+#studioView .idx-add-btn{appearance:none;border:1px dashed rgba(var(--gl-acc-rgb,31,198,220),.55);background:rgba(var(--gl-acc-rgb,31,198,220),.08);color:var(--gl-acc,#1FC6DC);border-radius:10px;padding:8px 14px;font:700 12.5px/1 inherit;cursor:pointer;min-height:36px}
+#studioView .idx-add-btn.on{border-style:solid}
+#studioView .idx-full{font-size:11.5px;color:var(--muted)}
+#studioView .idx-pick{margin-top:10px}
+#studioView .idx-fams,#studioView .idx-tks{display:flex;flex-wrap:wrap;gap:6px}
+#studioView .idx-fams{margin-bottom:10px}
+#studioView .idx-fams button,#studioView .idx-tks button{appearance:none;border:1px solid var(--hair);background:var(--gl-d12,#101b2b);color:var(--muted);border-radius:8px;padding:7px 10px;font:700 11.5px/1 inherit;cursor:pointer;min-height:32px}
+#studioView .idx-fams button.on{background:var(--sel-bg);color:var(--sel-ink);box-shadow:inset 0 0 0 1px var(--sel-line)}
+#studioView .idx-tks button{color:var(--ink);font-family:ui-monospace,'SF Mono',Menlo,monospace}
+#studioView .idx-tks button i{font-style:normal;color:var(--muted);margin-left:3px}
+#studioView .idx-tks button:hover{border-color:rgba(var(--gl-acc-rgb,31,198,220),.6)}
+#studioView .idx-note{margin-top:9px;font-size:10.5px;line-height:1.45;color:var(--muted)}
 #studioView .seg-row .dot{width:13px;height:13px;border-radius:4px}
 #studioView .seg-row .nm{font-size:13px;color:#cdd9e5;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #studioView .seg-row .nm:hover{color:#fff;text-decoration:underline dotted}
@@ -5137,6 +5155,32 @@ const FUND_COL = {VOO:'#3b82f6',QQQM:'#8b5cf6',VXUS:'#10b981',SCHD:'#f59e0b'};
 /* index/stock sleeve as its own dial-able mix (shares of the indices sleeve, sum 100) */
 const STOCK_DEFAULT = [['VOO',45],['QQQM',20],['VXUS',20],['SCHD',15]];
 const FUND_NAME = {VOO:'Vanguard S&P 500',QQQM:'Invesco Nasdaq-100',VXUS:'Vanguard Total Intl',SCHD:'Schwab US Dividend'};
+/* 10-06 (the owner: "go ahead and just build" the index-fund picker): the Indices sleeve is no longer four fixed funds. state.stock is a LIST —
+   any index product in INDEX_FAMILIES (S&P 500, Nasdaq, Dow, Russell, total market, international, bonds…) can be added from the mixer and
+   removed again (at least one stays, twelve at most). A fund's id IS its ticker. Saves carry the list; an old save restores its four.
+   Look-through: a fund on the same index as a baked basket borrows it (INDEX_ALIAS — SPY ≈ VOO, QQQ ≈ QQQM…); any other shows none, honestly. */
+const IDX_PALETTE=['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ec4899','#22d3ee','#a3e635','#f97316','#c084fc','#60a5fa','#34d399','#fbbf24'];
+const IDX_MAX=12;
+function fundCol(t){ if(FUND_COL[t]) return FUND_COL[t]; let h=0; for(const c of String(t)) h=(h*31+c.charCodeAt(0))>>>0; return IDX_PALETTE[h%IDX_PALETTE.length]; }
+function fundName(t){ const f=(typeof FUNDS!=='undefined'&&FUNDS&&FUNDS[t])?FUNDS[t].name:''; return FUND_NAME[t]||f||(INDEX_FAM[t]?INDEX_FAM[t]+' index fund':t); }
+function isIndexFund(t){ return Object.prototype.hasOwnProperty.call(FUND_NAME,t)||Object.prototype.hasOwnProperty.call(POS_INDEXISH,t); }
+function addIndexFund(t){
+  t=String(t||'').toUpperCase();
+  if(!isIndexFund(t)||state.stock.some(f=>f.t===t)||state.stock.length>=IDX_MAX) return false;
+  const share=Math.max(5,Math.round(100/(state.stock.length+1))), k=(100-share)/100;
+  state.stock.forEach(f=>{ f.weight*=k; });
+  state.stock.push({id:t,t,weight:share,locked:false,holdings:[],sleeve:'indices'});
+  return true;
+}
+function removeIndexFund(t){
+  if(state.stock.length<=1) return false;
+  const i=state.stock.findIndex(f=>f.t===t); if(i<0) return false;
+  state.stock.splice(i,1);
+  const tot=state.stock.reduce((a,f)=>a+f.weight,0);
+  state.stock.forEach(f=>{ f.weight=tot>0?f.weight*100/tot:100/state.stock.length; });
+  return true;
+}
+let idxPickOpen=false, idxPickFam=0;
 /* metals sleeve — gold + silver, defaults to 0% of the book (off) but dial-able like the indices sleeve */
 const METALS_DEFAULT = [['GLD',70],['SLV',30]];
 const METAL_COL = {GLD:'#d4af37', SLV:'#aab2bd'};
@@ -5358,7 +5402,7 @@ const segUsd = st => (state.sleeves[st.sleeve||'ai']||0) * st.weight/100;
 function holdUsd(st,h){const sw=st.holdings.reduce((a,x)=>a+x.w,0);return sw>0?segUsd(st)*h.w/sw:0;}
 function indexFunds(){
   const tot=state.stock.reduce((a,f)=>a+f.weight,0)||1;
-  return state.stock.map(f=>({t:f.t, usd:state.sleeves.indices*f.weight/tot, col:FUND_COL[f.t]}));
+  return state.stock.map(f=>({t:f.t, usd:state.sleeves.indices*f.weight/tot, col:fundCol(f.t)}));
 }
 function metalsFunds(){
   const tot=state.metals.reduce((a,f)=>a+f.weight,0)||1;
@@ -5679,6 +5723,7 @@ function offAimBits(offBy){                                         /* stable sl
 const INDEX_ALIAS={SPY:'VOO', IVV:'VOO', SPLG:'VOO', SPYM:'VOO', FXAIX:'VOO', SWPPX:'VOO', VFIAX:'VOO', VFINX:'VOO',   /* the same index: the same basket */
   VTI:'VOO', ITOT:'VOO', SCHB:'VOO', FSKAX:'VOO', SWTSX:'VOO', VTSAX:'VOO', FZROX:'VOO', SCHX:'VOO', VV:'VOO',                /* total market / large cap ≈ the S&P's top names */
   QQQ:'QQQM', QQQE:'QQQM', IXUS:'VXUS', VEU:'VXUS', VTIAX:'VXUS', FTIHX:'VXUS', FZILX:'VXUS', ACWX:'VXUS'};   /* owned broad funds ≈ nearest baked basket */
+Object.keys(INDEX_ALIAS).forEach(k=>{ if(!INDEX_TOP15[k]&&INDEX_TOP15[INDEX_ALIAS[k]]) INDEX_TOP15[k]=INDEX_TOP15[INDEX_ALIAS[k]]; });   /* 10-06: a fund on the same index borrows the basket on the AIM side too */
 let _pxCache=null,_pxKey=null;                                     /* memo per positions payload — paint() runs on every slider drag */
 function posExposure(){
   const A=posLayer(), key=(A&&A.state)?A.state.data:null;
@@ -6210,13 +6255,23 @@ function renderMixer(defs, sel){
 }
 function renderStockMixer(sel){
   const el=$(sel); if(!el)return;
-  el.innerHTML = state.stock.map(f=>`<div class="seg-row" data-seg="${f.id}">
+  const many=state.stock.length>1, room=state.stock.length<IDX_MAX;
+  let h = state.stock.map(f=>`<div class="seg-row" data-seg="${f.id}">
       <button class="lock${f.locked?' on':''}" data-act="lock" data-seg="${f.id}" aria-label="lock ${f.t}" title="Lock this weight">${lockIcon(f.locked)}</button>
-      <span class="dot" style="background:${FUND_COL[f.t]}"></span>
-      <span class="nm" title="${esc(FUND_NAME[f.t]||f.t)}">${f.t}</span>
+      <span class="dot" style="background:${fundCol(f.t)}"></span>
+      <span class="nm idx-nm" title="${esc(fundName(f.t))}"><b>${f.t}</b><i>${esc(INDEX_FAM[f.t]||fundName(f.t))}</i>${many?`<button type="button" class="idx-del" data-act="idxdel" data-t="${f.t}" aria-label="Remove ${f.t}" title="Remove ${f.t} from the sleeve">\u00d7</button>`:''}</span>
       <input type="range" min="0" max="95" step="0.5" data-seg-weight="${f.id}" value="${f.weight}" aria-label="${f.t} weight">
       <span class="cw" id="cw-${f.id}"></span>
     </div>`).join('');
+  /* the picker: families across, that family's funds under them; a fund already in the sleeve is not offered */
+  h+=`<div class="idx-add">${room?`<button type="button" class="idx-add-btn${idxPickOpen?' on':''}" data-act="idxopen" aria-expanded="${idxPickOpen}">${idxPickOpen?'Done':'+ Add an index fund'}</button>`:`<span class="idx-full">${IDX_MAX} funds is the most this sleeve holds</span>`}`;
+  if(idxPickOpen&&room){
+    const have=new Set(state.stock.map(f=>f.t)), fam=INDEX_FAMILIES[idxPickFam]||INDEX_FAMILIES[0];
+    h+=`<div class="idx-pick"><div class="idx-fams">${INDEX_FAMILIES.map((x,i)=>`<button type="button" class="${i===idxPickFam?'on':''}" data-act="idxfam" data-fam="${i}">${esc(x[0])}</button>`).join('')}</div>`
+      +`<div class="idx-tks">${fam[1].split(' ').filter(t=>t&&!have.has(t)).map(t=>`<button type="button" data-act="idxadd" data-t="${t}" title="${esc(fundName(t))}${INDEX_TOP15[t]?'':' \u00b7 no look-through basket'}">${t}${INDEX_TOP15[t]?'':'<i>\u00b7</i>'}</button>`).join('')||'<span class="idx-full">every fund of this family is already in the sleeve</span>'}</div>`
+      +`<div class="idx-note">A dot after a ticker = no look-through basket for that fund yet: it counts in the sleeve, but its holdings are not opened up in Exposure.</div></div>`;
+  }
+  el.innerHTML = h+'</div>';
 }
 function renderMetalsMixer(sel){
   const el=$(sel); if(!el)return;
@@ -6236,7 +6291,7 @@ function buildMixer(){
   else renderMixer(SEGMENTS,'#mixer');
   const h=$('#mixerHead'); if(h) h.textContent = sc==='indices'?'Index-fund mixer':sc==='crypto'?'Crypto category mixer':sc==='metals'?'Metals mixer · gold & silver':'Stock segment mixer';
   const w=$('#mixerHow'); if(w) w.innerHTML =
-       sc==='indices' ? 'Slide each index fund\u2019s share of the <b>indices</b> sleeve; the rest rebalance to 100%. Tap \u25cb to lock one. This flows straight into the look-through below.'
+       sc==='indices' ? 'Slide each index fund\u2019s share of the <b>indices</b> sleeve; the rest rebalance to 100%. Tap \u25cb to lock one, \u00d7 to drop one, or add any index fund from the list under the sliders. This flows straight into the look-through below.'
      : sc==='crypto'  ? 'Slide each category\u2019s share of the <b>crypto</b> sleeve; the rest rebalance to 100%. Tap \u25cb to lock one — same dials as the crypto build-out section lower down.'
      : sc==='metals'  ? 'Split the <b>metals</b> sleeve between gold and silver. Set the sleeve\u2019s overall size in the Sleeve split above — it ships at 0%.'
      :                  'Drag to set each segment\u2019s share of the Stocks sleeve; the rest rebalance to 100%. Tap \u25cb to lock one in place.';
@@ -6666,6 +6721,10 @@ document.addEventListener('click',e=>{
   else if(act==='clearseg'){ const id=b.getAttribute('data-seg'); segState(id).holdings=[]; rebuildCard(id); paint(); }
   else if(act==='addhold'){ const id=b.getAttribute('data-seg'),tk=b.getAttribute('data-tkr'); if(addHolding(id,tk)){ rebuildCard(id); paint(); } }
   else if(act==='rmhold'){ const id=b.getAttribute('data-seg'),tk=b.getAttribute('data-tkr'); removeHolding(id,tk); rebuildCard(id); paint(); }
+  else if(act==='idxopen'){ idxPickOpen=!idxPickOpen; buildMixer(); paint(); }
+  else if(act==='idxfam'){ idxPickFam=+b.getAttribute('data-fam')||0; buildMixer(); paint(); }
+  else if(act==='idxadd'){ const tk=b.getAttribute('data-t'); if(addIndexFund(tk)){ refreshAllUI(); toast('Added '+tk+' to the Indices sleeve'); } }
+  else if(act==='idxdel'){ const tk=b.getAttribute('data-t'); if(removeIndexFund(tk)){ refreshAllUI(); toast('Removed '+tk); } }
   else if(act==='lock'){ const id=b.getAttribute('data-seg'); const st=segState(id); st.locked=!st.locked;
     document.querySelectorAll(`[data-act="lock"][data-seg="${id}"]`).forEach(x=>{ x.classList.toggle('on',st.locked); x.innerHTML=lockIcon(st.locked); }); }
   else if(act==='slock'){ const k=b.getAttribute('data-sleeve-k'); state.sleeveLock[k]=!state.sleeveLock[k]; syncSleeveUI(); }
@@ -6776,6 +6835,9 @@ function applyConfigObj(cfg){
   restore(cfg.segments); restore(cfg.crypto);
   const restoreFunds=(cfgArr,arr)=>{ if(!Array.isArray(cfgArr))return; for(const cs of cfgArr){ const f=arr.find(x=>x.id===cs.id); if(f){ if(typeof cs.weight==='number')f.weight=Math.max(0,cs.weight); f.locked=!!cs.locked; } }
     const t=arr.reduce((a,f)=>a+f.weight,0); if(t>0){ const k=100/t; arr.forEach(f=>f.weight*=k); } };
+  /* 10-06: the index list itself rides the save — rebuild it from the saved ids (an old save names the original four) */
+  if(Array.isArray(cfg.stock)){ const list=cfg.stock.filter(cs=>cs&&isIndexFund(String(cs.id))).slice(0,IDX_MAX);
+    if(list.length) state.stock=list.map(cs=>({id:String(cs.id),t:String(cs.id),weight:Math.max(0,Number(cs.weight)||0),locked:!!cs.locked,holdings:[],sleeve:'indices'})); }
   restoreFunds(cfg.stock, state.stock);
   restoreFunds(cfg.metals, state.metals);
   if(cfg.mixerScope==='ai'||cfg.mixerScope==='indices'||cfg.mixerScope==='crypto'||cfg.mixerScope==='metals') mixerScope=cfg.mixerScope;
@@ -6952,7 +7014,7 @@ function buildBookAll(){
   if(expoScope==='own'){ buildBookAllOwn(el); return; }   /* Stage 35b: one scope governs exposure AND book — aim path below is untouched */
   const total=totalUsd();
   const rows=[];
-  indexFunds().forEach(f=>{ if(f.usd>0) rows.push({sl:'indices',t:f.t,role:(FUND_NAME[f.t]||f.t)+' \u00b7 index fund',usd:f.usd,mark:'etf',rec:'\u2014',exp:'\u2014',val:'\u2014'}); });
+  indexFunds().forEach(f=>{ if(f.usd>0) rows.push({sl:'indices',t:f.t,role:fundName(f.t)+' \u00b7 index'+(INDEX_FAM[f.t]?' \u00b7 '+INDEX_FAM[f.t]:' fund'),usd:f.usd,mark:'etf',rec:'\u2014',exp:'\u2014',val:'\u2014'}); });
   for(const d of SEGMENTS){ const st=segState(d.id); for(const h of st.holdings){ const u=holdUsd(st,h); if(u>0.5){
     const etf=isETF(h.t), g=GRADES[h.t];
     const role = etf ? ('ETF \u00b7 '+(ETFS[h.t]||'')) : (g?g[0]:'');

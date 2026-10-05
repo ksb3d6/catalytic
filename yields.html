@@ -105,7 +105,7 @@ html{scrollbar-color:rgba(31,198,220,.35) transparent}
     </div>
     <div class="card">
       <h2>Where each one stands</h2>
-      <div class="sub">Latest yields by maturity. <b style="color:var(--ink)">Daily</b> countries come from their own treasury or central bank; the rest carry the monthly 10-year only — a dash is a number that source does not publish, never a guess. Slope = 10Y − 2Y (red = inverted). vs US = that country’s 10Y minus the US 10Y.</div>
+      <div class="sub">Latest yields by maturity. <b style="color:var(--ink)">Daily</b> countries come from a treasury or central bank feed; the rest carry the monthly 10-year only — a dash is a number that source does not publish, never a guess. Slope = 10Y − 2Y (red = inverted). vs US = that country’s 10Y minus the US 10Y.</div>
       <div class="wscroll"><table class="wtab" id="wTable"></table></div>
     </div>
   </div>
@@ -210,7 +210,7 @@ getJSON('/yields.json','yields.json').then(function(j){
   document.getElementById('asof').textContent='through '+j.asOf;
   document.getElementById('foot').innerHTML='Daily par yields · '+esc(j.source)+' · through <b class="mono">'+j.asOf+'</b> · '
     +(j._live?'fetched from the Treasury four times a day by the app’s server':'<b>offline copy</b> — the server could not be reached, this is the snapshot that ships with the page')
-    +' — nothing interpolated, gaps stay gaps. International: Ministry of Finance Japan, Bundesbank, Bank of England, Bank of Canada (daily) and the OECD (monthly).';
+    +' — nothing interpolated, gaps stay gaps. International, daily: Ministry of Finance Japan, Bundesbank, Bank of England, Bank of Canada, Sveriges Riksbank (France, Netherlands), ChinaMoney (China). Monthly 10-year for all sixteen: the OECD.';
   buildLegend(); paintAll();
 }).catch(function(){
   document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="err">The yield curves could not be loaded — neither the server nor the copy that ships with this page answered.</div>');
