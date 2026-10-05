@@ -8224,6 +8224,11 @@ window.MktView = (function(){
     mkCdFromCache('mk'); mkCdFromCache('mkc'); mkAgFromCache(); mkFrFromCache();   /* §31/§41/§56: a reload builds the rows from the market cache BEFORE the chip handler runs — the day's candles, auto grades and frames page 1 must ride along */
     var er=(d.equities&&Array.isArray(d.equities.rows))?d.equities.rows:[];
     var gEq=mkGradedIndex('mk'), eqSyms={};
+    /* 10-05 shared lists: a ticker added a moment ago is not in /market.json until the backend's next pass — it rides here on the quote
+       taken when it was added (flagged, titled), exactly a Market row otherwise. Never a row the feed already carries. */
+    var lp=[]; try{ lp=(window.AIBO_LISTS&&typeof AIBO_LISTS.pending==='function'&&AIBO_LISTS.pending())||[]; }catch(_){ lp=[]; }
+    if(lp.length){ var have={}; er.forEach(function(x){ if(x&&x.sym) have[String(x.sym).toUpperCase()]=1; });
+      er=er.concat(lp.filter(function(x){ return x&&x.sym&&!have[String(x.sym).toUpperCase()]; })); }
     er.forEach(function(x){ if(x&&x.sym) eqSyms[String(x.sym).toUpperCase()]=1; });
     er.forEach(function(x){
       if(!x||!x.sym) return;
@@ -8235,7 +8240,7 @@ window.MktView = (function(){
       out.push({
         kind:'mk', key:sym, sym:sym, name:String(x.name||sym), cat:null, tint:null,
         choke:false, us:false, gExp:null, gRec:null, grade:null, tok:null,
-        px:mkNum(x.px), pxStale:st, pxTitle:st?'carried from an earlier pull — this quote did not refresh':null,
+        px:mkNum(x.px), pxStale:st, pxTitle:x.listed?'price from when this was added to a list — live prices follow at the next market pass':(st?'carried from an earlier pull — this quote did not refresh':null),
         chg1h:null, hStale:false, hLabel:'', chg24:mkNum(x.chg1d), chg24Note:null, chg7:mkNum(x.chg7d),
         mcap:mkNum(x.mcap), mcapSub:ex||null, mcapTitle:'market cap from the quote feed'+(ex?' · '+ex:''),
         vol:null, vol20:null, tech:null, sentO:null, range:tf?rangePos(tfParse(tf),mkNum(x.px)):null, tf:tf,
@@ -8313,7 +8318,10 @@ window.MktView = (function(){
   }
   function mkCdTf(fam,sym){
     var S=MK_CD[fam], d=S&&S.data; if(!d) return null;
-    var rows=d.rows[sym]; if(!Array.isArray(rows)||rows.length<2) return null;
+    var rows=d.rows[sym];
+    /* 10-05 shared lists: a just-added ticker carries its own daily bars (same columns as the equities file) until the daily pass files it */
+    if(fam==='mk'&&(!Array.isArray(rows)||rows.length<2)){ try{ var lb=window.AIBO_LISTS&&typeof AIBO_LISTS.bars==='function'&&AIBO_LISTS.bars(sym); if(Array.isArray(lb)) rows=lb; }catch(_){} }
+    if(!Array.isArray(rows)||rows.length<2) return null;
     var cols=Array.isArray(d.cols)?d.cols:['d','o','h','l','c'];
     var id=cols.indexOf('d'), io=cols.indexOf('o'), ih=cols.indexOf('h'), il=cols.indexOf('l'), ic=cols.indexOf('c'), ie=cols.indexOf('e');
     if(io<0||ih<0||il<0||ic<0) return null;
@@ -9210,7 +9218,8 @@ window.MktView = (function(){
       if(MK.busy) msg='Loading '+mkFamTag()+'…';
       else { msg=MK.data?mkFamTag()+' is empty — the feed had no rows':mkFamTag()+' not available yet'; btn='retry'; title=MK.err?('last try: '+MK.err):''; }
     } else if(!state.own){
-      if(!nVis && ROWS.some(inFamily)) msg='No names match these filters';
+      if(!nVis && state.pick && !state.q && !state.cat) msg=state.pickEmpty||'Nothing in this list yet';   /* 10-05 shared lists */
+      else if(!nVis && ROWS.some(inFamily)) msg='No names match these filters';
     }
     if(!state.own && !msg) return;
     var A=window.AIBO_POS, tok=!!(A&&A.hasToken&&A.hasToken()), d=(A&&A.state)?A.state.data:null;
@@ -9249,6 +9258,7 @@ window.MktView = (function(){
   }
   function visible(r){
     if(!inFamily(r)) return false;   /* §19/§21: each chip (US 500 / Coins 500) shows only its own kind; graded rows never under either */
+    if(state.pick && !state.pick(r)) return false;   /* 10-05 shared lists (stage48/lists.js): a list is a Market family + a membership test */
     if(state.own && !HELD[heldKey(r)]) return false;
     if(state.uni!=='all' && !isMkUni() && r.kind!==state.uni) return false;
     if(!isMkUni()){   /* R12: the marks are inert under either Market chip (no Market row carries one) */
@@ -10204,7 +10214,9 @@ window.MktView = (function(){
     });
     document.querySelectorAll('#mkUni button').forEach(function(b){
       b.addEventListener('click',function(){
-        state.uni=b.dataset.u; state.cat='';
+        if(!b.dataset.u) return;   /* 10-05: the shared-list entries in this menu are stage48/lists.js's own buttons */
+        state.uni=b.dataset.u; state.cat=''; state.pick=null; state.pickEmpty='';
+        try{ if(window.AIBO_LISTS&&AIBO_LISTS.onUni) AIBO_LISTS.onUni(); }catch(_){}
         document.querySelectorAll('#mkUni button').forEach(function(x){x.classList.toggle('on',x===b);});
         document.getElementById('mkUniVal').textContent=b.textContent;
         document.getElementById('mkUniDD').classList.remove('open');
@@ -10320,6 +10332,7 @@ window.MktView = (function(){
     var mqTight=window.matchMedia('(max-width:480px)'), onTight=function(){ if(built&&isMkUni()) renderStats(); };
     try{ mqTight.addEventListener('change',onTight); }catch(_){ mqTight.addListener(onTight); }
     built=true;
+    try{ if(window.AIBO_LISTS&&AIBO_LISTS.mount) AIBO_LISTS.mount(); }catch(_){}   /* 10-05 shared lists: the menu entries + the list bar (stage48/lists.js; absent = nothing) */
   }
   function updateFBadge(){
     var el=document.getElementById('mkFBadge'); if(!el) return;
@@ -10460,7 +10473,25 @@ window.MktView = (function(){
     document.addEventListener('pointercancel',function(){ drag=null; });
   })();
 
-  return { render: render,
+  /* 10-05 shared lists (stage48/lists.js) — THE CONTRACT: a list view is a Market family ('mk' stocks | 'mkc' coins) plus a membership
+     test over its rows, so a listed name renders, loads, patches and opens exactly like a US 500 / Coins 500 row.
+     show(fam, test, label, emptyMsg) picks it (the same loads as the chip); refilter() after the membership changed;
+     reapply() after the pending rows changed; picked() / uni() read the state. Any stock chip clears the pick (AIBO_LISTS.onUni). */
+  var LISTS_API={
+    show:function(fam,test,label,emptyMsg){
+      if(!built||(fam!=='mk'&&fam!=='mkc')||typeof test!=='function') return false;
+      state.uni=fam; state.cat=''; state.pick=test; state.pickEmpty=String(emptyMsg||'');
+      document.querySelectorAll('#mkUni button').forEach(function(x){ if(x.dataset.u) x.classList.remove('on'); });
+      var v=document.getElementById('mkUniVal'); if(v) v.textContent=String(label||'List');
+      var dd=document.getElementById('mkUniDD'); if(dd) dd.classList.remove('open');
+      syncMarketCls();
+      mkLoad(false); mkCdLoad(fam,false); if(fam==='mk') mkAgLoad(false); if(fam==='mkc') mkFrLoad(1,false);
+      rebuildCats(); applyFilter(); return true; },
+    refilter:function(){ if(built){ rebuildCats(); applyFilter(); } },
+    reapply:function(){ if(built&&MK.data) mkApply(); },
+    picked:function(){ return !!state.pick; }, uni:function(){ return state.uni; }, built:function(){ return built; }
+  };
+  return { render: render, lists: LISTS_API,
            /* §19: the Market feed — reload(force) refetches, forget() drops memory + localStorage, state = MK */
            market: { reload: function(f){ mkLoad(f!==false); }, forget: mkForget, state: MK,
                      /* §31: the daily candles — reloadCandles(force) refetches the current chip's family, candles = per-family state */
@@ -11133,17 +11164,25 @@ html[data-gl][data-gldesk] .gl-rs{left:var(--gl-rs-x,calc(50vw - 190px));}
 html[data-gl][data-gldesk] :is(.m-atlas,.gl-rs) .ma-head > span{display:none;}
 html[data-gl][data-gldesk] :is(.m-atlas-scrim,.gl-rs-scrim){background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;}
 
-/* TRY-OUT, OFF by default (`?cardside=1`; the owner 10-05: "I'd like to see what that looks like"): the card BESIDE the Tape. The card is a
-   right-hand panel, the Tape a 500px list (rank · name · grade · price · 1D) that stays clickable, the open row marked. */
+/* THE CARD OPENS TO THE RIGHT (the owner 10-05: "I like the idea of opening the card to the right on the desktop… go ahead and do that").
+   html[data-glside] = desktop, window ≥ 1180px (shim.js; `?cardside=0` = the old full-width overlay). The card is a right-hand panel
+   under the strip, no scrim: what is left of it stays live. On the TAPE the table narrows to the space beside the panel (the columns
+   that no longer fit step out — every one of them is in the card), rows stay clickable, the open row is marked, ↑ / ↓ walk the list.
+   On every other page the panel lies over the right of the page and a click outside it closes it (shim.js). ×, Escape as ever. */
+html[data-gl][data-gldesk][data-glside]{--gl-side-w:min(calc(100vw - 500px),1100px);}
 html[data-gl][data-gldesk][data-glside] #scrim{display:none;}
-html[data-gl][data-gldesk][data-glside] #sheet{left:auto;right:0;top:40px;bottom:0;width:calc(100vw - 500px);max-height:none;height:auto;transform:none;border-radius:0;
-  border-left:1px solid rgba(255,255,255,.10);box-shadow:-18px 0 40px rgba(0,0,0,.35);}
-html[data-gl][data-gldesk][data-glside] #sheet:not(.show){display:none;}
+html[data-gl][data-gldesk][data-glside] #sheet{left:auto;right:0;top:40px;bottom:0;width:var(--gl-side-w);max-height:none;height:auto;border-radius:0;border:0;
+  border-left:1px solid rgba(255,255,255,.10);box-shadow:-18px 0 40px rgba(0,0,0,.35);transform:translateX(104%);visibility:hidden;
+  transition:transform .22s cubic-bezier(.22,.61,.36,1),visibility 0s .22s;}
+html[data-gl][data-gldesk][data-glside] #sheet.show{transform:none;visibility:visible;transition:transform .22s cubic-bezier(.22,.61,.36,1);}
 html[data-gl][data-gldesk][data-glside] #sheet #sheetBody{max-width:none;}
-html[data-gl][data-gldesk][data-glside] body:has(#sheet.show) #mktView{width:500px;box-sizing:border-box;}
-html[data-gl][data-gldesk][data-glside] body:has(#sheet.show) #mktView .mkt :is(.c-1h,.c-7d,.c-mcap,.c-vol,.c-tech,.c-sent,.c-bullet,.c-chart){display:none;}
-html[data-gl][data-gldesk][data-glside] body:has(#sheet.show) #mktView :is(#mkStat,#mkCat,#mkMarks){display:none;}
-html[data-gl][data-gldesk][data-glside] body:has(#sheet.show) #mktView .mkt tr.gl-cur td{background:rgba(var(--gl-acc-rgb),.14);}
+html[data-gl][data-gldesk][data-glside] body.gl-tape:has(#sheet.show) #mktView{width:calc(100vw - var(--gl-side-w));box-sizing:border-box;}
+html[data-gl][data-gldesk][data-glside] body.gl-tape:has(#sheet.show) #mktView .mkt :is(.c-1h,.c-vol,.c-chart){display:none;}
+html[data-gl][data-gldesk][data-glside] body.gl-tape:has(#sheet.show) #mktView :is(#mkStat,#mkCat,#mkMarks){display:none;}
+html[data-gl][data-gldesk][data-glside] body.gl-tape:has(#sheet.show) #mktView .mkt tr.gl-cur td{background:rgba(var(--gl-acc-rgb),.14);}
+@media (max-width:1799px){
+  html[data-gl][data-gldesk][data-glside] body.gl-tape:has(#sheet.show) #mktView .mkt :is(.c-7d,.c-mcap,.c-tech,.c-sent,.c-bullet){display:none;}
+}
 
 </style>
 <!-- Stage 48 Glass chrome. ONE constant SIX-door bar — Tape · Atlas · Research · Portfolio · Calendar · Settings —
@@ -14628,8 +14667,12 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"money":["Money","#6FB1E8"],"med
   }
   /* round 2 (the owner 10-05): the doors live in the top strip, so the Atlas + Research sheets are compact menus hanging under their doors
      (skin.css). The doors' x is measured into --gl-atlas-x / --gl-rs-x: on resize, on any dock click (before the sheet paints) and
-     shortly after boot (the dock is un-hidden later in this file). `?cardside=1` = the card-beside-the-Tape try-out (skin.css). */
-  var DESK_SIDE=/[?&]cardside=1/.test(QS), DESK_MENUS=[['atlas','--gl-atlas-x'],['fin','--gl-rs-x']];
+     shortly after boot (the dock is un-hidden later in this file).
+     round 3 (the owner 10-05: "opening the card to the right on the desktop… go ahead and do that"): from 1180px the card is a right-hand
+     panel with no scrim (skin.css, html[data-glside]; `?cardside=0` = the old overlay). Here: the open Tape row is marked (.gl-cur),
+     ↑ / ↓ walk the Tape's rows while the card is up, any door closes the card, and OFF the Tape a click outside the panel closes it
+     unless that click opened another card (the card body re-rendered). */
+  var DESK_SIDE=!/[?&]cardside=0/.test(QS), DESK_SIDE_MQ=window.matchMedia?window.matchMedia('(min-width:1180px)'):null, sideOn=false, sideOpened=0, DESK_MENUS=[['atlas','--gl-atlas-x'],['fin','--gl-rs-x']];
   function deskMenus(){
     for(var i=0;i<DESK_MENUS.length;i++){
       var k=DESK_MENUS[i];
@@ -14642,15 +14685,39 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"money":["Money","#6FB1E8"],"med
   document.addEventListener('click',function(e){
     if(!deskOn||!e.target||!e.target.closest) return;
     if(e.target.closest('#glDock')) deskMenus();
-    if(DESK_SIDE){ var tr=e.target.closest('#mktView .mkt tbody tr'); if(tr){ var c=$('#mktView .mkt tr.gl-cur'); if(c&&c!==tr) c.classList.remove('gl-cur'); tr.classList.add('gl-cur'); } }
+    if(!sideOn) return;
+    var tr=e.target.closest('#mktView .mkt tbody tr'); if(tr) sideMark(tr);
+    if(!sideShown()||e.target.closest('#sheet')) return;
+    if(e.target.closest('#glDock')){ fwd('#sheetX'); return; }
+    if(sideOnTape()) return;
+    var t0=Date.now(); setTimeout(function(){ if(sideShown()&&sideOpened<t0) fwd('#sheetX'); },0);
   },true);
+  function sideShown(){ var sh=$('#sheet'); return !!sh&&sh.classList.contains('show'); }
+  function sideOnTape(){ return B.classList.contains('gl-tape')&&!/\bgl-(cal|fin|grid|settings|tech|rot)\b/.test(B.className)&&!B.classList.contains('deck-studio'); }
+  function sideMark(tr){ var c=$('#mktView .mkt tr.gl-cur'); if(c&&c!==tr) c.classList.remove('gl-cur'); if(tr) tr.classList.add('gl-cur'); }
+  (function(){
+    var sb=$('#sheetBody'), sh=$('#sheet'); if(!sb||!sh||!window.MutationObserver) return;
+    new MutationObserver(function(){ sideOpened=Date.now(); }).observe(sb,{childList:true});
+    new MutationObserver(function(){ if(!sh.classList.contains('show')) sideMark(null); }).observe(sh,{attributes:true,attributeFilter:['class']});
+  })();
+  document.addEventListener('keydown',function(e){
+    if(!sideOn||(e.key!=='ArrowDown'&&e.key!=='ArrowUp')||e.metaKey||e.ctrlKey||e.altKey||!sideShown()||!sideOnTape()) return;
+    var a=document.activeElement; if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
+    var cur=$('#mktView .mkt tr.gl-cur'); if(!cur) return;
+    var n=cur; do{ n=(e.key==='ArrowDown')?n.nextElementSibling:n.previousElementSibling; }while(n&&(n.style.display==='none'||!n.querySelector('td.c-name')));
+    if(!n) return;
+    e.preventDefault(); sideMark(n); var hit=n.querySelector('td.c-name .mk-sym')||n.querySelector('td.c-name'); if(hit) hit.click();
+    if(n.scrollIntoView) n.scrollIntoView({block:'nearest'});
+  });
+  if(DESK_SIDE_MQ&&DESK_SIDE_MQ.addEventListener) DESK_SIDE_MQ.addEventListener('change',function(){ deskSync(); });
   setTimeout(deskMenus,0); setTimeout(deskMenus,800);
   function deskSync(){
     var want=deskWant();
     if(want) H.setAttribute('data-gldesk',''); else H.removeAttribute('data-gldesk');
     if(want||deskOn) deskApply(want);
     deskOn=want;
-    if(want&&DESK_SIDE) H.setAttribute('data-glside',''); else H.removeAttribute('data-glside');
+    sideOn=want&&DESK_SIDE&&!!DESK_SIDE_MQ&&DESK_SIDE_MQ.matches;
+    if(sideOn) H.setAttribute('data-glside',''); else H.removeAttribute('data-glside');
     deskMenus();
     if(want&&!deskMo&&window.MutationObserver){
       deskMo=new MutationObserver(function(list){
