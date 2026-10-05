@@ -14376,6 +14376,389 @@ window.GLW_DATA={"baked":"2026-10-05","worlds":{"money":["Money","#6FB1E8"],"med
 })();
 
 </script>
+<style id="gl48ListsCss">
+/* Stage 48 — SHARED LISTS (stage48/lists.js). Every node here is made by lists.js, and only when this device holds the
+   list key — with no key nothing below matches anything. */
+
+/* the universe menu entries (inside Stage 43's #mkUni, which is a dropdown on wide and a chip row in the phone Filters sheet) */
+#mkUni .gll-sep{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:8px 10px 3px;border-top:1px solid var(--hair);margin-top:4px;}
+#mkUni .gll-item{display:flex;align-items:center;gap:8px;}
+#mkUni .gll-item i{font-style:normal;font-size:10px;color:var(--muted);margin-left:auto;}
+#mkUni .gll-new{color:var(--muted);border-top:1px dashed var(--hair);}
+#mktView .mk-slot #mkUni .gll-sep{flex:1 0 100%;border-top:0;margin:2px 0 0;padding:4px 0 0;}
+#mktView .mk-slot #mkUni .gll-new{border-style:dashed;}
+
+/* the list bar, between the Tape's controls and the table */
+#gllBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 10px 8px;}
+#gllBar[hidden]{display:none;}
+#gllBar .gll-name{font-size:15px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw;}
+#gllBar .gll-n{font-size:11px;color:var(--muted);}
+#gllBar .gll-sp{flex:1 1 auto;}
+#gllBar .gll-seg{display:inline-flex;border:1px solid var(--hair);border-radius:9px;padding:2px;gap:2px;}
+#gllBar .gll-seg button,#gllBar .gll-b{appearance:none;border:0;background:transparent;color:var(--muted);font:600 11.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  padding:6px 9px;border-radius:7px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;}
+#gllBar .gll-b{border:1px solid var(--hair);}
+#gllBar .gll-seg button.on,#gllBar .gll-b.on{background:var(--sel-bg);color:var(--sel-ink);}
+#gllBar .gll-b.arm{background:#ff6b7a;border-color:transparent;color:#2a0509;}
+
+/* "Remove names": every row wears a mark and a tap removes it */
+#mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty){cursor:pointer;}
+#mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty) .mk-sym::before{content:"\00d7";display:inline-block;width:16px;height:16px;line-height:15px;text-align:center;border-radius:50%;
+  background:#ff6b7a;color:#2a0509;font-weight:800;font-size:12px;margin-right:6px;vertical-align:1px;}
+
+/* search = add: the result list under the Tape's search box */
+#gllRes{display:none;position:fixed;z-index:9000;background:var(--panel,#121A26);border:1px solid rgba(255,255,255,.14);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.6);
+  padding:6px;overflow:auto;-webkit-overflow-scrolling:touch;color:var(--ink);font:13px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+#gllRes.open{display:block;}
+#gllRes .gll-into{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 6px 8px;color:var(--muted);font-size:11.5px;}
+#gllRes .gll-into button{appearance:none;border:1px solid var(--hair);background:transparent;color:var(--muted);border-radius:999px;padding:5px 10px;font:600 11.5px/1 inherit;cursor:pointer;}
+#gllRes .gll-into button.on{background:var(--sel-bg);color:var(--sel-ink);border-color:transparent;}
+#gllRes .gll-into .gll-plus{border-style:dashed;}
+#gllRes .gll-r{display:grid;grid-template-columns:74px 1fr auto 34px;align-items:center;gap:8px;padding:7px 6px;border-radius:9px;cursor:pointer;}
+#gllRes .gll-r:hover{background:rgba(255,255,255,.06);}
+#gllRes .gll-r b{font-weight:700;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#gllRes .gll-rn{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#gllRes .gll-lookup{grid-template-columns:1fr;}
+#gllRes .gll-tag{font:700 9px/1 inherit;letter-spacing:.08em;padding:3px 5px;border-radius:5px;border:1px solid rgba(255,255,255,.16);color:var(--muted);white-space:nowrap;}
+#gllRes .gll-tag.gll-OTC{color:#f5b84a;border-color:rgba(245,184,74,.45);}
+#gllRes .gll-tag.gll-ETF{color:#8fd3ff;border-color:rgba(143,211,255,.4);}
+#gllRes .gll-tag.gll-COIN{color:#c9a8ff;border-color:rgba(201,168,255,.4);}
+#gllRes .gll-tag:empty{display:none;}
+#gllRes .gll-add{appearance:none;width:30px;height:30px;border-radius:9px;border:1px solid rgba(255,255,255,.16);background:transparent;color:var(--ink);font-size:17px;line-height:1;cursor:pointer;}
+#gllRes .gll-add.in{background:var(--gl-acc,#1FC6DC);border-color:transparent;color:var(--gl-on-acc,#04121a);font-size:14px;font-weight:800;}
+#gllRes .gll-none{padding:14px 8px;color:var(--muted);text-align:center;}
+
+#gllToast{position:fixed;left:50%;bottom:calc(var(--gl-dock-h,46px) + var(--gl-safe-b,0px) + 18px);transform:translateX(-50%) translateY(12px);background:#22304a;border:1px solid rgba(255,255,255,.16);
+  border-radius:999px;padding:9px 16px;color:#EAEEF5;font:600 13px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:9500;max-width:86vw;text-align:center;}
+#gllToast.show{opacity:1;transform:translateX(-50%);}
+
+</style>
+<script id="gl48Lists">
+/* Stage 48 — SHARED LISTS (2026-10-05; the owner: a friend beta-tests the app — "he can just add new watch lists that we both
+   can see and alter", my graded Watchlist stays the locked default, "the same card for all of it", stocks and crypto,
+   penny/OTC welcome, no logins, the same lists on every device).
+
+   WHAT IT IS: lists people ADD, kept on the backend (v4.13 jobs/lists.py) and shared by everyone who opened the private
+   link. A list lives in the Tape: its entry sits in the Tape's universe menu under the built-in ones, and picking it shows
+   its names as ordinary US 500 / Coins 500 rows (same row, same loads, same card) — a list is a Market family plus a
+   membership test (the Stage 43 contract `MktView.lists`). The Tape's own search box doubles as the add box.
+
+   THE KEY: `#k=<key>` on the link (this document's hash or the top document's — the app runs inside latest.html). It is
+   moved into localStorage ('aibo.lists.key') and stripped from the address bar. NO KEY = NOTHING MOUNTED: no menu
+   entries, no bar, no fetch — the app is exactly what it was. `#k=off` forgets the key on this device.
+
+   BACKEND (GET/PUT <API>/lists.json, bearer; GET /symbols.json public; GET /symbol_lookup?q=, bearer):
+     doc   {rev, lists:[{id,name,items:['eq:AITX','cr:bitcoin']}], meta:{'eq:AITX':{sym,name,exch,px?,chg1d?,mcap?,pxAsOf?,bars?},
+            'cr:bitcoin':{id,sym,name}}}; a PUT carries {baseRev, lists}; 409 = someone saved first (their document rides
+            back; the change is re-applied on it once); 422 = a name that does not exist.
+     index {eq:[[sym,name,exch,etf]] cap-ranked, cr:[[id,sym,name]]} — names only, searched here, zero calls per keystroke.
+   Refetched when the tab returns and every REFRESH ms while it is visible.
+
+   CONTRACT (window.AIBO_LISTS — Stage 43's Markets module is the other side):
+     mount()        called by Markets when its table is built (or by this file when it loads later)
+     onUni()        a built-in universe chip was chosen — the list view is over
+     pending()      [{sym,name,px,chg1d,chg7d,mcap,exch,listed:true}] listed stocks that carry an add-time quote; Markets
+                    appends the ones /market.json does not carry yet
+     bars(sym)      the add-time daily bars for a listed stock, or null
+     state()        {key, doc, active, fam, edit} for the QA suite */
+(function(){
+  'use strict';
+  var BASE=String(window.AIBO_LIVE_URL||'https://asset-grading-production.up.railway.app/universe.json').replace(/\/universe\.json.*$/,'');
+  var LS_KEY='aibo.lists.key', REFRESH=60*1000, TIMEOUT=15000, MAX_RES=12;
+  var S={key:null, doc:null, active:null, fam:'mk', edit:false, target:null, busy:false, err:null, at:0,
+         idx:null, idxBusy:false, idxErr:null, mounted:false, armed:false, look:{}};
+
+  /* ---------- the key ---------- */
+  function readHash(w){ try{ var m=/[#&]k=([A-Za-z0-9_\-]{3,128})/.exec(String(w.location.hash||'')); return m?m[1]:null; }catch(_){ return null; } }
+  function stripHash(w){ try{ var h=String(w.location.hash||'').replace(/([#&])k=[A-Za-z0-9_\-]+&?/,'$1').replace(/[#&]$/,''); w.history.replaceState(null,'',w.location.pathname+w.location.search+h); }catch(_){} }
+  (function(){
+    var k=readHash(window), top=null;
+    try{ if(window.top&&window.top!==window){ top=window.top; k=k||readHash(top); } }catch(_){ top=null; }
+    try{
+      if(k==='off'){ localStorage.removeItem(LS_KEY); k=null; }
+      else if(k) localStorage.setItem(LS_KEY,k);
+      S.key=k||localStorage.getItem(LS_KEY)||null;
+    }catch(_){ S.key=k||null; }
+    if(readHash(window)) stripHash(window);
+    if(top&&readHash(top)) stripHash(top);
+  })();
+
+  function api(){ return (window.MktView&&MktView.lists)||null; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function el(tag,cls,html){ var e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
+  function lists(){ return (S.doc&&Array.isArray(S.doc.lists))?S.doc.lists:[]; }
+  function meta(){ return (S.doc&&S.doc.meta)||{}; }
+  function listOf(id){ var L=lists(); for(var i=0;i<L.length;i++) if(L[i].id===id) return L[i]; return null; }
+  function kinds(l){ var e=0,c=0; (l&&l.items||[]).forEach(function(it){ if(it.indexOf('eq:')===0) e++; else if(it.indexOf('cr:')===0) c++; }); return {eq:e,cr:c}; }
+
+  var toastEl=null;
+  function toast(msg){
+    if(!toastEl){ toastEl=el('div'); toastEl.id='gllToast'; toastEl.setAttribute('role','status'); document.body.appendChild(toastEl); }
+    toastEl.textContent=msg; toastEl.classList.add('show');
+    clearTimeout(toastEl._h); toastEl._h=setTimeout(function(){ toastEl.classList.remove('show'); },2200);
+  }
+
+  /* ---------- the backend ---------- */
+  function call(method,path,body){
+    var ctl=('AbortController' in window)?new AbortController():null, to=ctl?setTimeout(function(){ try{ ctl.abort(); }catch(_){} },TIMEOUT):null;
+    var opt={method:method, cache:'no-store', headers:{'Authorization':'Bearer '+S.key}, signal:ctl&&ctl.signal};
+    if(body!==undefined){ opt.headers['Content-Type']='application/json'; opt.body=JSON.stringify(body); }
+    return fetch(BASE+path,opt).then(function(r){
+      if(to) clearTimeout(to);
+      return r.json().catch(function(){ return {}; }).then(function(j){ return {status:r.status, body:j}; });
+    },function(e){ if(to) clearTimeout(to); throw e; });
+  }
+  function docOk(j){ return !!(j&&typeof j.rev==='number'&&Array.isArray(j.lists)); }
+  function sig(d){ return d?JSON.stringify([d.rev,d.lists]):''; }
+  function take(j){
+    var before=sig(S.doc); S.doc=j; S.at=Date.now(); S.err=null;
+    if(S.active&&!listOf(S.active)){ leave(true); }
+    if(sig(j)!==before){ paintMenu(); paintBar(); show(false); }
+  }
+  function load(){
+    if(!S.key||S.busy) return;
+    S.busy=true;
+    call('GET','/lists.json').then(function(r){
+      S.busy=false;
+      if(r.status===200&&docOk(r.body)){ take(r.body); return; }
+      S.err=(r.status===401)?'key':(r.status===404?'off':'http '+r.status);
+      if(!S.doc&&S.err==='key') toast('This device’s list key was not accepted');
+      paintMenu();
+    }).catch(function(){ S.busy=false; S.err='unreachable'; });
+  }
+  /* change(fn): apply fn(listsCopy) -> false to cancel; PUT; on a 409 re-apply once on the newer document */
+  function change(fn,done,retried){
+    if(!S.doc){ toast('Lists are not loaded yet'); return; }
+    var copy=JSON.parse(JSON.stringify(lists()));
+    if(fn(copy)===false) return;
+    call('PUT','/lists.json',{baseRev:S.doc.rev, lists:copy}).then(function(r){
+      if(r.status===200&&docOk(r.body)){ var eqBefore=Object.keys(meta()).length; take(r.body); if(done) done(r.body);
+        var a=api(); if(a&&S.active){ if(Object.keys(meta()).length!==eqBefore) a.reapply(); } return; }
+      if(r.status===409&&r.body&&docOk(r.body.current)&&!retried){ S.doc=r.body.current; change(fn,done,true); return; }
+      toast(r.status===422?String((r.body&&r.body.error)||'Not found'):(r.status===401?'List key not accepted':'Could not save — try again'));
+      if(r.status===409) load();
+    }).catch(function(){ toast('Could not save — the server is unreachable'); });
+  }
+  function newId(){ return 'l'+Date.now().toString(36)+Math.floor(Math.random()*1296).toString(36); }
+  function askName(title,cur){ var v=null; try{ v=window.prompt(title,cur||''); }catch(_){} v=(v==null?'':String(v)).replace(/\s+/g,' ').trim().slice(0,40); return v||null; }
+  function createList(then){
+    var name=askName('Name the new list',''); if(!name) return;
+    var id=newId();
+    change(function(L){ if(L.length>=24){ toast('That is the most lists this app keeps'); return false; } L.push({id:id,name:name,items:[]}); },function(){ S.target=id; if(then) then(id); else pick(id); });
+  }
+
+  /* ---------- the list view (a Market family + a membership test) ---------- */
+  function tester(l,fam){
+    var set={}, crSym={}, M=meta();
+    (l.items||[]).forEach(function(it){ set[it]=1; if(it.indexOf('cr:')===0&&M[it]&&M[it].sym) crSym[String(M[it].sym).toUpperCase()]=1; });
+    if(fam==='mk') return function(r){ return !!set['eq:'+String(r.mkSym||r.sym).toUpperCase()]; };
+    return function(r){ return r.kind==='mkc'?!!set['cr:'+r.key]:!!crSym[String(r.mkSym||r.sym).toUpperCase()]; };
+  }
+  function show(force){
+    var a=api(), l=S.active&&listOf(S.active); if(!a||!l||!a.built()) return;
+    var k=kinds(l);
+    if(S.fam==='mkc'&&!k.cr) S.fam='mk'; else if(S.fam==='mk'&&!k.eq&&k.cr) S.fam='mkc';
+    a.show(S.fam,tester(l,S.fam),l.name,'Nothing in “'+l.name+'” yet — search above to add a stock or coin');
+    var tw=document.querySelector('#mktView .twrap'); if(tw) tw.classList.toggle('gll-edit',!!S.edit);
+    document.querySelectorAll('#mkUni .gll-item').forEach(function(b){ b.classList.toggle('on',b.getAttribute('data-wl')===S.active); });
+  }
+  function pick(id){
+    var l=listOf(id); if(!l) return;
+    S.active=id; S.target=id; S.edit=false; S.armed=false;
+    var k=kinds(l); S.fam=(k.eq||!k.cr)?'mk':'mkc';
+    paintBar(); show(true);
+  }
+  function leave(quiet){
+    var was=S.active; S.active=null; S.edit=false; S.armed=false;
+    var tw=document.querySelector('#mktView .twrap'); if(tw) tw.classList.remove('gll-edit');
+    document.querySelectorAll('#mkUni .gll-item').forEach(function(b){ b.classList.remove('on'); });
+    paintBar();
+    if(quiet&&was){ var b=document.querySelector('#mkUni button[data-u="all"]'); if(b) b.click(); }   /* the list is gone: back to the Watchlist */
+  }
+
+  /* ---------- the universe menu entries ---------- */
+  function paintMenu(){
+    var m=document.getElementById('mkUni'); if(!m||!S.mounted) return;
+    [].slice.call(m.querySelectorAll('.gll-sep,.gll-item,.gll-new')).forEach(function(n){ n.parentNode.removeChild(n); });
+    if(!S.doc) return;
+    m.appendChild(el('div','gll-sep','Shared lists'));
+    lists().forEach(function(l){
+      var b=el('button','gll-item'+(l.id===S.active?' on':''),esc(l.name)+'<i>'+(l.items||[]).length+'</i>'); b.type='button'; b.setAttribute('data-wl',l.id);
+      b.addEventListener('click',function(e){ e.stopPropagation(); pick(l.id); });
+      m.appendChild(b);
+    });
+    var nb=el('button','gll-new','+ New list'); nb.type='button';
+    nb.addEventListener('click',function(e){ e.stopPropagation(); var dd=document.getElementById('mkUniDD'); if(dd) dd.classList.remove('open'); createList(); });
+    m.appendChild(nb);
+  }
+
+  /* ---------- the list bar ---------- */
+  function paintBar(){
+    var bar=document.getElementById('gllBar'); if(!bar) return;
+    var l=S.active&&listOf(S.active);
+    if(!l){ bar.hidden=true; bar.innerHTML=''; return; }
+    var k=kinds(l), h='<b class="gll-name">'+esc(l.name)+'</b><span class="gll-n">'+(k.eq+k.cr)+'</span>';
+    if(k.eq&&k.cr) h+='<span class="gll-seg"><button type="button" data-f="mk" class="'+(S.fam==='mk'?'on':'')+'">Stocks '+k.eq+'</button><button type="button" data-f="mkc" class="'+(S.fam==='mkc'?'on':'')+'">Coins '+k.cr+'</button></span>';
+    h+='<span class="gll-sp"></span>';
+    if(k.eq+k.cr) h+='<button type="button" class="gll-b'+(S.edit?' on':'')+'" data-a="edit">'+(S.edit?'Done':'Remove names')+'</button>';
+    h+='<button type="button" class="gll-b" data-a="ren">Rename</button><button type="button" class="gll-b'+(S.armed?' arm':'')+'" data-a="del">'+(S.armed?'Tap again to delete':'Delete list')+'</button>';
+    bar.innerHTML=h; bar.hidden=false;
+  }
+  function barClick(e){
+    var b=e.target.closest('button'); if(!b) return;
+    var l=S.active&&listOf(S.active); if(!l) return;
+    if(b.dataset.f){ S.fam=b.dataset.f; paintBar(); show(true); return; }
+    var a=b.dataset.a;
+    if(a==='edit'){ S.edit=!S.edit; S.armed=false; paintBar(); var tw=document.querySelector('#mktView .twrap'); if(tw) tw.classList.toggle('gll-edit',S.edit); return; }
+    if(a==='ren'){ var nm=askName('Rename the list',l.name); if(!nm||nm===l.name) return; var id=l.id;
+      change(function(L){ var x=L.filter(function(q){ return q.id===id; })[0]; if(!x) return false; x.name=nm; }); return; }
+    if(a==='del'){
+      if(!S.armed){ S.armed=true; paintBar(); setTimeout(function(){ if(S.armed){ S.armed=false; paintBar(); } },3500); return; }
+      var did=l.id, nm2=l.name; S.armed=false;
+      change(function(L){ for(var i=0;i<L.length;i++) if(L[i].id===did){ L.splice(i,1); return; } return false; },function(){ toast('“'+nm2+'” deleted'); });
+    }
+  }
+  /* while "Remove names" is on, a tap on a row takes it out of the list instead of opening its card */
+  function rowTap(e){
+    if(!S.edit||!S.active) return;
+    var tr=e.target.closest('#mktView table.mkt tbody tr'); if(!tr||!tr._row) return;
+    e.stopPropagation(); e.preventDefault();
+    var r=tr._row, fam=S.fam, id=S.active, M=meta(), item=null, l=listOf(id); if(!l) return;
+    if(fam==='mk') item='eq:'+String(r.mkSym||r.sym).toUpperCase();
+    else if(r.kind==='mkc') item='cr:'+r.key;
+    else { var s=String(r.mkSym||r.sym).toUpperCase(); (l.items||[]).forEach(function(it){ if(it.indexOf('cr:')===0&&M[it]&&String(M[it].sym).toUpperCase()===s) item=it; }); }
+    if(!item) return;
+    change(function(L){ var x=L.filter(function(q){ return q.id===id; })[0]; if(!x) return false; var i=x.items.indexOf(item); if(i<0) return false; x.items.splice(i,1); },
+           function(){ toast(String(r.sym)+' removed'); });
+  }
+
+  /* ---------- search = add ---------- */
+  function loadIndex(){
+    if(S.idx||S.idxBusy) return;
+    S.idxBusy=true;
+    fetch(BASE+'/symbols.json',{cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(j){
+      S.idxBusy=false;
+      var eq=(j.eq||[]).map(function(a){ return {k:'eq:'+a[0], sym:a[0], name:a[1], tag:a[3]?'ETF':a[2], U:String(a[1]).toUpperCase()}; });
+      var cr=(j.cr||[]).map(function(a){ return {k:'cr:'+a[0], sym:String(a[1]).toUpperCase(), name:a[2], tag:'COIN', U:String(a[2]).toUpperCase()}; });
+      S.idx={eq:eq, cr:cr}; S.idxErr=null; paintRes();
+    }).catch(function(e){ S.idxBusy=false; S.idxErr=String(e&&e.message||'unreachable'); paintRes(); });
+  }
+  function find(q){
+    var out=[], seen={}, I=S.idx; if(!I||!q) return out;
+    function scan(rows,capA,capB){
+      var A=[],B=[],C=[];
+      for(var i=0;i<rows.length;i++){ var r=rows[i];
+        if(r.sym===q) A.push(r);
+        else if(r.sym.indexOf(q)===0){ if(B.length<capA) B.push(r); }
+        else if(C.length<capB){ var k=r.U.indexOf(q); if(k===0||(k>0&&r.U.charAt(k-1)===' ')) C.push(r); }
+      }
+      return [A,B,C];
+    }
+    var e=scan(I.eq,6,6), c=scan(I.cr,3,3);   /* both lists are cap-ranked, so each bucket is biggest-first */
+    [e[0],c[0],e[1].slice(0,5),c[1].slice(0,2),e[2].slice(0,5),c[2].slice(0,2),e[1].slice(5)].forEach(function(b){
+      b.forEach(function(r){ if(!seen[r.k]&&out.length<MAX_RES){ seen[r.k]=1; out.push(r); } }); });
+    return out;
+  }
+  var resEl=null, qEl=null, hits=[];
+  function targetId(){ if(S.target&&listOf(S.target)) return S.target; if(S.active) return S.active; var L=lists(); return L.length?L[0].id:null; }
+  function paintRes(){
+    if(!resEl) return;
+    var q=qEl?String(qEl.value||'').trim().toUpperCase():'';
+    if(!S.key||!S.doc||!q||document.activeElement!==qEl){ resEl.classList.remove('open'); return; }
+    var t=targetId(), tl=t&&listOf(t), inT={}; if(tl) (tl.items||[]).forEach(function(it){ inT[it]=1; });
+    var h='<div class="gll-into"><span>Add to</span>';
+    lists().forEach(function(l){ h+='<button type="button" data-t="'+esc(l.id)+'" class="'+(l.id===t?'on':'')+'">'+esc(l.name)+'</button>'; });
+    h+='<button type="button" data-t="+" class="gll-plus">+ New list</button></div>';
+    hits=find(q);
+    if(!S.idx) h+='<div class="gll-none">'+(S.idxErr?'Search list unavailable — '+esc(S.idxErr):'Loading the search list…')+'</div>';
+    hits.forEach(function(r,i){
+      h+='<div class="gll-r" data-i="'+i+'"><b>'+esc(r.sym)+'</b><span class="gll-rn">'+esc(r.name)+'</span><span class="gll-tag gll-'+esc(r.tag)+'">'+esc(r.tag)+'</span>'
+        +'<button type="button" class="gll-add'+(inT[r.k]?' in':'')+'" aria-label="'+(inT[r.k]?'Remove':'Add')+'">'+(inT[r.k]?'✓':'+')+'</button></div>';
+    });
+    /* the live lookup is offered for something that reads like a ticker the list does not have: nothing matched it exactly
+       (stock OR coin), and it is short (a long word with matches is a company name being typed) */
+    var exact=hits.some(function(r){ return r.sym===q; });
+    if(S.idx&&!exact&&/^[A-Z][A-Z0-9.\-]{0,9}$/.test(q)&&(q.length<=5||!hits.length)){
+      var lk=S.look[q];
+      if(lk&&lk.rows&&lk.rows.length){ var x=lk.rows[0]; h+='<div class="gll-r" data-look="'+esc(q)+'"><b>'+esc(x.sym)+'</b><span class="gll-rn">'+esc(x.name||'')+'</span><span class="gll-tag gll-'+esc(x.exch||'')+'">'+esc(x.exch||'')+'</span>'
+        +'<button type="button" class="gll-add'+(inT['eq:'+x.sym]?' in':'')+'">'+(inT['eq:'+x.sym]?'✓':'+')+'</button></div>'; }
+      else h+='<div class="gll-r gll-lookup" data-ask="'+esc(q)+'"><span class="gll-rn">'+(lk&&lk.busy?'Looking up '+esc(q)+'…':(lk&&lk.rows?'No ticker “'+esc(q)+'” found':(lk&&lk.err?esc(lk.err):'Not in the search list — look up “'+esc(q)+'”')))+'</span></div>';
+    } else if(S.idx&&!hits.length) h+='<div class="gll-none">No match</div>';
+    resEl.innerHTML=h;
+    var rc=qEl.getBoundingClientRect(), w=Math.min(Math.max(rc.width,340),window.innerWidth-16);
+    resEl.style.width=w+'px'; resEl.style.left=Math.max(8,Math.min(rc.left,window.innerWidth-w-8))+'px'; resEl.style.top=(rc.bottom+6)+'px';
+    resEl.style.maxHeight=Math.max(160,window.innerHeight-rc.bottom-20)+'px';
+    resEl.classList.add('open');
+  }
+  function toggleItem(item,label){
+    var go=function(id){
+      var l=listOf(id); if(!l) return; var had=(l.items||[]).indexOf(item)>=0;
+      change(function(L){ var x=L.filter(function(q){ return q.id===id; })[0]; if(!x) return false; var i=x.items.indexOf(item); if(i>=0) x.items.splice(i,1); else x.items.unshift(item); },
+             function(){ var n=listOf(id); toast(label+(had?' removed from ':' added to ')+(n?n.name:'the list')); paintRes(); });
+    };
+    var t=targetId(); if(t) go(t); else createList(go);
+  }
+  function resDown(e){
+    e.preventDefault();   /* keep the input's focus: the list stays open for the next add */
+    var tb=e.target.closest('.gll-into button');
+    if(tb){ var t=tb.getAttribute('data-t'); if(t==='+') createList(function(id){ S.target=id; paintRes(); }); else { S.target=t; paintRes(); } return; }
+    var row=e.target.closest('.gll-r'); if(!row) return;
+    if(row.hasAttribute('data-ask')){ lookup(row.getAttribute('data-ask')); return; }
+    if(row.hasAttribute('data-look')){ var lk=S.look[row.getAttribute('data-look')], x=lk&&lk.rows&&lk.rows[0]; if(x) toggleItem('eq:'+x.sym,x.sym); return; }
+    var r=hits[+row.getAttribute('data-i')]; if(r) toggleItem(r.k,r.sym);
+  }
+  function lookup(q){
+    if(S.look[q]&&S.look[q].busy) return;
+    S.look[q]={busy:true}; paintRes();
+    call('GET','/symbol_lookup?q='+encodeURIComponent(q)).then(function(r){
+      if(r.status===200&&r.body&&Array.isArray(r.body.rows)) S.look[q]={rows:r.body.rows};
+      else S.look[q]={err:(r.body&&(r.body.note||r.body.error))||'Lookup failed'};
+      paintRes();
+    }).catch(function(){ S.look[q]={err:'Lookup failed — server unreachable'}; paintRes(); });
+  }
+
+  /* ---------- mount ---------- */
+  function mount(){
+    if(S.mounted||!S.key) return;
+    var ctl=document.getElementById('mkCtl'), a=api(); qEl=document.getElementById('mkQ');
+    if(!ctl||!a||!qEl) return;
+    S.mounted=true;
+    var bar=el('div'); bar.id='gllBar'; bar.hidden=true; ctl.parentNode.insertBefore(bar,ctl.nextSibling);
+    bar.addEventListener('click',barClick);
+    resEl=el('div'); resEl.id='gllRes'; document.body.appendChild(resEl);
+    resEl.addEventListener('mousedown',resDown);
+    resEl.addEventListener('touchstart',function(e){ if(e.target.closest('button,.gll-r')) resDown(e); },{passive:false});
+    qEl.addEventListener('input',function(){ loadIndex(); paintRes(); });
+    qEl.addEventListener('focus',function(){ loadIndex(); paintRes(); });
+    qEl.addEventListener('blur',function(){ setTimeout(function(){ if(document.activeElement!==qEl) resEl.classList.remove('open'); },150); });
+    qEl.addEventListener('keydown',function(e){ if(e.key==='Escape') resEl.classList.remove('open'); });
+    qEl.setAttribute('placeholder','Search or add a ticker');
+    window.addEventListener('resize',function(){ if(resEl.classList.contains('open')) paintRes(); });
+    document.addEventListener('click',rowTap,true);
+    paintMenu();
+    if(!S.doc) load();
+  }
+  window.AIBO_LISTS={
+    mount:mount,
+    onUni:function(){ if(S.active) leave(false); },
+    pending:function(){
+      var out=[], M=meta();
+      Object.keys(M).forEach(function(k){ var m=M[k]; if(k.indexOf('eq:')!==0||!m||typeof m.px!=='number') return;
+        out.push({sym:m.sym, name:m.name, px:m.px, chg1d:(typeof m.chg1d==='number'?m.chg1d:null), chg7d:null, mcap:(typeof m.mcap==='number'?m.mcap:null), exch:m.exch||null, listed:true}); });
+      return out;
+    },
+    bars:function(sym){ var m=meta()['eq:'+String(sym).toUpperCase()]; return (m&&Array.isArray(m.bars)&&m.bars.length>1)?m.bars:null; },
+    state:function(){ return {key:!!S.key, doc:S.doc, active:S.active, fam:S.fam, edit:S.edit, err:S.err, mounted:S.mounted}; },
+    reload:load
+  };
+  if(!S.key) return;
+  load();
+  try{ var a0=api(); if(a0&&a0.built()) mount(); }catch(_){}
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden&&Date.now()-S.at>5000) load(); });
+  setInterval(function(){ if(!document.hidden) load(); },REFRESH);
+})();
+
+</script>
 <script id="gl48Shim">
 /* Stage 48 Glass shim. Additive only: nothing here moves or removes an existing node, and
    every door forwards to a control the app already owns — the hidden segs stay the state
