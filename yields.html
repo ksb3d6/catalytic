@@ -205,7 +205,7 @@ function paintWTable(){
 }
 getJSON('/yields.json','yields.json').then(function(j){
   D=j;
-  D.maturities.forEach(function(m){ vis[m.k]=true; });
+  D.maturities.forEach(function(m){ vis[m.k]=!!STARS[m.k]; });   /* 10-07 (Carl): only 2Y · 10Y · 30Y on by default; the chips add the rest */
   scrubIdx=D.days.length-1;
   document.getElementById('asof').textContent='through '+j.asOf;
   document.getElementById('foot').innerHTML='Daily par yields · '+esc(j.source)+' · through <b class="mono">'+j.asOf+'</b> · '
@@ -219,7 +219,7 @@ getJSON('/yields.json','yields.json').then(function(j){
 function buildLegend(){
   var el=document.getElementById('legend');
   el.innerHTML=D.maturities.map(function(m){
-    return '<button class="lg'+(STARS[m.k]?' star':'')+'" data-k="'+m.k+'" style="--c:'+COLS[m.k]+'"><i></i>'+m.k+'</button>';
+    return '<button class="lg'+(STARS[m.k]?' star':'')+(vis[m.k]?'':' off')+'" data-k="'+m.k+'" style="--c:'+COLS[m.k]+'"><i></i>'+m.k+'</button>';
   }).join('');
   el.addEventListener('click',function(e){
     var b=e.target.closest('.lg'); if(!b) return;
