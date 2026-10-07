@@ -11347,6 +11347,11 @@ html[data-gl][data-gldesk] #mktView .mk-cat{width:fit-content;max-width:calc(100
   html[data-gl][data-gldesk] #mktView .mkt td.c-rank{vertical-align:top;padding-top:11px;}   /* the number clears the tag that now starts under it */
 }
 
+/* 10-07 Settings › Appearance: the Light | Dark seg above the hue chips */
+html[data-gl] .gl-moderow{display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid rgba(var(--gl-wh-rgb,255,255,255),.07);}
+html[data-gl] .gl-moderow .gl-seg{flex:none;}
+html[data-gl] .gl-modenote{font:400 11.5px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(var(--gl-ink-rgb,234,238,245),.5);}
+
 </style>
 <!-- Stage 48 Glass chrome. ONE constant SIX-door bar — Tape · Research · Portfolio · Atlas · Calendar · Settings (the owner's order, 10-05) —
      replaces the two docks that used to swap by deck (Yields left the bar 09-23: it is a Macro chapter
@@ -15687,88 +15692,158 @@ html[data-gl][data-glown="1"] #flowView .legend,html[data-gl][data-glown="1"] #f
 
 </script>
 <style id="gl48LightCss">
-/* Stage 48 — THE LIGHT PALETTE, designed on its own (2026-10-07, the owner: "redesign every colour hue for the light mode… the grading hues
-   are too dark, the bullet graphs too dark, the EMAs need a different colour — look at what common light-mode terminals look like").
-   Reference: the light themes of the terminals people actually use (TradingView, Koyfin, Apple Stocks): a white page, panels a touch
-   greyer (#f0f3fa), hairlines #e0e3eb, ink #131722 with #787b86 secondary, ONE vivid blue (#2962ff) for the accent and the moving
-   average, up = teal-green #089981, down = #f23645, neutral greys mid-tone — never the dark theme's pastel neons on white.
-   The dark palettes are untouched. This file loads AFTER the generated palette rule, so its values win. Three kinds of rule:
-     1. the tokens the app already reads (surfaces, ink, accent, the grade vars, up / down / grey / cyan);
-     2. SVG colours the renderers write as ATTRIBUTES (fill="#39d07f"…) — CSS outranks a presentation attribute, so an attribute
-        selector recolours every candle, ribbon, bullet, dial and wheel sector without touching the JS (fill and stroke kept separate:
-        a rect with fill="…" and stroke="none" must not grow a stroke);
-     3. inline text colours the JS writes (style="color:#39d07f") — !important is the only way past an inline style. */
+/* Stage 48 — THE LIGHT MODE, designed on its own (2026-10-07, the owner: "don't treat it as starting with just a colour — treat it as its own
+   redesign… easy on the eyes… look at what other light-mode terminals look like"; Sector rotation "looks pretty great — use it as a
+   template"). The vocabulary of the light terminals people use (Apple Stocks, Koyfin, TradingView light): a WHITE page, panels a
+   shade greyer, thin grey hairlines, near-black ink with a mid-grey secondary, NO blue accent — selection and emphasis are greys and
+   ink, the moving average is BLACK, up / down keep the teal-green / red of light charts, grades are PASTEL pills with a strong text
+   colour, and every chart's dark rims, tracks and plates turn white or light grey. The dark palettes are untouched.
+   Loads last. Three kinds of rule: tokens; SVG ATTRIBUTE selectors (CSS outranks a presentation attribute — fill and stroke kept
+   apart); inline `style="…"` colours with !important. A renderer with a new dark literal needs a line here. */
 html[data-gl="light"]{
   --bg:#ffffff; --gl-bg-rgb:255,255,255;
-  --gl-d06:#fbfbfd; --gl-d06-rgb:251,251,253; --gl-d08:#f7f8fb; --gl-d08-rgb:247,248,251; --gl-d10:#f0f3fa; --gl-d10-rgb:240,243,250;
-  --gl-d12:#e9edf5; --gl-d12-rgb:233,237,245; --gl-d14:#e3e7f0; --gl-d14-rgb:227,231,240; --gl-d16:#dde2ec; --gl-d16-rgb:221,226,236;
-  --gl-d18:#d6dce8; --gl-d18-rgb:214,220,232; --gl-d22:#cbd3e1; --gl-d22-rgb:203,211,225;
-  --card:#f0f3fa; --panel:#f7f8fb; --navy:#f0f3fa; --hair:#e0e3eb;
-  --ink:#131722; --gl-ink:#131722; --gl-ink-rgb:19,23,34; --muted:#787b86; --muted2:#9598a1; --gl-wh-rgb:0,0,0;
-  --gl-acc:#2962ff; --gl-acc-rgb:41,98,255; --gl-acci:#1e4fd6; --gl-acci-rgb:30,79,214; --gl-accd:#a6bcff; --gl-accd-rgb:166,188,255;
-  --gl-ma:#2962ff; --gl-seld:#e3ecff; --gl-seld-rgb:227,236,255; --gl-on-acc:#ffffff;
-  --sel-bg:#e3ecff; --sel-ink:#1e4fd6; --sel-line:#9cb6ff;
-  --gl-up:#089981; --gl-up-rgb:8,153,129; --gl-dn:#f23645; --gl-dn-rgb:242,54,69; --gl-fl:#5f6b7a; --gl-cy:#0e8fb8;
-  /* grades: mid-tones that carry white text on a white page — brighter than the dark theme's forest greens and brick reds */
-  --g-aplus:#15803d; --g-a:#16a34a; --g-aminus:#2aa557; --g-bplus:#65a30d; --g-b:#b58a00; --g-bminus:#c2740a;
-  --g-cplus:#d9640f; --g-c:#e2560f; --g-cminus:#dc4a2a; --g-dplus:#d93a3a; --g-d:#c72f2f; --g-dminus:#b02222; --g-f:#8f1414; --g-na:#c8cfdb;
+  --gl-d06:#fcfcfd; --gl-d06-rgb:252,252,253; --gl-d08:#f8f9fb; --gl-d08-rgb:248,249,251; --gl-d10:#f3f4f7; --gl-d10-rgb:243,244,247;
+  --gl-d12:#eef0f4; --gl-d12-rgb:238,240,244; --gl-d14:#e9ecf1; --gl-d14-rgb:233,236,241; --gl-d16:#e3e7ec; --gl-d16-rgb:227,231,236;
+  --gl-d18:#dde1e8; --gl-d18-rgb:221,225,232; --gl-d22:#d2d7df; --gl-d22-rgb:210,215,223;
+  --card:#f3f4f7; --panel:#f8f9fb; --navy:#f3f4f7; --hair:#e4e7ec;
+  --ink:#1c2128; --gl-ink:#1c2128; --gl-ink-rgb:28,33,40; --muted:#6b7280; --muted2:#9aa3af; --gl-wh-rgb:0,0,0;
+  /* the accent is a SLATE: selection = a grey pill with dark text, emphasis = darker slate, never a blue; the moving average is ink */
+  --gl-acc:#5b6b84; --gl-acc-rgb:91,107,132; --gl-acci:#3f4b5e; --gl-acci-rgb:63,75,94; --gl-accd:#c4ccd8; --gl-accd-rgb:196,204,216;   /* a slate, not a blue: bars, chips and links sit quietly on white */
+  --gl-ma:#1c2128; --gl-seld:#e8ebf0; --gl-seld-rgb:232,235,240; --gl-on-acc:#ffffff;
+  --sel-bg:#e8ebf0; --sel-ink:#1c2128; --sel-line:#c9cfd8;
+  --gl-up:#0f9d7a; --gl-up-rgb:15,157,122; --gl-dn:#e5484d; --gl-dn-rgb:229,72,77; --gl-fl:#6b7280; --gl-cy:#4b5563;
+  --g-aplus:#cfeedd;--gt-aplus:#176b3f;--gm-aplus:#2e9b5f;--g-a:#d5f0e0;--gt-a:#1b7a48;--gm-a:#38a968;--g-aminus:#ddf2e5;--gt-aminus:#237f52;--gm-aminus:#49b377;--g-bplus:#e5f1cf;--gt-bplus:#4d7a12;--gm-bplus:#86b43a;--g-b:#f3ecc8;--gt-b:#7a6410;--gm-b:#c9ab2e;--g-bminus:#f7e4c4;--gt-bminus:#8a5b14;--gm-bminus:#d79a3a;--g-cplus:#f9dec6;--gt-cplus:#9a4a16;--gm-cplus:#e3883f;--g-c:#fbd8c2;--gt-c:#a9431a;--gm-c:#e8773c;--g-cminus:#fbd3cc;--gt-cminus:#ad3a2a;--gm-cminus:#e9653f;--g-dplus:#f9cfcf;--gt-dplus:#b03030;--gm-dplus:#e25555;--g-d:#f6c6c6;--gt-d:#a52a2a;--gm-d:#d94747;--g-dminus:#f2bcbc;--gt-dminus:#962222;--gm-dminus:#cc3a3a;--g-f:#edb0b0;--gt-f:#7a1515;--gm-f:#b52626;--g-na:#e8ebf0;--gt-na:#6b7280;--gm-na:#c8cfdb;
   color-scheme:light;
 }
-html[data-gl="light"] body{background:var(--bg);}
-html[data-gl="light"] .g-na,html[data-gl="light"] #mktView .mk-gp.g-na{color:#5f6b7a;}
+html[data-gl="light"],html[data-gl="light"] body{background:#ffffff;}
+html[data-gl="light"] ::selection{background:#dfe3ea;}
+html[data-gl="light"] .g-na,html[data-gl="light"] #mktView .mk-gp.g-na{color:#6b7280;}
 
-/* ---- 2. SVG attribute colours (the renderers' literals; both spellings where the JS uses both) ---- */
+/* ---- grades: pastel pill, strong text (every place a grade class paints a background) ---- */
+html[data-gl="light"] :is(.g-aplus, .cb.g-aplus, #mktView .mk-gp.g-aplus, .roll .rg .big.g-aplus, #studioView .g-aplus, .sc-root .g-aplus, .glc-day .g-aplus){background:var(--g-aplus);color:var(--gt-aplus);box-shadow:none;}
+html[data-gl="light"] :is(.g-a, .cb.g-a, #mktView .mk-gp.g-a, .roll .rg .big.g-a, #studioView .g-a, .sc-root .g-a, .glc-day .g-a){background:var(--g-a);color:var(--gt-a);box-shadow:none;}
+html[data-gl="light"] :is(.g-aminus, .cb.g-aminus, #mktView .mk-gp.g-aminus, .roll .rg .big.g-aminus, #studioView .g-aminus, .sc-root .g-aminus, .glc-day .g-aminus){background:var(--g-aminus);color:var(--gt-aminus);box-shadow:none;}
+html[data-gl="light"] :is(.g-bplus, .cb.g-bplus, #mktView .mk-gp.g-bplus, .roll .rg .big.g-bplus, #studioView .g-bplus, .sc-root .g-bplus, .glc-day .g-bplus){background:var(--g-bplus);color:var(--gt-bplus);box-shadow:none;}
+html[data-gl="light"] :is(.g-b, .cb.g-b, #mktView .mk-gp.g-b, .roll .rg .big.g-b, #studioView .g-b, .sc-root .g-b, .glc-day .g-b){background:var(--g-b);color:var(--gt-b);box-shadow:none;}
+html[data-gl="light"] :is(.g-bminus, .cb.g-bminus, #mktView .mk-gp.g-bminus, .roll .rg .big.g-bminus, #studioView .g-bminus, .sc-root .g-bminus, .glc-day .g-bminus){background:var(--g-bminus);color:var(--gt-bminus);box-shadow:none;}
+html[data-gl="light"] :is(.g-cplus, .cb.g-cplus, #mktView .mk-gp.g-cplus, .roll .rg .big.g-cplus, #studioView .g-cplus, .sc-root .g-cplus, .glc-day .g-cplus){background:var(--g-cplus);color:var(--gt-cplus);box-shadow:none;}
+html[data-gl="light"] :is(.g-c, .cb.g-c, #mktView .mk-gp.g-c, .roll .rg .big.g-c, #studioView .g-c, .sc-root .g-c, .glc-day .g-c){background:var(--g-c);color:var(--gt-c);box-shadow:none;}
+html[data-gl="light"] :is(.g-cminus, .cb.g-cminus, #mktView .mk-gp.g-cminus, .roll .rg .big.g-cminus, #studioView .g-cminus, .sc-root .g-cminus, .glc-day .g-cminus){background:var(--g-cminus);color:var(--gt-cminus);box-shadow:none;}
+html[data-gl="light"] :is(.g-dplus, .cb.g-dplus, #mktView .mk-gp.g-dplus, .roll .rg .big.g-dplus, #studioView .g-dplus, .sc-root .g-dplus, .glc-day .g-dplus){background:var(--g-dplus);color:var(--gt-dplus);box-shadow:none;}
+html[data-gl="light"] :is(.g-d, .cb.g-d, #mktView .mk-gp.g-d, .roll .rg .big.g-d, #studioView .g-d, .sc-root .g-d, .glc-day .g-d){background:var(--g-d);color:var(--gt-d);box-shadow:none;}
+html[data-gl="light"] :is(.g-dminus, .cb.g-dminus, #mktView .mk-gp.g-dminus, .roll .rg .big.g-dminus, #studioView .g-dminus, .sc-root .g-dminus, .glc-day .g-dminus){background:var(--g-dminus);color:var(--gt-dminus);box-shadow:none;}
+html[data-gl="light"] :is(.g-f, .cb.g-f, #mktView .mk-gp.g-f, .roll .rg .big.g-f, #studioView .g-f, .sc-root .g-f, .glc-day .g-f){background:var(--g-f);color:var(--gt-f);box-shadow:none;}
+html[data-gl="light"] :is(.g-na, .cb.g-na, #mktView .mk-gp.g-na, .roll .rg .big.g-na, #studioView .g-na, .sc-root .g-na, .glc-day .g-na){background:var(--g-na);color:var(--gt-na);box-shadow:none;}
+html[data-gl="light"] #mktView .mk-gp.mk-auto{border-color:var(--ag,#9aa3af);color:var(--ag,#6b7280);}
+/* the grade wheel's sectors (white labels on them): the mid tones */
+html[data-gl="light"] [fill="#0f7a43"]{fill:var(--gm-aplus);}
+html[data-gl="light"] [fill="#1c8a4e"]{fill:var(--gm-a);}
+html[data-gl="light"] [fill="#2f9558"]{fill:var(--gm-aminus);}
+html[data-gl="light"] [fill="#6f9e3c"]{fill:var(--gm-bplus);}
+html[data-gl="light"] [fill="#9c8f2e"]{fill:var(--gm-b);}
+html[data-gl="light"] [fill="#b8862c"]{fill:var(--gm-bminus);}
+html[data-gl="light"] [fill="#c2742a"]{fill:var(--gm-cplus);}
+html[data-gl="light"] [fill="#cc6328"]{fill:var(--gm-c);}
+html[data-gl="light"] [fill="#d15227"]{fill:var(--gm-cminus);}
+html[data-gl="light"] [fill="#d04a25"]{fill:var(--gm-dplus);}
+html[data-gl="light"] [fill="#c43f28"]{fill:var(--gm-d);}
+html[data-gl="light"] [fill="#bb2f22"]{fill:var(--gm-dminus);}
+html[data-gl="light"] [fill="#b01e1e"]{fill:var(--gm-f);}
+
+/* ---- SVG attribute colours the renderers write ---- */
 html[data-gl="light"] [fill="#39d07f"],html[data-gl="light"] [fill="#39D07F"],html[data-gl="light"] [fill="#2bc773"],html[data-gl="light"] [fill="#2BC773"]{fill:var(--gl-up);}
 html[data-gl="light"] [stroke="#39d07f"],html[data-gl="light"] [stroke="#39D07F"],html[data-gl="light"] [stroke="#2bc773"],html[data-gl="light"] [stroke="#2BC773"]{stroke:var(--gl-up);}
 html[data-gl="light"] [fill="#f0685f"],html[data-gl="light"] [fill="#F0685F"],html[data-gl="light"] [fill="#f2564f"],html[data-gl="light"] [fill="#F2564F"]{fill:var(--gl-dn);}
 html[data-gl="light"] [stroke="#f0685f"],html[data-gl="light"] [stroke="#F0685F"],html[data-gl="light"] [stroke="#f2564f"],html[data-gl="light"] [stroke="#F2564F"]{stroke:var(--gl-dn);}
 html[data-gl="light"] [fill="#8A93A5"],html[data-gl="light"] [fill="#8a93a5"]{fill:var(--gl-fl);}
 html[data-gl="light"] [stroke="#8A93A5"],html[data-gl="light"] [stroke="#8a93a5"]{stroke:var(--gl-fl);}
-html[data-gl="light"] [fill="#1FC6DC"],html[data-gl="light"] [fill="#1fc6dc"]{fill:var(--gl-cy);}
-html[data-gl="light"] [stroke="#1FC6DC"],html[data-gl="light"] [stroke="#1fc6dc"]{stroke:var(--gl-cy);}
-/* the dark rims, tracks and label plates the renderers draw for a dark page */
-html[data-gl="light"] [fill="#0D1320"],html[data-gl="light"] [fill="#0d1320"],html[data-gl="light"] [fill="#0a0e14"],html[data-gl="light"] [fill="#0A0E14"]{fill:#ffffff;}
-html[data-gl="light"] [stroke="#0D1320"],html[data-gl="light"] [stroke="#0d1320"],html[data-gl="light"] [stroke="#0a0e14"],html[data-gl="light"] [stroke="#0A0E14"]{stroke:#ffffff;}
-html[data-gl="light"] [stroke="#223045"]{stroke:#e0e3eb;}
-html[data-gl="light"] [fill="#223045"]{fill:#e0e3eb;}
+html[data-gl="light"] [fill="#1FC6DC"],html[data-gl="light"] [fill="#1fc6dc"]{fill:#4b5563;}
+html[data-gl="light"] [stroke="#1FC6DC"],html[data-gl="light"] [stroke="#1fc6dc"]{stroke:#4b5563;}
+/* dark rims, tracks, hubs and label plates -> white / light grey */
+html[data-gl="light"] [fill="#0D1320"],html[data-gl="light"] [fill="#0d1320"],html[data-gl="light"] [fill="#0a0e14"],html[data-gl="light"] [fill="#0A0E14"],html[data-gl="light"] [fill="#0f1a2b"],html[data-gl="light"] [fill="#0f1620"],html[data-gl="light"] [fill="#0c1119"]{fill:#ffffff;}
+html[data-gl="light"] [stroke="#0D1320"],html[data-gl="light"] [stroke="#0d1320"],html[data-gl="light"] [stroke="#0a0e14"],html[data-gl="light"] [stroke="#0A0E14"],html[data-gl="light"] [stroke="#0c1119"]{stroke:#ffffff;}
+html[data-gl="light"] [fill="#1b2431"]{fill:#eef0f4;}
+html[data-gl="light"] [stroke="#223045"],html[data-gl="light"] [stroke="#243450"],html[data-gl="light"] [stroke="#1f2c44"]{stroke:#e4e7ec;}
+html[data-gl="light"] [fill="#223045"]{fill:#e4e7ec;}
+/* ink and secondary text drawn into SVG */
 html[data-gl="light"] [fill="#e6eef7"],html[data-gl="light"] [fill="#eaeef5"],html[data-gl="light"] [fill="#EAEEF5"],html[data-gl="light"] [fill="#cdd9e5"]{fill:var(--ink);}
-html[data-gl="light"] [fill="#7fd8ea"],html[data-gl="light"] [fill="#9fe8f4"]{fill:var(--gl-acci);}
-html[data-gl="light"] [stroke="#7fd8ea"],html[data-gl="light"] [stroke="#9fe8f4"]{stroke:var(--gl-acci);}
-html[data-gl="light"] [fill="#9fb0c8"],html[data-gl="light"] [fill="#7d8d9d"],html[data-gl="light"] [fill="#7e90a6"]{fill:var(--muted);}
-html[data-gl="light"] [stroke="#9fb0c8"],html[data-gl="light"] [stroke="#7d8d9d"],html[data-gl="light"] [stroke="#3a4a63"],html[data-gl="light"] [stroke="#2a3647"]{stroke:#d6dce8;}
-/* the grade wheel's sectors: GHEX writes the dark theme's grade hexes into the SVG — map them onto the light grade set */
-html[data-gl="light"] [fill="#0f7a43"]{fill:var(--g-aplus);} html[data-gl="light"] [fill="#1c8a4e"]{fill:var(--g-a);} html[data-gl="light"] [fill="#2f9558"]{fill:var(--g-aminus);}
-html[data-gl="light"] [fill="#6f9e3c"]{fill:var(--g-bplus);} html[data-gl="light"] [fill="#9c8f2e"]{fill:var(--g-b);} html[data-gl="light"] [fill="#b8862c"]{fill:var(--g-bminus);}
-html[data-gl="light"] [fill="#c2742a"]{fill:var(--g-cplus);} html[data-gl="light"] [fill="#cc6328"]{fill:var(--g-c);} html[data-gl="light"] [fill="#d15227"]{fill:var(--g-cminus);}
-html[data-gl="light"] [fill="#d04a25"]{fill:var(--g-dplus);} html[data-gl="light"] [fill="#c43f28"]{fill:var(--g-d);} html[data-gl="light"] [fill="#bb2f22"]{fill:var(--g-dminus);} html[data-gl="light"] [fill="#b01e1e"]{fill:var(--g-f);}
-/* the Technicals page's own renderers (RSI / MACD in techlab.js) use the same literals: covered by the rules above */
+html[data-gl="light"] #studioView svg text[fill="#fff"],html[data-gl="light"] #studioView svg text[fill="#ffffff"],html[data-gl="light"] #studioView svg text[fill="white"]{fill:var(--ink);}
+html[data-gl="light"] [fill="#7fd8ea"],html[data-gl="light"] [fill="#9fe8f4"]{fill:#374151;}
+html[data-gl="light"] [stroke="#7fd8ea"],html[data-gl="light"] [stroke="#9fe8f4"]{stroke:#374151;}
+html[data-gl="light"] [fill="#9fb0c8"],html[data-gl="light"] [fill="#7d8d9d"],html[data-gl="light"] [fill="#7e90a6"],html[data-gl="light"] [fill="#8696a6"],html[data-gl="light"] [fill="#5f6f7d"]{fill:var(--muted);}
+html[data-gl="light"] [stroke="#9fb0c8"],html[data-gl="light"] [stroke="#7d8d9d"],html[data-gl="light"] [stroke="#3a4a63"],html[data-gl="light"] [stroke="#2a3647"]{stroke:#d2d7df;}
+/* the Portfolio donut's sleeve ring: soft mid tones that still carry a white label */
+html[data-gl="light"] [fill="#2f4d6e"]{fill:#7f98c2;} html[data-gl="light"] [fill="#1a6b7a"]{fill:#5fa7b3;} html[data-gl="light"] [fill="#5a3a78"]{fill:#9d86c4;} html[data-gl="light"] [fill="#8a7530"]{fill:#c8ab55;} html[data-gl="light"] [fill="#3f7d5a"]{fill:#73b48e;}
+html[data-gl="light"] [fill="#3c4d63"]{fill:#c4ccd8;}
+/* the 30-day range bullet: month track · week band · day band (darkest innermost) */
+html[data-gl="light"] [fill="#2A3647"]{fill:#dfe3ea;} html[data-gl="light"] [fill="#5E7188"]{fill:#b5bdca;} html[data-gl="light"] [fill="#C9D6E8"]{fill:#6b7280;}
 
-/* ---- 3. inline text colours the JS writes ---- */
+/* ---- inline colours the JS writes ---- */
 html[data-gl="light"] [style*="color:#39d07f"],html[data-gl="light"] [style*="color: #39d07f"],html[data-gl="light"] [style*="color:#2bc773"]{color:var(--gl-up)!important;}
 html[data-gl="light"] [style*="color:#f0685f"],html[data-gl="light"] [style*="color: #f0685f"],html[data-gl="light"] [style*="color:#f2564f"]{color:var(--gl-dn)!important;}
 html[data-gl="light"] [style*="color:#8A93A5"],html[data-gl="light"] [style*="color:#8a93a5"]{color:var(--gl-fl)!important;}
-html[data-gl="light"] [style*="color:#e0b048"]{color:#b45309!important;}
+html[data-gl="light"] [style*="color:#e0b048"]{color:#8a5b14!important;}
+html[data-gl="light"] [style*="background:#3c4d63"],html[data-gl="light"] [style*="background: #3c4d63"]{background:#c4ccd8!important;}
+html[data-gl="light"] [style*="background:#2f4d6e"]{background:#7f98c2!important;} html[data-gl="light"] [style*="background:#1a6b7a"]{background:#5fa7b3!important;}
+html[data-gl="light"] [style*="background:#5a3a78"]{background:#9d86c4!important;} html[data-gl="light"] [style*="background:#8a7530"]{background:#c8ab55!important;} html[data-gl="light"] [style*="background:#3f7d5a"]{background:#73b48e!important;}
 
-/* ---- surfaces that the tokens alone do not reach ---- */
-html[data-gl="light"] #mStrip,html[data-gl="light"] #glDock{background:rgba(255,255,255,.86);border-color:#e0e3eb;}
-html[data-gl="light"] .gl-tab.on{background:#e3ecff;}
-html[data-gl="light"] #mktView .mkt th{color:#787b86;}
-html[data-gl="light"] #mktView .mkt tbody tr:hover td{background:#f0f3fa;}
-html[data-gl="light"] #mktView .mkt td.c-name,html[data-gl="light"] #mktView .mkt th.c-name{background:#ffffff;box-shadow:inset -1px 0 0 #e0e3eb;}
-html[data-gl="light"] #mktView .mkt tbody tr:hover td.c-name{background:#f0f3fa;}
-html[data-gl="light"] #mktView .mk-cat{color:#787b86;border-color:#d6dce8;}
-html[data-gl="light"] .glt-plot{background:#f7f8fb;border-color:#e0e3eb;}
-html[data-gl="light"] .glt-plot .nx{background:rgba(41,98,255,.06);}
-html[data-gl="light"] .glm-card,html[data-gl="light"] .glc-day,html[data-gl="light"] .glf-tile{background:#ffffff;border-color:#e0e3eb;}
-html[data-gl="light"] .mk-tg text,html[data-gl="light"] .mk-sg text{fill:var(--ink);}
-html[data-gl="light"] .LIVE,html[data-gl="light"] .gl-live{background:#ffffff;border-color:#e0e3eb;}
-/* the 30-day range bullet: month track · week band · day band, darkest innermost on a white page (the dark theme runs the other way) */
-html[data-gl="light"] [fill="#2A3647"]{fill:#e6e9f0;}
-html[data-gl="light"] [fill="#5E7188"]{fill:#b9c3d2;}
-html[data-gl="light"] [fill="#C9D6E8"]{fill:#5f6b7a;}
-/* the grade wheel's hub + the mini donut's hole */
-html[data-gl="light"] [fill="#0f1a2b"]{fill:#ffffff;}
-html[data-gl="light"] [stroke="#243450"],html[data-gl="light"] [stroke="#1f2c44"]{stroke:#e0e3eb;}
+/* ---- chrome: the strip, doors, the book total ---- */
+html[data-gl="light"] #mStrip,html[data-gl="light"] #glDock{background:rgba(255,255,255,.9);border-color:#e4e7ec;}
+html[data-gl="light"] .gl-tab{color:#6b7280;} html[data-gl="light"] .gl-tab.on{background:#e8ebf0;color:#1c2128;}
+html[data-gl="light"] .sthud-t b{color:#1c2128;}
+html[data-gl="light"] .sthud-bar{background:#eef0f4;border-color:#e4e7ec;}
+html[data-gl="light"] .gl-seg button.on,html[data-gl="light"] .seg button.on{background:#e8ebf0;color:#1c2128;box-shadow:inset 0 0 0 1px #c9cfd8;}
+html[data-gl="light"] .gl-seg button,html[data-gl="light"] .seg button{color:#6b7280;}
+/* ---- the Tape ---- */
+html[data-gl="light"] #mktView .mkt th{color:#6b7280;background:#f8f9fb;}
+html[data-gl="light"] #mktView .mkt tbody tr:hover td{background:#f3f4f7;}
+html[data-gl="light"] #mktView .mkt td.c-name,html[data-gl="light"] #mktView .mkt th.c-name{background:#ffffff;box-shadow:inset -1px 0 0 #e4e7ec;}
+html[data-gl="light"] #mktView .mkt tbody tr:hover td.c-name{background:#f3f4f7;}
+html[data-gl="light"] #mktView .mk-cat{color:#6b7280;border-color:#d2d7df;}
+html[data-gl="light"] #mktView .dd-btn,html[data-gl="light"] #mktView .mk-sel,html[data-gl="light"] #mktView .mk-q,html[data-gl="light"] #mktView .mk-grp button{background:#ffffff;border-color:#d2d7df;color:#1c2128;}
+html[data-gl="light"] #mktView .mk-grp button.on{background:#e8ebf0;}
+/* ---- the card ---- */
+html[data-gl="light"] #sheet{background:#ffffff;border-color:#e4e7ec;}
+html[data-gl="light"] .aibo-box{background:#f8f9fb;border-color:#e4e7ec;}
+html[data-gl="light"] :is(.aibo-box,.sh-grades,.glf) .glt-row{background:#f3f4f7;border-color:#d2d7df;color:#1c2128;}
+html[data-gl="light"] :is(.aibo-box,.sh-grades,.glf) .glt-row .ttl,html[data-gl="light"] :is(.aibo-box,.sh-grades,.glf) .glt-row .go,html[data-gl="light"] :is(.aibo-box,.sh-grades,.glf) .glt-row em{color:#1c2128;}
+html[data-gl="light"] .sh-tags .tag{background:#f3f4f7;border-color:#e4e7ec;color:#374151;}
+/* ---- Technicals / Financials / Macro / Calendar panels ---- */
+html[data-gl="light"] .glt-plot{background:#f8f9fb;border-color:#e4e7ec;}
+html[data-gl="light"] .glt-plot .nx{background:rgba(28,33,40,.05);}
+html[data-gl="light"] .glt-ibtn{background:#f3f4f7;border-color:#d2d7df;color:#1c2128;}
+html[data-gl="light"] .glf-plot i{color:#6b7280;text-shadow:0 0 3px #ffffff,0 0 6px #ffffff;}
+html[data-gl="light"] .glf-tile,html[data-gl="light"] .glm-card,html[data-gl="light"] .glc-day,html[data-gl="light"] .glr-card{background:#ffffff;border-color:#e4e7ec;}
+html[data-gl="light"] .glf-stat,html[data-gl="light"] .glf-stats > div{background:#f3f4f7;border-color:#e4e7ec;}
+html[data-gl="light"] .glm-item{background:#f8f9fb;border-color:#e4e7ec;}
+html[data-gl="light"] .glm-read{background:#f3f4f7;}
+/* ---- Portfolio ---- */
+html[data-gl="light"] #studioView .lt-bar{background:#eef0f4;}
+html[data-gl="light"] #studioView .seg-card,html[data-gl="light"] #studioView .dk-group,html[data-gl="light"] #studioView .st8-card{background:#ffffff;border-color:#e4e7ec;}
+html[data-gl="light"] #studioView .seg-row{border-color:#eef0f4;}
+html[data-gl="light"] #studioView .idx-fams button,html[data-gl="light"] #studioView .idx-tks button,html[data-gl="light"] #studioView .lock{background:#ffffff;border-color:#d2d7df;color:#374151;}
+/* ---- Flashcards: both faces white ---- */
+html[data-gl="light"] .fcard-face{background:#ffffff;border:1px solid #e4e7ec;color:#1c2128;box-shadow:0 10px 30px rgba(0,0,0,.08);}
+html[data-gl="light"] .fcard-back .fc-eyebrow{color:#6b7280;}
+/* ---- the LIVE chip, toasts ---- */
+html[data-gl="light"] #liveChip,html[data-gl="light"] .gl-live,html[data-gl="light"] #toast,html[data-gl="light"] #gllToast,html[data-gl="light"] #mkToast{background:#ffffff;border-color:#e4e7ec;color:#1c2128;}
+/* ---- Settings: the Light | Dark mode seg; the colour hues belong to dark ---- */
+html[data-gl="light"] .gl-themes{opacity:.35;pointer-events:none;}
+
+/* ---- Portfolio › Build: the tier badges (their own classes) as pastel pills; Exposure's two bars; the flashcard faces ---- */
+html[data-gl="light"] #studioView .t-a{background:#dcefe3;color:#176b3f;border-color:#bfe3cf;}
+html[data-gl="light"] #studioView .t-b{background:#e1ebf7;color:#2d4f7a;border-color:#c2d4ea;}
+html[data-gl="light"] #studioView .t-c{background:#f7ecc8;color:#7a6410;border-color:#e8d79b;}
+html[data-gl="light"] #studioView .t-d{background:#f9d6d6;color:#a52a2a;border-color:#efb9b9;}
+html[data-gl="light"] #studioView .t-na{background:#eef0f4;color:#6b7280;border-color:#d2d7df;}
+html[data-gl="light"] #studioView .t-etf{background:#ebe6f7;color:#5a3f9a;border-color:#cfc3ec;}
+html[data-gl="light"] #studioView .ovl-idx{background:#c4ccd8;}
+html[data-gl="light"] #studioView .ovl-dir{background:#5b6b84;}
+html[data-gl="light"] #studioView .ovl-bar{background:#eef0f4;}
+html[data-gl="light"] .fcard-face,html[data-gl="light"] .fcard-back{background:#ffffff!important;border:1px solid #e4e7ec;color:#1c2128;box-shadow:0 10px 30px rgba(0,0,0,.08);}
+html[data-gl="light"] .fcard-back .fc-eyebrow,html[data-gl="light"] .fcard-back .fc-why b{color:#6b7280;}
+html[data-gl="light"] .fcard-back .fc-layer{background:#f3f4f7;border-color:#d2d7df;color:#374151;}
+html[data-gl="light"] .fcard-back .fc-why{color:#374151;}
 
 </style>
 <script id="gl48Shim">
@@ -16027,6 +16102,8 @@ html[data-gl="light"] [stroke="#243450"],html[data-gl="light"] [stroke="#1f2c44"
     var m=$('meta[name=theme-color]'); if(m) m.content=(t==='off')?'#0D1320':getComputedStyle(H).getPropertyValue('--bg').trim();
     [].forEach.call(document.querySelectorAll('[data-gltheme]'),function(b){
       var on=b.getAttribute('data-gltheme')===t; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false');});
+    [].forEach.call(document.querySelectorAll('[data-glmode]'),function(b){
+      var on=b.getAttribute('data-glmode')===(t==='light'?'light':'dark'); b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false');});
     window.dispatchEvent(new Event('resize'));           /* canvases + the strip mirror re-measure */
   }
   function setTheme(t,persist){ if(persist!==false){ try{localStorage.setItem(LS,t);}catch(_){} } applyTheme(t); deskSync(); }
@@ -16886,8 +16963,13 @@ html[data-gl="light"] [stroke="#243450"],html[data-gl="light"] [stroke="#1f2c44"
     for(var i=0;i<caps.length;i++) if(/about/i.test(caps[i].textContent)) about=caps[i];
     var cap=document.createElement('div'); cap.className='st8-cap'; cap.textContent='Appearance';
     var card=document.createElement('div'); card.className='dk-group st8-card'; card.id='glAppearance';
+    /* 10-07 (the owner): ONE light mode and ONE dark mode; the colour hues belong to dark. A Light | Dark seg above the hue chips;
+       'aibo.gl.dark' remembers the hue so Light -> Dark comes back to it. */
+    var mode=document.createElement('div'); mode.className='st8-row st8-static gl-moderow';
+    mode.innerHTML='<div class="gl-seg gl-mode" role="group" aria-label="Light or dark"><button type="button" data-glmode="light">Light</button><button type="button" data-glmode="dark">Dark</button></div><span class="gl-modenote">Dark has the colour hues below</span>';
+    card.appendChild(mode);
     var row=document.createElement('div'); row.className='st8-row st8-static gl-themes';
-    META.palettes.forEach(function(p){
+    META.palettes.filter(function(p){ return p[0]!=='light'; }).forEach(function(p){
       var b=document.createElement('button'); b.type='button'; b.className='gl-theme'; b.setAttribute('data-gltheme',p[0]);
       b.innerHTML='<i style="background:'+p[2]+'"></i><span>'+p[1]+'</span>'; row.appendChild(b); });
     card.appendChild(row);
@@ -16925,7 +17007,10 @@ html[data-gl="light"] [stroke="#243450"],html[data-gl="light"] [stroke="#1f2c44"
     var dfoot=document.createElement('div'); dfoot.className='st8-foot gl-foot'; dfoot.textContent='Every number in the app is fetched on a schedule by the server. This is the register of those fetches — when each last landed, and whether that is on time.';
     [[cap,card,foot],[gcap,gcard,gfoot],[lcap,lcard,lfoot],[dcap,dcard,dfoot]].forEach(function(trio){ trio.forEach(function(n){ if(about) main.insertBefore(n,about); else main.appendChild(n); }); });
     setTimeout(loadFresh,0);
-    card.addEventListener('click',function(e){ var b=e.target.closest('[data-gltheme]'); if(b){ e.stopPropagation(); setTheme(b.getAttribute('data-gltheme')); } });
+    card.addEventListener('click',function(e){ var b=e.target.closest('[data-gltheme]'), m=e.target.closest('[data-glmode]');
+      if(b){ e.stopPropagation(); setTheme(b.getAttribute('data-gltheme')); try{ localStorage.setItem('aibo.gl.dark',b.getAttribute('data-gltheme')); }catch(_){} }
+      else if(m){ e.stopPropagation(); if(m.getAttribute('data-glmode')==='light'){ var cur=H.getAttribute('data-gl'); if(cur&&cur!=='light'){ try{ localStorage.setItem('aibo.gl.dark',cur); }catch(_){} } setTheme('light'); }
+        else { var d=null; try{ d=localStorage.getItem('aibo.gl.dark'); }catch(_){} if(!d||d==='light'||KEYS.indexOf(d)<0) d=META['default']||'violet'; setTheme(d); } } });
     gcard.addEventListener('click',function(e){ var b=e.target.closest('[data-gllens]'); if(b){ e.stopPropagation(); setLens(b.getAttribute('data-gllens')); } });
     paintLens();
     applyTheme(window.GL48.get());
@@ -16949,6 +17034,7 @@ html[data-gl="light"] [stroke="#243450"],html[data-gl="light"] [stroke="#1f2c44"
     var fr=$('#ydFrame'), doc=null; try{ doc=fr&&fr.contentDocument; }catch(_){ }
     if(!doc||!doc.documentElement) return;
     var cs=getComputedStyle(H), st=doc.documentElement.style, on=!!H.getAttribute('data-gl');
+    try{ if(on) doc.documentElement.setAttribute('data-gl',H.getAttribute('data-gl')); else doc.documentElement.removeAttribute('data-gl'); }catch(_){}   /* 10-07: yields.html keys its light design on this */
     [['--bg','--bg'],['--card','--card'],['--panel','--panel'],['--hair','--hair'],['--sel-bg','--sel-bg'],['--sel-ink','--sel-ink'],['--sel-line','--sel-line'],['--teal','--gl-acc']]
       .forEach(function(p){ var v=cs.getPropertyValue(p[1]).trim(); if(on&&v) st.setProperty(p[0],v); else st.removeProperty(p[0]); });
   }

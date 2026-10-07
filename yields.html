@@ -58,6 +58,18 @@ svg{display:block;width:100%;height:auto;touch-action:pan-y}
 .wscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px}
 .whead{font-size:13px;font-weight:700;letter-spacing:.02em;margin:18px 2px 8px;color:var(--ink)}
 html{scrollbar-color:rgba(31,198,220,.35) transparent}
+/* 10-07 LIGHT (the app hands this frame its theme name as html[data-gl]): the same vocabulary as the app's light mode */
+html[data-gl="light"]{--bg:#ffffff;--card:#f8f9fb;--panel:#f3f4f7;--ink:#1c2128;--hair:#e4e7ec;--muted:#6b7280;--muted2:#9aa3af;--sel-bg:#e8ebf0;--sel-ink:#1c2128;--sel-line:#c9cfd8;--up:#0f9d7a;--dn:#e5484d;--teal:#1c2128;color-scheme:light;scrollbar-color:#c9cfd8 transparent;}
+html[data-gl="light"],html[data-gl="light"] body{background:#ffffff;}
+html[data-gl="light"] .card{background:#f8f9fb;border-color:#e4e7ec;}
+html[data-gl="light"] .seg,html[data-gl="light"] .lg,html[data-gl="light"] .back{background:#ffffff;border-color:#d2d7df;color:#1c2128;}
+html[data-gl="light"] .lg{color:#374151;} html[data-gl="light"] .lg.off{opacity:.42;}
+html[data-gl="light"] .wtab th{color:#6b7280;border-color:#e4e7ec;} html[data-gl="light"] .wtab td{border-color:#eef0f4;}
+html[data-gl="light"] .wtab th:first-child,html[data-gl="light"] .wtab td:first-child{background:#f8f9fb;}
+html[data-gl="light"] .wtab tr.us td{background:#eef0f4;} html[data-gl="light"] .wtab tr.us td:first-child{background:#e8ebf0;}
+html[data-gl="light"] .wtab .up{color:#0f9d7a;} html[data-gl="light"] .wtab .dn{color:#e5484d;}
+html[data-gl="light"] .spreadnow,html[data-gl="light"] .foot,html[data-gl="light"] .sub{color:#6b7280;}
+html[data-gl="light"] svg text{fill:#6b7280;}
 @media(min-width:741px){ .hdr h1{font-size:20px} .card{padding:16px 16px 12px} }
 </style>
 </head>
