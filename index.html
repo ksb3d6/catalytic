@@ -164,9 +164,10 @@ html,body{margin:0;background:
 #sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%,102%);width:min(560px,100%);
   max-height:88vh;overflow:auto;background:linear-gradient(180deg,var(--gl-d12,#101c2e),var(--gl-d10,#0d1626));
   border:1px solid var(--hair);border-bottom:0;border-radius:18px 18px 0 0;z-index:91;
-  box-shadow:0 -18px 60px rgba(0,0,0,.6);transition:transform .26s cubic-bezier(.22,.61,.36,1);
-  padding:0 0 26px;}
-#sheet.show{transform:translate(-50%,0);}
+  box-shadow:0 -18px 60px rgba(0,0,0,.6);transition:transform .26s cubic-bezier(.22,.61,.36,1),visibility 0s .26s;
+  padding:0 0 26px;visibility:hidden;}   /* 10-07 (the owner, iPad/iPhone): a closed card parked 102% below the screen rode back into view on the
+  iOS rubber-band overscroll at the end of any page, showing the last asset — invisible while closed, shown the instant it opens */
+#sheet.show{transform:translate(-50%,0);visibility:visible;transition:transform .26s cubic-bezier(.22,.61,.36,1),visibility 0s;}
 .sheet-grip{display:flex;justify-content:center;padding:9px 0 4px;position:sticky;top:0;z-index:6;
   background:linear-gradient(180deg,var(--gl-d12,#101c2e),rgba(var(--gl-d12-rgb,16,28,46),.0));}
 .sheet-grip span{width:38px;height:4px;border-radius:3px;background:#33455f;}
