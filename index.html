@@ -209,7 +209,7 @@ html,body{margin:0;background:
 .sh-desc{margin:14px 0 2px;padding:13px 15px;border:1px solid var(--hair);border-radius:12px;background:rgba(var(--gl-ink-rgb,255,255,255),.022);}
 .sh-desc summary{cursor:pointer;list-style:none;position:relative;padding-right:58px;}
 .sh-desc summary::-webkit-details-marker{display:none;}
-.sh-desc .sd-car{position:absolute;right:0;top:0;color:#8A93A5;font-size:13px;transition:transform .15s;
+.sh-desc .sd-car{position:absolute;right:0;top:0;color:var(--gl-fl,#8A93A5);font-size:13px;transition:transform .15s;
   padding:4px 9px;border:1px solid var(--hair);border-radius:8px;background:rgba(var(--gl-d10-rgb,14,21,32),.8);}
 .sh-desc[open] .sd-car{transform:rotate(90deg);}
 .sh-desc .sh-about-why{margin-top:12px;}
@@ -220,7 +220,7 @@ html,body{margin:0;background:
 .sh-grades .sh-rolls{margin:12px 0 6px;}
 .sh-grades .sg-hint{display:flex;align-items:center;justify-content:flex-end;gap:7px;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);
   width:max-content;margin-left:auto;padding:6px 11px;border:1px solid var(--hair);border-radius:9px;background:rgba(var(--gl-d10-rgb,14,21,32),.8);}
-.sh-grades .sg-hint .sd-car{font-style:normal;font-size:13px;color:#8A93A5;transition:transform .15s;}
+.sh-grades .sg-hint .sd-car{font-style:normal;font-size:13px;color:var(--gl-fl,#8A93A5);transition:transform .15s;}
 .sh-grades[open] .sg-hint .sd-car{transform:rotate(90deg);}
 .sg-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0 4px;}
 .sg-col{display:flex;flex-direction:column;gap:8px;}
@@ -531,8 +531,8 @@ body.uni-crypto .lensLab{display:none;}
 .cr-pills{display:flex;flex-wrap:wrap;gap:6px;}
 .cr-pill{font-size:10.5px;font-weight:650;line-height:1;padding:5px 9px;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;}
 .cr-pill::before{font-weight:850;font-size:11px;line-height:1;}
-.cr-pos{color:#86dcab;background:rgba(43,199,115,.12);border:1px solid rgba(43,199,115,.42);}
-.cr-pos::before{content:"+";color:#2BC773;}
+.cr-pos{color:#86dcab;background:rgba(var(--gl-up-rgb,43,199,115),.12);border:1px solid rgba(var(--gl-up-rgb,43,199,115),.42);}
+.cr-pos::before{content:"+";color:var(--gl-up,#2BC773);}
 .cr-neg{color:#f4ad94;background:rgba(242,120,79,.12);border:1px solid rgba(242,136,79,.42);}
 .cr-neg::before{content:"\2212";color:#F2884F;}
 .cr-stats{display:flex;flex-wrap:wrap;gap:6px;}
@@ -540,7 +540,7 @@ body.uni-crypto .lensLab{display:none;}
   font-family:ui-monospace,"SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
   color:var(--gl-acci,#84d8e2);background:rgba(var(--gl-acc-rgb,31,198,220),.1);border:1px solid rgba(var(--gl-acc-rgb,31,198,220),.33);}
 .cr-driskline{margin-top:15px;font-size:11.5px;line-height:1.48;color:#ecb6ae;
-  background:rgba(242,86,79,.08);border-left:3px solid #F2564F;border-radius:0 8px 8px 0;padding:9px 12px;}
+  background:rgba(var(--gl-dn-rgb,242,86,79),.08);border-left:3px solid var(--gl-dn,#F2564F);border-radius:0 8px 8px 0;padding:9px 12px;}
 .cr-rk{font-size:9px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:#f2968f;display:block;margin-bottom:3px;}
 .cr-mfoot{font-size:10px;color:var(--muted2,rgba(var(--gl-ink-rgb,234,238,245),.4));line-height:1.5;margin-top:16px;border-top:1px solid var(--hair,var(--gl-d22,#2A3647));padding-top:11px;font-style:italic;}
 
@@ -623,7 +623,7 @@ body.uni-crypto .lensLab{display:none;}
   font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--ink);}
 .cr-bodyd summary::-webkit-details-marker{display:none;}
 .cr-bodyd summary span{font-weight:600;font-size:10px;letter-spacing:.3px;text-transform:none;color:#5A6678;}
-.cr-bodyd summary .sd-car{margin-left:auto;font-style:normal;font-size:13px;color:#8A93A5;transition:transform .15s;
+.cr-bodyd summary .sd-car{margin-left:auto;font-style:normal;font-size:13px;color:var(--gl-fl,#8A93A5);transition:transform .15s;
   padding:4px 9px;border:1px solid var(--hair);border-radius:8px;background:rgba(var(--gl-d10-rgb,14,21,32),.8);}
 .cr-bodyd[open] summary .sd-car{transform:rotate(90deg);}
 .cr-dmctr{font-size:33px;font-weight:850;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
@@ -787,7 +787,7 @@ body.deck-studio #flowView,body.deck-studio #donutView,body.deck-studio #cardsVi
 #studioView .idx-nm b{font-weight:700;flex:none}
 #studioView .idx-nm i{font-style:normal;font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
 #studioView .idx-del{appearance:none;flex:none;width:22px;height:22px;border-radius:50%;border:1px solid var(--hair);background:transparent;color:var(--muted);font-size:14px;line-height:1;cursor:pointer;padding:0}
-#studioView .idx-del:hover{color:#f0685f;border-color:#f0685f}
+#studioView .idx-del:hover{color:var(--gl-dn,#f0685f);border-color:var(--gl-dn,#f0685f)}
 #studioView .idx-add{padding:10px 12px 12px}
 #studioView .idx-add-btn{appearance:none;border:1px dashed rgba(var(--gl-acc-rgb,31,198,220),.55);background:rgba(var(--gl-acc-rgb,31,198,220),.08);color:var(--gl-acc,#1FC6DC);border-radius:10px;padding:8px 14px;font:700 12.5px/1 inherit;cursor:pointer;min-height:36px}
 #studioView .idx-add-btn.on{border-style:solid}
@@ -1628,9 +1628,9 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
             <div class="crow"><span class="dot" style="background:#D945B6"></span> Power</div>
             <div class="crow"><span class="dot" style="background:#FF8C42"></span> Memory</div>
             <div class="crow"><span class="dot" style="background:#FFCB45"></span> Foundry</div>
-            <div class="crow"><span class="dot" style="background:#2BC773"></span> Networking</div>
+            <div class="crow"><span class="dot" style="background:var(--gl-up,#2BC773)"></span> Networking</div>
             <div class="crow"><span class="dot" style="background:#4683F2"></span> Equipment</div>
-            <div class="crow"><span class="dot" style="background:#F2564F"></span> Raw materials</div>
+            <div class="crow"><span class="dot" style="background:var(--gl-dn,#F2564F)"></span> Raw materials</div>
           </div>
           <div class="lnote">Capital split (~40% self-funding / ~43% private credit &amp; debt / ~17% VC&middot;sovereign&middot;gov) is directional, per the Jun 2026 funding note. &lsquo;?&rsquo; chips are unidentified / held out of grading.</div>
         </div>
@@ -2330,22 +2330,22 @@ function liveStripCSS(){
       'font:600 12px/1.15 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink,var(--gl-ink,#EAEEF5))}'+
     '.aibo-strip .as-px{font-size:15px;font-weight:800;letter-spacing:.2px}'+
     '.aibo-strip .as-chg{font-weight:800}'+
-    '.aibo-strip .as-chg.up,.aibo-strip .as-ma b.up{color:#39d07f}'+
-    '.aibo-strip .as-chg.dn,.aibo-strip .as-ma b.dn{color:#f0685f}'+
-    '.aibo-strip .as-chg.fl{color:var(--muted,#8A93A5)}'+
+    '.aibo-strip .as-chg.up,.aibo-strip .as-ma b.up{color:var(--gl-up,#39d07f)}'+
+    '.aibo-strip .as-chg.dn,.aibo-strip .as-ma b.dn{color:var(--gl-dn,#f0685f)}'+
+    '.aibo-strip .as-chg.fl{color:var(--muted,var(--gl-fl,#8A93A5))}'+
     '.aibo-strip .as-mas{display:flex;flex-wrap:wrap;align-items:center;gap:8px}'+
-    '.aibo-strip .as-ma{display:inline-flex;gap:4px;align-items:baseline;font-size:11px;color:var(--muted,#8A93A5)}'+
+    '.aibo-strip .as-ma{display:inline-flex;gap:4px;align-items:baseline;font-size:11px;color:var(--muted,var(--gl-fl,#8A93A5))}'+
     '.aibo-strip .as-ma i{font-style:normal;opacity:.72;letter-spacing:.3px}'+
     '.aibo-strip .as-ma b{font-weight:800}'+
-    '.aibo-strip .as-dir{text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:var(--muted,#8A93A5);'+
+    '.aibo-strip .as-dir{text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:var(--muted,var(--gl-fl,#8A93A5));'+
       'border:1px solid var(--hair,var(--gl-d22,#2A3647));border-radius:6px;padding:2px 6px}'+
-    '.aibo-strip .as-gap{font-style:italic;font-weight:600;font-size:11px;color:var(--muted,#8A93A5)}'+
+    '.aibo-strip .as-gap{font-style:italic;font-weight:600;font-size:11px;color:var(--muted,var(--gl-fl,#8A93A5))}'+
     '.aibo-strip .as-spark{display:inline-block;vertical-align:-3px;margin:0 2px;flex:none}'+
-    '.aibo-strip .as-t{margin-left:auto;font-size:10px;letter-spacing:.4px;color:#39d07f}'+
+    '.aibo-strip .as-t{margin-left:auto;font-size:10px;letter-spacing:.4px;color:var(--gl-up,#39d07f)}'+
     '.aibo-strip .as-t.st{color:#d4870f}'+
     /* Stage 19: D/W/M TBO minis in the strip + the expandable technicals window */
     '.aibo-strip .as-tbo{display:inline-flex;align-items:center;gap:2px;flex:none}'+
-    '.aibo-strip .as-tbo i{font-style:normal;font-size:8px;font-weight:800;letter-spacing:.4px;color:var(--muted,#8A93A5);opacity:.75}'+
+    '.aibo-strip .as-tbo i{font-style:normal;font-size:8px;font-weight:800;letter-spacing:.4px;color:var(--muted,var(--gl-fl,#8A93A5));opacity:.75}'+
     '.aibo-strip .as-tbo svg{display:block}'+
     '.aibo-strip .as-tbo-gap{color:#5A6678;font-weight:700;font-size:10px}'+
     '.aibo-tech{margin:10px 4px 2px;border:1px solid var(--hair,var(--gl-d22,#2A3647));border-radius:12px;background:rgba(var(--gl-d06-rgb,9,14,20),.55)}'+
@@ -2357,7 +2357,7 @@ function liveStripCSS(){
     '.aibo-tech summary span{font:600 10px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#5A6678;letter-spacing:.3px}'+
     '.aibo-tech .tp-grid{display:grid;grid-template-columns:62px repeat(3,1fr);gap:5px;padding:0 10px 10px;align-items:center}'+
     '.aibo-tech .tp-hd{font:700 8.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;color:#5A6678;text-align:center}'+
-    '.aibo-tech .tp-met{font:700 8.5px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.03em;color:var(--muted,#8A93A5)}'+
+    '.aibo-tech .tp-met{font:700 8.5px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.03em;color:var(--muted,var(--gl-fl,#8A93A5))}'+
     '.aibo-tech .tp-cell{background:rgba(var(--gl-d10-rgb,14,21,32),.8);border:1px solid var(--hair,var(--gl-d22,#2A3647));border-radius:7px;padding:3px 4px;min-height:24px;display:flex;align-items:center;justify-content:center}'+
     '.aibo-tech .tp-cell svg{width:100%;height:auto;display:block}'+
     '.aibo-tech .tp-cell .tp-w{display:block;width:100%}'+
@@ -4670,7 +4670,7 @@ TIERS.forEach(t=>t.ts.forEach(tk=>{
     h+=`<div class="cr-caprow flow">
         <div class="cr-capnode" style="--ac:#5BA3D0"><div class="cr-capt">Token emissions</div><div class="cr-capd">bootstrap capital</div></div>
         <div class="cr-capnode" style="--ac:#E0894A"><div class="cr-capt">Crypto VC</div><div class="cr-capd">a16z \u00b7 Paradigm</div></div>
-        <div class="cr-capnode" style="--ac:#8A93A5"><div class="cr-capt">Foundations</div><div class="cr-capd">treasuries \u00b7 grants</div></div>
+        <div class="cr-capnode" style="--ac:var(--gl-fl,#8A93A5)"><div class="cr-capt">Foundations</div><div class="cr-capd">treasuries \u00b7 grants</div></div>
       </div>`;
     h+=flowSeg('funds the demand side');
     h+=flowNode('intel',{hero:true,title:'The demand side \u2014 coordination',desc:"The open intelligence market that prices and routes the work \u2014 the coordinator the resource spine gets paid by."});
@@ -4823,7 +4823,7 @@ TIERS.forEach(t=>t.ts.forEach(tk=>{
   }
   function faceBack(tk){
     const d=P[tk], ac=TNAME[tk].ac, q=isQ(tk), a=ageInfo(tk);
-    const tok = d.tok==null ? `<span class="cr-fc-tok" style="color:#8A93A5">Pre-token</span>`
+    const tok = d.tok==null ? `<span class="cr-fc-tok" style="color:var(--gl-fl,#8A93A5)">Pre-token</span>`
       : `<span class="cr-fc-tok" style="color:${tC(d.tok)}">TOK ${d.tok}</span>`;
     const gb = `<span class="cr-gb" style="color:${gC(d.grade)};background:${gC(d.grade)}26;border-color:${gC(d.grade)}80">${d.grade}</span>`;
     const drivers = crPills(d.pos,d.neg);
@@ -7851,7 +7851,7 @@ try{
     '.lp-row .tk{font-weight:700;width:56px;color:var(--gl-ink,#e8eef5)}'+
     '.lp-row .px{width:84px;text-align:right;font-variant-numeric:tabular-nums}'+
     '.lp-row .ch{width:64px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}'+
-    '.lp-row .up{color:#2bc773}.lp-row .dn{color:#e0654a}.lp-row .fl{color:#8fa2b8}'+
+    '.lp-row .up{color:var(--gl-up,#2bc773)}.lp-row .dn{color:#e0654a}.lp-row .fl{color:#8fa2b8}'+
     '.lp-row .ma{flex:1;font-size:11px;color:#7e93ab;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'+
     '.lp-row .gap{color:#5c6b7d;font-style:italic}'+
     '.lp-news{padding:2px 12px 10px 72px;font-size:12px;display:none}'+
@@ -9609,7 +9609,7 @@ window.MktView = (function(){
   +'#mktView .mkt tbody tr:hover td{background:rgba(var(--gl-d22-rgb,33,53,79),.28)}'
   +'#mktView .mkt tbody tr:hover td.c-name{background:var(--gl-d14,#14202f)}'
   +'#mktView .mkt td{font-weight:600;font-size:12.5px}'
-  +'#mktView .up{color:#39d07f}#mktView .dn{color:#f0685f}#mktView .fl{color:#8A93A5}'
+  +'#mktView .up{color:var(--gl-up,#39d07f)}#mktView .dn{color:var(--gl-dn,#f0685f)}#mktView .fl{color:var(--gl-fl,#8A93A5)}'
   +'#mktView .mk-dim{opacity:.55}'
   +'#mktView .mk-gap{color:#5A6678;font-weight:700}'
   +'#mktView .mk-sub{display:block;font-weight:500;font-size:10px;color:var(--muted);margin-top:1px}'
@@ -10725,14 +10725,14 @@ if(typeof activeView!=='undefined'&&activeView==='mkt'&&typeof showView==='funct
 
 <!-- ============ STAGE 48 GLASS (appended by tools/build_stage48.py — edit stage48/*, not this file) ============ -->
 <style id="gl48Pal">
-html[data-gl="violet"]{--bg:#0e0916;--gl-bg-rgb:14,9,22;--gl-d06:#08050c;--gl-d06-rgb:8,5,12;--gl-d08:#0c0813;--gl-d08-rgb:12,8,19;--gl-d10:#110c1a;--gl-d10-rgb:17,12,26;--gl-d12:#160f21;--gl-d12-rgb:22,15,33;--gl-d14:#1a1327;--gl-d14-rgb:26,19,39;--gl-d16:#1f172e;--gl-d16-rgb:31,23,46;--gl-d18:#241b34;--gl-d18-rgb:36,27,52;--gl-d22:#2e2340;--gl-d22-rgb:46,35,64;--gl-ink:#eaeef5;--gl-ink-rgb:234,238,245;--gl-wh-rgb:255,255,255;--ink:#eaeef5;--muted:rgba(234,238,245,.55);--muted2:rgba(234,238,245,.42);color-scheme:dark;--gl-acc:#a78bfa;--gl-acc-rgb:167,139,250;--gl-accd:#53447d;--gl-accd-rgb:83,68,125;--gl-acci:#ccbcfc;--gl-acci-rgb:204,188,252;--gl-ma:#a78bfa;--gl-seld:#281f3d;--gl-seld-rgb:40,31,61;--gl-on-acc:#160a33;--card:#1a1327;--panel:#110c1a;--navy:#110c1a;--hair:rgba(255,255,255,.10);--sel-bg:#281f3d;--sel-ink:#ccbcfc;--sel-line:#53447d}
-html[data-gl="midnight"]{--bg:#0b0d12;--gl-bg-rgb:11,13,18;--gl-d06:#060709;--gl-d06-rgb:6,7,9;--gl-d08:#0a0c10;--gl-d08-rgb:10,12,16;--gl-d10:#0e1016;--gl-d10-rgb:14,16,22;--gl-d12:#12151c;--gl-d12-rgb:18,21,28;--gl-d14:#161a22;--gl-d14-rgb:22,26,34;--gl-d16:#1b1e28;--gl-d16-rgb:27,30,40;--gl-d18:#1f232e;--gl-d18-rgb:31,35,46;--gl-d22:#282d39;--gl-d22-rgb:40,45,57;--gl-ink:#eaeef5;--gl-ink-rgb:234,238,245;--gl-wh-rgb:255,255,255;--ink:#eaeef5;--muted:rgba(234,238,245,.55);--muted2:rgba(234,238,245,.42);color-scheme:dark;--gl-acc:#0a84ff;--gl-acc-rgb:10,132,255;--gl-accd:#0b437d;--gl-accd-rgb:11,67,125;--gl-acci:#71b8ff;--gl-acci-rgb:113,184,255;--gl-ma:#0a84ff;--gl-seld:#0b213a;--gl-seld-rgb:11,33,58;--gl-on-acc:#ffffff;--card:#161a22;--panel:#0e1016;--navy:#0e1016;--hair:rgba(255,255,255,.10);--sel-bg:#0b213a;--sel-ink:#71b8ff;--sel-line:#0b437d}
-html[data-gl="teal"]{--bg:#061113;--gl-bg-rgb:6,17,19;--gl-d06:#020708;--gl-d06-rgb:2,7,8;--gl-d08:#050e0f;--gl-d08-rgb:5,14,15;--gl-d10:#081517;--gl-d10-rgb:8,21,23;--gl-d12:#0b1b1e;--gl-d12-rgb:11,27,30;--gl-d14:#0e2225;--gl-d14-rgb:14,34,37;--gl-d16:#11282c;--gl-d16-rgb:17,40,44;--gl-d18:#152f33;--gl-d18-rgb:21,47,51;--gl-d22:#1c3b3f;--gl-d22-rgb:28,59,63;--gl-ink:#eaeef5;--gl-ink-rgb:234,238,245;--gl-wh-rgb:255,255,255;--ink:#eaeef5;--muted:rgba(234,238,245,.55);--muted2:rgba(234,238,245,.42);color-scheme:dark;--gl-acc:#2dd4bf;--gl-acc-rgb:45,212,191;--gl-accd:#186960;--gl-accd-rgb:24,105,96;--gl-acci:#85e6da;--gl-acci-rgb:133,230,218;--gl-ma:#2dd4bf;--gl-seld:#0d3230;--gl-seld-rgb:13,50,48;--gl-on-acc:#04211d;--card:#0e2225;--panel:#081517;--navy:#081517;--hair:rgba(255,255,255,.10);--sel-bg:#0d3230;--sel-ink:#85e6da;--sel-line:#186960}
-html[data-gl="ember"]{--bg:#100c08;--gl-bg-rgb:16,12,8;--gl-d06:#070503;--gl-d06-rgb:7,5,3;--gl-d08:#0e0a07;--gl-d08-rgb:14,10,7;--gl-d10:#140f0a;--gl-d10-rgb:20,15,10;--gl-d12:#1b140e;--gl-d12-rgb:27,20,14;--gl-d14:#211912;--gl-d14-rgb:33,25,18;--gl-d16:#271e16;--gl-d16-rgb:39,30,22;--gl-d18:#2d231a;--gl-d18-rgb:45,35,26;--gl-d22:#392d22;--gl-d22-rgb:57,45,34;--gl-ink:#eaeef5;--gl-ink-rgb:234,238,245;--gl-wh-rgb:255,255,255;--ink:#eaeef5;--muted:rgba(234,238,245,.55);--muted2:rgba(234,238,245,.42);color-scheme:dark;--gl-acc:#f5a623;--gl-acc-rgb:245,166,35;--gl-accd:#775114;--gl-accd-rgb:119,81,20;--gl-acci:#f9cb7f;--gl-acci-rgb:249,203,127;--gl-ma:#f5a623;--gl-seld:#37260d;--gl-seld-rgb:55,38,13;--gl-on-acc:#241400;--card:#211912;--panel:#140f0a;--navy:#140f0a;--hair:rgba(255,255,255,.10);--sel-bg:#37260d;--sel-ink:#f9cb7f;--sel-line:#775114}
-html[data-gl="rose"]{--bg:#140a0e;--gl-bg-rgb:20,10,14;--gl-d06:#0a0507;--gl-d06-rgb:10,5,7;--gl-d08:#11090c;--gl-d08-rgb:17,9,12;--gl-d10:#180c11;--gl-d10-rgb:24,12,17;--gl-d12:#1e1016;--gl-d12-rgb:30,16,22;--gl-d14:#24141a;--gl-d14-rgb:36,20,26;--gl-d16:#2b181f;--gl-d16-rgb:43,24,31;--gl-d18:#311c24;--gl-d18-rgb:49,28,36;--gl-d22:#3d242e;--gl-d22-rgb:61,36,46;--gl-ink:#eaeef5;--gl-ink-rgb:234,238,245;--gl-wh-rgb:255,255,255;--ink:#eaeef5;--muted:rgba(234,238,245,.55);--muted2:rgba(234,238,245,.42);color-scheme:dark;--gl-acc:#fb7185;--gl-acc-rgb:251,113,133;--gl-accd:#7c3844;--gl-accd-rgb:124,56,68;--gl-acci:#fdadb8;--gl-acci-rgb:253,173,184;--gl-ma:#fdadb8;--gl-seld:#3b1c22;--gl-seld-rgb:59,28,34;--gl-on-acc:#2b0710;--card:#24141a;--panel:#180c11;--navy:#180c11;--hair:rgba(255,255,255,.10);--sel-bg:#3b1c22;--sel-ink:#fdadb8;--sel-line:#7c3844}
-html[data-gl="graphite"]{--bg:#0c0c0d;--gl-bg-rgb:12,12,13;--gl-d06:#050506;--gl-d06-rgb:5,5,6;--gl-d08:#0a0a0b;--gl-d08-rgb:10,10,11;--gl-d10:#0f0f10;--gl-d10-rgb:15,15,16;--gl-d12:#141416;--gl-d12-rgb:20,20,22;--gl-d14:#19191b;--gl-d14-rgb:25,25,27;--gl-d16:#1e1e20;--gl-d16-rgb:30,30,32;--gl-d18:#232325;--gl-d18-rgb:35,35,37;--gl-d22:#2d2d30;--gl-d22-rgb:45,45,48;--gl-ink:#eaeef5;--gl-ink-rgb:234,238,245;--gl-wh-rgb:255,255,255;--ink:#eaeef5;--muted:rgba(234,238,245,.55);--muted2:rgba(234,238,245,.42);color-scheme:dark;--gl-acc:#e7eaf0;--gl-acc-rgb:231,234,240;--gl-accd:#6f7073;--gl-accd-rgb:111,112,115;--gl-acci:#f1f3f6;--gl-acci-rgb:241,243,246;--gl-ma:#e7eaf0;--gl-seld:#313234;--gl-seld-rgb:49,50,52;--gl-on-acc:#0c0c0e;--card:#19191b;--panel:#0f0f10;--navy:#0f0f10;--hair:rgba(255,255,255,.10);--sel-bg:#313234;--sel-ink:#f1f3f6;--sel-line:#6f7073}
-html[data-gl="oled"]{--bg:#000000;--gl-bg-rgb:0,0,0;--gl-d06:#000000;--gl-d06-rgb:0,0,0;--gl-d08:#000000;--gl-d08-rgb:0,0,0;--gl-d10:#030303;--gl-d10-rgb:3,3,3;--gl-d12:#070809;--gl-d12-rgb:7,8,9;--gl-d14:#0c0d0e;--gl-d14-rgb:12,13,14;--gl-d16:#111214;--gl-d16-rgb:17,18,20;--gl-d18:#161719;--gl-d18-rgb:22,23,25;--gl-d22:#1f2124;--gl-d22-rgb:31,33,36;--gl-ink:#eaeef5;--gl-ink-rgb:234,238,245;--gl-wh-rgb:255,255,255;--ink:#eaeef5;--muted:rgba(234,238,245,.55);--muted2:rgba(234,238,245,.42);color-scheme:dark;--gl-acc:#0a84ff;--gl-acc-rgb:10,132,255;--gl-accd:#043b73;--gl-accd-rgb:4,59,115;--gl-acci:#71b8ff;--gl-acci-rgb:113,184,255;--gl-ma:#0a84ff;--gl-seld:#02162b;--gl-seld-rgb:2,22,43;--gl-on-acc:#ffffff;--card:#0c0d0e;--panel:#030303;--navy:#030303;--hair:rgba(255,255,255,.10);--sel-bg:#02162b;--sel-ink:#71b8ff;--sel-line:#043b73}
-html[data-gl="light"]{--bg:#f4f5f8;--gl-bg-rgb:244,245,248;--gl-d06:#f4f5f8;--gl-d06-rgb:244,245,248;--gl-d08:#f1f2f5;--gl-d08-rgb:241,242,245;--gl-d10:#eeeff3;--gl-d10-rgb:238,239,243;--gl-d12:#ebedf0;--gl-d12-rgb:235,237,240;--gl-d14:#e8eaee;--gl-d14-rgb:232,234,238;--gl-d16:#e5e7eb;--gl-d16-rgb:229,231,235;--gl-d18:#e2e4e9;--gl-d18-rgb:226,228,233;--gl-d22:#dbdee4;--gl-d22-rgb:219,222,228;--gl-ink:#141a24;--gl-ink-rgb:20,26,36;--gl-wh-rgb:0,0,0;--ink:#141a24;--muted:rgba(20,26,36,.55);--muted2:rgba(20,26,36,.42);color-scheme:light;--gl-acc:#2563eb;--gl-acc-rgb:37,99,235;--gl-accd:#87a9f4;--gl-accd-rgb:135,169,244;--gl-acci:#1c4ab0;--gl-acci-rgb:28,74,176;--gl-ma:#2563eb;--gl-seld:#d1dcf6;--gl-seld-rgb:209,220,246;--gl-on-acc:#ffffff;--card:#e8eaee;--panel:#eeeff3;--navy:#eeeff3;--hair:rgba(0,0,0,.12);--sel-bg:#d1dcf6;--sel-ink:#1c4ab0;--sel-line:#87a9f4}
+html[data-gl="violet"]{--bg:#0e0916;--gl-bg-rgb:14,9,22;--gl-d06:#08050c;--gl-d06-rgb:8,5,12;--gl-d08:#0c0813;--gl-d08-rgb:12,8,19;--gl-d10:#110c1a;--gl-d10-rgb:17,12,26;--gl-d12:#160f21;--gl-d12-rgb:22,15,33;--gl-d14:#1a1327;--gl-d14-rgb:26,19,39;--gl-d16:#1f172e;--gl-d16-rgb:31,23,46;--gl-d18:#241b34;--gl-d18-rgb:36,27,52;--gl-d22:#2e2340;--gl-d22-rgb:46,35,64;--gl-up:#39d07f;--gl-up-rgb:57,208,127;--gl-dn:#f0685f;--gl-dn-rgb:240,104,95;--gl-fl:#8A93A5;--gl-cy:#1FC6DC;--gl-ink:#eaeef5;--gl-ink-rgb:234,238,245;--gl-wh-rgb:255,255,255;--ink:#eaeef5;--muted:rgba(234,238,245,.55);--muted2:rgba(234,238,245,.42);color-scheme:dark;--gl-acc:#a78bfa;--gl-acc-rgb:167,139,250;--gl-accd:#53447d;--gl-accd-rgb:83,68,125;--gl-acci:#ccbcfc;--gl-acci-rgb:204,188,252;--gl-ma:#a78bfa;--gl-seld:#281f3d;--gl-seld-rgb:40,31,61;--gl-on-acc:#160a33;--card:#1a1327;--panel:#110c1a;--navy:#110c1a;--hair:rgba(255,255,255,.10);--sel-bg:#281f3d;--sel-ink:#ccbcfc;--sel-line:#53447d}
+html[data-gl="midnight"]{--bg:#0b0d12;--gl-bg-rgb:11,13,18;--gl-d06:#060709;--gl-d06-rgb:6,7,9;--gl-d08:#0a0c10;--gl-d08-rgb:10,12,16;--gl-d10:#0e1016;--gl-d10-rgb:14,16,22;--gl-d12:#12151c;--gl-d12-rgb:18,21,28;--gl-d14:#161a22;--gl-d14-rgb:22,26,34;--gl-d16:#1b1e28;--gl-d16-rgb:27,30,40;--gl-d18:#1f232e;--gl-d18-rgb:31,35,46;--gl-d22:#282d39;--gl-d22-rgb:40,45,57;--gl-up:#39d07f;--gl-up-rgb:57,208,127;--gl-dn:#f0685f;--gl-dn-rgb:240,104,95;--gl-fl:#8A93A5;--gl-cy:#1FC6DC;--gl-ink:#eaeef5;--gl-ink-rgb:234,238,245;--gl-wh-rgb:255,255,255;--ink:#eaeef5;--muted:rgba(234,238,245,.55);--muted2:rgba(234,238,245,.42);color-scheme:dark;--gl-acc:#0a84ff;--gl-acc-rgb:10,132,255;--gl-accd:#0b437d;--gl-accd-rgb:11,67,125;--gl-acci:#71b8ff;--gl-acci-rgb:113,184,255;--gl-ma:#0a84ff;--gl-seld:#0b213a;--gl-seld-rgb:11,33,58;--gl-on-acc:#ffffff;--card:#161a22;--panel:#0e1016;--navy:#0e1016;--hair:rgba(255,255,255,.10);--sel-bg:#0b213a;--sel-ink:#71b8ff;--sel-line:#0b437d}
+html[data-gl="teal"]{--bg:#061113;--gl-bg-rgb:6,17,19;--gl-d06:#020708;--gl-d06-rgb:2,7,8;--gl-d08:#050e0f;--gl-d08-rgb:5,14,15;--gl-d10:#081517;--gl-d10-rgb:8,21,23;--gl-d12:#0b1b1e;--gl-d12-rgb:11,27,30;--gl-d14:#0e2225;--gl-d14-rgb:14,34,37;--gl-d16:#11282c;--gl-d16-rgb:17,40,44;--gl-d18:#152f33;--gl-d18-rgb:21,47,51;--gl-d22:#1c3b3f;--gl-d22-rgb:28,59,63;--gl-up:#39d07f;--gl-up-rgb:57,208,127;--gl-dn:#f0685f;--gl-dn-rgb:240,104,95;--gl-fl:#8A93A5;--gl-cy:#1FC6DC;--gl-ink:#eaeef5;--gl-ink-rgb:234,238,245;--gl-wh-rgb:255,255,255;--ink:#eaeef5;--muted:rgba(234,238,245,.55);--muted2:rgba(234,238,245,.42);color-scheme:dark;--gl-acc:#2dd4bf;--gl-acc-rgb:45,212,191;--gl-accd:#186960;--gl-accd-rgb:24,105,96;--gl-acci:#85e6da;--gl-acci-rgb:133,230,218;--gl-ma:#2dd4bf;--gl-seld:#0d3230;--gl-seld-rgb:13,50,48;--gl-on-acc:#04211d;--card:#0e2225;--panel:#081517;--navy:#081517;--hair:rgba(255,255,255,.10);--sel-bg:#0d3230;--sel-ink:#85e6da;--sel-line:#186960}
+html[data-gl="ember"]{--bg:#100c08;--gl-bg-rgb:16,12,8;--gl-d06:#070503;--gl-d06-rgb:7,5,3;--gl-d08:#0e0a07;--gl-d08-rgb:14,10,7;--gl-d10:#140f0a;--gl-d10-rgb:20,15,10;--gl-d12:#1b140e;--gl-d12-rgb:27,20,14;--gl-d14:#211912;--gl-d14-rgb:33,25,18;--gl-d16:#271e16;--gl-d16-rgb:39,30,22;--gl-d18:#2d231a;--gl-d18-rgb:45,35,26;--gl-d22:#392d22;--gl-d22-rgb:57,45,34;--gl-up:#39d07f;--gl-up-rgb:57,208,127;--gl-dn:#f0685f;--gl-dn-rgb:240,104,95;--gl-fl:#8A93A5;--gl-cy:#1FC6DC;--gl-ink:#eaeef5;--gl-ink-rgb:234,238,245;--gl-wh-rgb:255,255,255;--ink:#eaeef5;--muted:rgba(234,238,245,.55);--muted2:rgba(234,238,245,.42);color-scheme:dark;--gl-acc:#f5a623;--gl-acc-rgb:245,166,35;--gl-accd:#775114;--gl-accd-rgb:119,81,20;--gl-acci:#f9cb7f;--gl-acci-rgb:249,203,127;--gl-ma:#f5a623;--gl-seld:#37260d;--gl-seld-rgb:55,38,13;--gl-on-acc:#241400;--card:#211912;--panel:#140f0a;--navy:#140f0a;--hair:rgba(255,255,255,.10);--sel-bg:#37260d;--sel-ink:#f9cb7f;--sel-line:#775114}
+html[data-gl="rose"]{--bg:#140a0e;--gl-bg-rgb:20,10,14;--gl-d06:#0a0507;--gl-d06-rgb:10,5,7;--gl-d08:#11090c;--gl-d08-rgb:17,9,12;--gl-d10:#180c11;--gl-d10-rgb:24,12,17;--gl-d12:#1e1016;--gl-d12-rgb:30,16,22;--gl-d14:#24141a;--gl-d14-rgb:36,20,26;--gl-d16:#2b181f;--gl-d16-rgb:43,24,31;--gl-d18:#311c24;--gl-d18-rgb:49,28,36;--gl-d22:#3d242e;--gl-d22-rgb:61,36,46;--gl-up:#39d07f;--gl-up-rgb:57,208,127;--gl-dn:#f0685f;--gl-dn-rgb:240,104,95;--gl-fl:#8A93A5;--gl-cy:#1FC6DC;--gl-ink:#eaeef5;--gl-ink-rgb:234,238,245;--gl-wh-rgb:255,255,255;--ink:#eaeef5;--muted:rgba(234,238,245,.55);--muted2:rgba(234,238,245,.42);color-scheme:dark;--gl-acc:#fb7185;--gl-acc-rgb:251,113,133;--gl-accd:#7c3844;--gl-accd-rgb:124,56,68;--gl-acci:#fdadb8;--gl-acci-rgb:253,173,184;--gl-ma:#fdadb8;--gl-seld:#3b1c22;--gl-seld-rgb:59,28,34;--gl-on-acc:#2b0710;--card:#24141a;--panel:#180c11;--navy:#180c11;--hair:rgba(255,255,255,.10);--sel-bg:#3b1c22;--sel-ink:#fdadb8;--sel-line:#7c3844}
+html[data-gl="graphite"]{--bg:#0c0c0d;--gl-bg-rgb:12,12,13;--gl-d06:#050506;--gl-d06-rgb:5,5,6;--gl-d08:#0a0a0b;--gl-d08-rgb:10,10,11;--gl-d10:#0f0f10;--gl-d10-rgb:15,15,16;--gl-d12:#141416;--gl-d12-rgb:20,20,22;--gl-d14:#19191b;--gl-d14-rgb:25,25,27;--gl-d16:#1e1e20;--gl-d16-rgb:30,30,32;--gl-d18:#232325;--gl-d18-rgb:35,35,37;--gl-d22:#2d2d30;--gl-d22-rgb:45,45,48;--gl-up:#39d07f;--gl-up-rgb:57,208,127;--gl-dn:#f0685f;--gl-dn-rgb:240,104,95;--gl-fl:#8A93A5;--gl-cy:#1FC6DC;--gl-ink:#eaeef5;--gl-ink-rgb:234,238,245;--gl-wh-rgb:255,255,255;--ink:#eaeef5;--muted:rgba(234,238,245,.55);--muted2:rgba(234,238,245,.42);color-scheme:dark;--gl-acc:#e7eaf0;--gl-acc-rgb:231,234,240;--gl-accd:#6f7073;--gl-accd-rgb:111,112,115;--gl-acci:#f1f3f6;--gl-acci-rgb:241,243,246;--gl-ma:#e7eaf0;--gl-seld:#313234;--gl-seld-rgb:49,50,52;--gl-on-acc:#0c0c0e;--card:#19191b;--panel:#0f0f10;--navy:#0f0f10;--hair:rgba(255,255,255,.10);--sel-bg:#313234;--sel-ink:#f1f3f6;--sel-line:#6f7073}
+html[data-gl="oled"]{--bg:#000000;--gl-bg-rgb:0,0,0;--gl-d06:#000000;--gl-d06-rgb:0,0,0;--gl-d08:#000000;--gl-d08-rgb:0,0,0;--gl-d10:#030303;--gl-d10-rgb:3,3,3;--gl-d12:#070809;--gl-d12-rgb:7,8,9;--gl-d14:#0c0d0e;--gl-d14-rgb:12,13,14;--gl-d16:#111214;--gl-d16-rgb:17,18,20;--gl-d18:#161719;--gl-d18-rgb:22,23,25;--gl-d22:#1f2124;--gl-d22-rgb:31,33,36;--gl-up:#39d07f;--gl-up-rgb:57,208,127;--gl-dn:#f0685f;--gl-dn-rgb:240,104,95;--gl-fl:#8A93A5;--gl-cy:#1FC6DC;--gl-ink:#eaeef5;--gl-ink-rgb:234,238,245;--gl-wh-rgb:255,255,255;--ink:#eaeef5;--muted:rgba(234,238,245,.55);--muted2:rgba(234,238,245,.42);color-scheme:dark;--gl-acc:#0a84ff;--gl-acc-rgb:10,132,255;--gl-accd:#043b73;--gl-accd-rgb:4,59,115;--gl-acci:#71b8ff;--gl-acci-rgb:113,184,255;--gl-ma:#0a84ff;--gl-seld:#02162b;--gl-seld-rgb:2,22,43;--gl-on-acc:#ffffff;--card:#0c0d0e;--panel:#030303;--navy:#030303;--hair:rgba(255,255,255,.10);--sel-bg:#02162b;--sel-ink:#71b8ff;--sel-line:#043b73}
+html[data-gl="light"]{--bg:#f4f5f8;--gl-bg-rgb:244,245,248;--gl-d06:#f4f5f8;--gl-d06-rgb:244,245,248;--gl-d08:#f1f2f5;--gl-d08-rgb:241,242,245;--gl-d10:#eeeff3;--gl-d10-rgb:238,239,243;--gl-d12:#ebedf0;--gl-d12-rgb:235,237,240;--gl-d14:#e8eaee;--gl-d14-rgb:232,234,238;--gl-d16:#e5e7eb;--gl-d16-rgb:229,231,235;--gl-d18:#e2e4e9;--gl-d18-rgb:226,228,233;--gl-d22:#dbdee4;--gl-d22-rgb:219,222,228;--gl-up:#39d07f;--gl-up-rgb:57,208,127;--gl-dn:#f0685f;--gl-dn-rgb:240,104,95;--gl-fl:#8A93A5;--gl-cy:#1FC6DC;--gl-ink:#141a24;--gl-ink-rgb:20,26,36;--gl-wh-rgb:0,0,0;--ink:#141a24;--muted:rgba(20,26,36,.55);--muted2:rgba(20,26,36,.42);color-scheme:light;--gl-acc:#2563eb;--gl-acc-rgb:37,99,235;--gl-accd:#87a9f4;--gl-accd-rgb:135,169,244;--gl-acci:#1c4ab0;--gl-acci-rgb:28,74,176;--gl-ma:#2563eb;--gl-seld:#d1dcf6;--gl-seld-rgb:209,220,246;--gl-on-acc:#ffffff;--card:#e8eaee;--panel:#eeeff3;--navy:#eeeff3;--hair:rgba(0,0,0,.12);--sel-bg:#d1dcf6;--sel-ink:#1c4ab0;--sel-line:#87a9f4}
 </style>
 <style id="gl48Skin">
 /* Stage 48 Glass skin. EVERYTHING is scoped to html[data-gl] — with the attribute absent this
@@ -15678,6 +15678,91 @@ html[data-gl][data-glown="1"] #flowView .legend,html[data-gl][data-glown="1"] #f
 })();
 
 </script>
+<style id="gl48LightCss">
+/* Stage 48 — THE LIGHT PALETTE, designed on its own (2026-10-07, the owner: "redesign every colour hue for the light mode… the grading hues
+   are too dark, the bullet graphs too dark, the EMAs need a different colour — look at what common light-mode terminals look like").
+   Reference: the light themes of the terminals people actually use (TradingView, Koyfin, Apple Stocks): a white page, panels a touch
+   greyer (#f0f3fa), hairlines #e0e3eb, ink #131722 with #787b86 secondary, ONE vivid blue (#2962ff) for the accent and the moving
+   average, up = teal-green #089981, down = #f23645, neutral greys mid-tone — never the dark theme's pastel neons on white.
+   The dark palettes are untouched. This file loads AFTER the generated palette rule, so its values win. Three kinds of rule:
+     1. the tokens the app already reads (surfaces, ink, accent, the grade vars, up / down / grey / cyan);
+     2. SVG colours the renderers write as ATTRIBUTES (fill="#39d07f"…) — CSS outranks a presentation attribute, so an attribute
+        selector recolours every candle, ribbon, bullet, dial and wheel sector without touching the JS (fill and stroke kept separate:
+        a rect with fill="…" and stroke="none" must not grow a stroke);
+     3. inline text colours the JS writes (style="color:#39d07f") — !important is the only way past an inline style. */
+html[data-gl="light"]{
+  --bg:#ffffff; --gl-bg-rgb:255,255,255;
+  --gl-d06:#fbfbfd; --gl-d06-rgb:251,251,253; --gl-d08:#f7f8fb; --gl-d08-rgb:247,248,251; --gl-d10:#f0f3fa; --gl-d10-rgb:240,243,250;
+  --gl-d12:#e9edf5; --gl-d12-rgb:233,237,245; --gl-d14:#e3e7f0; --gl-d14-rgb:227,231,240; --gl-d16:#dde2ec; --gl-d16-rgb:221,226,236;
+  --gl-d18:#d6dce8; --gl-d18-rgb:214,220,232; --gl-d22:#cbd3e1; --gl-d22-rgb:203,211,225;
+  --card:#f0f3fa; --panel:#f7f8fb; --navy:#f0f3fa; --hair:#e0e3eb;
+  --ink:#131722; --gl-ink:#131722; --gl-ink-rgb:19,23,34; --muted:#787b86; --muted2:#9598a1; --gl-wh-rgb:0,0,0;
+  --gl-acc:#2962ff; --gl-acc-rgb:41,98,255; --gl-acci:#1e4fd6; --gl-acci-rgb:30,79,214; --gl-accd:#a6bcff; --gl-accd-rgb:166,188,255;
+  --gl-ma:#2962ff; --gl-seld:#e3ecff; --gl-seld-rgb:227,236,255; --gl-on-acc:#ffffff;
+  --sel-bg:#e3ecff; --sel-ink:#1e4fd6; --sel-line:#9cb6ff;
+  --gl-up:#089981; --gl-up-rgb:8,153,129; --gl-dn:#f23645; --gl-dn-rgb:242,54,69; --gl-fl:#5f6b7a; --gl-cy:#0e8fb8;
+  /* grades: mid-tones that carry white text on a white page — brighter than the dark theme's forest greens and brick reds */
+  --g-aplus:#15803d; --g-a:#16a34a; --g-aminus:#2aa557; --g-bplus:#65a30d; --g-b:#b58a00; --g-bminus:#c2740a;
+  --g-cplus:#d9640f; --g-c:#e2560f; --g-cminus:#dc4a2a; --g-dplus:#d93a3a; --g-d:#c72f2f; --g-dminus:#b02222; --g-f:#8f1414; --g-na:#c8cfdb;
+  color-scheme:light;
+}
+html[data-gl="light"] body{background:var(--bg);}
+html[data-gl="light"] .g-na,html[data-gl="light"] #mktView .mk-gp.g-na{color:#5f6b7a;}
+
+/* ---- 2. SVG attribute colours (the renderers' literals; both spellings where the JS uses both) ---- */
+html[data-gl="light"] [fill="#39d07f"],html[data-gl="light"] [fill="#39D07F"],html[data-gl="light"] [fill="#2bc773"],html[data-gl="light"] [fill="#2BC773"]{fill:var(--gl-up);}
+html[data-gl="light"] [stroke="#39d07f"],html[data-gl="light"] [stroke="#39D07F"],html[data-gl="light"] [stroke="#2bc773"],html[data-gl="light"] [stroke="#2BC773"]{stroke:var(--gl-up);}
+html[data-gl="light"] [fill="#f0685f"],html[data-gl="light"] [fill="#F0685F"],html[data-gl="light"] [fill="#f2564f"],html[data-gl="light"] [fill="#F2564F"]{fill:var(--gl-dn);}
+html[data-gl="light"] [stroke="#f0685f"],html[data-gl="light"] [stroke="#F0685F"],html[data-gl="light"] [stroke="#f2564f"],html[data-gl="light"] [stroke="#F2564F"]{stroke:var(--gl-dn);}
+html[data-gl="light"] [fill="#8A93A5"],html[data-gl="light"] [fill="#8a93a5"]{fill:var(--gl-fl);}
+html[data-gl="light"] [stroke="#8A93A5"],html[data-gl="light"] [stroke="#8a93a5"]{stroke:var(--gl-fl);}
+html[data-gl="light"] [fill="#1FC6DC"],html[data-gl="light"] [fill="#1fc6dc"]{fill:var(--gl-cy);}
+html[data-gl="light"] [stroke="#1FC6DC"],html[data-gl="light"] [stroke="#1fc6dc"]{stroke:var(--gl-cy);}
+/* the dark rims, tracks and label plates the renderers draw for a dark page */
+html[data-gl="light"] [fill="#0D1320"],html[data-gl="light"] [fill="#0d1320"],html[data-gl="light"] [fill="#0a0e14"],html[data-gl="light"] [fill="#0A0E14"]{fill:#ffffff;}
+html[data-gl="light"] [stroke="#0D1320"],html[data-gl="light"] [stroke="#0d1320"],html[data-gl="light"] [stroke="#0a0e14"],html[data-gl="light"] [stroke="#0A0E14"]{stroke:#ffffff;}
+html[data-gl="light"] [stroke="#223045"]{stroke:#e0e3eb;}
+html[data-gl="light"] [fill="#223045"]{fill:#e0e3eb;}
+html[data-gl="light"] [fill="#e6eef7"],html[data-gl="light"] [fill="#eaeef5"],html[data-gl="light"] [fill="#EAEEF5"],html[data-gl="light"] [fill="#cdd9e5"]{fill:var(--ink);}
+html[data-gl="light"] [fill="#7fd8ea"],html[data-gl="light"] [fill="#9fe8f4"]{fill:var(--gl-acci);}
+html[data-gl="light"] [stroke="#7fd8ea"],html[data-gl="light"] [stroke="#9fe8f4"]{stroke:var(--gl-acci);}
+html[data-gl="light"] [fill="#9fb0c8"],html[data-gl="light"] [fill="#7d8d9d"],html[data-gl="light"] [fill="#7e90a6"]{fill:var(--muted);}
+html[data-gl="light"] [stroke="#9fb0c8"],html[data-gl="light"] [stroke="#7d8d9d"],html[data-gl="light"] [stroke="#3a4a63"],html[data-gl="light"] [stroke="#2a3647"]{stroke:#d6dce8;}
+/* the grade wheel's sectors: GHEX writes the dark theme's grade hexes into the SVG — map them onto the light grade set */
+html[data-gl="light"] [fill="#0f7a43"]{fill:var(--g-aplus);} html[data-gl="light"] [fill="#1c8a4e"]{fill:var(--g-a);} html[data-gl="light"] [fill="#2f9558"]{fill:var(--g-aminus);}
+html[data-gl="light"] [fill="#6f9e3c"]{fill:var(--g-bplus);} html[data-gl="light"] [fill="#9c8f2e"]{fill:var(--g-b);} html[data-gl="light"] [fill="#b8862c"]{fill:var(--g-bminus);}
+html[data-gl="light"] [fill="#c2742a"]{fill:var(--g-cplus);} html[data-gl="light"] [fill="#cc6328"]{fill:var(--g-c);} html[data-gl="light"] [fill="#d15227"]{fill:var(--g-cminus);}
+html[data-gl="light"] [fill="#d04a25"]{fill:var(--g-dplus);} html[data-gl="light"] [fill="#c43f28"]{fill:var(--g-d);} html[data-gl="light"] [fill="#bb2f22"]{fill:var(--g-dminus);} html[data-gl="light"] [fill="#b01e1e"]{fill:var(--g-f);}
+/* the Technicals page's own renderers (RSI / MACD in techlab.js) use the same literals: covered by the rules above */
+
+/* ---- 3. inline text colours the JS writes ---- */
+html[data-gl="light"] [style*="color:#39d07f"],html[data-gl="light"] [style*="color: #39d07f"],html[data-gl="light"] [style*="color:#2bc773"]{color:var(--gl-up)!important;}
+html[data-gl="light"] [style*="color:#f0685f"],html[data-gl="light"] [style*="color: #f0685f"],html[data-gl="light"] [style*="color:#f2564f"]{color:var(--gl-dn)!important;}
+html[data-gl="light"] [style*="color:#8A93A5"],html[data-gl="light"] [style*="color:#8a93a5"]{color:var(--gl-fl)!important;}
+html[data-gl="light"] [style*="color:#e0b048"]{color:#b45309!important;}
+
+/* ---- surfaces that the tokens alone do not reach ---- */
+html[data-gl="light"] #mStrip,html[data-gl="light"] #glDock{background:rgba(255,255,255,.86);border-color:#e0e3eb;}
+html[data-gl="light"] .gl-tab.on{background:#e3ecff;}
+html[data-gl="light"] #mktView .mkt th{color:#787b86;}
+html[data-gl="light"] #mktView .mkt tbody tr:hover td{background:#f0f3fa;}
+html[data-gl="light"] #mktView .mkt td.c-name,html[data-gl="light"] #mktView .mkt th.c-name{background:#ffffff;box-shadow:inset -1px 0 0 #e0e3eb;}
+html[data-gl="light"] #mktView .mkt tbody tr:hover td.c-name{background:#f0f3fa;}
+html[data-gl="light"] #mktView .mk-cat{color:#787b86;border-color:#d6dce8;}
+html[data-gl="light"] .glt-plot{background:#f7f8fb;border-color:#e0e3eb;}
+html[data-gl="light"] .glt-plot .nx{background:rgba(41,98,255,.06);}
+html[data-gl="light"] .glm-card,html[data-gl="light"] .glc-day,html[data-gl="light"] .glf-tile{background:#ffffff;border-color:#e0e3eb;}
+html[data-gl="light"] .mk-tg text,html[data-gl="light"] .mk-sg text{fill:var(--ink);}
+html[data-gl="light"] .LIVE,html[data-gl="light"] .gl-live{background:#ffffff;border-color:#e0e3eb;}
+/* the 30-day range bullet: month track · week band · day band, darkest innermost on a white page (the dark theme runs the other way) */
+html[data-gl="light"] [fill="#2A3647"]{fill:#e6e9f0;}
+html[data-gl="light"] [fill="#5E7188"]{fill:#b9c3d2;}
+html[data-gl="light"] [fill="#C9D6E8"]{fill:#5f6b7a;}
+/* the grade wheel's hub + the mini donut's hole */
+html[data-gl="light"] [fill="#0f1a2b"]{fill:#ffffff;}
+html[data-gl="light"] [stroke="#243450"],html[data-gl="light"] [stroke="#1f2c44"]{stroke:#e0e3eb;}
+
+</style>
 <script id="gl48Shim">
 /* Stage 48 Glass shim. Additive only: nothing here moves or removes an existing node, and
    every door forwards to a control the app already owns — the hidden segs stay the state
