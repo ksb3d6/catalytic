@@ -11391,6 +11391,451 @@ html[data-gl] .gl-modenote{font:400 11.5px/1.3 -apple-system,BlinkMacSystemFont,
 </div>
 
 <script id="gl48Meta">window.GL48={"palettes": [["violet", "Violet", "#a78bfa"], ["midnight", "Midnight", "#0a84ff"], ["teal", "Teal", "#2dd4bf"], ["ember", "Ember", "#f5a623"], ["rose", "Rose", "#fb7185"], ["graphite", "Graphite", "#e7eaf0"], ["oled", "OLED", "#0a84ff"], ["light", "Light", "#2563eb"]], "default": "violet"};</script>
+<style id="gl48AcctCss">
+/* Stage 48 — ACCOUNTS (stage48/account.js). Every node here is made by account.js, inside the Settings page's own grammar
+   (.st8-cap / .dk-group.st8-card / .st8-foot). Nothing matches while the card is not mounted. */
+#glAccount{padding:12px 14px 10px;}
+#glAccount.gla-busy{opacity:.6;pointer-events:none;}
+#glAccount .gla-form,#glAccount .gla-sec{display:flex;flex-direction:column;gap:8px;}
+#glAccount .gla-sec{padding:10px 0 6px;border-top:1px solid var(--hair);margin-top:6px;}
+#glAccount .gla-head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;}
+#glAccount .gla-in{appearance:none;-webkit-appearance:none;width:100%;box-sizing:border-box;background:rgba(var(--gl-wh-rgb,255,255,255),.06);border:1px solid var(--hair);color:var(--ink);
+  border-radius:10px;padding:11px 12px;font:500 16px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;outline:0;}
+#glAccount .gla-in:focus{border-color:var(--gl-acc,#1FC6DC);}
+#glAccount .gla-in::placeholder{color:var(--muted2);}
+#glAccount .gla-row{display:flex;gap:8px;align-items:center;}
+#glAccount .gla-row .gla-in{flex:1 1 auto;min-width:0;}
+#glAccount .gla-row .gla-btn{flex:0 0 auto;}
+#glAccount .gla-btn{appearance:none;-webkit-appearance:none;border:1px solid var(--hair);background:transparent;color:var(--ink);border-radius:10px;padding:11px 14px;
+  font:600 14px/1.1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;text-align:center;}
+#glAccount .gla-btn.primary{background:var(--gl-acc,#1FC6DC);border-color:transparent;color:var(--gl-on-acc,#04211d);}
+#glAccount .gla-btn.danger{border-color:#ff6b7a;color:#ff6b7a;}
+#glAccount .gla-links{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:12.5px;color:var(--muted);}
+#glAccount .gla-links i{font-style:normal;}
+#glAccount .gla-links button{appearance:none;border:0;background:transparent;color:var(--gl-acc,#1FC6DC);font:inherit;padding:2px 0;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+#glAccount .gla-msg{font-size:13px;line-height:1.35;padding:8px 10px;border-radius:8px;}
+#glAccount .gla-msg[hidden]{display:none;}
+#glAccount .gla-msg.err{background:rgba(255,107,122,.14);color:#ff8a95;}
+#glAccount .gla-msg.ok{background:rgba(57,208,127,.14);color:#39d07f;}
+#glAccount .gla-or{display:flex;align-items:center;gap:10px;color:var(--muted2);font-size:11px;text-transform:uppercase;letter-spacing:.08em;}
+#glAccount .gla-or::before,#glAccount .gla-or::after{content:"";flex:1;border-top:1px solid var(--hair);}
+#glAccount .gla-google{min-height:40px;display:flex;justify-content:center;}
+#glAccount .gla-note{font-size:12px;line-height:1.4;color:var(--muted);}
+#glAccount .gla-who{display:flex;flex-direction:column;gap:2px;padding:2px 0 8px;}
+#glAccount .gla-who .gla-lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+#glAccount .gla-who b{font-size:16px;color:var(--ink);word-break:break-all;}
+#glAccount .gla-who .gla-name{font-size:13px;color:var(--muted);}
+#glAccount .gla-verify{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:10px;background:rgba(var(--gl-acc-rgb,31,198,220),.10);margin-bottom:6px;}
+#glAccount .gla-list{display:flex;flex-direction:column;gap:4px;}
+#glAccount .gla-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--hair);font-size:14px;color:var(--ink);}
+#glAccount .gla-item>span{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px;}
+#glAccount .gla-item em{font-style:normal;font-size:11.5px;color:var(--muted);}
+#glAccount .gla-item i{font-style:normal;font-size:11px;color:var(--gl-acc,#1FC6DC);margin-left:4px;}
+#glAccount .gla-item.me{color:var(--ink);}
+#glAccount .gla-x{appearance:none;border:1px solid var(--hair);background:transparent;color:var(--muted);border-radius:8px;padding:5px 9px;font:600 12px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;flex:0 0 auto;}
+#glAccount .gla-more{border-top:1px solid var(--hair);margin-top:6px;}
+#glAccount .gla-more summary{padding:11px 0;font-size:14px;color:var(--ink);cursor:pointer;list-style:none;display:flex;align-items:center;}
+#glAccount .gla-more summary::-webkit-details-marker{display:none;}
+#glAccount .gla-more summary::after{content:"›";margin-left:auto;color:var(--muted);font-size:18px;transition:transform .15s;}
+#glAccount .gla-more[open] summary::after{transform:rotate(90deg);}
+#glAccount .gla-more .gla-sec{border-top:0;margin-top:0;padding-top:0;}
+#glAccount .gla-more.danger summary{color:#ff8a95;}
+#glAccount .gla-toggle{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--hair);margin-top:6px;font-size:14px;color:var(--ink);cursor:pointer;}
+#glAccount .gla-toggle input{width:18px;height:18px;accent-color:var(--gl-acc,#1FC6DC);}
+#glAccount>.gla-btn{margin-top:8px;}
+#glaToast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 84px);transform:translate(-50%,8px);background:var(--gl-d18,#1b2740);color:var(--ink);border:1px solid var(--hair);
+  border-radius:12px;padding:10px 14px;font:600 13px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;max-width:86vw;text-align:center;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:9999;}
+#glaToast.show{opacity:1;transform:translate(-50%,0);}
+html[data-gl="light"] #glAccount .gla-in{background:var(--gl-ink,#fff);}
+html[data-gl="light"] #glAccount .gla-msg.err{color:#c62f3b;}
+html[data-gl="light"] #glAccount .gla-msg.ok{color:#0f7a5c;}
+html[data-gl="light"] #glaToast{background:var(--gl-ink,#fff);}
+
+</style>
+<script id="gl48Acct">
+/* Stage 48 — ACCOUNTS (2026-10-07; the owner: "email and password … what most people are used to", Google as the second door,
+   Face ID / Touch ID on top, strong passwords, catch a sign-in being shared; backend v4.19 auth/ — see the backend's ACCOUNTS.md).
+
+   WHAT IT IS: a Settings › Account card (top of the Settings page) and a sync layer. Signed out: e-mail + password (sign in /
+   create), "Forgot password", Continue with Google (when the server has a client id), Sign in with Face ID / Touch ID (when the
+   device can). Signed in: who you are, the e-mail verification code, Face ID / Touch ID set-up + the passkeys, the devices
+   list (sign any out, sign out everywhere), change password / e-mail, alert e-mails on/off, sign out, delete.
+
+   WHAT AN ACCOUNT SYNCS (the server keeps it sealed; every device signed in sees the same):
+     lists    lists.js talks to /me/lists.json with the session instead of the shared key (the menu says "My lists")
+     notes    macro.js (journal + price alerts) talks to /me/notes.json with the session instead of the positions token
+     prefs    the app's per-device settings (theme, light/dark, grades lens, indicator order, EMA / MA lengths, the Technicals
+              look, the Macro desk picks, the Flow chart scope) — mirrored from localStorage to /me/prefs.json and back
+     book     the Portfolio saves (aibo_saves_v1 / aibo_last_v1) — mirrored to /me/book.json
+   The mirror is a snapshot: a change on this device is pushed ~2 s later; another device's change is pulled when the tab
+   returns (and every five minutes) and lands in localStorage for the next open. A 409 (both devices saved) keeps this
+   device's own changes and takes the rest from the server, once.
+
+   INERT WITHOUT THE SERVER: no session on the device -> one small GET /auth/config when Settings opens (cached ten minutes);
+   {enabled:false} -> no card, nothing else. The session token lives in localStorage ('aibo.acct.token'), is sent only as a
+   bearer header, and is never in the address bar. The shared-list key and the positions token keep working as before; when
+   a device has BOTH a session and the list key, the account wins for the lists.
+
+   CONTRACT (window.AIBO_ACCOUNT, read by lists.js and macro.js at load — this script is bundled first):
+     token()      the session token or null      signedIn()   boolean      user()   the cached public user or null
+     signOut()    forgets the session here        state()      for the QA suite */
+(function(){
+  'use strict';
+  var BASE=String(window.AIBO_LIVE_URL||'https://asset-grading-production.up.railway.app/universe.json').replace(/\/universe\.json.*$/,'');
+  var LS_TOK='aibo.acct.token', LS_USER='aibo.acct.user', LS_CFG='aibo.acct.cfg', LS_PREF='aibo.acct.prefs', LS_BOOK='aibo.acct.book';
+  var CFG_TTL=10*60*1000, TIMEOUT=15000, PULL_EVERY=5*60*1000, PUSH_DELAY=1800;
+  var PREF_KEYS=['aibo.gl.theme','aibo.gl.dark','aibo.gl.lens','aibo.gl.tech.inds','aibo.gl.tech.inds.v2','aibo.gl.tech.ema','aibo.gl.tech.ma','aibo.gl.tech.look',
+                 'aibo.gl.macro.corr','aibo.gl.macro.cot','aibo.gl.macro.coin','aibo.gl.worlds.scope','aibo.gl.worlds.ghost'];
+  var BOOK_KEYS=['aibo_saves_v1','aibo_last_v1'];
+  var S={tok:null, user:null, cfg:null, mode:'in', busy:false, err:null, note:null, devices:null, pkPlatform:false, card:null, pull:{prefs:null, book:null}, reqs:0, link:null};
+
+  function ls(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } }
+  function lsSet(k,v){ try{ if(v==null) localStorage.removeItem(k); else localStorage.setItem(k,v); }catch(_){} }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function el(tag,cls,html){ var e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
+  function $(s,r){ return (r||document).querySelector(s); }
+  function $$(s,r){ return [].slice.call((r||document).querySelectorAll(s)); }
+  var toastEl=null;
+  function toast(msg){
+    if(!toastEl){ toastEl=el('div'); toastEl.id='glaToast'; toastEl.setAttribute('role','status'); document.body.appendChild(toastEl); }
+    toastEl.textContent=msg; toastEl.classList.add('show'); clearTimeout(toastEl._h); toastEl._h=setTimeout(function(){ toastEl.classList.remove('show'); },2600);
+  }
+
+  /* ---------- the session on this device ---------- */
+  S.tok=ls(LS_TOK)||null;
+  try{ S.user=JSON.parse(ls(LS_USER)||'null'); }catch(_){ S.user=null; }
+  try{ var c0=JSON.parse(ls(LS_CFG)||'null'); if(c0&&c0.at&&Date.now()-c0.at<CFG_TTL) S.cfg=c0.cfg; }catch(_){}
+
+  /* the e-mailed links: #verify=<token> (confirms the address on any device) · #reset=<token> (set a new password here) */
+  function readHash(w,name){ try{ var m=new RegExp('[#&]'+name+'=([A-Za-z0-9_\\-]{8,200})').exec(String(w.location.hash||'')); return m?m[1]:null; }catch(_){ return null; } }
+  function stripHash(w,name){ try{ var h=String(w.location.hash||'').replace(new RegExp('([#&])'+name+'=[A-Za-z0-9_\\-]+&?'),'$1').replace(/[#&]$/,''); w.history.replaceState(null,'',w.location.pathname+w.location.search+h); }catch(_){} }
+  (function(){
+    var top=null; try{ if(window.top&&window.top!==window) top=window.top; }catch(_){ top=null; }
+    ['verify','reset'].forEach(function(name){
+      var v=readHash(window,name)||(top&&readHash(top,name));
+      if(v){ S.link={kind:name, token:v}; stripHash(window,name); if(top) stripHash(top,name); }
+    });
+  })();
+
+  /* ---------- the backend ---------- */
+  function api(method,path,body,noAuth){
+    var ctl=('AbortController' in window)?new AbortController():null, to=ctl?setTimeout(function(){ try{ ctl.abort(); }catch(_){} },TIMEOUT):null;
+    var h={}; if(S.tok&&!noAuth) h.Authorization='Bearer '+S.tok;
+    var opt={method:method, cache:'no-store', headers:h, signal:ctl&&ctl.signal};
+    if(body!==undefined){ h['Content-Type']='application/json'; opt.body=JSON.stringify(body||{}); }
+    S.reqs++;
+    return fetch(BASE+path,opt).then(function(r){ if(to) clearTimeout(to);
+      return r.json().catch(function(){ return {}; }).then(function(j){ return {status:r.status, body:j||{}}; });
+    },function(e){ if(to) clearTimeout(to); return {status:0, body:{error:'The server could not be reached'}}; });
+  }
+  function errText(r,fallback){ return (r&&r.body&&r.body.error)?String(r.body.error):(fallback||'That did not work — try again'); }
+
+  function loadConfig(force){
+    if(S.cfg&&!force) return Promise.resolve(S.cfg);
+    return api('GET','/auth/config',undefined,true).then(function(r){
+      if(r.status===200&&r.body&&typeof r.body.enabled==='boolean'){ S.cfg=r.body; lsSet(LS_CFG,JSON.stringify({at:Date.now(), cfg:r.body})); return S.cfg; }
+      S.cfg=S.cfg||{enabled:false, unreachable:true}; return S.cfg;
+    });
+  }
+
+  /* ---------- signed in / out ---------- */
+  function setSession(tok,user){ S.tok=tok||null; S.user=user||null; lsSet(LS_TOK,S.tok); lsSet(LS_USER,S.user?JSON.stringify(S.user):null); }
+  function forget(){ setSession(null,null); lsSet(LS_PREF,null); lsSet(LS_BOOK,null); S.devices=null; }
+  function takeUser(u){ if(u&&u.id){ S.user=u; lsSet(LS_USER,JSON.stringify(u)); } }
+  function signedIn(){ return !!S.tok; }
+  function signInWith(r,how){
+    /* a fresh session: pull the account's prefs + book onto this device (or push this device's as the first copy), then reload so
+       the Tape, the Macro desk and the theme all read the account */
+    setSession(r.body.token, r.body.user);
+    var ev=(r.body.evicted||[]);
+    if(ev.length) toast('Signed in — '+ev[0]+' was signed out (the account keeps '+(S.cfg&&S.cfg.maxDevices||5)+' devices)');
+    else toast(how==='signup'?'Account created — check your e-mail for the code':'Signed in');
+    return firstSync().then(function(){ setTimeout(function(){ location.reload(); },500); });
+  }
+  function signOut(everywhere){
+    var p=everywhere?api('POST','/auth/logout_all',{keepThis:false}):api('POST','/auth/logout',{});
+    return p.then(function(){ forget(); toast(everywhere?'Signed out everywhere':'Signed out'); setTimeout(function(){ location.reload(); },400); });
+  }
+
+  /* ---------- the mirror: prefs + book ---------- */
+  function snap(keys){ var o={}; keys.forEach(function(k){ var v=ls(k); if(v!=null) o[k]=v; }); return o; }
+  function applySnap(o,keys){ var changed=false; keys.forEach(function(k){ var v=(o&&Object.prototype.hasOwnProperty.call(o,k))?o[k]:null; if(ls(k)!==v){ lsSet(k,v); changed=true; } }); return changed; }
+  function mem(k){ try{ return JSON.parse(ls(k)||'null')||{rev:0, snap:null}; }catch(_){ return {rev:0, snap:null}; } }
+  function memSet(k,rev,snapshot){ lsSet(k,JSON.stringify({rev:rev, snap:snapshot})); }
+  var DOCS={prefs:{path:'/me/prefs.json', field:'prefs', keys:PREF_KEYS, ls:LS_PREF}, book:{path:'/me/book.json', field:'book', keys:BOOK_KEYS, ls:LS_BOOK}};
+  function pull(name){
+    var D=DOCS[name];
+    return api('GET',D.path).then(function(r){
+      if(r.status===401){ expired(); return null; }
+      if(r.status!==200||typeof r.body.rev!=='number') return null;
+      var m=mem(D.ls);
+      if(r.body.rev>m.rev){ applySnap(r.body[D.field]||{},D.keys); memSet(D.ls,r.body.rev,snap(D.keys)); }
+      else if(m.snap==null) memSet(D.ls,r.body.rev,snap(D.keys));
+      return r.body;
+    });
+  }
+  function push(name,retried,force){
+    var D=DOCS[name], m=mem(D.ls), cur=snap(D.keys);
+    if(!force&&m.snap&&JSON.stringify(m.snap)===JSON.stringify(cur)) return Promise.resolve(true);
+    var body={baseRev:m.rev}; body[D.field]=cur;
+    return api('PUT',D.path,body).then(function(r){
+      if(r.status===200&&typeof r.body.rev==='number'){ memSet(D.ls,r.body.rev,cur); return true; }
+      if(r.status===409&&r.body.current&&!retried){
+        /* both devices saved: keep what THIS device changed since its last sync, take the rest from the server */
+        var srv=r.body.current[D.field]||{}, merged={}, base=m.snap||{};
+        D.keys.forEach(function(k){ var mine=cur[k], was=base[k], theirs=srv[k]; var v=(mine!==was)?mine:theirs; if(v!=null) merged[k]=v; });
+        applySnap(merged,D.keys); memSet(D.ls,r.body.current.rev,snap(D.keys));
+        if(JSON.stringify(merged)!==JSON.stringify(srv)) return push(name,true);
+        return true;
+      }
+      if(r.status===401) expired();
+      return false;
+    });
+  }
+  function firstSync(){
+    /* a brand-new session on this device: the account's copy wins when it has one; otherwise this device's settings become it */
+    return pull('prefs').then(function(doc){ if(doc&&doc.rev===0) return push('prefs',false,true); })
+      .then(function(){ return pull('book'); }).then(function(doc){ if(doc&&doc.rev===0) return push('book',false,true); }).catch(function(){});
+  }
+  var pushT={};
+  function watch(){
+    if(!signedIn()) return;
+    setInterval(function(){
+      ['prefs','book'].forEach(function(n){ var D=DOCS[n], m=mem(D.ls); if(!m.snap) return;
+        if(JSON.stringify(snap(D.keys))!==JSON.stringify(m.snap)){ clearTimeout(pushT[n]); pushT[n]=setTimeout(function(){ push(n); },PUSH_DELAY); } });
+    },2500);
+    var lastPull=Date.now();
+    document.addEventListener('visibilitychange',function(){ if(!document.hidden&&Date.now()-lastPull>20000){ lastPull=Date.now(); pull('prefs'); pull('book'); } });
+    setInterval(function(){ if(!document.hidden){ lastPull=Date.now(); pull('prefs'); pull('book'); } },PULL_EVERY);
+  }
+  function expired(){ if(!S.tok) return; forget(); toast('Your sign-in has expired — sign in again in Settings'); paint(); }
+
+  /* ---------- Google ---------- */
+  var gisLoading=false;
+  function mountGoogle(){
+    var slot=S.card&&$('[data-gla="google"]',S.card); if(!slot||!S.cfg||!S.cfg.googleClientId) return;
+    function render(){
+      try{
+        window.google.accounts.id.initialize({client_id:S.cfg.googleClientId, callback:function(resp){
+          busy(true); api('POST','/auth/google',{credential:resp.credential},true).then(function(r){ busy(false);
+            if(r.status===200||r.status===201) return signInWith(r,r.body.created?'signup':'login'); fail(errText(r,'Google sign-in did not work')); }); }, ux_mode:'popup'});
+        slot.innerHTML='';
+        window.google.accounts.id.renderButton(slot,{theme:(document.documentElement.getAttribute('data-gl')==='light')?'outline':'filled_black', size:'large', width:Math.min(300,slot.clientWidth||300), text:'continue_with', shape:'pill'});
+      }catch(_){ slot.innerHTML='<span class="gla-note">Google sign-in could not load</span>'; }
+    }
+    if(window.google&&window.google.accounts&&window.google.accounts.id){ render(); return; }
+    if(gisLoading) return; gisLoading=true;
+    var s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true; s.defer=true;
+    s.onload=function(){ gisLoading=false; render(); }; s.onerror=function(){ gisLoading=false; slot.innerHTML='<span class="gla-note">Google sign-in could not load</span>'; };
+    document.head.appendChild(s);
+  }
+
+  /* ---------- passkeys (Face ID / Touch ID) ---------- */
+  function b2a(b64u){ var s=String(b64u||'').replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='='; var bin=atob(s), a=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return a.buffer; }
+  function a2b(buf){ var a=new Uint8Array(buf), s=''; for(var i=0;i<a.length;i++) s+=String.fromCharCode(a[i]); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+  function pkAvailable(){ return !!(window.PublicKeyCredential&&navigator.credentials&&window.isSecureContext); }
+  function pkWord(){ return S.pkPlatform?'Face ID / Touch ID':'a passkey'; }
+  function deviceName(){ var u=navigator.userAgent||''; return /iPhone/.test(u)?'iPhone':/iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'iPad':/Android/.test(u)?'Android':/Macintosh/.test(u)?'Mac':/Windows/.test(u)?'Windows PC':'This device'; }
+  function pkRegister(){
+    busy(true);
+    api('POST','/auth/passkey/register/options',{}).then(function(r){
+      if(r.status!==200){ busy(false); return fail(errText(r)); }
+      var o=r.body; o.challenge=b2a(o.challenge); o.user.id=b2a(o.user.id); (o.excludeCredentials||[]).forEach(function(c){ c.id=b2a(c.id); });
+      return navigator.credentials.create({publicKey:o}).then(function(cred){
+        var resp=cred.response, tr=[]; try{ tr=resp.getTransports?resp.getTransports():[]; }catch(_){}
+        return api('POST','/auth/passkey/register',{id:cred.id, type:cred.type, name:deviceName(), response:{clientDataJSON:a2b(resp.clientDataJSON), attestationObject:a2b(resp.attestationObject), transports:tr}});
+      }).then(function(r2){ busy(false); if(r2.status===200){ takeUser(r2.body.user); toast(pkWord()+' is set up on this device'); paint(); } else fail(errText(r2)); });
+    }).catch(function(e){ busy(false); fail((e&&e.name==='NotAllowedError')?'Cancelled':'That did not work on this device'); });
+  }
+  function pkLogin(email){
+    busy(true);
+    api('POST','/auth/passkey/login/options',{email:email||undefined},true).then(function(r){
+      if(r.status!==200){ busy(false); return fail(errText(r)); }
+      var o=r.body; o.challenge=b2a(o.challenge); (o.allowCredentials||[]).forEach(function(c){ c.id=b2a(c.id); });
+      return navigator.credentials.get({publicKey:o}).then(function(cred){
+        var resp=cred.response;
+        return api('POST','/auth/passkey/login',{id:cred.id, type:cred.type, response:{clientDataJSON:a2b(resp.clientDataJSON), authenticatorData:a2b(resp.authenticatorData), signature:a2b(resp.signature), userHandle:resp.userHandle?a2b(resp.userHandle):null}},true);
+      }).then(function(r2){ busy(false); if(r2.status===200) return signInWith(r2,'login'); fail(errText(r2,'That passkey was not accepted')); });
+    }).catch(function(e){ busy(false); fail((e&&e.name==='NotAllowedError')?'Cancelled':'No passkey for this app on this device'); });
+  }
+
+  /* ---------- the card ---------- */
+  function busy(b){ S.busy=!!b; if(S.card) S.card.classList.toggle('gla-busy',S.busy); }
+  function fail(msg){ S.err=msg; S.note=null; paintMsg(); }
+  function note(msg){ S.note=msg; S.err=null; paintMsg(); }
+  function paintMsg(){ var e=S.card&&$('.gla-msg',S.card); if(!e) return; e.hidden=!(S.err||S.note); e.className='gla-msg'+(S.err?' err':' ok'); e.textContent=S.err||S.note||''; }
+  function val(sel){ var e=S.card&&$(sel,S.card); return e?String(e.value||'').trim():''; }
+  function fmtWhen(iso){ if(!iso) return ''; var d=new Date(iso); if(isNaN(d)) return ''; var h=(Date.now()-d.getTime())/36e5; return h<1?'just now':h<24?Math.round(h)+' h ago':h<48?'yesterday':d.toLocaleDateString(undefined,{month:'short',day:'numeric'}); }
+
+  function htmlOut(){
+    var m=S.mode, g=!!(S.cfg&&S.cfg.googleClientId), pk=pkAvailable();
+    var h='<div class="gla-form" data-mode="'+m+'">';
+    if(m==='reset'){
+      h+='<div class="gla-head">Set a new password</div><input type="password" class="gla-in" data-gla="pw" placeholder="New password (10+ characters)" autocomplete="new-password">'
+        +'<div class="gla-msg" hidden></div><button type="button" class="gla-btn primary" data-glaact="reset-link">Save and sign in</button>'
+        +'<div class="gla-links"><button type="button" data-glaact="mode-in">Back to sign in</button></div>';
+    } else if(m==='forgot'){
+      h+='<div class="gla-head">Forgot password</div><input type="email" class="gla-in" data-gla="email" placeholder="E-mail" autocomplete="username" inputmode="email">'
+        +(S.sentReset?'<input type="text" class="gla-in" data-gla="code" placeholder="The 6-digit code from the e-mail" inputmode="numeric" autocomplete="one-time-code"><input type="password" class="gla-in" data-gla="pw" placeholder="New password (10+ characters)" autocomplete="new-password">':'')
+        +'<div class="gla-msg" hidden></div>'
+        +(S.sentReset?'<button type="button" class="gla-btn primary" data-glaact="reset-code">Set the new password</button>':'<button type="button" class="gla-btn primary" data-glaact="forgot">Send me a code</button>')
+        +'<div class="gla-links"><button type="button" data-glaact="mode-in">Back to sign in</button></div>';
+    } else {
+      h+='<input type="email" class="gla-in" data-gla="email" placeholder="E-mail" autocomplete="username" inputmode="email">'
+        +'<input type="password" class="gla-in" data-gla="pw" placeholder="'+(m==='up'?'Choose a password (10+ characters)':'Password')+'" autocomplete="'+(m==='up'?'new-password':'current-password')+'">'
+        +(m==='up'?'<input type="text" class="gla-in" data-gla="name" placeholder="Your name (optional)" autocomplete="name">':'')
+        +'<div class="gla-msg" hidden></div>'
+        +'<button type="button" class="gla-btn primary" data-glaact="submit">'+(m==='up'?'Create account':'Sign in')+'</button>'
+        +'<div class="gla-links">'+(m==='up'?'<button type="button" data-glaact="mode-in">I have an account</button>':'<button type="button" data-glaact="mode-up">Create an account</button><i>·</i><button type="button" data-glaact="mode-forgot">Forgot password?</button>')+'</div>';
+      if(g||pk) h+='<div class="gla-or"><span>or</span></div>';
+      if(g) h+='<div class="gla-google" data-gla="google"><span class="gla-note">Loading Google…</span></div>';
+      if(pk) h+='<button type="button" class="gla-btn" data-glaact="pk-login">Sign in with '+esc(pkWord())+'</button>';
+    }
+    return h+'</div>';
+  }
+  function htmlIn(){
+    var u=S.user||{}, pk=pkAvailable(), keys=u.passkeys||[], dv=S.devices;
+    var h='<div class="gla-who"><span class="gla-lab">Signed in as</span><b>'+esc(u.email||'')+'</b>'+(u.name?'<span class="gla-name">'+esc(u.name)+'</span>':'')+'</div>';
+    if(!u.emailVerified){
+      h+='<div class="gla-verify"><div class="gla-head">Confirm your e-mail</div><div class="gla-note">We sent a 6-digit code to '+esc(u.email||'')+'. Until it is confirmed, alert e-mails and sign-in notices stay off.</div>'
+        +'<div class="gla-row"><input type="text" class="gla-in" data-gla="vcode" placeholder="6-digit code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"><button type="button" class="gla-btn primary" data-glaact="verify">Confirm</button></div>'
+        +'<div class="gla-links"><button type="button" data-glaact="verify-send">Send the code again</button></div></div>';
+    }
+    if(u.pendingEmail){
+      h+='<div class="gla-verify"><div class="gla-head">Confirm your new e-mail</div><div class="gla-note">A code went to '+esc(u.pendingEmail)+'.</div>'
+        +'<div class="gla-row"><input type="text" class="gla-in" data-gla="ecode" placeholder="6-digit code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"><button type="button" class="gla-btn primary" data-glaact="email-confirm">Confirm</button></div>'
+        +'<div class="gla-links"><button type="button" data-glaact="email-cancel">Keep the old address</button></div></div>';
+    }
+    h+='<div class="gla-msg" hidden></div>';
+    /* passkeys */
+    h+='<div class="gla-sec"><div class="gla-head">'+(pk?esc(pkWord()):'Passkeys')+'</div>';
+    if(keys.length) h+='<div class="gla-list">'+keys.map(function(p){ return '<div class="gla-item"><span>'+esc(p.name||'Passkey')+'<em>'+(p.lastUsedAt?'used '+fmtWhen(p.lastUsedAt):'added '+fmtWhen(p.createdAt))+'</em></span><button type="button" class="gla-x" data-glaact="pk-remove" data-id="'+esc(p.id)+'" aria-label="Remove">×</button></div>'; }).join('')+'</div>';
+    h+=pk?'<button type="button" class="gla-btn" data-glaact="pk-register">'+(keys.length?'Add this device':'Set up '+esc(pkWord())+' on this device')+'</button><div class="gla-note">Sign in with your face or finger instead of typing the password. The key never leaves this device.</div>'
+         :'<div class="gla-note">'+(window.isSecureContext?'This browser cannot make passkeys.':'Passkeys need the https address of the app.')+'</div>';
+    h+='</div>';
+    /* devices */
+    h+='<div class="gla-sec"><div class="gla-head">Devices</div>';
+    if(!dv) h+='<div class="gla-note">Loading…</div>';
+    else h+='<div class="gla-list">'+dv.devices.map(function(d){ return '<div class="gla-item'+(d.current?' me':'')+'"><span>'+esc(d.label||'Device')+(d.current?' <i>this device</i>':'')+'<em>'+esc(d.where||'')+(d.lastAt?' · '+fmtWhen(d.lastAt):'')+(d.via?' · '+esc(d.via):'')+'</em></span>'+(d.current?'':'<button type="button" class="gla-x" data-glaact="dev-revoke" data-id="'+esc(d.id)+'" aria-label="Sign out">Sign out</button>')+'</div>'; }).join('')+'</div>'
+      +'<div class="gla-links"><button type="button" data-glaact="signout-all">Sign out everywhere</button></div><div class="gla-note">An account is for one person; up to '+esc(dv.max)+' devices stay signed in. Being used from several places at once signs the other devices out.</div>';
+    h+='</div>';
+    /* more */
+    h+='<details class="gla-more"><summary>Change password</summary><div class="gla-sec">'
+      +(u.hasPassword?'<input type="password" class="gla-in" data-gla="cur" placeholder="Current password" autocomplete="current-password">':'<div class="gla-note">This account signs in with Google and has no password yet.</div>')
+      +'<input type="password" class="gla-in" data-gla="new" placeholder="New password (10+ characters)" autocomplete="new-password"><button type="button" class="gla-btn" data-glaact="password">Change password</button><div class="gla-note">Every other device is signed out.</div></div></details>';
+    h+='<details class="gla-more"><summary>Change e-mail</summary><div class="gla-sec"><input type="email" class="gla-in" data-gla="newemail" placeholder="New e-mail" inputmode="email">'
+      +(u.hasPassword?'<input type="password" class="gla-in" data-gla="pw2" placeholder="Your password" autocomplete="current-password">':'')+'<button type="button" class="gla-btn" data-glaact="email-request">Send a code to the new address</button></div></details>';
+    h+='<label class="gla-toggle"><input type="checkbox" data-glaact="alertmail" '+((u.prefs&&u.prefs.alertEmails!==false)?'checked':'')+'><span>E-mail me when a price alert fires</span></label>';
+    h+='<button type="button" class="gla-btn" data-glaact="signout">Sign out on this device</button>';
+    h+='<details class="gla-more danger"><summary>Delete account</summary><div class="gla-sec">'+(u.hasPassword?'<input type="password" class="gla-in" data-gla="delpw" placeholder="Your password" autocomplete="current-password">':'')
+      +'<button type="button" class="gla-btn danger" data-glaact="delete">'+(S.armDel?'Tap again — deletes everything':'Delete my account')+'</button><div class="gla-note">Your lists, journal, alerts, settings and saves go with it. There is no undo.</div></div></details>';
+    return h;
+  }
+  function paint(){
+    if(!S.card) return;
+    var c=S.card; c.innerHTML=signedIn()?htmlIn():htmlOut();
+    var foot=c.nextSibling; if(foot&&foot.classList&&foot.classList.contains('gla-foot'))
+      foot.textContent=signedIn()?'Your lists, journal, price alerts, settings and Portfolio saves live on the server and follow you to every device you sign in on.'
+        :'An account keeps your lists, journal, price alerts, settings and Portfolio saves on the server, the same on every device. The graded Watchlist is the shared base everyone sees.';
+    paintMsg(); if(!signedIn()) mountGoogle();
+    if(signedIn()&&!S.devices) api('GET','/auth/devices').then(function(r){ if(r.status===200&&r.body.devices){ S.devices=r.body; paint(); } else if(r.status===401) expired(); });
+  }
+
+  function onAct(e){
+    var b=e.target.closest('[data-glaact]'); if(!b||S.busy) return;
+    var a=b.getAttribute('data-glaact'); if(b.tagName==='INPUT'&&b.type==='checkbox'){ /* toggle handled on change */ return; }
+    e.stopPropagation(); e.preventDefault(); S.err=S.note=null;
+    if(a==='mode-in'||a==='mode-up'||a==='mode-forgot'){ S.mode=a.slice(5); S.sentReset=false; paint(); return; }
+    if(a==='submit'){
+      var em=val('[data-gla="email"]'), pw=val('[data-gla="pw"]');
+      if(!em||!pw) return fail('E-mail and password, please');
+      busy(true);
+      api('POST',S.mode==='up'?'/auth/signup':'/auth/login',S.mode==='up'?{email:em, password:pw, name:val('[data-gla="name"]')}:{email:em, password:pw},true)
+        .then(function(r){ busy(false); if(r.status===200||r.status===201) return signInWith(r,S.mode==='up'?'signup':'login'); fail(errText(r)); });
+      return;
+    }
+    if(a==='forgot'){ var em2=val('[data-gla="email"]'); if(!em2) return fail('Your e-mail, please'); busy(true);
+      api('POST','/auth/reset/request',{email:em2},true).then(function(r){ busy(false); if(r.status===200){ S.sentReset=true; S.resetEmail=em2; paint(); var i=$('[data-gla="email"]',S.card); if(i) i.value=em2; note('If that address has an account, a code is on its way (check spam too).'); } else fail(errText(r)); }); return; }
+    if(a==='reset-code'){ var em3=val('[data-gla="email"]')||S.resetEmail, cd=val('[data-gla="code"]'), np=val('[data-gla="pw"]'); if(!cd||!np) return fail('The code and a new password, please'); busy(true);
+      api('POST','/auth/reset',{email:em3, code:cd, password:np},true).then(function(r){ busy(false); if(r.status===200) return signInWith(r,'login'); fail(errText(r)); }); return; }
+    if(a==='reset-link'){ var np2=val('[data-gla="pw"]'); if(!np2) return fail('A new password, please'); busy(true);
+      api('POST','/auth/reset',{token:S.link&&S.link.token, password:np2},true).then(function(r){ busy(false); if(r.status===200){ S.link=null; return signInWith(r,'login'); } fail(errText(r)); }); return; }
+    if(a==='pk-login'){ pkLogin(val('[data-gla="email"]')); return; }
+    if(a==='pk-register'){ pkRegister(); return; }
+    if(a==='pk-remove'){ busy(true); api('POST','/auth/passkey/remove',{id:b.getAttribute('data-id')}).then(function(r){ busy(false); if(r.status===200){ takeUser(r.body.user); paint(); } else fail(errText(r)); }); return; }
+    if(a==='verify'){ var vc=val('[data-gla="vcode"]'); if(!vc) return fail('The 6-digit code, please'); busy(true);
+      api('POST','/auth/verify',{code:vc}).then(function(r){ busy(false); if(r.status===200){ takeUser(r.body.user); toast('E-mail confirmed'); paint(); } else fail(errText(r)); }); return; }
+    if(a==='verify-send'){ busy(true); api('POST','/auth/verify/send',{}).then(function(r){ busy(false); if(r.status===200) note('A new code is on its way'); else fail(errText(r)); }); return; }
+    if(a==='dev-revoke'){ busy(true); api('POST','/auth/devices/revoke',{id:b.getAttribute('data-id')}).then(function(r){ busy(false); S.devices=null; paint(); }); return; }
+    if(a==='signout'){ signOut(false); return; }
+    if(a==='signout-all'){ signOut(true); return; }
+    if(a==='password'){ var cu=val('[data-gla="cur"]'), nw=val('[data-gla="new"]'); if(!nw) return fail('A new password, please'); busy(true);
+      api('POST','/auth/password',{current:cu, password:nw}).then(function(r){ busy(false); if(r.status===200){ takeUser(r.body.user); S.devices=null; toast('Password changed'); paint(); } else fail(errText(r)); }); return; }
+    if(a==='email-request'){ var ne=val('[data-gla="newemail"]'), p2=val('[data-gla="pw2"]'); if(!ne) return fail('The new e-mail, please'); busy(true);
+      api('POST','/auth/email/request',{email:ne, password:p2}).then(function(r){ busy(false); if(r.status===200){ S.user.pendingEmail=r.body.pendingEmail; takeUser(S.user); paint(); } else fail(errText(r)); }); return; }
+    if(a==='email-confirm'){ var ec=val('[data-gla="ecode"]'); if(!ec) return fail('The 6-digit code, please'); busy(true);
+      api('POST','/auth/email/confirm',{code:ec}).then(function(r){ busy(false); if(r.status===200){ takeUser(r.body.user); toast('E-mail changed'); paint(); } else fail(errText(r)); }); return; }
+    if(a==='email-cancel'){ busy(true); api('POST','/auth/email/cancel',{}).then(function(r){ busy(false); if(r.status===200) takeUser(r.body.user); paint(); }); return; }
+    if(a==='delete'){
+      if(!S.armDel){ S.armDel=true; paint(); var d=$('details.danger',S.card); if(d) d.open=true; setTimeout(function(){ if(S.armDel){ S.armDel=false; paint(); } },4000); return; }
+      S.armDel=false; busy(true);
+      api('POST','/auth/delete',{password:val('[data-gla="delpw"]')}).then(function(r){ busy(false); if(r.status===200){ forget(); toast('Account deleted'); setTimeout(function(){ location.reload(); },600); } else fail(errText(r)); });
+      return;
+    }
+  }
+  function onChange(e){
+    var b=e.target.closest('[data-glaact="alertmail"]'); if(!b) return;
+    api('POST','/auth/prefs',{alertEmails:!!b.checked}).then(function(r){ if(r.status===200) takeUser(r.body.user); });
+  }
+  function onKey(e){ if(e.key!=='Enter') return; var f=e.target.closest('.gla-form'); if(!f) return; var p=$('.gla-btn.primary',f); if(p) p.click(); }
+
+  /* ---------- Settings: the card at the top of the page ---------- */
+  function inject(){
+    if(S.card&&document.body.contains(S.card)) return;
+    var main=$('#dkSheet [data-st8scr="main"]'); if(!main) return;
+    var cap=el('div','st8-cap gla-cap','Account'), card=el('div','dk-group st8-card gla-card'), foot=el('div','st8-foot gl-foot gla-foot');
+    card.id='glAccount'; S.card=card;
+    main.insertBefore(foot,main.firstChild); main.insertBefore(card,foot); main.insertBefore(cap,card);
+    card.addEventListener('click',onAct); card.addEventListener('change',onChange); card.addEventListener('keydown',onKey);
+    if(S.link&&S.link.kind==='reset'&&!signedIn()) S.mode='reset';
+    paint();
+    if(pkAvailable()&&window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable)
+      window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(function(ok){ if(ok!==S.pkPlatform){ S.pkPlatform=!!ok; paint(); } }).catch(function(){});
+  }
+  function maybeInject(){
+    if(signedIn()) return inject();
+    loadConfig().then(function(cfg){ if(cfg&&cfg.enabled) inject(); });
+  }
+  var sheet=document.getElementById('dkSheet');
+  if(sheet){
+    if(!sheet.hasAttribute('hidden')) maybeInject();
+    if(window.MutationObserver) new MutationObserver(function(){ if(!sheet.hasAttribute('hidden')) maybeInject(); }).observe(sheet,{attributes:true, attributeFilter:['hidden']});
+  }
+
+  /* ---------- boot ---------- */
+  window.AIBO_ACCOUNT={
+    token:function(){ return S.tok; }, signedIn:signedIn, user:function(){ return S.user; }, signOut:function(){ forget(); },
+    state:function(){ return {signedIn:signedIn(), user:S.user, cfg:S.cfg, mode:S.mode, card:!!S.card, devices:S.devices?S.devices.devices.length:null, reqs:S.reqs, link:S.link, err:S.err, note:S.note}; },
+    pull:function(){ return Promise.all([pull('prefs'),pull('book')]); }, push:function(){ return Promise.all([push('prefs'),push('book')]); }
+  };
+  if(S.link&&S.link.kind==='verify'){
+    api('POST','/auth/verify',{token:S.link.token},!signedIn()).then(function(r){
+      if(r.status===200){ if(signedIn()) takeUser(r.body.user); toast('E-mail confirmed'); } else toast(errText(r,'That link has expired')); S.link=null; if(S.card) paint(); });
+  }
+  if(S.link&&S.link.kind==='reset'&&!signedIn()){
+    /* open Settings so the new-password form is in front of the person */
+    var tries=0, t=setInterval(function(){ tries++; var d=document.querySelector('[data-gldoor="settings"]'); if(d){ clearInterval(t); d.click(); } else if(tries>40) clearInterval(t); },250);
+  }
+  if(signedIn()){
+    api('GET','/auth/me').then(function(r){
+      if(r.status===401){ expired(); return; }
+      if(r.status===200&&r.body.user){ takeUser(r.body.user); if(S.card) paint(); }
+      pull('prefs'); pull('book'); watch();
+    });
+  }
+})();
+
+</script>
 <style id="gl48CalCss">
 /* Stage 48 — Calendar door. A fixed layer under the strip/appbar, so the stock layout beneath is
    never touched. Scoped to html[data-gl] like the rest of the skin. */
@@ -14611,25 +15056,25 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
     {k:'journal',  n:'11', t:'Journal & trading history', g:'Your book'}];
   var HELP={
     breadth:'The index can rise on a few giants while most stocks fall. The default lines are the share of the US 500 above their own 50-day and 200-day averages: above ~65% the move is broad, under ~45% (the shaded band) it is narrow and fragile. The toggle shows the advance/decline line (the running total of names up minus names down — when it falls while the index rises, the rally is thinning) and new 20-day highs minus new 20-day lows. The rails: today\'s advancers against decliners, then the 20-session measures.',
-    vol:'VIX is the price of 30-day S&P protection. The curve is the same price for 9 days out to a year: normally it slopes up (far-dated protection costs more); when the near end is above the far end it is inverted — fear is here now. The dotted line is the curve a month ago. MOVE is the bond market\'s VIX, SKEW the price of tail protection, VVIX the vol of VIX: one-directional, red only at a 1-year extreme. Put/call is two-sided: heavy hedging at one end, complacency at the other. Term structures for MOVE, put/call and SKEW are paid data, so the curve stays VIX.',
-    credit:'The extra yield junk-rated companies pay over Treasuries (the high-yield spread) is the market\'s price for default risk: under ~3.5% nobody is worried, 5% is where stocks have usually started to care, 7% is a stress event. Investment-grade is the same for solid companies, on its own scale with its own line around 2%. The toggle adds the Chicago Fed\'s financial-conditions index (below zero = loose) and the share of banks tightening lending standards (quarterly).',
+    vol:'VIX is the price of 30-day S&P protection, read from its daily history: under 20 is calm, 20–30 elevated, 30 and above is stress — in a strong sell-off it spikes and then decays over weeks. The rails: where today sits in its one-year range, and how far it moved in 5 and 20 sessions (a fast rise is fear arriving, a slow bleed is fear leaving). The VIX term structure, MOVE, SKEW and the put/call ratio are licensed data and are not shown here.',
+    credit:'A PROXY for credit stress built from licensed prices: junk-bond ETFs (HYG) divided by 7–10-year Treasuries (IEF), and investment-grade bonds (LQD) divided by the same, each rebased to 100 at the first day shown. When the line falls, credit is lagging Treasuries — investors want more compensation for default risk, which is what a widening spread means; when it rises, risk appetite is back. It is not an option-adjusted spread (those series are licensed and cannot be shown), so read the direction and the one-year percentile, not a level. The toggle adds the Chicago Fed\'s financial-conditions index (below zero = loose) and the share of banks tightening lending standards (quarterly), both Federal Reserve publications.',
     liquidity:'Net liquidity = the Fed\'s balance sheet minus the Treasury\'s cash account (TGA) minus money parked in reverse repo: roughly the dollars free to find assets. Rising net liquidity has lined up with rallies; a falling tide with air pockets. The default view draws it with the S&P on its own scale; the toggle shows each leg alone — the dollar (a strong dollar tightens the world), the Treasury account, reverse repo and M2 — each on its own scale.',
-    fedpath:'The 30-day fed funds futures price where the market expects the Fed\'s rate to be each month: implied rate = 100 − price. The solid step line is today\'s path, the dotted line a week ago; the distance below today\'s effective rate, in quarter points, is how many cuts are priced by that month — above it, hikes. A path that moves is the market re-pricing the Fed, usually with a data print.',
+    fedpath:'Where the market has rates over the next two years, read from public Treasury bill and note yields (1 month to 2 years) against today\'s effective fed funds rate: a yield below the effective rate prices cuts over that horizon, above it prices hikes, in quarter-point steps. The dotted line is the same curve a week ago. Bills carry a little term premium and are not the futures strip (that is licensed data, not shown), so read the direction and the size, not the exact count.',
     cot:'The CFTC\'s weekly Commitments of Traders: how big speculators (hedge funds, CTAs) are positioned in each futures market, net long minus short. The marker is today\'s net as a percentile of the last three years — at the green end the trade is crowded long, at the red end crowded short, the strong centre line is neutral. Only the extremes (beyond the 85th / 15th) are shaded: that is where reversals have the most fuel, though a trade can stay crowded for months. Published Fridays for the prior Tuesday.',
-    crypto:'How much borrowed money sits under the move. FUNDING is what leveraged longs pay shorts every eight hours (positive = the crowd leans long; above ~0.03% per 8h is rich, 0.1% euphoric; negative = shorts pay). OPEN INTEREST is the size of all open leveraged bets across Hyperliquid, Kraken, Bybit and OKX: rising faster than price means the move is built on leverage. Both are the main read here; the toggle also shows the last 24 hours of REAL liquidations by price (OKX publishes them — red longs wiped below price, green shorts above), a short-term tool. No exchange publishes other traders\' liquidation levels, so nothing is predicted. Stablecoins are the dry powder.',
+    crypto:'How much borrowed money sits under the move. FUNDING is what leveraged longs pay shorts every eight hours (positive = the crowd leans long; above ~0.03% per 8h is rich, 0.1% euphoric; negative = shorts pay). OPEN INTEREST is the size of all open leveraged bets on Hyperliquid and Kraken Futures: rising faster than price means the move is built on leverage. Stablecoin supply (DefiLlama) is the dry powder waiting on the sidelines. Liquidation data left this card: the venues that publish it do not license it for display.',
     corr:'How much two assets move together, from daily returns over the window: +1 = in step, −1 = opposite, 0 = unrelated. The asset-class basket is the macro picture; "My portfolio" runs the same maths on your own holdings from the price history the app already holds. A diversified book wants low numbers between its big pieces. The amber outline marks the pairs whose 30-day number moved most against their 90-day one.',
     risk:'Your real holdings (from the Portfolio door, never sent anywhere) run through the backend\'s factor table: each name\'s beta to the S&P, to bitcoin, to long Treasuries and to the dollar, from the last 120 sessions. Book beta is the weighted sum — 1.4 means the book moves 1.4× the market. The ladder shows every holding\'s share of that beta (collapsed to the biggest; expand for all). The stress table is simple arithmetic, not a forecast.',
     alerts:'Regime alerts are computed from the other cards — a curve inverting, junk spreads crossing 5%, breadth thinning, funding getting rich — and re-arm by themselves when the condition clears. Price alerts are yours: a ticker and a level; the backend checks them every hour against the quotes it already holds and fires once (up to an hour late, never intraday-exact). Tap a fired alert to mark it seen. With the positions token on the device, alerts and seen-marks sync across your devices.',
     journal:'Your executed trades, pulled from the accounts the app already reads (Kraken, IBKR), with the realised P&L of every closing trade matched first-in-first-out against your buys, a running total, and a "why" field per trade — the thesis, written when it is fresh, so it can be checked later. Free-text entries without a trade sit in the same list. Everything syncs through the positions token. An account that cannot supply fills says so on the card, and what to change.'};
-  var SRC={breadth:'the US 500 daily ledger (FMP) — computed on the backend, hourly', vol:'Cboe index histories and daily market statistics · Yahoo (MOVE)',
-    credit:'FRED — ICE BofA spreads, Chicago Fed NFCI, the senior loan officer survey', liquidity:'FRED — Fed H.4.1, Treasury account, reverse repo, broad dollar, M2',
-    fedpath:'NY Fed (EFFR) · CBOT 30-day fed funds futures via Yahoo', cot:'CFTC Commitments of Traders, legacy futures-only',
-    crypto:'Hyperliquid · Kraken Futures · Bybit · OKX · CoinGecko (stablecoins)', corr:'daily closes — ETFs from FMP, coins from Kraken; your holdings from the frames the app holds; computed on this device',
-    risk:'your positions on this device × the backend factor table (US 500 ledger, Kraken daily bars)', alerts:'the cards above (regime) · the backend\'s hourly quotes (price alerts) · synced through the positions token',
+  var SRC={breadth:'US 500 daily closes © Financial Modeling Prep — computed on the backend, hourly', vol:'Cboe VIX, daily closes via Financial Modeling Prep',
+    credit:'ETF closes via Financial Modeling Prep (HYG, LQD, IEF) · Federal Reserve Bank of Chicago (NFCI) · Federal Reserve Board (senior loan officer survey)', liquidity:'Federal Reserve Board (H.4.1, broad dollar, M2) · US Treasury (TGA) · Federal Reserve Bank of New York (reverse repo), via FRED',
+    fedpath:'Federal Reserve Bank of New York (EFFR) · US Department of the Treasury (daily par yields)', cot:'US Commodity Futures Trading Commission, Commitments of Traders (public)',
+    crypto:'Hyperliquid public API · Kraken Futures public API · DefiLlama (stablecoin supply)', corr:'daily closes via Financial Modeling Prep (ETFs) and Kraken (coins); your holdings from the frames the app holds; computed on this device',
+    risk:'your positions on this device × the backend factor table (Financial Modeling Prep closes, Kraken daily bars)', alerts:'the cards above (regime) · the backend\'s hourly quotes (price alerts) · synced through the positions token',
     journal:'Kraken TradesHistory · IBKR Flex (Trades section) · your entries — all behind the positions token'};
   var root=document.createElement('section'); root.id='glMacro'; root.setAttribute('aria-label','Macro desk'); B.appendChild(root);
   var WQ=window.matchMedia?window.matchMedia('(min-width:900px)'):null;
-  var VIEWS={breadth:'pct', credit:'hy', liquidity:'net', crypto:'fund', corr:'basket'};
+  var VIEWS={breadth:'pct', credit:'hy', liquidity:'net', crypto:'fund', corr:'basket', fedpath:'path'};
   var S={open:false, built:false, data:null, err:null, at:0, fetching:false, backoff:0, timer:0, ctrl:null, raf:0, ro:null,
          corrWin:+(ls(LS.corr)||30)||30, cotGroup:ls(LS.cot)||'all', coin:ls(LS.coin)||'BTC', arm:null, journal:null, seen:null, ladderOpen:false, views:savedViews()};
 
@@ -14780,7 +15225,7 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
   function paintAll(){ if(!S.built) return; _lastW=bodyW(); paintNote(); PANELS.forEach(function(p){ paintPanel(p.k); }); paintChipOn(); }
   function paintNote(){ var n=$('[data-glmnote]'); if(!n) return; var D=S.data, t='eleven panels';
     if(D){ var as=D.builtAt?new Date(D.builtAt):null; t='built '+(as&&!isNaN(as)?as.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—');
-      var live=0; ['breadth','vol','credit','liquidity','fedpath','cot','crypto','corr'].forEach(function(k){ if(sec(k)) live++; }); t+=' · '+live+' of 8 feeds live';
+      var live=0; ['breadth','vol','credit','liquidity','fedpath','cot','crypto','corr'].forEach(function(k){ if(sec(k)) live++; }); t+=' · '+live+' of 8 feeds live · licensed and public sources only';
       if(S.err) t+=' · refresh failed: '+S.err; }
     else if(S.fetching) t='loading the desk…'; else if(S.err) t=S.err;
     n.textContent=t; }
@@ -14790,7 +15235,7 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
     if(S.jumpTo){ var jc=$('#glmp-'+S.jumpTo); if(jc){ var jr=jc.getBoundingClientRect(); if(jr.top<=top+8&&jr.bottom>top) cur=S.jumpTo; } }
     $$('[data-glmjump]').forEach(function(ch){ ch.classList.toggle('on',ch.getAttribute('data-glmjump')===cur); }); }
   function asOfLine(k,d){ var el=$('[data-glmas="'+k+'"]'); if(!el) return; var s=d&&d.asOf?String(d.asOf):''; el.textContent=s?('as of '+(s.length>10?s.slice(0,10)+' '+s.slice(11,16)+'Z':s)):''; }
-  var SRC_NAMES={breadth:['breadth'],vol:['cboe','pcr','move'],credit:['fred_credit'],liquidity:['fred_liquidity'],fedpath:['zq','effr'],cot:['cot'],crypto:['crypto_lev'],corr:['basket']};
+  var SRC_NAMES={breadth:['breadth'],vol:['vix'],credit:['basket','fred_conditions'],liquidity:['fred_liquidity'],fedpath:['curve','effr'],cot:['cot'],crypto:['crypto_lev'],corr:['basket']};
   function srcError(k){ var e=null; if(S.data&&S.data.sources) (SRC_NAMES[k]||[]).forEach(function(nm){ var s=S.data.sources[nm]; if(s&&s.ok===false&&s.err) e=s.err; }); return e; }
   function paintPanel(k){
     var body=$('[data-glmbody="'+k+'"]'); if(!body) return; var W=_lastW||bodyW(); if(W<60) W=320;
@@ -14827,49 +15272,47 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
     if(!fin(v200)) html+='<div class="glm-note">200-day: needs 200 sessions per name — the ledger is filling (n = '+(L.n200||0)+' of '+(L.n||0)+').</div>';
     return html;
   };
-  /* 02 volatility — the VIX curve with dots (term structures for the others are paid data); rails: one-directional gauges, put/call last and two-sided */
+  /* 02 volatility — the VIX from its daily history (FMP, licensed); term structure / MOVE / SKEW / put-call are licensed data: not shown */
   PAINT.vol=function(d,W){
-    var cv=d.curve||{}, now=cv.now||[], ago=cv.ago||[], labels=cv.labels||['9D','30D','3M','6M','1Y'], ct=d.contango||{}, s=d.series||{}, p=d.pct1y||{};
-    var vix=last(s.vix), st=ct.state||'—', sp=ct.spread3m;
-    var verdict=st==='inverted'?'<b>Inverted — fear is here now.</b>':st==='flat'?'<b>Flat curve.</b>':st==='normal'?'<b>Calm, normal slope.</b>':'<b>Curve not published.</b>';
-    var line=fin(vix)?'VIX '+num(vix,1)+(fin(sp)?', 3-month '+(sp>=0?'above':'below')+' spot by '+num(Math.abs(sp),1)+' points':'')+(fin(p.vix)?' ('+ord(p.vix)+' percentile of the year).':'.'):'';
-    var html=read(verdict+' '+line,st==='inverted'?'dn':st==='normal'?'up':'');
-    var all=now.concat(ago).filter(fin), lo=all.length?Math.min.apply(null,all):10, hi=all.length?Math.max.apply(null,all):30;
-    html+=chart({w:W,h:chH(),lo:Math.floor(lo-2),hi:Math.ceil(hi+2),fmt:function(x){ return String(x); },xl:labels.map(function(t,i){ return {i:i,t:t}; }),
-      series:[{v:ago,c:C.dim,w:1.3,dash:true,dots:true},{v:now,c:acc(),w:1.8,dots:true}]});
-    html+=leg([[acc(),'VIX term structure, today'],[C.dim,'one month ago'+(cv.agoDate?' ('+fmtDay(cv.agoDate)+')':''),true]]);
-    var pc=d.pcr||{}, pcT=last(pc.total), move=last(s.move), skew=last(s.skew), vvix=last(s.vvix), vvP=fin(vvix)?pctile(sliceLast(s.vvix||[],252),vvix):null;
-    html+=railsBox([rh('Fear gauges · 1-year percentile'),
-      railOne('VIX','today · 1y pctile',p.vix,num(vix,1),fin(p.vix)&&p.vix>=85,'VIX, percentile within the last year'),
-      railOne('MOVE (bond vol)','today · 1y pctile',p.move,num(move,0),fin(p.move)&&p.move>=85,'the bond market\'s VIX, 1y percentile'),
-      railOne('SKEW','today · 1y pctile',p.skew,num(skew,0),fin(p.skew)&&p.skew>=85,'tail-risk pricing, 1y percentile'),
-      railOne('VVIX','today · 1y pctile',vvP,num(vvix,0),fin(vvP)&&vvP>=85,'the vol of VIX, 1y percentile'),
-      rh('Positioning'),
-      railTwo('Put / call, total','today · 1y pctile',p.pcrTotal,num(pcT,2),fin(p.pcrTotal)&&(p.pcrTotal>=85||p.pcrTotal<=15),['few puts','median','heavy hedging'],'Cboe total put/call ratio, 1y percentile')]);
+    var sr=(d.series||{}).vix||[], days=sliceLast(d.days||[],260), off=(d.days||[]).length-days.length, vx=sr.slice(off), L=d.latest||{}, v=fin(L.vix)?L.vix:last(vx);
+    var reg=d.regime||(!fin(v)?'—':v>=30?'stress':v>=20?'elevated':'calm');
+    var verdict=reg==='stress'?'<b>Stress — VIX above 30.</b>':reg==='elevated'?'<b>Elevated.</b>':reg==='calm'?'<b>Calm.</b>':'<b>No read.</b>';
+    var line=fin(v)?'VIX '+num(v,1)+(fin(L.chg5d)?', '+(L.chg5d>=0?'up ':'down ')+num(Math.abs(L.chg5d),1)+' in five sessions':'')+(fin(L.pct1y)?' ('+ord(L.pct1y)+' percentile of the year).':'.'):'';
+    var html=read(verdict+' '+line,reg==='stress'?'dn':reg==='calm'?'up':'');
+    html+=chart({w:W,h:chH(),floor:0,fmt:function(x){ return String(x); },xl:xlFor(days,5),bands:[[30,999,'rgba(240,104,95,.08)'],[20,30,'rgba(232,176,74,.06)']],marks:[[20,'20 — elevated','rgba(232,176,74,.55)'],[30,'30 — stress']],series:[{v:vx,c:acc(),w:1.8,dot:true}]});
+    html+=leg([[acc(),'VIX, daily close'],['rgba(232,176,74,.6)','20–30 elevated'],['rgba(240,104,95,.6)','30+ stress']]);
+    html+=railsBox([rh('The fear gauge'),
+      railOne('VIX','today · 1y pctile',L.pct1y,num(v,1),fin(L.pct1y)&&L.pct1y>=85,'percentile within the last year'),
+      railTwo('VIX, 5 sessions','change in points',fin(L.chg5d)?50+clamp(L.chg5d*5,-50,50):null,(fin(L.chg5d)?sign(L.chg5d)+num(Math.abs(L.chg5d),1):'—'),fin(L.chg5d)&&Math.abs(L.chg5d)>=8,['fear leaving','flat','fear arriving'],'VIX now minus VIX five sessions ago'),
+      railTwo('VIX, 20 sessions','change in points',fin(L.chg20d)?50+clamp(L.chg20d*3,-50,50):null,(fin(L.chg20d)?sign(L.chg20d)+num(Math.abs(L.chg20d),1):'—'),fin(L.chg20d)&&Math.abs(L.chg20d)>=12,null,'VIX now minus VIX twenty sessions ago'),
+      railOne('Distance to 1-year high','today',fin(L.hi1y)&&fin(v)&&L.hi1y>0?v/L.hi1y*100:null,fin(L.hi1y)?num(L.hi1y,1)+' high':'—',false,'today\'s VIX as a share of the year\'s highest close')]);
+    html+='<div class="glm-note">the VIX term structure, MOVE, SKEW and the put/call ratio are licensed data — not shown on a public app</div>';
     return html;
   };
-  /* 03 credit — two stacked graphs (HY · IG, own scales + own stress lines) and a toggle to NFCI / bank lending */
+  /* 03 credit — a PROXY from licensed closes (HYG / LQD against IEF), rebased; NFCI + bank lending from the Fed */
   PAINT.credit=function(d,W){
-    var days=sliceLast(d.days,520), off=d.days.length-days.length, hy=d.hy.slice(off), ig=d.ig.slice(off), hyN=last(hy), igN=last(ig), st=d.stress||{}, line=fin(st.hyLine)?st.hyLine:5;
-    var verdict=!fin(hyN)?'<b>No read.</b>':hyN>=7?'<b>Stress event.</b>':hyN>=line?'<b>Stress building.</b>':hyN>=3.5?'<b>Watchful.</b>':'<b>No stress.</b>';
-    var txt=fin(hyN)?'Junk-bond spreads at '+num(hyN,2)+'%, '+(hyN<line?'under':'over')+' the '+num(line,0)+'% line where equities usually start to care'+(fin(igN)?'; investment-grade '+num(igN,2)+'%.':'.'):'';
-    var html=read(verdict+' '+txt,fin(hyN)?(hyN>=line?'dn':hyN<3.5?'up':''):'');
-    html+=viewSeg('credit',[['hy','Spreads'],['nfci','Financial conditions'],['lend','Bank lending']]);
+    var days=sliceLast(d.days||[],520), off=(d.days||[]).length-days.length, hy=(d.hy||[]).slice(off), ig=(d.ig||[]).slice(off), st=d.stress||{}, hs=st.hy||{}, igs=st.ig||{};
+    var hyP=hs.pct1y, hyC=hs.chg20d, igC=igs.chg20d;
+    var verdict=!fin(hyP)?'<b>No read yet.</b>':hyP<=10?'<b>Stress — junk bonds at a one-year low against Treasuries.</b>':hyP<=30?'<b>Stress building.</b>':hyP>=70?'<b>Risk appetite strong.</b>':'<b>No stress.</b>';
+    var txt=fin(hyC)?'Junk bonds vs 7–10Y Treasuries '+(hyC>=0?'up ':'down ')+num(Math.abs(hyC),1)+'% in 20 sessions'+(fin(igC)?'; investment-grade '+(igC>=0?'up ':'down ')+num(Math.abs(igC),1)+'%.':'.'):'';
+    var html=read(verdict+' '+txt,fin(hyP)?(hyP<=30?'dn':hyP>=70?'up':''):'');
+    html+=viewSeg('credit',[['hy','Credit vs Treasuries'],['nfci','Financial conditions'],['lend','Bank lending']]);
     var v=S.views.credit, nf=d.nfci||{}, le=d.lending||{};
-    if(v==='nfci'){ var nw=sliceLast(nf.weeks||[],156), nv=sliceLast(nf.v||[],156); html+=chart({w:W,h:chH(),fmt:function(x){ return x.toFixed(1); },xl:xlFor(nw,5),marks:[[0,'0 = average conditions','rgba(234,238,245,.45)']],series:[{v:nv,c:acc(),w:1.6,dot:true}]})+leg([[acc(),'Chicago Fed NFCI, weekly (below 0 = looser than average)']]); }
-    else if(v==='lend'){ var lq=le.quarters||[], lv=le.v||[]; html+=chart({w:W,h:chH(),fmt:function(x){ return x+'%'; },xl:lq.map(function(q,i){ return {i:i,t:q.slice(0,4)+'Q'+Math.ceil(+q.slice(5,7)/3)}; }).filter(function(_,i){ return i%Math.max(1,Math.ceil(lq.length/5))===0; }),marks:[[0,'','rgba(234,238,245,.45)']],series:[{v:lv,c:acc(),w:1.6,dot:true,step:true}]})+leg([[acc(),'net % of banks tightening standards on business loans, quarterly']]); }
+    if(v==='nfci'){ var nw=sliceLast(nf.weeks||[],156), nv=sliceLast(nf.v||[],156); html+=nw.length?chart({w:W,h:chH(),fmt:function(x){ return x.toFixed(1); },xl:xlFor(nw,5),marks:[[0,'0 = average conditions','rgba(234,238,245,.45)']],series:[{v:nv,c:acc(),w:1.6,dot:true}]})+leg([[acc(),'Chicago Fed NFCI, weekly (below 0 = looser than average)']]):empty('NFCI not landed yet'); }
+    else if(v==='lend'){ var lq=le.quarters||[], lv=le.v||[]; html+=lq.length?chart({w:W,h:chH(),fmt:function(x){ return x+'%'; },xl:lq.map(function(q,i){ return {i:i,t:q.slice(0,4)+'Q'+Math.ceil(+q.slice(5,7)/3)}; }).filter(function(_,i){ return i%Math.max(1,Math.ceil(lq.length/5))===0; }),marks:[[0,'','rgba(234,238,245,.45)']],series:[{v:lv,c:acc(),w:1.6,dot:true,step:true}]})+leg([[acc(),'net % of banks tightening standards on business loans, quarterly']]):empty('lending survey not landed yet'); }
     else {
       var h1=Math.round(chH()*.62), h2=Math.round(chH()*.5);
-      html+=chart({w:W,h:h1,floor:0,fmt:function(x){ return x+'%'; },xl:[],marks:[[line,num(line,0)+'% — equities start to care'],[7,'7% — stress event']],series:[{v:hy,c:C.am,w:1.8,dot:true}]})+leg([[C.am,'high-yield spread, daily']]);
-      html+=chart({w:W,h:h2,floor:0,fmt:function(x){ return x.toFixed(1)+'%'; },xl:xlFor(days,5),marks:[[2,'2% — IG stress']],series:[{v:ig,c:acc(),w:1.6,dot:true}]})+leg([[acc(),'investment-grade spread, daily — own scale']]);
+      html+=chart({w:W,h:h1,fmt:function(x){ return x.toFixed(0); },xl:[],marks:[[100,'100 = first day shown','rgba(234,238,245,.35)']],series:[{v:hy,c:C.am,w:1.8,dot:true}]})+leg([[C.am,'junk bonds ÷ 7–10Y Treasuries (HYG ÷ IEF), rebased · falling = stress building']]);
+      html+=chart({w:W,h:h2,fmt:function(x){ return x.toFixed(0); },xl:xlFor(days,5),marks:[[100,'','rgba(234,238,245,.35)']],series:[{v:ig,c:acc(),w:1.6,dot:true}]})+leg([[acc(),'investment-grade ÷ 7–10Y Treasuries (LQD ÷ IEF), rebased — own scale']]);
     }
-    var nfN=last(nf.v), leN=last(le.v), nfP=fin(nfN)?pctile(sliceLast(nf.v||[],260),nfN):null, leP=fin(leN)?pctile(le.v||[],leN):null, win=st.pctFrom?'since '+st.pctFrom.slice(0,4):'5y';
-    html+=railsBox([rh('Spreads · percentile '+win+(st.pctFrom?' (FRED serves the ICE series ~3y)':'')),
-      railOne('HY spread','today · pctile',st.hyPct5y,pctAbs(hyN,2),fin(hyN)&&hyN>=line,'high-yield OAS, percentile within the window'),
-      railOne('IG spread','today · pctile',st.igPct5y,pctAbs(igN,2),fin(st.igPct5y)&&st.igPct5y>=85,'investment-grade OAS, percentile within the window'),
-      rh('Conditions'),
+    var nfN=last(nf.v), leN=last(le.v), nfP=fin(nfN)?pctile(sliceLast(nf.v||[],260),nfN):null, leP=fin(leN)?pctile(le.v||[],leN):null;
+    html+=railsBox([rh('Credit vs Treasuries · proxy · 1-year percentile (low = stress)'),
+      railOne('Junk bonds (HYG ÷ IEF)','today · stress at the LOW end',fin(hyP)?100-hyP:null,fin(hyP)?ord(hyP)+' pctile':'—',fin(hyP)&&hyP<=15,'where the ratio sits in its one-year range; the rail is reversed so stress reads at the red end'),
+      railOne('Investment grade (LQD ÷ IEF)','today · stress at the LOW end',fin(igs.pct1y)?100-igs.pct1y:null,fin(igs.pct1y)?ord(igs.pct1y)+' pctile':'—',fin(igs.pct1y)&&igs.pct1y<=15,'same reading for investment-grade bonds'),
+      rh('Conditions · Federal Reserve'),
       railTwo('Financial conditions','this week · 5y pctile',nfP,fin(nfN)?num(nfN,2):'—',fin(nfP)&&(nfP>=85||nfP<=15),['loose','average','tight'],'Chicago Fed NFCI — below zero is looser than average'),
       railOne('Banks tightening','last quarter · pctile',leP,fin(leN)?pct(leN,0)+' net':'—',fin(leN)&&leN>20,'net share of banks tightening standards (quarterly survey)')]);
+    html+='<div class="glm-note">a proxy from ETF prices, not an option-adjusted spread: duration and flows move it too — read the direction and the percentile, not a level</div>';
     return html;
   };
   /* 04 liquidity — net liquidity vs the S&P by default; each leg alone on its own scale */
@@ -14903,25 +15346,25 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
       railTwo('M2','3-month change',fin(m2c)?50+clamp(m2c*10,-50,50):null,pct(m2c,1),fin(m2c)&&Math.abs(m2c)>=3,['shrinking','flat','growing'],'money supply, change over three months')]);
     return html;
   };
-  /* 05 fed path */
+  /* 05 fed path — public Treasury yields (1M → 2Y) against the effective rate; the futures strip is licensed data */
   PAINT.fedpath=function(d,W){
-    var ms=d.months||[], pv=(d.prev&&d.prev.months)||[], ef=d.effr||{}, rate=ef.rate;
-    if(!ms.length) return empty('no contracts quoted yet');
-    var byYm={}; pv.forEach(function(m){ byYm[m.ym]=m; });
-    var nowV=[fin(rate)?rate:null].concat(ms.map(function(m){ return m.implied; })), prevV=[fin(rate)?rate:null].concat(ms.map(function(m){ var p=byYm[m.ym]; return p?p.implied:null; }));
-    var mid=ms[Math.min(ms.length-1,7)], midCuts=mid.cutsPriced;
-    var shift=null; for(var i=ms.length-1;i>=0;i--){ var p=byYm[ms[i].ym]; if(p&&fin(p.implied)&&fin(ms[i].implied)){ shift=(ms[i].implied-p.implied)*100; break; } }
-    var verdict=!fin(midCuts)?'<b>Path not priced.</b>':midCuts>=0.5?'<b>'+(Math.round(midCuts*2)/2).toFixed(1).replace('.0','')+' cut'+(midCuts>=1.5?'s':'')+' priced by '+mid.label+'.</b>':midCuts<=-0.5?'<b>'+(Math.round(-midCuts*2)/2).toFixed(1).replace('.0','')+' hike'+(midCuts<=-1.5?'s':'')+' priced by '+mid.label+'.</b>':'<b>On hold through '+mid.label+'.</b>';
-    var txt=(fin(rate)?'Effective rate '+num(rate,2)+'%'+(fin(ef.targetLo)?' (target '+num(ef.targetLo,2)+'–'+num(ef.targetHi,2)+')':'')+'. ':'')+(fin(shift)?'The far end moved '+(shift>0?'up ':'down ')+Math.abs(shift).toFixed(0)+' bp since '+(d.prev&&d.prev.asOf?fmtDay(d.prev.asOf):'last week')+'.':'');
+    var tn=d.tenors||[], pv=(d.prev&&d.prev.tenors)||[], ef=d.effr||{}, rate=ef.rate;
+    if(!tn.length) return empty('no Treasury curve yet');
+    var byK={}; pv.forEach(function(t){ byK[t.k]=t; });
+    var nowV=[fin(rate)?rate:null].concat(tn.map(function(t){ return t['yield']; })), prevV=[fin(rate)?rate:null].concat(tn.map(function(t){ var p=byK[t.k]; return p?p['yield']:null; }));
+    var y1=tn.filter(function(t){ return t.k==='1Y'; })[0]||tn[tn.length-1], c1=y1.cutsPriced;
+    var shift=null; for(var i=tn.length-1;i>=0;i--){ var p=byK[tn[i].k]; if(p&&fin(p['yield'])&&fin(tn[i]['yield'])){ shift=(tn[i]['yield']-p['yield'])*100; break; } }
+    var verdict=!fin(c1)?'<b>Path not priced.</b>':c1>=0.5?'<b>Bills price '+(Math.round(c1*2)/2).toFixed(1).replace('.0','')+' cut'+(c1>=1.5?'s':'')+' within a year.</b>':c1<=-0.5?'<b>Bills price '+(Math.round(-c1*2)/2).toFixed(1).replace('.0','')+' hike'+(c1<=-1.5?'s':'')+' within a year.</b>':'<b>Bills price the Fed on hold.</b>';
+    var txt=(fin(rate)?'Effective rate '+num(rate,2)+'%'+(fin(ef.targetLo)?' (target '+num(ef.targetLo,2)+'–'+num(ef.targetHi,2)+')':'')+'. ':'')+(fin(shift)?'The 2-year moved '+(shift>0?'up ':'down ')+Math.abs(shift).toFixed(0)+' bp since '+(d.prev&&d.prev.asOf?fmtDay(d.prev.asOf):'last week')+'.':'');
     var html=read(verdict+' '+txt,fin(shift)?(shift<-5?'up':shift>5?'dn':''):'');
     var allV=nowV.concat(prevV).filter(fin), lo=Math.min.apply(null,allV), hi=Math.max.apply(null,allV);
-    var xl=[{i:0,t:'Now'}]; ms.forEach(function(m,i){ if(i%Math.ceil(ms.length/6)===0||i===ms.length-1) xl.push({i:i+1,t:m.label.replace(' ','’')}); });
+    var xl=[{i:0,t:'Now'}].concat(tn.map(function(t,i){ return {i:i+1,t:t.k}; }));
     html+=chart({w:W,h:chH(),lo:Math.floor(lo*4)/4-.25,hi:Math.ceil(hi*4)/4+.25,fmt:function(x){ return x.toFixed(2)+'%'; },xl:xl,marks:fin(rate)?[[rate,'','rgba(234,238,245,.35)']]:[],
-      series:[{v:prevV,c:C.dim,w:1.3,dash:true,step:true},{v:nowV,c:acc(),w:1.8,dot:true,step:true}]});
-    html+=leg([[acc(),'implied rate by month, today'],[C.dim,'a week ago'+(d.prev&&d.prev.asOf?' ('+fmtDay(d.prev.asOf)+')':''),true],['rgba(234,238,245,.35)','today\'s effective rate',true]]);
-    var pick=ms.filter(function(m,i){ return i%2===1||i===ms.length-1; }).slice(0,6);
-    html+='<table class="glm-tbl"><tr><th>Month</th><th>Implied</th><th>Priced</th><th>vs '+(d.prev&&d.prev.asOf?fmtDay(d.prev.asOf):'prev')+'</th></tr>'+pick.map(function(m){ var p=byYm[m.ym], dv=p&&fin(p.implied)&&fin(m.implied)?(m.implied-p.implied)*100:null;
-      return '<tr><td>'+esc(m.label)+'</td><td>'+num(m.implied,2)+'%</td><td class="'+(m.cutsPriced>0?'up':m.cutsPriced<0?'dn':'')+'">'+(fin(m.cutsPriced)?(m.cutsPriced>0?m.cutsPriced.toFixed(1)+' cut':m.cutsPriced<0?Math.abs(m.cutsPriced).toFixed(1)+' hike':'hold'):'—')+'</td><td class="'+(fin(dv)?(dv<0?'up':dv>0?'dn':''):'')+'">'+(fin(dv)?sign(dv)+Math.abs(dv).toFixed(0)+' bp':'—')+'</td></tr>'; }).join('')+'</table>';
+      series:[{v:prevV,c:C.dim,w:1.3,dash:true,dots:true},{v:nowV,c:acc(),w:1.8,dots:true}]});
+    html+=leg([[acc(),'Treasury yield by tenor, today'],[C.dim,'a week ago'+(d.prev&&d.prev.asOf?' ('+fmtDay(d.prev.asOf)+')':''),true],['rgba(234,238,245,.35)','today\'s effective fed funds rate',true]]);
+    html+='<table class="glm-tbl"><tr><th>Tenor</th><th>Yield</th><th>Priced</th><th>vs '+(d.prev&&d.prev.asOf?fmtDay(d.prev.asOf):'prev')+'</th></tr>'+tn.map(function(t){ var p=byK[t.k], dv=p&&fin(p['yield'])&&fin(t['yield'])?(t['yield']-p['yield'])*100:null;
+      return '<tr><td>'+esc(t.k)+'</td><td>'+num(t['yield'],2)+'%</td><td class="'+(t.cutsPriced>0?'up':t.cutsPriced<0?'dn':'')+'">'+(fin(t.cutsPriced)?(t.cutsPriced>=0.5?t.cutsPriced.toFixed(1)+' cut':t.cutsPriced<=-0.5?Math.abs(t.cutsPriced).toFixed(1)+' hike':'hold'):'—')+'</td><td class="'+(fin(dv)?(dv<0?'up':dv>0?'dn':''):'')+'">'+(fin(dv)?sign(dv)+Math.abs(dv).toFixed(0)+' bp':'—')+'</td></tr>'; }).join('')+'</table>';
+    html+='<div class="glm-note">bills and notes carry a little term premium: a proxy for the futures-implied path (licensed data, not shown) — read direction and size</div>';
     return html;
   };
   /* 06 COT — directional rails (the only green on the desk) */
@@ -14945,41 +15388,28 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
   PAINT.crypto=function(d,W){
     var coins=d.coins||[]; if(!coins.length) return empty('no venue answered yet');
     var cur=S.coin; if(!coins.some(function(c){ return c.sym===cur; })) cur=coins[0].sym;
-    var c=coins.filter(function(x){ return x.sym===cur; })[0], lq=(d.liqs||{})[cur], st=d.stables||{}, hist=(d.history||{})[cur]||{}, ht=(d.history||{}).t||[];
+    var c=coins.filter(function(x){ return x.sym===cur; })[0], st=d.stables||{}, hist=(d.history||{})[cur]||{}, ht=(d.history||{}).t||[];
     var f8=c.fund8h, oi7=c.oiChg7d, oi24=c.oiChg24h;
     var lean=!fin(f8)?'':f8>=0.0005?'<b>Euphoric — longs paying up.</b>':f8>=0.0003?'<b>Long-heavy and fragile.</b>':f8<=-0.0001?'<b>Short-heavy.</b>':'<b>Neutral leverage.</b>';
     var txt=(fin(f8)?'Funding '+(f8*100).toFixed(3)+'% per 8h ('+pct(c.fundAnn,0)+' a year)':'Funding not published')+(fin(c.oiUsdTotal)?', open interest '+usd(c.oiUsdTotal):'')+(fin(oi7)?' ('+pct(oi7,0)+' in 7 days)':'')+'.';
     var html=read(lean+' '+txt,fin(f8)?(f8>=0.0003?'dn':f8<=-0.0001?'up':''):'');
     html+=seg('coin',coins.map(function(x){ return [x.sym,x.sym]; }),cur);
-    html+=viewSeg('crypto',[['fund','Funding'],['oi','Open interest'],['liq','Liquidations 24h']]);
+    html+=viewSeg('crypto',[['fund','Funding'],['oi','Open interest']]);
     var v=S.views.crypto, hdays=ht.map(function(t){ return new Date(t*1000).toISOString().slice(0,10); });
-    if(v==='fund'||v==='oi'){
+    if(v!=='oi') v='fund';
+    {
       var arr=v==='fund'?(hist.fund8h||[]).map(function(x){ return fin(x)?x*100:null; }):(hist.oiUsd||[]).map(function(x){ return fin(x)?x/1e9:null; });
       if(arr.filter(fin).length<2) html+=empty('history builds one point an hour — '+arr.filter(fin).length+' so far');
       else html+=chart({w:W,h:chH(),fmt:v==='fund'?function(x){ return x.toFixed(3)+'%'; }:function(x){ return '$'+x.toFixed(1)+'B'; },xl:xlFor(hdays,4),marks:v==='fund'?[[0,'','rgba(234,238,245,.45)'],[0.03,'0.03% — rich'],[0.1,'0.1% — euphoric']]:[],series:[{v:arr,c:acc(),w:1.6,dot:true}]})
         +leg([[acc(),v==='fund'?cur+' funding per 8h, averaged across venues, hourly points':cur+' open interest in $, summed across venues, hourly points']]);
-    } else if(lq&&lq.buckets&&lq.buckets.length&&fin(lq.mark)){
-      var bk=lq.buckets, mx=0; bk.forEach(function(b){ mx=Math.max(mx,b.longUsd||0,b.shortUsd||0); });
-      var Hh=Math.max(170,Math.min(260,bk.length*4)), pl=62, pr=8, pw=W-pl-pr, rhh=(Hh-14)/bk.length, out=['<svg class="glm-svg" viewBox="0 0 '+W+' '+Hh+'" width="'+W+'" height="'+Hh+'" aria-hidden="true">'];
-      var sorted=bk.slice().sort(function(a,b){ return b.px-a.px; }), markY=null;
-      sorted.forEach(function(b,i){ var yy=6+i*rhh, val=(b.px>=lq.mark?b.shortUsd:b.longUsd)||0, w=mx>0?val/mx*pw:0;
-        if(markY==null&&b.px<lq.mark) markY=yy;
-        if(w>0) out.push('<rect x="'+pl+'" y="'+yy.toFixed(1)+'" width="'+Math.max(1,w).toFixed(1)+'" height="'+Math.max(1,rhh-1.2).toFixed(1)+'" rx="1" fill="'+(b.px>=lq.mark?'rgba(57,208,127,.7)':'rgba(240,104,95,.75)')+'"/>');
-        if(i%Math.ceil(sorted.length/6)===0) out.push('<text class="glm-yt" x="'+(pl-4)+'" y="'+(yy+rhh/2+3).toFixed(1)+'" text-anchor="end">'+esc(num(b.px,b.px<10?3:b.px<1000?1:0))+'</text>'); });
-      if(markY==null) markY=Hh-8;
-      out.push('<line x1="'+pl+'" x2="'+W+'" y1="'+markY.toFixed(1)+'" y2="'+markY.toFixed(1)+'" stroke="rgba(234,238,245,.75)" stroke-dasharray="3 3"/>');
-      out.push('<text class="glm-xt" x="'+(W-2)+'" y="'+(markY-4).toFixed(1)+'" text-anchor="end" fill="rgba(234,238,245,.9)">'+esc(cur+' '+num(lq.mark,lq.mark<10?4:lq.mark<1000?2:0)+' now')+'</text></svg>');
-      html+=out.join('');
-      html+=leg([[C.dn,'longs liquidated below the price, last '+(lq.hours||24)+'h: '+usd(lq.longUsd)],[C.up,'shorts liquidated above: '+usd(lq.shortUsd)],['rgba(234,238,245,.5)',(lq.count||0)+' events · OKX']]);
-    } else html+=empty(lq?'no liquidations recorded yet for '+cur:'liquidations not published yet for '+cur);
+    }
     var fv=c.funding||{}, stT=last(st.total), st30=back(st.total,30), s30=fin(stT)&&fin(st30)?stT-st30:null;
     html+=railsBox([rh('Leverage · '+cur),
-      railTwo('Funding','8h · venue average',fin(f8)?50+clamp(f8/0.001*50,-50,50):null,fin(f8)?(f8*100).toFixed(3)+'%':'—',fin(f8)&&(f8>=0.0005||f8<=-0.0003),['shorts pay','neutral','longs pay'],'Hyperliquid '+(fin(fv.hl)?(fv.hl*100).toFixed(3)+'%':'—')+' · Kraken '+(fin(fv.kf)?(fv.kf*100).toFixed(3)+'%':'—')+' · Bybit '+(fin(fv.bybit)?(fv.bybit*100).toFixed(3)+'%':'—')+' · OKX '+(fin(fv.okx)?(fv.okx*100).toFixed(3)+'%':'—')),
+      railTwo('Funding','8h · venue average',fin(f8)?50+clamp(f8/0.001*50,-50,50):null,fin(f8)?(f8*100).toFixed(3)+'%':'—',fin(f8)&&(f8>=0.0005||f8<=-0.0003),['shorts pay','neutral','longs pay'],'Hyperliquid '+(fin(fv.hl)?(fv.hl*100).toFixed(3)+'%':'—')+' · Kraken '+(fin(fv.kf)?(fv.kf*100).toFixed(3)+'%':'—')),
       railTwo('Open interest','24-hour change',fin(oi24)?50+clamp(oi24*5,-50,50):null,pct(oi24,1),fin(oi24)&&Math.abs(oi24)>=10,['unwinding','flat','building'],'summed across the venues that answered'),
       railTwo('Open interest','7-day change',fin(oi7)?50+clamp(oi7*2.5,-50,50):null,pct(oi7,1),fin(oi7)&&Math.abs(oi7)>=15,null,'summed across venues'),
-      railOne('Liquidated','last 24h · vs 7-day pace',lq&&lq.d7&&fin(lq.d7.longUsd)&&(lq.d7.longUsd+lq.d7.shortUsd)>0?clamp(((lq.longUsd||0)+(lq.shortUsd||0))/((lq.d7.longUsd+lq.d7.shortUsd)/7)*50,0,100):null,lq?usd((lq.longUsd||0)+(lq.shortUsd||0)):'—',false,'24h liquidations against the 7-day daily average (100% = twice the pace)'),
       rh('Dry powder'),
-      railTwo('Stablecoins','30-day change',fin(s30)&&fin(stT)?50+clamp(s30/stT*100*5,-50,50):null,(fin(stT)?bn(stT):'—')+(fin(s30)?' · '+sign(s30)+bn(Math.abs(s30)):''),false,['leaving','flat','arriving'],'USDT + USDC + DAI + USDe supply; change over 30 days')]);
+      railTwo('Stablecoins','30-day change',fin(s30)&&fin(stT)?50+clamp(s30/stT*100*5,-50,50):null,(fin(stT)?bn(stT):'—')+(fin(s30)?' · '+sign(s30)+bn(Math.abs(s30)):''),false,['leaving','flat','arriving'],'all dollar stablecoins in circulation (DefiLlama); change over 30 days')]);
     var ven=d.venues||{}, down=Object.keys(ven).filter(function(k){ return ven[k]!=='ok'; });
     if(down.length) html+='<div class="glm-note">venues not answering: '+esc(down.map(function(k){ return k+' ('+String(ven[k]).slice(0,40)+')'; }).join(', '))+'</div>';
     return html;
@@ -15152,8 +15582,8 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
   /* 10 alerts + journal */
   function rules(){
     var out=[], v=sec('vol'), cr=sec('credit'), br=sec('breadth'), cy=sec('crypto'), lq=sec('liquidity'), fp=sec('fedpath'), ct=sec('cot');
-    if(v&&v.contango){ out.push({id:'vix-invert', on:v.contango.state==='inverted', t:'VIX curve inverted', s:'near-dated fear above far-dated · from panel 02', v:v.asOf}); var vx=last((v.series||{}).vix); out.push({id:'vix-30', on:fin(vx)&&vx>=30, t:'VIX above 30', s:'VIX '+num(vx,1)+' · panel 02', v:v.asOf}); }
-    if(cr){ var hy=last(cr.hy); out.push({id:'hy-5', on:fin(hy)&&hy>=5, t:'Junk spreads over 5%', s:'high-yield '+num(hy,2)+'% · panel 03', v:cr.asOf}); }
+    if(v&&v.series){ var vx=last((v.series||{}).vix), L=v.latest||{}; out.push({id:'vix-30', on:fin(vx)&&vx>=30, t:'VIX above 30', s:'VIX '+num(vx,1)+' · panel 02', v:v.asOf}); out.push({id:'vix-jump', on:fin(L.chg5d)&&L.chg5d>=8, t:'VIX up 8+ points in five sessions', s:(fin(L.chg5d)?sign(L.chg5d)+num(Math.abs(L.chg5d),1):'—')+' · panel 02', v:v.asOf}); }
+    if(cr&&cr.stress&&cr.stress.hy){ var hp=cr.stress.hy.pct1y; out.push({id:'hy-low', on:fin(hp)&&hp<=10, t:'Junk bonds at a one-year low vs Treasuries', s:(fin(hp)?ord(hp)+' percentile':'—')+' · panel 03 (proxy)', v:cr.asOf}); }
     if(br&&br.latest){ var p=br.latest.pct50; out.push({id:'breadth-40', on:fin(p)&&p<40, t:'Breadth under 40%', s:num(p,0)+'% of the US 500 above their 50-day · panel 01', v:br.asOf}); }
     if(cy&&cy.coins){ cy.coins.forEach(function(c){ if(['BTC','ETH','SOL'].indexOf(c.sym)<0) return; out.push({id:'fund-'+c.sym, on:fin(c.fund8h)&&c.fund8h>=0.0005, t:c.sym+' funding above 0.05%', s:(fin(c.fund8h)?(c.fund8h*100).toFixed(3)+'% per 8h':'—')+' · panel 07', v:cy.asOf});
         out.push({id:'oi-'+c.sym, on:fin(c.oiChg7d)&&c.oiChg7d>=15, t:c.sym+' open interest +15% in 7d', s:pct(c.oiChg7d,0)+' · panel 07', v:cy.asOf}); }); }
