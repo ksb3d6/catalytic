@@ -15272,6 +15272,17 @@ window.GLW_DATA={"baked":"2026-10-07","worlds":{"index":["Whole market","#7C8AA5
   border-radius:999px;padding:9px 16px;color:var(--gl-ink,#EAEEF5);font:600 13px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:9500;max-width:86vw;text-align:center;}
 #gllToast.show{opacity:1;transform:translateX(-50%);}
 
+/* light mode (10-07): the tag hues and the add-time toast read on a white page */
+html[data-gl="light"] #gllRes .gll-tag.gll-OTC{color:#8a5a00;border-color:rgba(138,90,0,.45);}
+html[data-gl="light"] #gllRes .gll-tag.gll-ETF{color:#0b5d8a;border-color:rgba(11,93,138,.4);}
+html[data-gl="light"] #gllRes .gll-tag.gll-COIN{color:#5b3fa6;border-color:rgba(91,63,166,.4);}
+html[data-gl="light"] #gllRes .gll-tag,html[data-gl="light"] #gllRes .gll-add,html[data-gl="light"] #gllRes .gll-into button,html[data-gl="light"] #gllRes{border-color:rgba(0,0,0,.16);}
+html[data-gl="light"] #gllRes{box-shadow:0 18px 50px rgba(0,0,0,.18);}
+html[data-gl="light"] #gllRes .gll-r:hover{background:rgba(0,0,0,.05);}
+html[data-gl="light"] #gllToast{background:#1f2937;color:var(--gl-ink,#fff);border-color:transparent;}
+html[data-gl="light"] #gllBar .gll-b.arm{background:#d0323f;color:var(--gl-ink,#fff);}
+html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty) .mk-sym::before{background:#d0323f;color:var(--gl-ink,#fff);}
+
 </style>
 <script id="gl48Lists">
 /* Stage 48 — SHARED LISTS (2026-10-05; the owner: a friend beta-tests the app — "he can just add new watch lists that we both
