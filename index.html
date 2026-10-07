@@ -2496,12 +2496,14 @@ function tfParse(tf){
       var parts=s.split(';');
       for(var j=0;j<parts.length;j++){
         var f=parts[j].split(','), b=null;
-        if(f.length===4){
+        if(f.length===4||f.length===5){
           b={o:tfNum(f[0]),h:tfNum(f[1]),l:tfNum(f[2]),c:tfNum(f[3])};
           if(!isFinite(b.o)||!isFinite(b.h)||!isFinite(b.l)||!isFinite(b.c)){bars=null;break}
-        }else if(f.length===1){
+          if(f.length===5){ var v5=tfNum(f[4]); if(isFinite(v5)&&v5>=0) b.v=v5; }   /* 10-07 (backend v4.17): the bar's VOLUME — optional 5th field; absent = the old bar exactly */
+        }else if(f.length===1||f.length===2){
           b={c:tfNum(f[0])};
           if(!isFinite(b.c)){bars=null;break}
+          if(f.length===2){ var v2=tfNum(f[1]); if(isFinite(v2)&&v2>=0) b.v=v2; }
         }else{bars=null;break}
         bars.push(b);
       }
@@ -2600,7 +2602,7 @@ function tfCandleSVG(bars,w,h,tailN,opts){
   function Y(v){ return (h-p)-(v-lo)*(h-2*p)/rg; }
   var s='',mp='';
   for(var q=0;q<n;q++){ if(M[q]==null)continue; mp+=(mp?' ':'')+(p+q*slot+slot/2).toFixed(1)+','+Y(M[q]).toFixed(1); }
-  if(mp)s+='<polyline points="'+mp+'" fill="none" stroke="'+TF_AM+'" stroke-width="1.2" opacity=".95"/>';
+  if(mp)s+='<polyline points="'+mp+'" fill="none" stroke="'+((opts&&typeof opts.col==='string'&&opts.col)?opts.col:TF_AM)+'" stroke-width="1.2" opacity=".95"/>';   /* 10-07: opts.col = another line colour (the MA / VWAP rows draw their own average through this renderer) */
   if(candle){
     var bw=Math.max(1.6,slot*0.62);
     for(var j=0;j<n;j++){
@@ -2633,7 +2635,7 @@ function tfCandleSVG(bars,w,h,tailN,opts){
     for(var j2=0;j2<n;j2++){ pts+=(pts?' ':'')+(p+j2*slot+slot/2).toFixed(1)+','+Y(B[j2].c).toFixed(1); }
     s+='<polyline points="'+pts+'" fill="none" stroke="'+TF_FL+'" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
   }
-  return tfSvg(w,h)+s+'</svg>';
+  return tfSvg(w,h)+s+((opts&&typeof opts.extra==='string')?opts.extra:'')+'</svg>';   /* 10-07: opts.extra = more svg on top (the VWAP row's anchor mark) */
 }
 
 /* pane 2 — TBO-style clouds (homage approximation: fast EMA8, mid cloud EMA13/21,
@@ -13094,7 +13096,7 @@ html[data-gl] .glt-inone{font:400 12.5px/1.4 -apple-system,BlinkMacSystemFont,"S
      (min(bars, clamp(round(w/6),30,90))). Truth over prettiness: a short frame (a 13-bar crypto monthly) gets a wide band. */
   var UNIT={eq:{m:21,w:5,d:1,h4:1/2,h:1/7}, cr:{m:30,w:7,d:1,h4:1/6,h:1/24}};
   var NEXT={m:'w',w:'d',d:'h4',h4:'h'};                   /* the next-finer frame; H has none */
-  var GUT={candle:1,tbo:2,div:2,bb:2,rsi:2,macd:2};                    /* each renderer's side padding p: its bars span [p, w−p] (tfCandleSVG p=1, the rest p=2) */
+  var GUT={candle:1,tbo:2,div:2,bb:2,rsi:2,macd:2,vol:2,sma:1,atr:2,vwap:1,rs:2,adx:2,stoch:2};                    /* each renderer's side padding p: its bars span [p, w−p] (tfCandleSVG p=1, the rest p=2) */
   /* 10-05 (the owner): the EMA spread is the EMA SPREAD (it is built on EMAs: 8 / 13 / 21 / 40). Two standard oscillators join as OPTIONAL rows —
      RSI 14 and MACD 12·26·9 (drawn by this file: tfRsiSVG / tfMacdSVG below) — and every indicator carries a plain description (`d`),
      shown in the Indicators sheet (the "Indicators" button in the head), where each row is also switched on or off.
@@ -13125,7 +13127,37 @@ html[data-gl] .glt-inone{font:400 12.5px/1.4 -apple-system,BlinkMacSystemFont,"S
     {id:'macd',   s:'MACD 12·26·9',     r:['MACD','12·26·9'],   l:'MACD',       min:35, fn:'tfMacdSVG',   opt:true, why:'MACD line vs its 9-period signal · bars = the gap between them',
       d:['Moving Average Convergence Divergence, the standard 12 · 26 · 9. The grey MACD line is the 12-period EMA minus the 26-period EMA; the thin blue line is its signal — a 9-period EMA of the MACD line.',
          'The bars are the gap between the two (the histogram): green above zero while the MACD line is over its signal (momentum building upward), red below zero while it is under (momentum building downward). Bars shrinking toward zero mean that momentum is fading; the two lines crossing is the classic signal.',
-         'The label says which side of the signal the MACD line is on, and the size of the gap as a percentage of the price.']}];
+         'The label says which side of the signal the MACD line is on, and the size of the gap as a percentage of the price.']},
+    /* 10-07 (the owner: "build everything you just mocked up" — sandbox/techlab-seven): seven more rows. Volume, the simple-MA row and relative
+       strength are ON by default (a newcomer expects them); ATR, VWAP, ADX and the stochastic start off like RSI / MACD. `v`-rows need the
+       bars' volume (backend v4.17 serves it as a fifth field; a frame without it shows "no volume yet", never a fake bar). The MA period is
+       the person's (LSM, default 50) like the EMA's. {N} in a description = that period. */
+    {id:'vol',    s:'VOLUME · 20 AVG',   r:['VOLUME','20 AVG'],  l:'Volume',     min:8,  fn:'tfVolSVG',    needV:true, why:'the last bar’s volume ÷ its 20-period average · 1.5× and up = real participation',
+      d:['Each bar is the volume traded in that period, green when the period closed up and red when it closed down. The line is the 20-period average of volume — the normal day.',
+         'A move on bars above the average has participation behind it; a breakout on bars below the average is suspect. A single huge bar at the end of a long move is often the climax.',
+         'The label is the last bar as a multiple of its average: 1.0× is a normal period, 2× is twice the usual crowd. Stocks and funds count shares; coins count dollars traded.']},
+    {id:'sma',    s:'CANDLES · 50 MA',   r:['CANDLES','50 MA'],  l:'Simple MA',  min:8,  fn:'tfSmaSVG',    why:'last close vs the {N}-period simple average · arrow = the average’s own slope',
+      d:['The same candles as the first row, under a SIMPLE moving average instead of an exponential one: the plain average of the last {N} closes, every close weighted the same. It turns later than the EMA and is the line most people mean by “the 50-day” or “the 200-day”.',
+         'The period is yours — change the number above (default 50; 200 is the other classic). The read works exactly like the EMA row: how far the last close is from the average, and the arrow is the direction the average itself is moving. Green: price above a rising average. Red: below a falling one. Grey: mixed.']},
+    {id:'atr',    s:'ATR 14',            r:['ATR','14'],         l:'ATR',        min:16, fn:'tfAtrSVG',    opt:true, why:'average true range as a % of price · the dashed line is the window’s median — above it the name is moving more than usual',
+      d:['The Average True Range: how far the name travels in a normal period, counting the gaps between one close and the next open. Shown as a percentage of price so a $5 stock and a $500 stock read the same way; the label also gives it in the name’s own units.',
+         'It is a ruler, not a signal. Traders size a position from it (a wider range → a smaller position) and set stops from it (two ATRs below the entry is a common rule), so a stop sits outside the normal noise. A rising ATR means the ride is getting rougher; a falling one, calmer. The dashed line is the median of the plotted window, so “more than usual” is visible at a glance.']},
+    {id:'vwap',   s:'CANDLES · VWAP',    r:['CANDLES','VWAP'],   l:'VWAP',       min:8,  fn:'tfVwapSVG',   opt:true, needV:true, why:'last close vs the volume-weighted average price, anchored to the first bar in view',
+      d:['VWAP is the average price actually paid, weighting every bar by how much traded there. It is the line institutional desks and algos measure themselves against: buying below it is “a good fill”, and price tends to react when it comes back to it.',
+         'Here it is ANCHORED: the line starts at the first bar in view (the small mark) and accumulates from there — the swing trader’s anchored VWAP. The frames carry no clock, so a session-by-session restart is not drawn; on the hourly frame, scroll the window and the anchor moves with it.',
+         'The label is how far the last close sits above or below it.']},
+    {id:'rs',     s:'RELATIVE STRENGTH', r:['RS','vs SPY'],      l:'Rel. strength', min:8, fn:'tfRsSVG',   needB:true, why:'the name ÷ its benchmark (SPY for a stock, BTC for a coin), rebased to 100 at the first bar in view · arrow = vs its own 20-period average',
+      d:['The ratio of the name to its benchmark — SPY for a stock or fund, bitcoin for a coin — rebased to 100 at the first bar shown. It strips the market out: a line going up means the name is beating the index, whatever the index itself is doing. A stock can fall and still lead if the market falls more.',
+         'Green area above 100: it has outperformed since the window began; red below: underperformed. The dashed line is the 20-period average of the ratio, so the arrow tells you whether the leadership is improving or fading right now.',
+         'This is the row that matches how the grades and the sector rotation think: the strongest names in a weak tape are the ones that hold their relative line. The benchmark’s bars are aligned to the name’s by position from the newest bar.']},
+    {id:'adx',    s:'ADX 14 · DMI',      r:['ADX','DMI 14'],     l:'ADX',        min:30, fn:'tfAdxSVG',    opt:true, why:'ADX above 25 = a trend worth following (the DI lines say which way); under 20 = chop, trend tools misfire',
+      d:['Wilder’s directional system. The white line is the ADX — the STRENGTH of the trend from 0 to 100, with no direction of its own. Above the 25 line a trend is in force and trend tools (the averages, the EMA spread) work; under 20 the name is chopping and those same tools whipsaw, while the oscillators (RSI, stochastic) work better.',
+         'The green line is +DI (upward pressure) and the red line −DI (downward pressure): whichever is on top says which way the trend points, and their crossing is the classic entry. A rising ADX with +DI on top is a strong uptrend; a falling ADX from a high level is a trend running out of steam.',
+         'The label is the ADX reading with “trending ↑ / ↓” or “chop”.']},
+    {id:'stoch',  s:'STOCH 14·3·3',      r:['STOCH','14·3·3'],   l:'Stochastic', min:20, fn:'tfStochSVG',  opt:true, why:'%K above 80 overbought, below 20 oversold · arrow = %K vs its %D signal',
+      d:['The stochastic oscillator asks where the last close sits inside the range of the last 14 periods: 100 = at the top of the range, 0 = at the bottom. The white line is %K (smoothed over 3), the blue line is %D, its 3-period average — the signal.',
+         'Above 80 (shaded red) the name is called overbought, below 20 (shaded green) oversold. Like RSI it can stay stretched in a strong trend; the usual signal is %K crossing back through %D from inside a shaded zone. It moves faster than RSI, which is why people keep both.',
+         'The label is the %K reading, the zone, and which side of its signal it is on.']}];
   /* 10-06 (the owner: "not just a thing with a toggle — a menu that opens up, you can put them in, and arrange which one's at the top"):
      the rows ON THE PAGE are an ORDERED list (ORDER, saved as 'aibo.gl.tech.inds'); the Indicators sheet shows that list with ▲ ▼ ×
      per row, and under it the indicators not on the page with an Add button. Each row folds open to its description. */
@@ -13134,10 +13166,17 @@ html[data-gl] .glt-inone{font:400 12.5px/1.4 -apple-system,BlinkMacSystemFont,"S
   var LSE='aibo.gl.tech.ema';
   function emaN(){ try{ var v=parseInt(localStorage.getItem(LSE),10); return (v>=2&&v<=400)?v:55; }catch(_){ return 55; } }
   function setEmaN(v){ v=parseInt(v,10); if(!(v>=2&&v<=400)) return false; try{ localStorage.setItem(LSE,String(v)); }catch(_){} paintLook(false); repaintInfo(); return true; }
-  var LSI='aibo.gl.tech.inds';
+  var LSM='aibo.gl.tech.ma';                              /* 10-07: the simple-MA row's period — the person's, like the EMA's (default 50; 2..400) */
+  function maN(){ try{ var v=parseInt(localStorage.getItem(LSM),10); return (v>=2&&v<=400)?v:50; }catch(_){ return 50; } }
+  function setMaN(v){ v=parseInt(v,10); if(!(v>=2&&v<=400)) return false; try{ localStorage.setItem(LSM,String(v)); }catch(_){} paintLook(false); repaintInfo(); return true; }
+  var LSI='aibo.gl.tech.inds', LSI2='aibo.gl.tech.inds.v2';
   function savedOrder(){ var def=IND.filter(function(i){ return !i.opt; }).map(function(i){ return i.id; });
     try{ var v=localStorage.getItem(LSI); if(v){ var ids=v.split(',').filter(function(x,k,a){ return a.indexOf(x)===k&&IND.some(function(i){ return i.id===x; }); });
-      if(ids.length) return ids; } }catch(_){}
+      /* 10-07: a device that saved its order before the seven new rows existed gets the three new DEFAULT rows appended once (v2 flag);
+         a row it later takes off stays off — the flag is the memory of that one migration, never a re-add */
+      var done=false; try{ done=localStorage.getItem(LSI2)==='1'; }catch(_){}
+      if(!done){ ['vol','sma','rs'].forEach(function(id){ if(ids.indexOf(id)<0) ids.push(id); }); try{ localStorage.setItem(LSI2,'1'); localStorage.setItem(LSI,ids.join(',')); }catch(_){} }
+      if(ids.length) return ids; } else { try{ localStorage.setItem(LSI2,'1'); }catch(_){} } }catch(_){}
     return def; }
   var ORDER=savedOrder();
   function ACT(){ var a=ORDER.map(byId).filter(function(i,k){ return i&&ORDER[k]===i.id; }); return a.length?a:[IND[0]]; }
@@ -13191,6 +13230,112 @@ html[data-gl] .glt-inone{font:400 12.5px/1.4 -apple-system,BlinkMacSystemFont,"S
     s+=line(sg,C_CY,'.9','.85')+line(m,C_FL,'1.4','1');
     return window.tfSvg(w,h)+s+'</svg>';
   };
+  /* ---- 10-07 the seven new renderers (same signature + conventions: p = 2 except the candle-based ones at 1, the tail window, tfSvg, colour by value).
+     Volume comes from bars[i].v (backend v4.17; tfParse keeps it) — a frame without it returns '' and fit() says "no volume yet". ---- */
+  var C_AM='#e8b04a', C_WH='rgba(234,238,245,.88)';
+  function hasVol(bars){ if(!bars||bars.length<4) return false; var n=0; for(var i=0;i<bars.length;i++) if(typeof bars[i].v==='number'&&isFinite(bars[i].v)) n++; return n>=Math.ceil(bars.length*.6); }
+  function smaOf(a,p){ var o=[], s=0; for(var i=0;i<a.length;i++){ var v=a[i]; if(v==null){ o.push(null); s=0; continue; } s+=v; if(i>=p) s-=(a[i-p]==null?0:a[i-p]); o.push(i>=p-1?s/p:null); } return o; }
+  function rma(a,p){ var o=[], prev=null, s=0, k=0; for(var i=0;i<a.length;i++){ var v=a[i]; if(v==null){ o.push(null); continue; } if(prev==null){ s+=v; k++; if(k<p){ o.push(null); continue; } prev=s/p; o.push(prev); continue; } prev=(prev*(p-1)+v)/p; o.push(prev); } return o; }   /* Wilder's smoothing */
+  function trueRanges(bars){ var o=[]; for(var i=0;i<bars.length;i++){ var b=bars[i], h=b.h!=null?b.h:b.c, l=b.l!=null?b.l:b.c, pc=i?bars[i-1].c:null; o.push(pc==null?h-l:Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc))); } return o; }
+  function medianOf(a){ var v=a.filter(function(x){ return x!=null; }).sort(function(p,q){ return p-q; }); return v.length?v[Math.floor(v.length/2)]:null; }
+  function polyline(X,Y,arr,col,sw,op,dash){ var pts=''; for(var k=0;k<arr.length;k++){ if(arr[k]==null) continue; pts+=(pts?' ':'')+X(k).toFixed(1)+','+Y(arr[k]).toFixed(1); }
+    return pts?'<polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="'+sw+'" stroke-linecap="round" stroke-linejoin="round"'+(op?' opacity="'+op+'"':'')+(dash?' stroke-dasharray="'+dash+'"':'')+'/>':''; }
+  window.tfVolSVG=function(bars,w,h,tailN){
+    if(!bars||bars.length<8||!hasVol(bars)) return '';
+    var vol=bars.map(function(b){ return typeof b.v==='number'?b.v:null; }), avg=smaOf(vol,20), n=Math.min(tailN||60,bars.length), V=vol.slice(-n), A=avg.slice(-n), B=bars.slice(-n), p=2;
+    var mx=0; for(var i=0;i<n;i++){ if(V[i]!=null&&V[i]>mx) mx=V[i]; if(A[i]!=null&&A[i]>mx) mx=A[i]; } if(!(mx>0)) return '';
+    function X(i){ return p+i*(w-2*p)/(n-1); } function Y(v){ return (h-p)-(v/(mx*1.06))*(h-2*p); }
+    var s='', bw=Math.max(1,(w-2*p)/n*.66);
+    for(i=0;i<n;i++){ if(V[i]==null) continue; var up=B[i].o==null?(i?B[i].c>=B[i-1].c:true):B[i].c>=B[i].o;
+      s+='<rect x="'+(X(i)-bw/2).toFixed(1)+'" y="'+Y(V[i]).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(.5,(h-p)-Y(V[i])).toFixed(1)+'" fill="'+(up?C_UP:C_DN)+'" opacity=".55"/>'; }
+    s+=polyline(X,Y,A,C_WH,'1.3','.9');
+    return window.tfSvg(w,h)+s+'</svg>';
+  };
+  window.tfSmaSVG=function(bars,w,h,tailN,opts){ if(!bars||bars.length<8) return ''; var o={}; if(opts){ for(var q in opts) if(Object.prototype.hasOwnProperty.call(opts,q)) o[q]=opts[q]; }
+    o.ema=smaOf(window.tfCloses(bars),maN()); o.col=C_AM; return window.tfCandleSVG(bars,w,h,tailN,o); };
+  window.tfAtrSVG=function(bars,w,h,tailN){
+    if(!bars||bars.length<16) return '';
+    var tr=trueRanges(bars), at=rma(tr,14), cl=window.tfCloses(bars), pc=at.map(function(v,i){ return v==null?null:v/cl[i]*100; }), n=Math.min(tailN||60,bars.length), A=pc.slice(-n), p=2;
+    var vals=A.filter(function(v){ return v!=null; }); if(!vals.length) return ''; var mx=Math.max.apply(null,vals)*1.15||1, med=medianOf(A);
+    function X(i){ return p+i*(w-2*p)/(n-1); } function Y(v){ return (h-p)-(v/mx)*(h-2*p); }
+    var s='', d='', pen=false, i0=-1, i1=-1;
+    for(var i=0;i<n;i++){ if(A[i]==null){ pen=false; continue; } d+=(pen?'L':'M')+X(i).toFixed(1)+','+Y(A[i]).toFixed(1); pen=true; if(i0<0) i0=i; i1=i; }
+    if(!d) return '';
+    s+='<path d="'+d+' L'+X(i1).toFixed(1)+','+(h-p)+' L'+X(i0).toFixed(1)+','+(h-p)+' Z" fill="'+C_WH+'" opacity=".07"/>';
+    if(med!=null) s+='<line x1="'+p+'" x2="'+(w-p)+'" y1="'+Y(med).toFixed(1)+'" y2="'+Y(med).toFixed(1)+'" stroke="'+C_FL+'" stroke-width=".7" stroke-dasharray="2 4" opacity=".6"/>';
+    s+='<path d="'+d+'" fill="none" stroke="'+C_WH+'" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
+    var lv=A[n-1]; if(lv!=null) s+='<circle cx="'+(w-p)+'" cy="'+Y(lv).toFixed(1)+'" r="1.8" fill="'+(med!=null&&lv>med*1.3?C_AM:C_FL)+'"/>';
+    return window.tfSvg(w,h)+s+'</svg>';
+  };
+  function vwapOf(bars){ var o=[], pv=0, vv=0; for(var i=0;i<bars.length;i++){ var b=bars[i], v=typeof b.v==='number'?b.v:null; if(v==null){ o.push(null); continue; } var tp=(b.h!=null&&b.l!=null)?(b.h+b.l+b.c)/3:b.c; pv+=tp*v; vv+=v; o.push(vv>0?pv/vv:null); } return o; }
+  window.tfVwapSVG=function(bars,w,h,tailN,opts){
+    if(!bars||bars.length<8||!hasVol(bars)) return '';
+    var tail=tailN?Math.min(bars.length,tailN):Math.max(20,Math.min(bars.length,Math.floor(w/4.5))), B=bars.slice(-tail), vw=vwapOf(B);   /* anchored at the first bar IN VIEW */
+    var o={}; if(opts){ for(var q in opts) if(Object.prototype.hasOwnProperty.call(opts,q)) o[q]=opts[q]; }
+    o.ema=vw; o.col=C_CY; o.extra='<circle cx="'+(1+((w-2)/B.length)/2).toFixed(1)+'" cy="'+(h-5)+'" r="2" fill="'+C_CY+'" opacity=".9"/>';   /* the anchor mark under the first bar */
+    return window.tfCandleSVG(B,w,h,tail,o);
+  };
+  window.tfRsSVG=function(bars,w,h,tailN,opts){
+    var bb=opts&&opts.bench; if(!bars||bars.length<8||!bb||bb.length<8) return '';
+    var n=Math.min(tailN||60,bars.length,bb.length), A=bars.slice(-n), Bb=bb.slice(-n), r=[], p=2;
+    for(var i=0;i<n;i++) r.push((A[i].c>0&&Bb[i].c>0)?A[i].c/Bb[i].c:null);
+    var base=null; for(i=0;i<n;i++) if(r[i]!=null){ base=r[i]; break; } if(!base) return '';
+    var rr=r.map(function(v){ return v==null?null:v/base*100; }), av=smaOf(rr,20);
+    var vals=rr.concat(av).filter(function(v){ return v!=null; }), lo=Math.min.apply(null,vals), hi=Math.max.apply(null,vals); if(lo>99) lo=99; if(hi<101) hi=101; var pad=(hi-lo)*.08; lo-=pad; hi+=pad;
+    function X(i){ return p+i*(w-2*p)/(n-1); } function Y(v){ return (h-p)-((v-lo)/(hi-lo))*(h-2*p); }
+    var s='', y100=Y(100), d='', pen=false, i0=-1, i1=-1;
+    for(i=0;i<n;i++){ if(rr[i]==null){ pen=false; continue; } d+=(pen?'L':'M')+X(i).toFixed(1)+','+Y(rr[i]).toFixed(1); pen=true; if(i0<0) i0=i; i1=i; }
+    if(!d) return '';
+    var lastV=rr[i1], col=lastV>=100?C_UP:C_DN;
+    s+='<path d="'+d+' L'+X(i1).toFixed(1)+','+y100.toFixed(1)+' L'+X(i0).toFixed(1)+','+y100.toFixed(1)+' Z" fill="'+col+'" opacity=".12"/>';
+    s+='<line x1="'+p+'" x2="'+(w-p)+'" y1="'+y100.toFixed(1)+'" y2="'+y100.toFixed(1)+'" stroke="'+C_FL+'" stroke-width=".7" stroke-dasharray="3 2.5" opacity=".55"/>';
+    s+=polyline(X,Y,av,C_FL,'1','.6','3 3');
+    s+='<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+    return window.tfSvg(w,h)+s+'</svg>';
+  };
+  function adxOf(bars){ var n=bars.length, pdm=[null], mdm=[null], tr=trueRanges(bars);
+    for(var i=1;i<n;i++){ var h1=bars[i].h!=null?bars[i].h:bars[i].c, h0=bars[i-1].h!=null?bars[i-1].h:bars[i-1].c, l1=bars[i].l!=null?bars[i].l:bars[i].c, l0=bars[i-1].l!=null?bars[i-1].l:bars[i-1].c, up=h1-h0, dn=l0-l1;
+      pdm.push(up>dn&&up>0?up:0); mdm.push(dn>up&&dn>0?dn:0); }
+    var sTr=rma(tr.slice(1),14), sP=rma(pdm.slice(1),14), sM=rma(mdm.slice(1),14), pdi=[null], mdi=[null], dx=[];
+    for(i=0;i<sTr.length;i++){ var ok=sTr[i]!=null&&sP[i]!=null&&sM[i]!=null&&sTr[i]>0; var a=ok?sP[i]/sTr[i]*100:null, b=ok?sM[i]/sTr[i]*100:null; pdi.push(a); mdi.push(b); dx.push((a==null||b==null||a+b===0)?null:Math.abs(a-b)/(a+b)*100); }
+    var adx=[null].concat(rma(dx,14)); return {pdi:pdi, mdi:mdi, adx:adx}; }
+  window.tfAdxSVG=function(bars,w,h,tailN){
+    if(!bars||bars.length<30) return '';
+    var M=adxOf(bars), n=Math.min(tailN||60,bars.length), A=M.adx.slice(-n), P=M.pdi.slice(-n), N=M.mdi.slice(-n), p=2;
+    if(!A.some(function(v){ return v!=null; })) return '';
+    var mx=60; [A,P,N].forEach(function(arr){ arr.forEach(function(v){ if(v!=null&&v>mx) mx=v; }); });
+    function X(i){ return p+i*(w-2*p)/(n-1); } function Y(v){ return (h-p)-(v/mx)*(h-2*p); }
+    var s='<line x1="'+p+'" x2="'+(w-p)+'" y1="'+Y(25).toFixed(1)+'" y2="'+Y(25).toFixed(1)+'" stroke="'+C_FL+'" stroke-width=".7" stroke-dasharray="3 2.5" opacity=".5"/>'
+      +'<line x1="'+p+'" x2="'+(w-p)+'" y1="'+Y(20).toFixed(1)+'" y2="'+Y(20).toFixed(1)+'" stroke="'+C_FL+'" stroke-width=".6" stroke-dasharray="1 4" opacity=".3"/>';
+    s+=polyline(X,Y,P,C_UP,'1.1','.8')+polyline(X,Y,N,C_DN,'1.1','.8')+polyline(X,Y,A,C_WH,'1.6','1');
+    var lv=A[n-1]; if(lv!=null) s+='<circle cx="'+(w-p)+'" cy="'+Y(lv).toFixed(1)+'" r="1.8" fill="'+(lv>=25?(P[n-1]>N[n-1]?C_UP:C_DN):C_FL)+'"/>';
+    return window.tfSvg(w,h)+s+'</svg>';
+  };
+  function stochOf(bars){ var n=bars.length, k=[]; for(var i=0;i<n;i++){ if(i<13){ k.push(null); continue; } var hh=-Infinity, ll=Infinity; for(var j=i-13;j<=i;j++){ var b=bars[j], hv=b.h!=null?b.h:b.c, lv=b.l!=null?b.l:b.c; if(hv>hh) hh=hv; if(lv<ll) ll=lv; } k.push(hh>ll?(bars[i].c-ll)/(hh-ll)*100:50); }
+    var ks=smaOf(k,3), d=smaOf(ks,3); return {k:ks, d:d}; }
+  window.tfStochSVG=function(bars,w,h,tailN){
+    if(!bars||bars.length<20) return '';
+    var M=stochOf(bars), n=Math.min(tailN||60,bars.length), K=M.k.slice(-n), Dd=M.d.slice(-n), p=2;
+    if(!K.some(function(v){ return v!=null; })) return '';
+    function X(i){ return p+i*(w-2*p)/(n-1); } function Y(v){ return (h-p)-(v/100)*(h-2*p); }
+    var s='<rect x="'+p+'" y="'+Y(100).toFixed(1)+'" width="'+(w-2*p)+'" height="'+(Y(80)-Y(100)).toFixed(1)+'" fill="'+C_DN+'" opacity=".09"/><rect x="'+p+'" y="'+Y(20).toFixed(1)+'" width="'+(w-2*p)+'" height="'+(Y(0)-Y(20)).toFixed(1)+'" fill="'+C_UP+'" opacity=".09"/>'
+      +'<line x1="'+p+'" x2="'+(w-p)+'" y1="'+Y(80).toFixed(1)+'" y2="'+Y(80).toFixed(1)+'" stroke="'+C_DN+'" stroke-width=".7" stroke-dasharray="3 2.5" opacity=".5"/>'
+      +'<line x1="'+p+'" x2="'+(w-p)+'" y1="'+Y(20).toFixed(1)+'" y2="'+Y(20).toFixed(1)+'" stroke="'+C_UP+'" stroke-width=".7" stroke-dasharray="3 2.5" opacity=".5"/>';
+    s+=polyline(X,Y,Dd,C_CY,'.9','.85')+polyline(X,Y,K,C_WH,'1.4','1');
+    var lv=K[n-1]; if(lv!=null) s+='<circle cx="'+(w-p)+'" cy="'+Y(lv).toFixed(1)+'" r="1.8" fill="'+(lv>80?C_DN:lv<20?C_UP:C_FL)+'"/>';
+    return window.tfSvg(w,h)+s+'</svg>';
+  };
+  /* the benchmarks for the relative-strength row: /bench.json (backend v4.17 — SPY + BTC frames), fetched on show, kept 15 min */
+  var BASE=String(window.AIBO_LIVE_URL||'https://asset-grading-production.up.railway.app/universe.json').replace(/\/universe\.json.*$/,'');
+  var BENCH={at:0, data:null, busy:false, err:null, stamp:0};
+  function benchName(c){ return (c||S.cur)&&((c||S.cur).kind==='cr')?'BTC':'SPY'; }
+  function benchBars(tf){ var d=BENCH.data, nm=benchName(); var e=d&&d.bench&&d.bench[nm]; if(!e||!e.tf) return null; var P=window.tfParse(e.tf); return P?(P[tf]||null):null; }
+  function loadBench(force){ if(BENCH.busy) return; var now=Date.now(); if(!force&&BENCH.data&&now-BENCH.at<15*60*1000) return; if(!force&&BENCH.err&&now-BENCH.at<5*60*1000) return;
+    BENCH.busy=true; var ctrl=null; try{ ctrl=new AbortController(); }catch(_){} var to=setTimeout(function(){ if(ctrl) ctrl.abort(); },12000), opt={cache:'no-store'}; if(ctrl) opt.signal=ctrl.signal;
+    fetch(BASE+'/bench.json',opt).then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.json(); })
+      .then(function(j){ if(!j||!j.bench) throw new Error('shape'); BENCH.data=j; BENCH.err=null; BENCH.stamp++; })
+      .catch(function(e){ BENCH.err=String(e&&e.message||e); BENCH.stamp++; })   /* the RS cells re-key on a failure too, so they can say so */
+      .then(function(){ clearTimeout(to); BENCH.busy=false; BENCH.at=Date.now(); if(S.open) schedule(); }); }
   var root=document.createElement('section'); root.id='glTech'; root.setAttribute('aria-label','Technicals'); B.appendChild(root);
   var LQ=window.matchMedia?window.matchMedia('(orientation:landscape) and (max-height:520px) and (pointer:coarse)'):null;
   /* §74 (round 11): `door` = 'fin' when the page opened as the Financials door's TECHNICALS FACE (GLFin's seg, show(key,{door:'fin'})): body.gl-fin
@@ -13323,8 +13468,24 @@ html[data-gl] .glt-inone{font:400 12.5px/1.4 -apple-system,BlinkMacSystemFont,"S
     var cl=window.tfCloses(bars), M=macdOf(cl), n=cl.length, m=M.m[n-1], sg=M.sig[n-1]; if(m==null||sg==null||!cl[n-1]) return null;
     var g=m-sg; return {v:g>0?1:g<0?-1:0, t:(g>=0?'above signal ':'below signal ')+pct(g/cl[n-1])};
   }
-  var READ={candle:readCandle, tbo:readTbo, div:readDiv, bb:readBb, rsi:readRsi, macd:readMacd};
-  function readOf(ind,bars,tail){ return (bars&&bars.length>=ind.min)?READ[ind.id](bars,tail):null; }
+  function readVol(bars){ if(!bars||bars.length<8||!hasVol(bars)) return null; var vol=bars.map(function(b){ return typeof b.v==='number'?b.v:null; }), a=smaOf(vol,20), n=vol.length, av=a[n-1], v=vol[n-1];
+    if(av==null||!(av>0)||v==null) return {v:0, t:'vol · avg needs 20 bars'}; var r=v/av; return {v:r>=1.5?1:r<.7?-1:0, t:r.toFixed(1)+'× avg'}; }
+  function readSma(bars){ var N=maN(); if(!bars||bars.length<N) return null; var cl=window.tfCloses(bars), m=smaOf(cl,N), n=cl.length, e=m[n-1], c=cl[n-1]; if(e==null) return null;
+    var back=m[n-4]!=null?m[n-4]:(m[n-2]!=null?m[n-2]:null), slope=back==null?0:e-back, dir=c>e?1:c<e?-1:0, v=(dir>0&&slope>=0)?1:(dir<0&&slope<=0)?-1:0;
+    return {v:v, t:pct((c-e)/e)+' '+(slope>0?'↗':slope<0?'↘':'→')}; }
+  function readAtr(bars){ if(!bars||bars.length<16) return null; var at=rma(trueRanges(bars),14), n=bars.length, a=at[n-1], c=bars[n-1].c; if(a==null||!c) return null; var pcv=a/c*100;
+    var tailA=at.slice(-60).map(function(v,i){ return v==null?null:v; }), med=medianOf(tailA); return {v:(med!=null&&a>med*1.3)?-1:0, t:pcv.toFixed(pcv<1?2:1)+'% · '+(c>=100?a.toFixed(2):c>=1?a.toFixed(3):a.toPrecision(3))}; }
+  function readVwap(bars,tail){ if(!bars||bars.length<8||!hasVol(bars)) return null; var B=bars.slice(-Math.min(bars.length,tail||60)), vw=vwapOf(B), n=B.length, v=vw[n-1], c=B[n-1].c; if(v==null||!c) return null; return {v:c>v?1:c<v?-1:0, t:pct((c-v)/v)+' vs VWAP'}; }
+  function readRs(){ return null; }                      /* never called: readOf() routes the RS row to readRsFor() with THAT frame's benchmark bars */
+  function readRsFor(bars,bb,tail){ if(!bars||bars.length<8||!bb||bb.length<8) return null; var n=Math.min(tail||60,bars.length,bb.length), A=bars.slice(-n), Bb=bb.slice(-n), rr=[], base=null;
+    for(var i=0;i<n;i++){ var r=(A[i].c>0&&Bb[i].c>0)?A[i].c/Bb[i].c:null; if(r!=null&&base==null) base=r; rr.push(r==null||base==null?null:r/base*100); } var av=smaOf(rr,20), lv=rr[n-1], am=av[n-1]; if(lv==null) return null;
+    var lead=am==null?(lv>=100):lv>am; return {v:(lv>=100&&lead)?1:(lv<100&&!lead)?-1:0, t:(lv>=100?'leads ':'lags ')+benchName()+' '+pct((lv-100)/100)+(am==null?'':lead?' ↗':' ↘')}; }
+  function readAdx(bars){ if(!bars||bars.length<30) return null; var M=adxOf(bars), n=bars.length, a=M.adx[n-1], p=M.pdi[n-1], m=M.mdi[n-1]; if(a==null) return null; var tr=a>=25;
+    return {v:tr?(p>m?1:-1):0, t:a.toFixed(0)+(tr?(p>m?' trending ↑':' trending ↓'):' chop')}; }
+  function readStoch(bars){ if(!bars||bars.length<20) return null; var M=stochOf(bars), n=bars.length, k=M.k[n-1], d=M.d[n-1]; if(k==null) return null;
+    return {v:k>80?-1:k<20?1:0, t:k.toFixed(0)+(k>80?' overbought':k<20?' oversold':'')+(d==null?'':k>d?' ↗':' ↘')}; }
+  var READ={candle:readCandle, tbo:readTbo, div:readDiv, bb:readBb, rsi:readRsi, macd:readMacd, vol:readVol, sma:readSma, atr:readAtr, vwap:readVwap, rs:readRs, adx:readAdx, stoch:readStoch};
+  function readOf(ind,bars,tail,bb){ if(!(bars&&bars.length>=ind.min)) return null; if(ind.id==='rs') return readRsFor(bars,bb,tail); return READ[ind.id](bars,tail); }
   function cls(rd){ return !rd?'gap':rd.v>0?'up':rd.v<0?'dn':'flat'; }
 
   /* ---------- pieces ---------- */
@@ -13337,7 +13498,7 @@ html[data-gl] .glt-inone{font:400 12.5px/1.4 -apple-system,BlinkMacSystemFont,"S
   function wallHTML(){
     var h='<div class="glt-wall" data-techwall><div class="glt-wgrid" style="--glt-n:'+ACT().length+'"><div class="glt-corner"></div>';
     h+=TFS.map(function(t){ return '<div class="glt-th" data-tf="'+t[0]+'">'+t[2]+'</div>'; }).join('');
-    ACT().forEach(function(i){ var rr=i.id==='candle'?['CANDLES',emaN()+' EMA']:i.r; h+='<div class="glt-rl" title="'+esc(i.s)+'">'+rr.map(function(x){ return '<span>'+x+'</span>'; }).join('')+'</div>'; TFS.forEach(function(t){ h+=plotHTML('cell',i.id,t[0],'ind'); }); });
+    ACT().forEach(function(i){ var rr=i.id==='candle'?['CANDLES',emaN()+' EMA']:i.id==='sma'?['CANDLES',maN()+' MA']:i.id==='rs'?['RS','vs '+benchName()]:i.r; h+='<div class="glt-rl" title="'+esc(i.s)+'">'+rr.map(function(x){ return '<span>'+x+'</span>'; }).join('')+'</div>'; TFS.forEach(function(t){ h+=plotHTML('cell',i.id,t[0],'ind'); }); });
     return h+'</div></div>';
   }
   function stackHTML(){
@@ -13397,9 +13558,11 @@ html[data-gl] .glt-inone{font:400 12.5px/1.4 -apple-system,BlinkMacSystemFont,"S
     [].forEach.call(root.querySelectorAll('.glt-plot'),function(el){
       var I=byId(el.getAttribute('data-ind')), tf=el.getAttribute('data-tf'), mode=el.getAttribute('data-mode'), bars=P[tf]||null;
       var w=el.clientWidth, h=el.clientHeight; if(w<40||h<20) return;
-      var key=w+'x'+h+'|'+S.cur.kind+':'+(S.cur.fam?S.cur.fam+'/':'')+S.cur.key+'|'+st; if(el.getAttribute('data-fit')===key) return; el.setAttribute('data-fit',key);
-      var tail=tailFor(w), o=null;
+      var key=w+'x'+h+'|'+S.cur.kind+':'+(S.cur.fam?S.cur.fam+'/':'')+S.cur.key+'|'+st+'|'+emaN()+'/'+maN()+(I.id==='rs'?'|b'+BENCH.stamp:''); if(el.getAttribute('data-fit')===key) return; el.setAttribute('data-fit',key);
+      var tail=tailFor(w), o=null, bb=null;
       var rd=el.querySelector('.rd');
+      if((I.id==='sma'||I.id==='vwap')&&S.cur.kind==='cr') o={line:true};      /* 10-07: the candle-based rows share §54's line mode for coins */
+      if(I.id==='rs'){ bb=benchBars(tf); o={bench:bb}; }
       if(I.id==='candle'){                                 /* the renderer contract (§56): only the candle row takes opts; the other three rows are called as before */
         if(S.cur.kind==='cr') o={line:true};               /* §54: crypto = the close line + area, never candles */
         if(emaN()!==55){ o=o||{}; o.ema=window.tfEma(window.tfCloses(bars),emaN()); }   /* 10-07: the person's own length, from the frame's bars */
@@ -13408,10 +13571,15 @@ html[data-gl] .glt-inone{font:400 12.5px/1.4 -apple-system,BlinkMacSystemFont,"S
       }
       var svg=(bars&&bars.length>=I.min)?(o?window[I.fn](bars,w,h,tail,o):window[I.fn](bars,w,h,tail)):'';
       var sv=el.querySelector('.sv'), gp=el.querySelector('.gp'), nx=el.querySelector('.nx');
-      if(!svg){ el.classList.add('gap'); sv.innerHTML=''; gp.hidden=false; gp.textContent=bars?'short history':(tf==='h'||tf==='h4')?'no intraday yet':'short history'; setRead(el,null,mode,tf);
+      if(!svg){ el.classList.add('gap'); sv.innerHTML=''; gp.hidden=false;
+        gp.textContent=!bars?((tf==='h'||tf==='h4')?'no intraday yet':'short history')
+          :(I.needV&&bars.length>=I.min&&!hasVol(bars))?'no volume yet'                            /* 10-07: the frame predates the v4.17 volume field — the next pass fills it */
+          :(I.needB&&bars.length>=I.min&&!bb)?(BENCH.err?'benchmark unreachable':BENCH.data?'benchmark not served':'benchmark loading…')
+          :'short history';
+        setRead(el,null,mode,tf);
         if(nx){ nx.hidden=true; } el.removeAttribute('data-next'); el.removeAttribute('title'); return; }
       el.classList.remove('gap'); gp.hidden=true; sv.innerHTML=svg;
-      setRead(el,readOf(I,bars,tail),mode,tf);
+      setRead(el,readOf(I,bars,tail,bb),mode,tf);
       nextWin(el,I,tf,P,w,tail,bars);
     });
   }
@@ -13436,7 +13604,7 @@ html[data-gl] .glt-inone{font:400 12.5px/1.4 -apple-system,BlinkMacSystemFont,"S
       if(t.closest('[data-techinfox]')||(t.matches&&t.matches('[data-techsheet]'))){ closeInfo(); return; }
       if((b=t.closest('[data-techadd]'))){ addInd(b.getAttribute('data-techadd')); return; }
       if((b=t.closest('[data-techrm]'))){ removeInd(b.getAttribute('data-techrm')); return; }
-      if(t.closest('[data-techema]')||t.closest('[data-techgrab]')) return;
+      if(t.closest('[data-techema]')||t.closest('[data-techma]')||t.closest('[data-techgrab]')) return;
       if(t.closest('[data-techinfo]')){ openInfo(); return; }
       if(t.closest('[data-techclose]')){ hide(); return; }
       if((b=t.closest('[data-techface]'))){ if(b.getAttribute('data-techface')==='fin') toFin(); return; }
@@ -13460,7 +13628,7 @@ html[data-gl] .glt-inone{font:400 12.5px/1.4 -apple-system,BlinkMacSystemFont,"S
 
   /* ---- 10-05 the Indicators sheet: every indicator, a switch, and what it shows in plain words. At least one stays on. ---- */
   function infoRow(i,onPage,k,n){
-    var title=i.id==='candle'?('CANDLES · '+emaN()+' EMA'):i.s;
+    var title=i.id==='candle'?('CANDLES · '+emaN()+' EMA'):i.id==='sma'?('CANDLES · '+maN()+' MA'):i.id==='rs'?('RELATIVE STRENGTH vs '+benchName()):i.s;
     return '<section class="glt-iitem'+(onPage?' on':'')+'" data-ind="'+i.id+'"><div class="glt-irow">'
       +(onPage?'<button type="button" class="glt-grab" data-techgrab="'+i.id+'" aria-label="Drag '+esc(i.l)+' to arrange" title="Drag to arrange">≡</button><span class="glt-ipos">'+(k+1)+'</span>':'')+'<b>'+esc(title)+'</b>'
       +(onPage
@@ -13468,7 +13636,8 @@ html[data-gl] .glt-inone{font:400 12.5px/1.4 -apple-system,BlinkMacSystemFont,"S
         :'<span class="glt-ibtns"><button type="button" class="glt-iadd" data-techadd="'+i.id+'">+ Add</button></span>')
       +'</div>'
       +(i.id==='candle'?'<div class="glt-iset"><label>EMA length <input type="number" inputmode="numeric" min="2" max="400" step="1" value="'+emaN()+'" data-techema aria-label="EMA length"></label><span>periods of this timeframe · 55 is the app’s standard</span></div>':'')
-      +'<details class="glt-idesc"><summary>What it shows</summary>'+i.d.map(function(p){ return '<p>'+esc(p.replace(/55/g,String(emaN())))+'</p>'; }).join('')+'</details></section>';
+      +(i.id==='sma'?'<div class="glt-iset"><label>MA length <input type="number" inputmode="numeric" min="2" max="400" step="1" value="'+maN()+'" data-techma aria-label="MA length"></label><span>periods of this timeframe · 50 and 200 are the classics</span></div>':'')
+      +'<details class="glt-idesc"><summary>What it shows</summary>'+i.d.map(function(p){ return '<p>'+esc((i.id==='candle'?p.replace(/55/g,String(emaN())):p).replace(/\{N\}/g,String(maN())))+'</p>'; }).join('')+'</details></section>';
   }
   /* ---- drag to arrange (10-07, the owner: "grab a certain button and move it in real time"): pointer events on the ≡ handle; the row
      follows the finger, the others step aside as it crosses their middles, the drop writes ORDER. Touch and mouse alike. ---- */
@@ -13487,8 +13656,8 @@ html[data-gl] .glt-inone{font:400 12.5px/1.4 -apple-system,BlinkMacSystemFont,"S
   root.addEventListener('pointerdown',function(e){ var h=e.target&&e.target.closest&&e.target.closest('[data-techgrab]'); if(h) dragStart(e,h); });
   root.addEventListener('pointermove',function(e){ if(DRAG) dragMove(e); });
   root.addEventListener('pointerup',dragEnd); root.addEventListener('pointercancel',dragEnd);
-  root.addEventListener('change',function(e){ var t=e.target; if(t&&t.matches&&t.matches('[data-techema]')){ if(!setEmaN(t.value)) t.value=emaN(); } });
-  root.addEventListener('keydown',function(e){ var t=e.target; if(t&&t.matches&&t.matches('[data-techema]')&&e.key==='Enter'){ if(!setEmaN(t.value)) t.value=emaN(); t.blur(); } });
+  root.addEventListener('change',function(e){ var t=e.target; if(t&&t.matches&&t.matches('[data-techema]')){ if(!setEmaN(t.value)) t.value=emaN(); } else if(t&&t.matches&&t.matches('[data-techma]')){ if(!setMaN(t.value)) t.value=maN(); } });
+  root.addEventListener('keydown',function(e){ var t=e.target; if(t&&t.matches&&t.matches('[data-techema],[data-techma]')&&e.key==='Enter'){ e.preventDefault(); t.blur(); } });   /* Enter = leave the field; the change event (fired by the blur) applies the value ONCE — setting it here too repainted the sheet twice, the second time from inside the first's blur */
   function infoHTML(){
     var on=ACT(), off=IND.filter(function(i){ return ORDER.indexOf(i.id)<0; });
     return '<div class="glt-icard"><div class="glt-ihead"><b>Indicators</b><span>On the page, top to bottom · drag ≡ to arrange · × to take one off</span><button type="button" class="glt-ix" data-techinfox aria-label="Close">×</button></div>'
@@ -13606,6 +13775,7 @@ html[data-gl] .glt-inone{font:400 12.5px/1.4 -apple-system,BlinkMacSystemFont,"S
     if(opt&&opt.ind&&byId(opt.ind).id===opt.ind) S.ind=opt.ind;
     if(S.finding) closeFind();
     paintWho(); paintDial(); paintLook(true); title();
+    if(ORDER.indexOf('rs')>=0) loadBench(false);           /* 10-07: the relative-strength row's SPY / BTC frames */
     if(!isSame||!was) root.scrollTop=0;
     armIdle();
     if(window.GL48&&typeof window.GL48.resetZoom==='function'){ try{ window.GL48.resetZoom(); }catch(_){} }
@@ -13618,7 +13788,7 @@ html[data-gl] .glt-inone{font:400 12.5px/1.4 -apple-system,BlinkMacSystemFont,"S
   function look(name){ if(LOOKS.indexOf(name)<0) return; var ch=name!==S.look; S.look=name; saveLook(); if(!S.built) return; paintDial(); if(S.open) paintLook(ch); }
   function current(){ return S.cur?chipKey(S.cur):null; }
   function door(){ return S.open?S.door:null; }
-  window.GLTech={show:show, hide:hide, look:look, current:current, door:door, inds:function(){ return ACT().map(function(i){ return i.id; }); }, setInd:function(id,on){ if((ORDER.indexOf(id)>=0)!==!!on) toggleInd(id); }, setInds:function(ids){ var ok=(ids||[]).filter(function(x,k,a){ return a.indexOf(x)===k&&IND.some(function(i){ return i.id===x; }); }); if(ok.length) setOrder(ok); }};
+  window.GLTech={show:show, hide:hide, look:look, current:current, door:door, maN:maN, setMaN:setMaN, bench:function(){ return {at:BENCH.at, err:BENCH.err, have:BENCH.data?Object.keys(BENCH.data.bench||{}):[]}; }, inds:function(){ return ACT().map(function(i){ return i.id; }); }, setInd:function(id,on){ if((ORDER.indexOf(id)>=0)!==!!on) toggleInd(id); }, setInds:function(ids){ var ok=(ids||[]).filter(function(x,k,a){ return a.indexOf(x)===k&&IND.some(function(i){ return i.id===x; }); }); if(ok.length) setOrder(ok); }};
 
   /* ---------- the card (R6 §22): ONE box under the price strip opens the page — a full-width bordered, accent-tinted button, a sibling of the strip
      inside .aibo-box (the stock toggle + grid are hidden by techlab.css under Glass): "Technicals" bold / the four indicators muted / the frames on hand
