@@ -14439,32 +14439,43 @@ html[data-gl] .glm-xt{font:600 9.5px ui-monospace,"SF Mono",Menlo,monospace;fill
 html[data-gl] .glm-yt{font:600 9.5px ui-monospace,"SF Mono",Menlo,monospace;fill:rgba(var(--gl-ink-rgb,234,238,245),.6);paint-order:stroke;stroke:var(--panel2,var(--gl-d06,#0d151f));stroke-width:3px;stroke-linejoin:round;}
 html[data-gl] .glm-leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10.5px;color:rgba(var(--gl-ink-rgb,234,238,245),.55);margin-top:5px;}
 html[data-gl] .glm-leg span::before{content:"";display:inline-block;width:10px;height:2px;margin-right:5px;vertical-align:middle;background:var(--c,rgba(var(--gl-ink-rgb,234,238,245),.5));}
+html[data-gl] .glm-leg span.dash::before{background:repeating-linear-gradient(90deg,var(--c) 0 3px,transparent 3px 5px);}
 html[data-gl] .glm-leg span:not([style])::before{display:none;}
 
-/* ---- rails: label · track · value; shaded ends = hot (right) / cold (left) ---- */
-html[data-gl] .glm-rails{display:grid;gap:7px;margin-top:10px;}
-html[data-gl] .glm-rail{display:grid;grid-template-columns:118px minmax(0,1fr) 76px;align-items:center;gap:8px;font-size:12px;min-height:18px;}
-html[data-gl] .glm-rail .l{color:rgba(var(--gl-ink-rgb,234,238,245),.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* ---- rails (round 2, rule 10): label + timeframe · track · value. ONE-DIRECTIONAL = red at the high end only; TWO-SIDED = a centre
+   notch, red at both ends, the ends named above the track; DIRECTIONAL (COT) = green right / red left, a strong centre line. ---- */
+html[data-gl] .glm-rails{display:grid;gap:8px;margin-top:10px;}
+html[data-gl] .glm-rh{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:rgba(var(--gl-ink-rgb,234,238,245),.42);margin:4px 0 -2px;}
+html[data-gl] .glm-rail{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) 78px;align-items:center;gap:8px;font-size:12px;min-height:22px;}
+html[data-gl] .glm-rail.named{margin-top:10px;}
+html[data-gl] .glm-rail.head{min-height:14px;margin-top:8px;}
+html[data-gl] .glm-rail .l{color:rgba(var(--gl-ink-rgb,234,238,245),.68);line-height:1.2;overflow-wrap:anywhere;}
+html[data-gl] .glm-rail .l small{display:block;font:500 9.5px/1.3 ui-monospace,"SF Mono",Menlo,monospace;color:rgba(var(--gl-ink-rgb,234,238,245),.4);letter-spacing:.04em;}
 html[data-gl] .glm-rail .v{font:600 11.5px ui-monospace,"SF Mono",Menlo,monospace;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:rgba(var(--gl-ink-rgb,234,238,245),.9);}
-html[data-gl] .glm-rail .v.up,html[data-gl] .up{color:#39d07f;}
-html[data-gl] .glm-rail .v.dn,html[data-gl] .dn{color:#f0685f;}
-html[data-gl] .glm-rail .v.am,html[data-gl] .am{color:#e8b04a;}
+html[data-gl] .glm-rail .v.hot{color:#f0685f;}
+html[data-gl] .glm-rail .v.long{color:#39d07f;}
+html[data-gl] .up{color:#39d07f;} html[data-gl] .dn{color:#f0685f;} html[data-gl] .am{color:#e8b04a;}
 html[data-gl] .glm-rail .t{position:relative;height:6px;border-radius:3px;background:rgba(0,0,0,.35);border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.1);}
+html[data-gl] .glm-rail .t.bare{border:0;background:none;height:12px;}
 html[data-gl] .glm-rail .t i{position:absolute;top:-4px;width:3px;height:12px;border-radius:2px;background:var(--gl-ink,#fff);transform:translateX(-1px);}
-html[data-gl] .glm-rail .t s{position:absolute;top:0;bottom:0;text-decoration:none;}
-html[data-gl] .glm-rail .t s.h{left:85%;right:0;background:rgba(240,104,95,.3);border-radius:0 3px 3px 0;}
-html[data-gl] .glm-rail .t s.c{left:0;width:15%;background:rgba(57,208,127,.28);border-radius:3px 0 0 3px;}
-html[data-gl] .glm-rail .t em{position:absolute;top:-14px;font:600 9px ui-monospace,"SF Mono",Menlo,monospace;color:rgba(var(--gl-ink-rgb,234,238,245),.38);font-style:normal;white-space:nowrap;}
-html[data-gl] .glm-rail .t em:first-child{left:0;}
-html[data-gl] .glm-rail .t em:last-of-type{right:0;}
-html[data-gl] .glm-rhead{margin-bottom:6px;}
-html[data-gl] .glm-rhead .v{font-size:9.5px;color:rgba(var(--gl-ink-rgb,234,238,245),.38);}
-html[data-gl] .glm-cot{gap:6px;}
-@media (max-width:374px){ html[data-gl] .glm-rail{grid-template-columns:100px minmax(0,1fr) 68px;} }
+html[data-gl] .glm-rail .t s{position:absolute;top:0;bottom:0;text-decoration:none;background:rgba(240,104,95,.3);}
+html[data-gl] .glm-rail .t s.r{left:85%;right:0;border-radius:0 3px 3px 0;}
+html[data-gl] .glm-rail .t s.lft{left:0;width:15%;border-radius:3px 0 0 3px;}
+html[data-gl] .glm-rail .t s.g{background:rgba(57,208,127,.3);}
+html[data-gl] .glm-rail .t b{position:absolute;top:-3px;left:50%;width:1px;height:10px;background:rgba(var(--gl-ink-rgb,234,238,245),.55);transform:translateX(-.5px);}
+html[data-gl] .glm-rail .t b.strong{width:2px;height:12px;top:-4px;background:rgba(var(--gl-ink-rgb,234,238,245),.8);transform:translateX(-1px);}
+html[data-gl] .glm-rail .t em{position:absolute;top:-13px;font:600 8.5px ui-monospace,"SF Mono",Menlo,monospace;color:rgba(var(--gl-ink-rgb,234,238,245),.38);font-style:normal;white-space:nowrap;}
+html[data-gl] .glm-rail .t em.a{left:0;} html[data-gl] .glm-rail .t em.z{right:0;} html[data-gl] .glm-rail .t em.c{left:50%;transform:translateX(-50%);}
+html[data-gl] .glm-rail .t.bare em{top:0;}
+html[data-gl] .glm-cot{gap:7px;}
+@media (max-width:374px){ html[data-gl] .glm-rail{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr) 68px;} }
 
 /* ---- segs (window / group / coin) ---- */
-html[data-gl] .glm-seg{margin:0 0 8px;max-width:420px;}
-html[data-gl] .glm-seg button{font:700 11px/1 ui-monospace,"SF Mono",Menlo,monospace;padding:7px 2px;white-space:nowrap;letter-spacing:.02em;}
+html[data-gl] .glm-seg{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 8px;}
+html[data-gl] .glm-seg button{appearance:none;flex:0 0 auto;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.1);background:rgba(var(--gl-wh-rgb,255,255,255),.04);color:rgba(var(--gl-ink-rgb,234,238,245),.62);border-radius:7px;padding:6px 9px;
+  font:700 11px/1 ui-monospace,"SF Mono",Menlo,monospace;white-space:nowrap;letter-spacing:.02em;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .2s,color .2s;}
+html[data-gl] .glm-seg button.on{color:var(--gl-acci);border-color:rgba(var(--gl-acc-rgb),.5);background:rgba(var(--gl-acc-rgb),.14);}
+html[data-gl] .glm-more{appearance:none;display:block;margin:6px 0 2px;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.12);background:rgba(var(--gl-wh-rgb,255,255,255),.04);color:rgba(var(--gl-ink-rgb,234,238,245),.75);border-radius:999px;padding:6px 12px;font:600 11px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;}
 
 /* ---- tables (fed path, stress) ---- */
 html[data-gl] .glm-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:9px;}
@@ -14513,6 +14524,14 @@ html[data-gl] .glm-in.miss{border-color:#f0685f;}
 html[data-gl] .glm-in::placeholder{color:rgba(var(--gl-ink-rgb,234,238,245),.35);}
 @media (pointer:coarse){ html[data-gl] .glm-in{font-size:16px;} }   /* iOS: no auto-zoom on focus */
 html[data-gl] .glm-btn{align-self:stretch;min-height:36px;}
+html[data-gl] .glm-item .pill.buy{color:#39d07f;border-color:rgba(57,208,127,.45);}
+html[data-gl] .glm-item .pill.sell{color:#f0685f;border-color:rgba(240,104,95,.45);}
+html[data-gl] .glm-item .tx u{text-decoration:none;font:600 11px ui-monospace,"SF Mono",Menlo,monospace;margin-left:6px;}
+html[data-gl] .glm-item .tx em.why{display:block;font-style:normal;font-size:11.5px;color:rgba(var(--gl-ink-rgb,234,238,245),.75);margin-top:3px;border-left:2px solid rgba(var(--gl-acc-rgb),.5);padding-left:6px;}
+html[data-gl] .glm-del.why{font-size:12px;}
+html[data-gl] .glm-del.why.has{color:var(--gl-acci);border-color:rgba(var(--gl-acc-rgb),.5);}
+html[data-gl] .glm-whybox{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:4px 0 2px 8px;}
+html[data-gl] .glm-seenbtn{appearance:none;display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;align-items:center;background:none;border:0;padding:0;color:inherit;text-align:left;font:inherit;cursor:pointer;min-width:0;}
 
 /* ---- landscape phone (§20): the strip stays with the doors in it; the head packs ---- */
 @media (orientation:landscape) and (max-height:520px) and (pointer:coarse){
@@ -14550,35 +14569,34 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
 </style>
 <script id="gl48Mac">
 /* Stage 48 — THE MACRO DESK (2026-10-06, the owner: "build all 10 of those extracurricular macro things … in the same chrome and theme …
-   cohesive across the entire application"). Ten panels on one scrolling page under Atlas › Macro, beside Yield curves and Sector
-   rotation: 01 Market breadth · 02 Volatility board · 03 Credit stress · 04 Liquidity and dollar · 05 Fed rate path · 06 Futures
-   positioning (COT) · 07 Crypto leverage · 08 Correlation matrix · 09 Portfolio risk · 10 Alerts and journal. Every card opens with
-   a one-line READ (the verdict in words), then the chart, then rails (the owner's locked defaults: no dials, tall plots with the axis labels
-   inside, colour by value — green up / red down, a second hue only where the series IS the meaning), a "?" fold with how to read it,
+   cohesive across the entire application"; ROUND 2 2026-10-07, his walkthrough of every card). Eleven cards on one scrolling page under
+   Atlas › Macro, beside Yield curves and Sector rotation: 01 Market breadth · 02 Volatility board · 03 Credit stress · 04 Liquidity and
+   dollar · 05 Fed rate path · 06 Futures positioning (COT) · 07 Crypto leverage · 08 Correlation matrix · 09 Portfolio risk · 10 Alerts ·
+   11 Journal & trading history. Every card opens with a one-line READ, then ONE graph with a toggle (each view on its own scale — never
+   two units on one axis; credit is the accepted exception: HY and IG stacked), then the rails — ALL of them, always — then a "?" fold
    and the source line.
+   ROUND-2 RULES (the owner): the y-axis labels live in a right GUTTER so the newest point is never under a number; every rail and line
+   says its timeframe; every line (dotted comparisons too) is in the legend; rail labels wrap, never clip. RAIL TYPES — no buy/sell
+   colouring: ONE-DIRECTIONAL (0 → extreme: neutral track, red at the high end only), TWO-SIDED (a neutral middle: a centre notch,
+   red at BOTH ends, the ends named), DIRECTIONAL (COT only: green right = crowded long, red left = crowded short, a strong centre
+   line, only the extremes shaded).
 
-   Self-contained like rotation.js: it makes <section id="glMacro"> on document.body at load (display:none until shown) and needs
-   nothing from the app but the API base (window.AIBO_LIVE_URL → the Railway host) and, for panel 09 only, window.Studio.ownedBook()
-   (the real holdings, already on the device — never sent anywhere; the backend's factor table is multiplied HERE).
-   Contract (shim.js is the other side, the rotation.js pattern):
-     window.GLMacro = { show([panel]), hide(), jump(panel), refresh(), state() }
-     macro.js OWNS body class 'gl-macro' (show adds, hide removes and calls GL48.sync()). The shim's Atlas row (Macro › "Macro desk")
-     calls GLMacro.show(); go() to another door calls leaveMacro(); sync() reports the door as 'atlas' while body.gl-macro is set.
-     A dock door or another Atlas row tapped while open hides the page here too (capture-phase, like rotation.js).
-   Theme off = nothing mounted (show() is a no-op unless html[data-gl]). Deep link: ?macro=1 or ?macro=<panel key>.
+   Self-contained like rotation.js: <section id="glMacro"> on document.body at load; needs the API base (window.AIBO_LIVE_URL) and,
+   for cards 08 / 09 / 11, the holdings already on the device (window.Studio.ownedBook(), window.AIBO_POS) — dollars never leave it.
+   Contract (shim.js is the other side): window.GLMacro = { show([panel]), hide(), jump(panel), refresh(), state(), view(panel[,v]) };
+   macro.js OWNS body class 'gl-macro'. Theme off = nothing mounted. Deep link: ?macro=1 or ?macro=<panel key>.
 
-   DATA (backend v4.15, GET <API>/macro.json): {schemaVersion, asOf, builtAt, sections:{breadth, vol, credit, liquidity, fedpath, cot,
-   crypto, corr, factors}, sources:{name:{ok,at,asOf,err}}, notes}. A section is null until its source first lands — the card says so
-   ("not published yet") and draws nothing; inside a section a gap is null and the plot lifts its pen. Fetched on show and every 15 min
-   while open, 15 s abort, 5-min backoff after a failure. Device-side state: the correlation window, the COT group, the crypto coin,
-   the alerts' seen-marks and the journal (localStorage aibo.gl.macro.*). */
+   DATA: GET <API>/macro.json (backend v4.15+): {sections:{breadth, vol, credit, liquidity, fedpath, cot, crypto, corr, factors},
+   sources, notes} — a null section = "not published yet" + the source's own error; a 503 on refresh keeps the last good data.
+   /notes.json + /trades.json ride the positions bearer (private). Device state: the views, the COT group, the coin, the correlation
+   window (localStorage aibo.gl.macro.*). */
 (function(){
   'use strict';
   var H=document.documentElement, B=document.body;
   var BASE=String(window.AIBO_LIVE_URL||'https://asset-grading-production.up.railway.app/universe.json').replace(/\/universe\.json.*$/,'');
   var FEED=BASE+'/macro.json';
   var REFRESH=15*60*1000, BACKOFF=5*60*1000, TIMEOUT=15000;
-  var LS={corr:'aibo.gl.macro.corr', cot:'aibo.gl.macro.cot', coin:'aibo.gl.macro.coin', seen:'aibo.gl.macro.alertsSeen', journal:'aibo.gl.macro.journal'};
+  var LS={corr:'aibo.gl.macro.corr', cot:'aibo.gl.macro.cot', coin:'aibo.gl.macro.coin', seen:'aibo.gl.macro.alertsSeen', journal:'aibo.gl.macro.journal', views:'aibo.gl.macro.views'};
   var PANELS=[
     {k:'breadth',  n:'01', t:'Market breadth',       g:'Internals'},
     {k:'vol',      n:'02', t:'Volatility board',     g:'Internals'},
@@ -14589,32 +14607,37 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
     {k:'crypto',   n:'07', t:'Crypto leverage',      g:'Who is crowded'},
     {k:'corr',     n:'08', t:'Correlation matrix',   g:'Your book'},
     {k:'risk',     n:'09', t:'Portfolio risk',       g:'Your book'},
-    {k:'alerts',   n:'10', t:'Alerts and journal',   g:'Your book'}];
+    {k:'alerts',   n:'10', t:'Alerts',               g:'Your book'},
+    {k:'journal',  n:'11', t:'Journal & trading history', g:'Your book'}];
   var HELP={
-    breadth:'The index can rise on a few giants while most stocks fall. The lines are the share of the US 500 above their own 50-day and 200-day averages: above ~65% the move is broad, under ~45% it is narrow and fragile. The rails: how many names made a 20-day high minus a 20-day low, how many rose versus fell today, and the running total of that (the advance/decline line) — when it falls while the index rises, the rally is thinning.',
-    vol:'VIX is the price of 30-day S&P protection. The curve is the same price for 9 days out to a year: normally it slopes up (far-dated protection costs more — "contango"); when the near end is above the far end it is inverted, which means fear is here now. The dotted line is the curve a month ago. MOVE is the bond market\'s VIX; put/call above ~1 means hedging is heavy; SKEW above ~140 means tail protection is bid; VVIX is the vol of VIX.',
-    credit:'The extra yield junk-rated companies pay over Treasuries (the high-yield spread) is the market\'s price for default risk. Under ~3.5% nobody is worried; the 5% line is where stocks have usually started to care; above 7% is a stress event. Investment-grade is the same for solid companies. The NFCI is the Chicago Fed\'s financial-conditions index (below zero = loose). Lending standards is the share of banks tightening (the Fed\'s senior loan officer survey, quarterly).',
-    liquidity:'Net liquidity = the Fed\'s balance sheet minus the Treasury\'s cash account (TGA) minus money parked in reverse repo: roughly the dollars free to find assets. Rising net liquidity has lined up with rallies; a falling tide with air pockets. The grey line is the S&P on its own scale. The dollar is the broad trade-weighted index (a strong dollar tightens the world); M2 is the money supply.',
-    fedpath:'The 30-day fed funds futures price where the market expects the Fed\'s rate to be each month: implied rate = 100 − price. The step line is today\'s path, the dotted line a week ago; the distance below today\'s effective rate, in quarter points, is how many cuts are priced by that month. A path that moves is the market re-pricing the Fed — usually with a data print.',
-    cot:'The CFTC\'s weekly Commitments of Traders: how big speculators (hedge funds, CTAs) are positioned in each futures market, net long minus short. The marker is today\'s net as a percentile of the last three years — at the right edge the trade is crowded long, at the left crowded short. Crowded trades have the most fuel for a reversal; they can stay crowded for months. Published Fridays for the prior Tuesday.',
-    crypto:'How much borrowed money sits under the move. Funding is what leveraged longs pay shorts every eight hours (positive = the crowd leans long; above ~0.03% per 8h is rich, 0.1% is euphoric). Open interest is the size of all open leveraged bets, summed across Hyperliquid, Kraken, Bybit and OKX: rising faster than price means the move is built on leverage. The bars are REAL liquidations in the last 24 hours by price (OKX publishes them): red = longs wiped below the price, green = shorts wiped above — where leverage just got flushed. No exchange publishes other traders\' liquidation levels, so nothing here is predicted. Stablecoins are the dry powder.',
-    corr:'How much two assets move together, from daily returns over the window: +1 = in step, −1 = opposite, 0 = unrelated. A diversified book wants low numbers between its big pieces. The amber outline marks the pairs whose 30-day number moved most against their 90-day one — relationships that just changed (bitcoin trading like tech again, gold decoupling from the dollar).',
-    risk:'Your real holdings (from the Portfolio door, never sent anywhere) run through the backend\'s factor table: each name\'s beta to the S&P, to bitcoin, to long Treasuries and to the dollar, from the last 120 sessions. Book beta is the weighted sum — 1.4 means the book moves 1.4× the market. The ladder shows which holdings carry that beta. The stress table is simple arithmetic: a −10% S&P day times each holding\'s beta, summed. It is not a forecast; it is what the last four months of co-movement imply.',
-    alerts:'Regime alerts are computed from the other nine panels — a curve inverting, junk spreads crossing 5%, breadth thinning under a rising index, funding getting rich — and they re-arm by themselves when the condition clears. Tap one to mark it seen. PRICE ALERTS are yours: a ticker and a price; the server checks every armed alert against the newest quote it holds, every minute, at no extra cost — but a stock is quoted hourly in US hours and a coin hourly around the clock, so an alert can fire up to an hour late and never intraday-exact. It fires once, stays fired until you tap it, and does not re-arm by itself (delete it and add it again). The journal is yours: what you did and why, so the thesis can be checked later. With the positions token on a device, the journal, the price alerts and the seen-marks live on the server and every device shows the same; without it they stay in this browser.'};
-  var SRC={breadth:'the US 500 daily ledger (FMP) — computed on the backend, hourly',
-    vol:'Cboe index histories and daily market statistics · Yahoo (MOVE)', credit:'FRED — ICE BofA spreads, Chicago Fed NFCI, the senior loan officer survey',
-    liquidity:'FRED — Fed H.4.1, Treasury account, reverse repo, broad dollar, M2', fedpath:'NY Fed (EFFR) · CBOT 30-day fed funds futures via Yahoo',
-    cot:'CFTC Commitments of Traders, legacy futures-only', crypto:'Hyperliquid · Kraken Futures · Bybit · OKX · CoinGecko (stablecoins)',
-    corr:'daily closes — ETFs from FMP, coins from Kraken; computed on this device', risk:'your positions on this device × the backend factor table (US 500 ledger, Kraken daily bars)',
-    alerts:'the panels above (regime rules) · the app\u2019s quote feeds (price alerts) · the journal + alerts sync across devices through the positions token'};
+    breadth:'The index can rise on a few giants while most stocks fall. The default lines are the share of the US 500 above their own 50-day and 200-day averages: above ~65% the move is broad, under ~45% (the shaded band) it is narrow and fragile. The toggle shows the advance/decline line (the running total of names up minus names down — when it falls while the index rises, the rally is thinning) and new 20-day highs minus new 20-day lows. The rails: today\'s advancers against decliners, then the 20-session measures.',
+    vol:'VIX is the price of 30-day S&P protection. The curve is the same price for 9 days out to a year: normally it slopes up (far-dated protection costs more); when the near end is above the far end it is inverted — fear is here now. The dotted line is the curve a month ago. MOVE is the bond market\'s VIX, SKEW the price of tail protection, VVIX the vol of VIX: one-directional, red only at a 1-year extreme. Put/call is two-sided: heavy hedging at one end, complacency at the other. Term structures for MOVE, put/call and SKEW are paid data, so the curve stays VIX.',
+    credit:'The extra yield junk-rated companies pay over Treasuries (the high-yield spread) is the market\'s price for default risk: under ~3.5% nobody is worried, 5% is where stocks have usually started to care, 7% is a stress event. Investment-grade is the same for solid companies, on its own scale with its own line around 2%. The toggle adds the Chicago Fed\'s financial-conditions index (below zero = loose) and the share of banks tightening lending standards (quarterly).',
+    liquidity:'Net liquidity = the Fed\'s balance sheet minus the Treasury\'s cash account (TGA) minus money parked in reverse repo: roughly the dollars free to find assets. Rising net liquidity has lined up with rallies; a falling tide with air pockets. The default view draws it with the S&P on its own scale; the toggle shows each leg alone — the dollar (a strong dollar tightens the world), the Treasury account, reverse repo and M2 — each on its own scale.',
+    fedpath:'The 30-day fed funds futures price where the market expects the Fed\'s rate to be each month: implied rate = 100 − price. The solid step line is today\'s path, the dotted line a week ago; the distance below today\'s effective rate, in quarter points, is how many cuts are priced by that month — above it, hikes. A path that moves is the market re-pricing the Fed, usually with a data print.',
+    cot:'The CFTC\'s weekly Commitments of Traders: how big speculators (hedge funds, CTAs) are positioned in each futures market, net long minus short. The marker is today\'s net as a percentile of the last three years — at the green end the trade is crowded long, at the red end crowded short, the strong centre line is neutral. Only the extremes (beyond the 85th / 15th) are shaded: that is where reversals have the most fuel, though a trade can stay crowded for months. Published Fridays for the prior Tuesday.',
+    crypto:'How much borrowed money sits under the move. FUNDING is what leveraged longs pay shorts every eight hours (positive = the crowd leans long; above ~0.03% per 8h is rich, 0.1% euphoric; negative = shorts pay). OPEN INTEREST is the size of all open leveraged bets across Hyperliquid, Kraken, Bybit and OKX: rising faster than price means the move is built on leverage. Both are the main read here; the toggle also shows the last 24 hours of REAL liquidations by price (OKX publishes them — red longs wiped below price, green shorts above), a short-term tool. No exchange publishes other traders\' liquidation levels, so nothing is predicted. Stablecoins are the dry powder.',
+    corr:'How much two assets move together, from daily returns over the window: +1 = in step, −1 = opposite, 0 = unrelated. The asset-class basket is the macro picture; "My portfolio" runs the same maths on your own holdings from the price history the app already holds. A diversified book wants low numbers between its big pieces. The amber outline marks the pairs whose 30-day number moved most against their 90-day one.',
+    risk:'Your real holdings (from the Portfolio door, never sent anywhere) run through the backend\'s factor table: each name\'s beta to the S&P, to bitcoin, to long Treasuries and to the dollar, from the last 120 sessions. Book beta is the weighted sum — 1.4 means the book moves 1.4× the market. The ladder shows every holding\'s share of that beta (collapsed to the biggest; expand for all). The stress table is simple arithmetic, not a forecast.',
+    alerts:'Regime alerts are computed from the other cards — a curve inverting, junk spreads crossing 5%, breadth thinning, funding getting rich — and re-arm by themselves when the condition clears. Price alerts are yours: a ticker and a level; the backend checks them every hour against the quotes it already holds and fires once (up to an hour late, never intraday-exact). Tap a fired alert to mark it seen. With the positions token on the device, alerts and seen-marks sync across your devices.',
+    journal:'Your executed trades, pulled from the accounts the app already reads (Kraken, IBKR), with the realised P&L of every closing trade matched first-in-first-out against your buys, a running total, and a "why" field per trade — the thesis, written when it is fresh, so it can be checked later. Free-text entries without a trade sit in the same list. Everything syncs through the positions token. An account that cannot supply fills says so on the card, and what to change.'};
+  var SRC={breadth:'the US 500 daily ledger (FMP) — computed on the backend, hourly', vol:'Cboe index histories and daily market statistics · Yahoo (MOVE)',
+    credit:'FRED — ICE BofA spreads, Chicago Fed NFCI, the senior loan officer survey', liquidity:'FRED — Fed H.4.1, Treasury account, reverse repo, broad dollar, M2',
+    fedpath:'NY Fed (EFFR) · CBOT 30-day fed funds futures via Yahoo', cot:'CFTC Commitments of Traders, legacy futures-only',
+    crypto:'Hyperliquid · Kraken Futures · Bybit · OKX · CoinGecko (stablecoins)', corr:'daily closes — ETFs from FMP, coins from Kraken; your holdings from the frames the app holds; computed on this device',
+    risk:'your positions on this device × the backend factor table (US 500 ledger, Kraken daily bars)', alerts:'the cards above (regime) · the backend\'s hourly quotes (price alerts) · synced through the positions token',
+    journal:'Kraken TradesHistory · IBKR Flex (Trades section) · your entries — all behind the positions token'};
   var root=document.createElement('section'); root.id='glMacro'; root.setAttribute('aria-label','Macro desk'); B.appendChild(root);
   var WQ=window.matchMedia?window.matchMedia('(min-width:900px)'):null;
+  var VIEWS={breadth:'pct', credit:'hy', liquidity:'net', crypto:'fund', corr:'basket'};
   var S={open:false, built:false, data:null, err:null, at:0, fetching:false, backoff:0, timer:0, ctrl:null, raf:0, ro:null,
-         corrWin:+(ls(LS.corr)||30)||30, cotGroup:ls(LS.cot)||'all', coin:ls(LS.coin)||'BTC', arm:null, journal:null, seen:null, risk:null};
+         corrWin:+(ls(LS.corr)||30)||30, cotGroup:ls(LS.cot)||'all', coin:ls(LS.coin)||'BTC', arm:null, journal:null, seen:null, ladderOpen:false, views:savedViews()};
 
   /* ---------- helpers ---------- */
   function ls(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } }
   function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(_){} }
+  function savedViews(){ var v={}; try{ v=JSON.parse(ls(LS.views)||'{}')||{}; }catch(_){ v={}; } var out={}; for(var k in VIEWS) out[k]=typeof v[k]==='string'?v[k]:VIEWS[k]; return out; }
+  function setView(panel,v){ S.views[panel]=v; lsSet(LS.views,JSON.stringify(S.views)); }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
   function $(s,el){ return (el||root).querySelector(s); }
   function $$(s,el){ return [].slice.call((el||root).querySelectorAll(s)); }
@@ -14627,6 +14650,7 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
   function pct(v,dp){ if(!fin(v)) return '—'; var s=Math.abs(v).toFixed(dp==null?1:dp); return sign(v)+s+'%'; }
   function pctAbs(v,dp){ if(!fin(v)) return '—'; return v.toFixed(dp==null?1:dp)+'%'; }
   function usd(v){ if(!fin(v)) return '—'; var a=Math.abs(v), s=v<0?'−':''; if(a>=1e12) return s+'$'+(a/1e12).toFixed(2)+'T'; if(a>=1e9) return s+'$'+(a/1e9).toFixed(a>=1e11?0:1)+'B'; if(a>=1e6) return s+'$'+(a/1e6).toFixed(a>=1e8?0:1)+'M'; if(a>=1e3) return s+'$'+(a/1e3).toFixed(0)+'k'; return s+'$'+a.toFixed(0); }
+  function usdFull(v){ if(!fin(v)) return '—'; var a=Math.abs(v); return (v<0?'−':'')+'$'+(a>=1000?a.toLocaleString(undefined,{maximumFractionDigits:0}):a.toFixed(2)); }
   function bn(v){ if(!fin(v)) return '—'; var a=Math.abs(v); return (v<0?'−':'')+(a>=1000?'$'+(a/1000).toFixed(2)+'T':'$'+a.toFixed(0)+'B'); }   /* v in $ billions */
   function kfmt(v){ if(!fin(v)) return '—'; var a=Math.abs(v); return sign(v)+(a>=1e6?(a/1e6).toFixed(2)+'M':a>=1e3?(a/1e3).toFixed(0)+'k':a.toFixed(0)); }
   var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -14641,23 +14665,23 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
   function acc(){ return 'rgb(var(--gl-acc-rgb,31,198,220))'; }
   var C={up:'#39d07f', dn:'#f0685f', am:'#e8b04a', dim:'rgba(234,238,245,.38)', ink:'rgba(234,238,245,.92)', grid:'rgba(255,255,255,.07)'};
 
-  /* ---------- the chart: one SVG line/area/step plot, axis labels INSIDE the plot, pen lifts on null ---------- */
+  /* ---------- the chart: ONE SVG, the y labels in a RIGHT GUTTER (rule 8 — never over the newest point), pen lifts on null ---------- */
   function niceStep(raw){ var p=Math.pow(10,Math.floor(Math.log(raw)/Math.LN10)), m=raw/p; return (m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p; }
-  /* o: {w,h, series:[{v:[],c,w,dash,fill,dot,step,scale:[lo,hi]}], lo,hi (y range for the main scale; auto when absent), fmt(v), xl:[{i,t}],
-        band:[lo,hi,colour], zero:bool, hl:{i,t} (a vertical marker)} */
+  /* o: {w,h, series:[{v:[],c,w,dash,fill,dot,dots,step,scale:[lo,hi]}], lo,hi, floor, fmt(v), xl:[{i,t}], bands:[[lo,hi,colour]], marks:[[y,label,colour]], zero} */
   function chart(o){
-    var W=o.w, Hh=o.h, pl=6, pr=6, pt=10, pb=o.xl&&o.xl.length?18:8, pw=W-pl-pr, ph=Hh-pt-pb;
-    var n=0; o.series.forEach(function(s){ n=Math.max(n,s.v.length); }); if(n<2||W<60) return '';
+    var W=o.w, Hh=o.h, pl=6, gut=o.gut||44, pt=10, pb=o.xl&&o.xl.length?18:8, pw=W-pl-gut, ph=Hh-pt-pb;
+    var n=0; o.series.forEach(function(s){ n=Math.max(n,s.v.length); }); if(n<2||W<80) return '';
     var lo=o.lo, hi=o.hi;
     if(!fin(lo)||!fin(hi)){ var l=Infinity, h=-Infinity; o.series.forEach(function(s){ if(s.scale) return; s.v.forEach(function(y){ if(!fin(y)) return; if(y<l) l=y; if(y>h) h=y; }); });
       if(l===Infinity){ l=0; h=1; } if(h-l<1e-9){ l-=1; h+=1; } var pad=(h-l)*.08; lo=fin(o.lo)?o.lo:l-pad; hi=fin(o.hi)?o.hi:h+pad; if(o.floor!=null&&lo<o.floor) lo=o.floor; }
     var x=function(i){ return pl+i*pw/(n-1); }, y=function(v,sc){ var a=sc?sc[0]:lo, b=sc?sc[1]:hi; return pt+(b-v)/(b-a)*ph; };
     var out=['<svg class="glm-svg" viewBox="0 0 '+W+' '+Hh+'" width="'+W+'" height="'+Hh+'" aria-hidden="true">'];
-    if(o.band) out.push('<rect x="'+pl+'" y="'+y(Math.min(hi,o.band[1])).toFixed(1)+'" width="'+pw+'" height="'+Math.max(0,y(Math.max(lo,o.band[0]))-y(Math.min(hi,o.band[1]))).toFixed(1)+'" fill="'+o.band[2]+'"/>');
+    (o.bands||[]).forEach(function(b){ out.push('<rect x="'+pl+'" y="'+y(Math.min(hi,b[1])).toFixed(1)+'" width="'+pw+'" height="'+Math.max(0,y(Math.max(lo,b[0]))-y(Math.min(hi,b[1]))).toFixed(1)+'" fill="'+b[2]+'"/>'); });
     var step=niceStep((hi-lo)/4.5), ticks=[], t0=Math.ceil(lo/step)*step; for(var t=t0;t<=hi+1e-9;t+=step) ticks.push(+t.toFixed(8));
-    ticks.forEach(function(t){ var yy=y(t); if(yy<pt-1||yy>pt+ph+1) return; out.push('<line class="glm-grid" x1="'+pl+'" x2="'+(W-pr)+'" y1="'+yy.toFixed(1)+'" y2="'+yy.toFixed(1)+'"'+(o.zero&&Math.abs(t)<1e-9?' stroke-dasharray="2 3" stroke="rgba(234,238,245,.5)"':'')+'/>'); });
-    (o.xl||[]).forEach(function(l,ix,arr){ var xx=x(l.i), an=xx<pl+28?'start':xx>W-pr-28?'end':'middle'; out.push('<line class="glm-xl" x1="'+xx.toFixed(1)+'" x2="'+xx.toFixed(1)+'" y1="'+pt+'" y2="'+(pt+ph)+'"/><text class="glm-xt" x="'+xx.toFixed(1)+'" y="'+(Hh-5)+'" text-anchor="'+an+'">'+esc(l.t)+'</text>'); });
-    if(o.hl&&fin(o.hl.i)){ var hx=x(o.hl.i); out.push('<line x1="'+hx.toFixed(1)+'" x2="'+hx.toFixed(1)+'" y1="'+pt+'" y2="'+(pt+ph)+'" stroke="rgba(234,238,245,.5)" stroke-dasharray="3 3"/>'); if(o.hl.t) out.push('<text class="glm-xt" x="'+(hx+4).toFixed(1)+'" y="'+(pt+10)+'" fill="rgba(234,238,245,.75)">'+esc(o.hl.t)+'</text>'); }
+    ticks.forEach(function(t){ var yy=y(t); if(yy<pt-1||yy>pt+ph+1) return; out.push('<line class="glm-grid" x1="'+pl+'" x2="'+(W-gut+4)+'" y1="'+yy.toFixed(1)+'" y2="'+yy.toFixed(1)+'"'+(o.zero&&Math.abs(t)<1e-9?' stroke-dasharray="2 3" stroke="rgba(234,238,245,.5)"':'')+'/>'); });
+    (o.marks||[]).forEach(function(mk){ var yy=y(mk[0]); if(yy<pt||yy>pt+ph) return; var col=mk[2]||'rgba(240,104,95,.65)';
+      out.push('<line x1="'+pl+'" x2="'+(W-gut+4)+'" y1="'+yy.toFixed(1)+'" y2="'+yy.toFixed(1)+'" stroke="'+col+'" stroke-dasharray="3 3"/>'); if(mk[1]) out.push('<text class="glm-xt" x="'+(pl+4)+'" y="'+(yy-3).toFixed(1)+'" fill="'+col+'">'+esc(mk[1])+'</text>'); });
+    (o.xl||[]).forEach(function(l){ var xx=x(l.i), an=xx<pl+28?'start':xx>W-gut-28?'end':'middle'; out.push('<line class="glm-xl" x1="'+xx.toFixed(1)+'" x2="'+xx.toFixed(1)+'" y1="'+pt+'" y2="'+(pt+ph)+'"/><text class="glm-xt" x="'+xx.toFixed(1)+'" y="'+(Hh-5)+'" text-anchor="'+an+'">'+esc(l.t)+'</text>'); });
     o.series.forEach(function(s){
       var d='', pen=false, lastP=null, m=s.v.length;
       for(var i=0;i<m;i++){ var v=s.v[i]; if(!fin(v)){ pen=false; continue; } var px=x(i*(n-1)/Math.max(1,m-1)).toFixed(1), py=y(v,s.scale).toFixed(1);
@@ -14666,8 +14690,9 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
       if(s.fill){ var i0=-1, i1=-1; for(var k=0;k<m;k++) if(fin(s.v[k])){ if(i0<0) i0=k; i1=k; } out.push('<path d="'+d+'L'+x(i1*(n-1)/Math.max(1,m-1)).toFixed(1)+' '+(pt+ph)+'L'+x(i0*(n-1)/Math.max(1,m-1)).toFixed(1)+' '+(pt+ph)+'Z" fill="'+s.fill+'"/>'); }
       out.push('<path d="'+d+'" fill="none" stroke="'+s.c+'" stroke-width="'+(s.w||1.6)+'"'+(s.dash?' stroke-dasharray="4 4"':'')+' stroke-linejoin="round" stroke-linecap="round"'+(s.op?' opacity="'+s.op+'"':'')+'/>');
       if(s.dot&&lastP) out.push('<circle cx="'+lastP[0]+'" cy="'+lastP[1]+'" r="3" fill="'+s.c+'"/>');
+      if(s.dots){ for(var q=0;q<m;q++) if(fin(s.v[q])) out.push('<circle cx="'+x(q*(n-1)/Math.max(1,m-1)).toFixed(1)+'" cy="'+y(s.v[q],s.scale).toFixed(1)+'" r="2.6" fill="'+s.c+'"/>'); }
     });
-    ticks.forEach(function(t){ var yy=y(t); if(yy<pt+8||yy>pt+ph-2) return; out.push('<text class="glm-yt" x="'+(W-pr-2)+'" y="'+(yy-3).toFixed(1)+'" text-anchor="end">'+esc(o.fmt?o.fmt(t):String(t))+'</text>'); });
+    ticks.forEach(function(t){ var yy=y(t); if(yy<pt+4||yy>pt+ph+2) return; out.push('<text class="glm-yt" x="'+(W-2)+'" y="'+(yy+3.5).toFixed(1)+'" text-anchor="end">'+esc(o.fmt?o.fmt(t):String(t))+'</text>'); });
     out.push('</svg>'); return out.join('');
   }
   function xlFor(days,want){ var out=[], n=days.length; if(!n) return out; want=want||5; var seen={};
@@ -14675,15 +14700,23 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
       var every=Math.max(1,Math.ceil(out.length/want)); out=out.filter(function(_,ix){ return ix%every===0; }); if(out.length&&out[0].i===0&&n>30) out[0].t=monYr(days[0]); return out; }
     for(var j=0;j<want;j++){ var ii=Math.round(j*(n-1)/(want-1)); if(!out.length||out[out.length-1].i!==ii) out.push({i:ii, t:fmtDay(days[ii])}); } return out; }
   function sliceLast(arr,n){ return arr.slice(Math.max(0,arr.length-n)); }
+  function leg(items){ return '<div class="glm-leg">'+items.map(function(it){ return '<span class="'+(it[2]?'dash':'')+'" style="--c:'+esc(it[0])+'">'+esc(it[1])+'</span>'; }).join('')+'</div>'; }
 
-  /* ---------- rails: the −/+ gauge, value right, shaded ends = the hot / cold zones ---------- */
-  function rail(label,p,val,vc,zones,title){ var left=fin(p)?clamp(p,0,100):null;
-    return '<div class="glm-rail"'+(title?' title="'+esc(title)+'"':'')+'><span class="l">'+esc(label)+'</span><span class="t">'+(zones||'')+(left==null?'':'<i style="left:'+left.toFixed(1)+'%"></i>')+'</span><span class="v '+(vc||'')+'">'+esc(val)+'</span></div>'; }
-  var HOT='<s class="h"></s>', COLD='<s class="c"></s>', BOTH='<s class="h"></s><s class="c"></s>';
+  /* ---------- rails (rule 10): one-directional · two-sided · directional; label + its TIMEFRAME on a second line (rule 11) ---------- */
+  function rLabel(label,tf){ return '<span class="l">'+esc(label)+(tf?'<small>'+esc(tf)+'</small>':'')+'</span>'; }
+  function railOne(label,tf,p,val,hot,title){ var left=fin(p)?clamp(p,0,100):null;
+    return '<div class="glm-rail one"'+(title?' title="'+esc(title)+'"':'')+'>'+rLabel(label,tf)+'<span class="t"><s class="r"></s>'+(left==null?'':'<i style="left:'+left.toFixed(1)+'%"></i>')+'</span><span class="v '+(hot?'hot':'')+'">'+esc(val)+'</span></div>'; }
+  function railTwo(label,tf,p,val,hot,ends,title){ var left=fin(p)?clamp(p,0,100):null;
+    return '<div class="glm-rail two'+(ends?' named':'')+'"'+(title?' title="'+esc(title)+'"':'')+'>'+rLabel(label,tf)+'<span class="t">'+(ends?'<em class="a">'+esc(ends[0])+'</em><em class="c">'+esc(ends[1])+'</em><em class="z">'+esc(ends[2])+'</em>':'')+'<s class="lft"></s><s class="r"></s><b></b>'+(left==null?'':'<i style="left:'+left.toFixed(1)+'%"></i>')+'</span><span class="v '+(hot?'hot':'')+'">'+esc(val)+'</span></div>'; }
+  function railDir(label,tf,p,val,title){ var left=fin(p)?clamp(p,0,100):null, c=fin(p)?(p>=85?'long':p<=15?'hot':''):'';
+    return '<div class="glm-rail dir"'+(title?' title="'+esc(title)+'"':'')+'>'+rLabel(label,tf)+'<span class="t"><s class="lft"></s><s class="r g"></s><b class="strong"></b>'+(left==null?'':'<i style="left:'+left.toFixed(1)+'%"></i>')+'</span><span class="v '+c+'">'+esc(val)+'</span></div>'; }
+  function railHead(a,b,c){ return '<div class="glm-rail head"><span class="l"></span><span class="t bare"><em class="a">'+esc(a)+'</em><em class="c">'+esc(b)+'</em><em class="z">'+esc(c)+'</em></span><span class="v"></span></div>'; }
   function railsBox(rows){ return '<div class="glm-rails">'+rows.join('')+'</div>'; }
+  function rh(t){ return '<div class="glm-rh">'+esc(t)+'</div>'; }
   function read(html,tone){ return '<div class="glm-read'+(tone?' '+tone:'')+'">'+html+'</div>'; }
   function empty(msg,retry){ return '<div class="glm-empty'+(retry?' err':'')+'"><span>'+esc(msg)+'</span>'+(retry?'<button type="button" data-glmretry>retry</button>':'')+'</div>'; }
-  function seg(name,opts,cur){ return '<div class="gl-seg glm-seg" role="tablist">'+opts.map(function(o){ var on=o[0]===cur; return '<button type="button" role="tab" data-glmseg="'+esc(name)+'" data-v="'+esc(o[0])+'" class="'+(on?'on':'')+'" aria-selected="'+on+'">'+esc(o[1])+'</button>'; }).join('')+'</div>'; }
+  function seg(name,opts,cur){ return '<div class="glm-seg" role="tablist">'+opts.map(function(o){ var on=o[0]===cur; return '<button type="button" role="tab" data-glmseg="'+esc(name)+'" data-v="'+esc(o[0])+'" class="'+(on?'on':'')+'" aria-selected="'+on+'">'+esc(o[1])+'</button>'; }).join('')+'</div>'; }
+  function viewSeg(panel,opts){ return seg('view:'+panel,opts,S.views[panel]); }
 
   /* ---------- the feed ---------- */
   function load(force){
@@ -14705,7 +14738,7 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
   /* ---------- build ---------- */
   function build(){
     if(S.built) return; S.built=true;
-    root.innerHTML='<div class="glm-head"><div class="glm-row"><div class="glm-ttl"><b>Macro desk</b><small data-glmnote>ten panels · loading…</small></div>'
+    root.innerHTML='<div class="glm-head"><div class="glm-row"><div class="glm-ttl"><b>Macro desk</b><small data-glmnote>eleven panels · loading…</small></div>'
       +'<button type="button" class="glm-x" data-glmx aria-label="Close Macro desk">×</button></div></div>'
       +'<div class="glm-chips" data-glmchips>'+PANELS.map(function(p){ return '<button type="button" class="glm-chip" data-glmjump="'+p.k+'"><i>'+p.n+'</i>'+esc(p.t)+'</button>'; }).join('')+'</div>'
       +'<div class="glm-main" data-glmmain><div class="glm-grid">'+PANELS.map(function(p){
@@ -14719,12 +14752,17 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
       if((b=e.target.closest('[data-glmhelp]'))){ var k=b.getAttribute('data-glmhelp'), box=$('[data-glmhelpbox="'+k+'"]'); box.hidden=!box.hidden; b.setAttribute('aria-expanded',String(!box.hidden)); b.classList.toggle('on',!box.hidden); return; }
       if((b=e.target.closest('[data-glmretry]'))){ load(true); return; }
       if((b=e.target.closest('[data-glmseg]'))){ var nm=b.getAttribute('data-glmseg'), v=b.getAttribute('data-v');
-        if(nm==='corr'){ S.corrWin=+v; lsSet(LS.corr,v); paintPanel('corr'); } else if(nm==='cot'){ S.cotGroup=v; lsSet(LS.cot,v); paintPanel('cot'); } else if(nm==='coin'){ S.coin=v; lsSet(LS.coin,v); paintPanel('crypto'); } return; }
+        if(nm.indexOf('view:')===0){ var pk=nm.slice(5); setView(pk,v); paintPanel(pk); }
+        else if(nm==='corrwin'){ S.corrWin=+v; lsSet(LS.corr,v); paintPanel('corr'); } else if(nm==='cot'){ S.cotGroup=v; lsSet(LS.cot,v); paintPanel('cot'); } else if(nm==='coin'){ S.coin=v; lsSet(LS.coin,v); paintPanel('crypto'); } return; }
+      if((b=e.target.closest('[data-glmladder]'))){ S.ladderOpen=!S.ladderOpen; paintPanel('risk'); return; }
       if((b=e.target.closest('[data-glmseen]'))){ markSeen(b.getAttribute('data-glmseen')); return; }
-      if((b=e.target.closest('[data-glmjadd]'))){ journalAdd(); return; }
       if((b=e.target.closest('[data-glmaadd]'))){ alertAdd(); return; }
       if((b=e.target.closest('[data-glmadel]'))){ alertDel(b.getAttribute('data-glmadel'),b); return; }
+      if((b=e.target.closest('[data-glmjadd]'))){ journalAdd(); return; }
       if((b=e.target.closest('[data-glmjdel]'))){ journalDel(b.getAttribute('data-glmjdel'),b); return; }
+      if((b=e.target.closest('[data-glmwhy]'))){ whyOpen(b.getAttribute('data-glmwhy')); return; }
+      if((b=e.target.closest('[data-glmwhysave]'))){ whySave(b.getAttribute('data-glmwhysave')); return; }
+      if((b=e.target.closest('[data-glmtrretry]'))){ tradesLoad(true); return; }
     });
     root.addEventListener('keydown',function(e){ if(e.key==='Escape') hide(); });
     root.tabIndex=-1;
@@ -14740,50 +14778,56 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
 
   /* ---------- paint ---------- */
   function paintAll(){ if(!S.built) return; _lastW=bodyW(); paintNote(); PANELS.forEach(function(p){ paintPanel(p.k); }); paintChipOn(); }
-  function paintNote(){ var n=$('[data-glmnote]'); if(!n) return; var D=S.data, t='ten panels';
+  function paintNote(){ var n=$('[data-glmnote]'); if(!n) return; var D=S.data, t='eleven panels';
     if(D){ var as=D.builtAt?new Date(D.builtAt):null; t='built '+(as&&!isNaN(as)?as.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—');
-      var live=0; PANELS.forEach(function(p){ if(p.k==='risk'||p.k==='alerts') return; if(sec(p.k==='liquidity'?'liquidity':p.k)) live++; }); t+=' · '+live+' of 8 feeds live';
+      var live=0; ['breadth','vol','credit','liquidity','fedpath','cot','crypto','corr'].forEach(function(k){ if(sec(k)) live++; }); t+=' · '+live+' of 8 feeds live';
       if(S.err) t+=' · refresh failed: '+S.err; }
     else if(S.fetching) t='loading the desk…'; else if(S.err) t=S.err;
     n.textContent=t; }
   function paintChipOn(){ var main=$('[data-glmmain]'); if(!main) return; var top=main.getBoundingClientRect().top+40, cur=null;
     var cards=$$('.glm-card'), inView=null; cards.forEach(function(c){ var r=c.getBoundingClientRect(); if(r.top<=top) cur=c.getAttribute('data-glmp'); if(!inView&&r.top<=top&&r.bottom>top) inView=c.getAttribute('data-glmp'); });
-    if(inView) cur=inView;                                   /* two columns: the FIRST card on the row in view, not the last one that starts above the line */
-    if(S.jumpTo){ var jc=$('#glmp-'+S.jumpTo); if(jc){ var jr=jc.getBoundingClientRect(); if(jr.top<=top+8&&jr.bottom>top) cur=S.jumpTo; } }   /* a jumped-to card keeps its chip while it is the row in view (the reader's own scroll clears it) */
+    if(inView) cur=inView;
+    if(S.jumpTo){ var jc=$('#glmp-'+S.jumpTo); if(jc){ var jr=jc.getBoundingClientRect(); if(jr.top<=top+8&&jr.bottom>top) cur=S.jumpTo; } }
     $$('[data-glmjump]').forEach(function(ch){ ch.classList.toggle('on',ch.getAttribute('data-glmjump')===cur); }); }
   function asOfLine(k,d){ var el=$('[data-glmas="'+k+'"]'); if(!el) return; var s=d&&d.asOf?String(d.asOf):''; el.textContent=s?('as of '+(s.length>10?s.slice(0,10)+' '+s.slice(11,16)+'Z':s)):''; }
+  var SRC_NAMES={breadth:['breadth'],vol:['cboe','pcr','move'],credit:['fred_credit'],liquidity:['fred_liquidity'],fedpath:['zq','effr'],cot:['cot'],crypto:['crypto_lev'],corr:['basket']};
+  function srcError(k){ var e=null; if(S.data&&S.data.sources) (SRC_NAMES[k]||[]).forEach(function(nm){ var s=S.data.sources[nm]; if(s&&s.ok===false&&s.err) e=s.err; }); return e; }
   function paintPanel(k){
     var body=$('[data-glmbody="'+k+'"]'); if(!body) return; var W=_lastW||bodyW(); if(W<60) W=320;
     var fn=PAINT[k], html='';
-    if(k==='risk'||k==='alerts'){ try{ html=fn(W); }catch(e){ html=empty('panel error: '+(e&&e.message)); } body.innerHTML=html; asOfLine(k,S.data); if(k==='alerts') wireJournal(); return; }
+    if(k==='risk'||k==='alerts'||k==='journal'){ try{ html=fn(W); }catch(e){ html=empty('panel error: '+(e&&e.message)); } body.innerHTML=html; asOfLine(k,k==='journal'?(TR.data||null):S.data); if(k==='journal') wireJournal(); return; }
     var d=sec(k);
-    if(!d){ var srcErr=null; if(S.data&&S.data.sources){ var names={breadth:['breadth'],vol:['cboe','pcr','move'],credit:['fred_credit'],liquidity:['fred_liquidity'],fedpath:['zq','effr'],cot:['cot'],crypto:['crypto_lev'],corr:['basket']}[k]||[];
-        names.forEach(function(nm){ var s=S.data.sources[nm]; if(s&&s.ok===false&&s.err) srcErr=s.err; }); }
+    if(!d){ var srcErr=srcError(k);
       body.innerHTML=empty(!S.data?(S.fetching?'loading…':(S.err||'loading…')):('not published yet'+(srcErr?' — '+srcErr:'')),!S.data&&!!S.err); asOfLine(k,null); return; }
     try{ html=fn(d,W); }catch(e){ html=empty('panel error: '+(e&&e.message)); }
     body.innerHTML=html; asOfLine(k,d);
   }
 
   var PAINT={};
-  /* 01 breadth */
+  /* 01 breadth — views: % above 50/200 · A/D line · new highs − lows; rails by timeframe */
   PAINT.breadth=function(d,W){
     var days=sliceLast(d.days,260), off=d.days.length-days.length, p50=d.pct50.slice(off), p200=d.pct200.slice(off), L=d.latest||{};
     var v50=fin(L.pct50)?L.pct50:last(p50), v200=fin(L.pct200)?L.pct200:last(p200);
-    var verdict=!fin(v50)?'No read yet.':v50>=65?'<b>Broad.</b>':v50>=45?'<b>Mixed.</b>':'<b>Narrow.</b>';
+    var verdict=!fin(v50)?'<b>No read yet.</b>':v50>=65?'<b>Broad.</b>':v50>=45?'<b>Mixed.</b>':'<b>Narrow.</b>';
     var line=fin(v50)?(num(v50,0)+'% of the US 500 are above their 50-day'+(fin(v200)?', '+num(v200,0)+'% above their 200-day.':'.')):'the ledger has not deepened enough yet for the averages.';
-    var hl=(L.hi20||0)-(L.lo20||0), n20=d.n[d.n.length-1]||500, adv=L.adv||0, dec=L.dec||0, ad=d.adLine, adNow=last(ad), ad20=back(ad,20), adTrend=fin(adNow)&&fin(ad20)?adNow-ad20:null;
+    var hl=(L.hi20||0)-(L.lo20||0), n20=last(d.n)||500, adv=L.adv||0, dec=L.dec||0, ad=d.adLine.slice(off), adNow=last(ad), ad20=back(ad,20), adTrend=fin(adNow)&&fin(ad20)?adNow-ad20:null;
+    var hlS=d.hi20.map(function(v,i){ return fin(v)&&fin(d.lo20[i])?v-d.lo20[i]:null; }).slice(off);
     var html=read(verdict+' '+line,fin(v50)?(v50>=65?'up':v50<45?'dn':''):'');
-    html+=chart({w:W,h:chH(),lo:0,hi:100,fmt:function(v){ return v+'%'; },xl:xlFor(days,5),band:[0,45,'rgba(240,104,95,.07)'],
-      series:[{v:p200,c:C.dim,w:1.3},{v:p50,c:acc(),w:1.8,dot:true}]});
-    html+='<div class="glm-leg"><span style="--c:'+acc()+'">% above 50-day</span><span style="--c:'+C.dim+'">% above 200-day</span></div>';
-    html+=railsBox([
-      rail('New highs − lows',50+clamp(hl/Math.max(1,n20)*100,-50,50),sign(hl)+Math.abs(hl),cls(hl),BOTH,'20-day highs minus 20-day lows, today'),
-      rail('Advance / decline',adv+dec?adv/(adv+dec)*100:null,adv+' / '+dec,cls(adv-dec),BOTH,'names up vs names down today'),
-      rail('A/D line, 20 sessions',fin(adTrend)?50+clamp(adTrend/Math.max(1,n20)/4*100,-50,50):null,fin(adTrend)?(adTrend>0?'rising':adTrend<0?'falling':'flat'):'—',cls(adTrend),BOTH,'the cumulative advance/decline line vs 20 sessions ago')]);
+    html+=viewSeg('breadth',[['pct','% above 50 / 200-day'],['ad','A/D line'],['hl','Highs − lows']]);
+    var v=S.views.breadth;
+    if(v==='ad'){ html+=chart({w:W,h:chH(),fmt:function(x){ return (Math.abs(x)>=1000?(x/1000).toFixed(1)+'k':String(x)); },xl:xlFor(days,5),series:[{v:ad,c:acc(),w:1.8,dot:true,fill:'rgba(var(--gl-acc-rgb,31,198,220),.08)'}]})+leg([[acc(),'advance/decline line — cumulative advances − declines, daily']]); }
+    else if(v==='hl'){ html+=chart({w:W,h:chH(),fmt:function(x){ return String(x); },xl:xlFor(days,5),marks:[[0,'','rgba(234,238,245,.45)']],series:[{v:hlS,c:acc(),w:1.6,dot:true}]})+leg([[acc(),'new 20-day highs minus new 20-day lows, per session']]); }
+    else { html+=chart({w:W,h:chH(),lo:0,hi:100,fmt:function(x){ return x+'%'; },xl:xlFor(days,5),bands:[[0,45,'rgba(240,104,95,.08)']],series:[{v:p200,c:C.dim,w:1.3},{v:p50,c:acc(),w:1.8,dot:true}]})
+      +leg([[acc(),'% above 50-day, daily'],[C.dim,'% above 200-day, daily'],['rgba(240,104,95,.55)','shaded: under 45% = narrow, fragile']]); }
+    html+=railsBox([rh('Today'),
+      railTwo('Advance / decline','today',adv+dec?adv/(adv+dec)*100:null,adv+' / '+dec,adv+dec?Math.abs(adv/(adv+dec)-.5)>.35:false,['all down','50/50','all up'],'names up vs names down in the last session'),
+      rh('20 sessions'),
+      railTwo('New highs − lows','20-day',50+clamp(hl/Math.max(1,n20)*100,-50,50),sign(hl)+Math.abs(hl),Math.abs(hl)/Math.max(1,n20)>.35,null,'20-day highs minus 20-day lows, last session'),
+      railTwo('A/D line trend','vs 20 sessions ago',fin(adTrend)?50+clamp(adTrend/Math.max(1,n20)/4*100,-50,50):null,fin(adTrend)?(adTrend>0?'rising':adTrend<0?'falling':'flat'):'—',false,null,'the cumulative advance/decline line vs 20 sessions ago')]);
     if(!fin(v200)) html+='<div class="glm-note">200-day: needs 200 sessions per name — the ledger is filling (n = '+(L.n200||0)+' of '+(L.n||0)+').</div>';
     return html;
   };
-  /* 02 volatility */
+  /* 02 volatility — the VIX curve with dots (term structures for the others are paid data); rails: one-directional gauges, put/call last and two-sided */
   PAINT.vol=function(d,W){
     var cv=d.curve||{}, now=cv.now||[], ago=cv.ago||[], labels=cv.labels||['9D','30D','3M','6M','1Y'], ct=d.contango||{}, s=d.series||{}, p=d.pct1y||{};
     var vix=last(s.vix), st=ct.state||'—', sp=ct.spread3m;
@@ -14791,55 +14835,72 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
     var line=fin(vix)?'VIX '+num(vix,1)+(fin(sp)?', 3-month '+(sp>=0?'above':'below')+' spot by '+num(Math.abs(sp),1)+' points':'')+(fin(p.vix)?' ('+ord(p.vix)+' percentile of the year).':'.'):'';
     var html=read(verdict+' '+line,st==='inverted'?'dn':st==='normal'?'up':'');
     var all=now.concat(ago).filter(fin), lo=all.length?Math.min.apply(null,all):10, hi=all.length?Math.max.apply(null,all):30;
-    html+=chart({w:W,h:chH(),lo:Math.floor(lo-2),hi:Math.ceil(hi+2),fmt:function(v){ return String(v); },xl:labels.map(function(t,i){ return {i:i,t:t}; }),
-      series:[{v:ago,c:C.dim,w:1.3,dash:true},{v:now,c:acc(),w:1.8,dot:true}]});
-    html+='<div class="glm-leg"><span style="--c:'+acc()+'">VIX curve today</span><span style="--c:'+C.dim+'">'+(cv.agoDate?fmtDay(cv.agoDate):'a month ago')+'</span></div>';
-    var pc=d.pcr||{}, pcT=last(pc.total), move=last(s.move), skew=last(s.skew), vvix=last(s.vvix);
-    html+=railsBox([
-      rail('VIX, 1y range',p.vix,num(vix,1),fin(p.vix)&&p.vix>85?'am':'',HOT,'percentile within the last year'),
-      rail('MOVE (bond vol)',p.move,num(move,0),fin(p.move)&&p.move>85?'am':'',HOT,'the bond market\'s VIX, 1y percentile'),
-      rail('Put / call, total',p.pcrTotal,num(pcT,2),fin(pcT)&&pcT>1?'am':'',HOT,'Cboe total put/call ratio, 1y percentile'),
-      rail('SKEW',p.skew,num(skew,0),fin(skew)&&skew>140?'am':'',HOT,'tail-risk pricing, 1y percentile'),
-      rail('VVIX',fin(vvix)?pctile(sliceLast(s.vvix||[],252),vvix):null,num(vvix,0),'',HOT,'the vol of VIX, 1y percentile')]);
+    html+=chart({w:W,h:chH(),lo:Math.floor(lo-2),hi:Math.ceil(hi+2),fmt:function(x){ return String(x); },xl:labels.map(function(t,i){ return {i:i,t:t}; }),
+      series:[{v:ago,c:C.dim,w:1.3,dash:true,dots:true},{v:now,c:acc(),w:1.8,dots:true}]});
+    html+=leg([[acc(),'VIX term structure, today'],[C.dim,'one month ago'+(cv.agoDate?' ('+fmtDay(cv.agoDate)+')':''),true]]);
+    var pc=d.pcr||{}, pcT=last(pc.total), move=last(s.move), skew=last(s.skew), vvix=last(s.vvix), vvP=fin(vvix)?pctile(sliceLast(s.vvix||[],252),vvix):null;
+    html+=railsBox([rh('Fear gauges · 1-year percentile'),
+      railOne('VIX','today · 1y pctile',p.vix,num(vix,1),fin(p.vix)&&p.vix>=85,'VIX, percentile within the last year'),
+      railOne('MOVE (bond vol)','today · 1y pctile',p.move,num(move,0),fin(p.move)&&p.move>=85,'the bond market\'s VIX, 1y percentile'),
+      railOne('SKEW','today · 1y pctile',p.skew,num(skew,0),fin(p.skew)&&p.skew>=85,'tail-risk pricing, 1y percentile'),
+      railOne('VVIX','today · 1y pctile',vvP,num(vvix,0),fin(vvP)&&vvP>=85,'the vol of VIX, 1y percentile'),
+      rh('Positioning'),
+      railTwo('Put / call, total','today · 1y pctile',p.pcrTotal,num(pcT,2),fin(p.pcrTotal)&&(p.pcrTotal>=85||p.pcrTotal<=15),['few puts','median','heavy hedging'],'Cboe total put/call ratio, 1y percentile')]);
     return html;
   };
-  /* 03 credit */
+  /* 03 credit — two stacked graphs (HY · IG, own scales + own stress lines) and a toggle to NFCI / bank lending */
   PAINT.credit=function(d,W){
     var days=sliceLast(d.days,520), off=d.days.length-days.length, hy=d.hy.slice(off), ig=d.ig.slice(off), hyN=last(hy), igN=last(ig), st=d.stress||{}, line=fin(st.hyLine)?st.hyLine:5;
     var verdict=!fin(hyN)?'<b>No read.</b>':hyN>=7?'<b>Stress event.</b>':hyN>=line?'<b>Stress building.</b>':hyN>=3.5?'<b>Watchful.</b>':'<b>No stress.</b>';
     var txt=fin(hyN)?'Junk-bond spreads at '+num(hyN,2)+'%, '+(hyN<line?'under':'over')+' the '+num(line,0)+'% line where equities usually start to care'+(fin(igN)?'; investment-grade '+num(igN,2)+'%.':'.'):'';
     var html=read(verdict+' '+txt,fin(hyN)?(hyN>=line?'dn':hyN<3.5?'up':''):'');
-    var mx=Math.max.apply(null,hy.concat(ig).filter(fin).concat([line+.5]));
-    html+=chart({w:W,h:chH(),lo:0,hi:Math.ceil(mx+.5),floor:0,fmt:function(v){ return v+'%'; },xl:xlFor(days,5),band:[line,99,'rgba(240,104,95,.10)'],
-      series:[{v:ig,c:C.dim,w:1.3},{v:hy,c:C.am,w:1.8,dot:true}]});
-    html+='<div class="glm-leg"><span style="--c:'+C.am+'">High-yield spread</span><span style="--c:'+C.dim+'">Investment-grade</span></div>';
-    var nf=d.nfci||{}, nfN=last(nf.v), le=d.lending||{}, leN=last(le.v), nfP=fin(nfN)?pctile(sliceLast(nf.v||[],260),nfN):null, leP=fin(leN)?pctile(le.v||[],leN):null;
-    html+=railsBox([
-      rail('HY spread, 5y range',st.hyPct5y,pctAbs(hyN,2),fin(hyN)&&hyN>=line?'dn':fin(hyN)&&hyN<3.5?'up':'',HOT,'percentile within five years'),
-      rail('IG spread, 5y range',st.igPct5y,pctAbs(igN,2),'',HOT,'percentile within five years'),
-      rail('Financial conditions',nfP,fin(nfN)?(nfN<0?'loose ('+num(nfN,2)+')':'tight ('+num(nfN,2)+')'):'—',fin(nfN)?(nfN<0?'up':'dn'):'',HOT,'Chicago Fed NFCI — below zero is looser than average; 5y percentile'),
-      rail('Banks tightening',leP,fin(leN)?pct(leN,0)+' net':'—',fin(leN)&&leN>20?'am':'',HOT,'net share of banks tightening standards on business loans (quarterly)')]);
+    html+=viewSeg('credit',[['hy','Spreads'],['nfci','Financial conditions'],['lend','Bank lending']]);
+    var v=S.views.credit, nf=d.nfci||{}, le=d.lending||{};
+    if(v==='nfci'){ var nw=sliceLast(nf.weeks||[],156), nv=sliceLast(nf.v||[],156); html+=chart({w:W,h:chH(),fmt:function(x){ return x.toFixed(1); },xl:xlFor(nw,5),marks:[[0,'0 = average conditions','rgba(234,238,245,.45)']],series:[{v:nv,c:acc(),w:1.6,dot:true}]})+leg([[acc(),'Chicago Fed NFCI, weekly (below 0 = looser than average)']]); }
+    else if(v==='lend'){ var lq=le.quarters||[], lv=le.v||[]; html+=chart({w:W,h:chH(),fmt:function(x){ return x+'%'; },xl:lq.map(function(q,i){ return {i:i,t:q.slice(0,4)+'Q'+Math.ceil(+q.slice(5,7)/3)}; }).filter(function(_,i){ return i%Math.max(1,Math.ceil(lq.length/5))===0; }),marks:[[0,'','rgba(234,238,245,.45)']],series:[{v:lv,c:acc(),w:1.6,dot:true,step:true}]})+leg([[acc(),'net % of banks tightening standards on business loans, quarterly']]); }
+    else {
+      var h1=Math.round(chH()*.62), h2=Math.round(chH()*.5);
+      html+=chart({w:W,h:h1,floor:0,fmt:function(x){ return x+'%'; },xl:[],marks:[[line,num(line,0)+'% — equities start to care'],[7,'7% — stress event']],series:[{v:hy,c:C.am,w:1.8,dot:true}]})+leg([[C.am,'high-yield spread, daily']]);
+      html+=chart({w:W,h:h2,floor:0,fmt:function(x){ return x.toFixed(1)+'%'; },xl:xlFor(days,5),marks:[[2,'2% — IG stress']],series:[{v:ig,c:acc(),w:1.6,dot:true}]})+leg([[acc(),'investment-grade spread, daily — own scale']]);
+    }
+    var nfN=last(nf.v), leN=last(le.v), nfP=fin(nfN)?pctile(sliceLast(nf.v||[],260),nfN):null, leP=fin(leN)?pctile(le.v||[],leN):null, win=st.pctFrom?'since '+st.pctFrom.slice(0,4):'5y';
+    html+=railsBox([rh('Spreads · percentile '+win+(st.pctFrom?' (FRED serves the ICE series ~3y)':'')),
+      railOne('HY spread','today · pctile',st.hyPct5y,pctAbs(hyN,2),fin(hyN)&&hyN>=line,'high-yield OAS, percentile within the window'),
+      railOne('IG spread','today · pctile',st.igPct5y,pctAbs(igN,2),fin(st.igPct5y)&&st.igPct5y>=85,'investment-grade OAS, percentile within the window'),
+      rh('Conditions'),
+      railTwo('Financial conditions','this week · 5y pctile',nfP,fin(nfN)?num(nfN,2):'—',fin(nfP)&&(nfP>=85||nfP<=15),['loose','average','tight'],'Chicago Fed NFCI — below zero is looser than average'),
+      railOne('Banks tightening','last quarter · pctile',leP,fin(leN)?pct(leN,0)+' net':'—',fin(leN)&&leN>20,'net share of banks tightening standards (quarterly survey)')]);
     return html;
   };
-  /* 04 liquidity */
+  /* 04 liquidity — net liquidity vs the S&P by default; each leg alone on its own scale */
   PAINT.liquidity=function(d,W){
     var weeks=sliceLast(d.weeks,156), off=d.weeks.length-weeks.length, net=d.net.slice(off).map(function(v){ return fin(v)?v/1000:null; }), L=d.latest||{};
     var c4=L.netChg4w, c13=L.netChg13w, verdict=!fin(c4)?'<b>No read.</b>':c4>50?'<b>Tide rising.</b>':c4<-50?'<b>Tide going out.</b>':'<b>Flat tide.</b>';
     var txt=fin(L.net)?'Net liquidity '+bn(L.net)+(fin(c4)?', '+(c4>=0?'up ':'down ')+bn(Math.abs(c4))+' in four weeks':'')+(fin(c13)?' and '+(c13>=0?'up ':'down ')+bn(Math.abs(c13))+' in thirteen.':'.'):'';
     var html=read(verdict+' '+txt,fin(c4)?(c4>50?'up':c4<-50?'dn':''):'');
-    var spx=null; var corr=sec('corr'); if(corr&&corr.closes&&corr.closes.SPY){ var map={}; corr.days.forEach(function(dd,i){ map[dd]=corr.closes.SPY[i]; }); var ds=corr.days;
-      spx=weeks.map(function(w){ var best=null; for(var i=ds.length-1;i>=0;i--){ if(ds[i]<=w){ best=map[ds[i]]; break; } } return fin(best)?best:null; }); var sv=spx.filter(fin); if(sv.length<10) spx=null; }
-    var series=[{v:net,c:acc(),w:1.8,dot:true,fill:'rgba(var(--gl-acc-rgb,31,198,220),.08)'}];
-    if(spx){ var sv2=spx.filter(fin), slo=Math.min.apply(null,sv2), shi=Math.max.apply(null,sv2), spd=(shi-slo)*.1||1; series.unshift({v:spx,c:C.dim,w:1.3,scale:[slo-spd,shi+spd]}); }
-    html+=chart({w:W,h:chH(),fmt:function(v){ return '$'+v.toFixed(1)+'T'; },xl:xlFor(weeks,5),series:series});
-    html+='<div class="glm-leg"><span style="--c:'+acc()+'">Net liquidity = Fed balance sheet − TGA − reverse repo</span>'+(spx?'<span style="--c:'+C.dim+'">S&amp;P 500, own scale</span>':'')+'</div>';
-    var dl=d.dollar||{}, dN=last(dl.v), dP=fin(dN)?pctile(sliceLast(dl.v||[],260),dN):null, m2=d.m2||{}, m2N=last(m2.v), m2B=back(m2.v,3), m2c=fin(m2N)&&fin(m2B)?(m2N/m2B-1)*100:null;
+    html+=viewSeg('liquidity',[['net','Net liquidity'],['dollar','Dollar'],['tga','Treasury account'],['rrp','Reverse repo'],['m2','M2']]);
+    var v=S.views.liquidity, dl=d.dollar||{}, m2=d.m2||{};
+    if(v==='dollar'){ var dd=sliceLast(dl.days||[],520), dv=sliceLast(dl.v||[],520); html+=chart({w:W,h:chH(),fmt:function(x){ return x.toFixed(0); },xl:xlFor(dd,5),series:[{v:dv,c:acc(),w:1.6,dot:true}]})+leg([[acc(),'broad trade-weighted dollar index, daily']]); }
+    else if(v==='tga'){ html+=chart({w:W,h:chH(),floor:0,fmt:function(x){ return '$'+x+'B'; },xl:xlFor(weeks,5),series:[{v:d.tga.slice(off),c:acc(),w:1.6,dot:true}]})+leg([[acc(),'Treasury General Account, weekly']]); }
+    else if(v==='rrp'){ html+=chart({w:W,h:chH(),floor:0,fmt:function(x){ return '$'+x+'B'; },xl:xlFor(weeks,5),series:[{v:d.rrp.slice(off),c:acc(),w:1.6,dot:true}]})+leg([[acc(),'overnight reverse repo, weekly']]); }
+    else if(v==='m2'){ var mm=sliceLast(m2.months||[],60), mv=sliceLast(m2.v||[],60).map(function(x){ return fin(x)?x/1000:null; }); html+=chart({w:W,h:chH(),fmt:function(x){ return '$'+x.toFixed(1)+'T'; },xl:mm.map(function(m,i){ return {i:i,t:monYr(m)}; }).filter(function(_,i){ return i%12===0; }),series:[{v:mv,c:acc(),w:1.6,dot:true}]})+leg([[acc(),'M2 money supply, monthly']]); }
+    else {
+      var spx=null; var corr=sec('corr'); if(corr&&corr.closes&&corr.closes.SPY){ var map={}; corr.days.forEach(function(dd2,i){ map[dd2]=corr.closes.SPY[i]; }); var ds=corr.days;
+        spx=weeks.map(function(w){ var best=null; for(var i=ds.length-1;i>=0;i--){ if(ds[i]<=w){ best=map[ds[i]]; break; } } return fin(best)?best:null; }); var sv=spx.filter(fin); if(sv.length<10) spx=null; }
+      var series=[{v:net,c:acc(),w:1.8,dot:true,fill:'rgba(var(--gl-acc-rgb,31,198,220),.08)'}];
+      if(spx){ var sv2=spx.filter(fin), slo=Math.min.apply(null,sv2), shi=Math.max.apply(null,sv2), spd=(shi-slo)*.1||1; series.unshift({v:spx,c:C.dim,w:1.3,scale:[slo-spd,shi+spd]}); }
+      html+=chart({w:W,h:chH(),fmt:function(x){ return '$'+x.toFixed(1)+'T'; },xl:xlFor(weeks,5),series:series});
+      html+=leg([[acc(),'net liquidity = Fed balance sheet − TGA − reverse repo, weekly']].concat(spx?[[C.dim,'S&P 500 on its own scale, weekly']]:[]));
+    }
+    var dN=last(dl.v), dP=fin(dN)?pctile(sliceLast(dl.v||[],260),dN):null, m2N=last(m2.v), m2B=back(m2.v,3), m2c=fin(m2N)&&fin(m2B)?(m2N/m2B-1)*100:null;
     var tgaP=fin(L.tga)?pctile(sliceLast(d.tga||[],156),L.tga):null, rrpP=fin(L.rrp)?pctile(sliceLast(d.rrp||[],156),L.rrp):null;
-    html+=railsBox([
-      rail('Broad dollar, 1y',dP,num(dN,1),fin(dP)&&dP>85?'am':'',HOT,'trade-weighted broad dollar index, 1y percentile — a strong dollar tightens the world'),
-      rail('Treasury account',tgaP,bn(L.tga),fin(tgaP)&&tgaP>80?'am':'',HOT,'cash the Treasury holds at the Fed — a rising TGA drains liquidity; 3y percentile'),
-      rail('Reverse repo',rrpP,bn(L.rrp),'',HOT,'cash parked at the Fed overnight; 3y percentile'),
-      rail('M2, 3-month change',fin(m2c)?50+clamp(m2c*10,-50,50):null,pct(m2c,1),cls(m2c),BOTH,'money supply, change over three months')]);
+    html+=railsBox([rh('Tightening pressure · one-directional'),
+      railOne('Broad dollar','today · 1y pctile',dP,num(dN,1),fin(dP)&&dP>=85,'trade-weighted broad dollar index — a strong dollar tightens the world'),
+      railOne('Treasury account','this week · 3y pctile',tgaP,bn(L.tga),fin(tgaP)&&tgaP>=85,'cash the Treasury holds at the Fed — a rising TGA drains liquidity'),
+      railOne('Reverse repo','this week · 3y pctile',rrpP,bn(L.rrp),fin(rrpP)&&rrpP>=85,'cash parked at the Fed overnight'),
+      rh('Money'),
+      railTwo('Net liquidity','4-week change',fin(c4)?50+clamp(c4/4,-50,50):null,(fin(c4)?(c4>=0?'+':'−')+bn(Math.abs(c4)):'—'),fin(c4)&&Math.abs(c4)>=150,['draining','flat','flooding'],'change over four weeks, $ billions'),
+      railTwo('M2','3-month change',fin(m2c)?50+clamp(m2c*10,-50,50):null,pct(m2c,1),fin(m2c)&&Math.abs(m2c)>=3,['shrinking','flat','growing'],'money supply, change over three months')]);
     return html;
   };
   /* 05 fed path */
@@ -14848,22 +14909,22 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
     if(!ms.length) return empty('no contracts quoted yet');
     var byYm={}; pv.forEach(function(m){ byYm[m.ym]=m; });
     var nowV=[fin(rate)?rate:null].concat(ms.map(function(m){ return m.implied; })), prevV=[fin(rate)?rate:null].concat(ms.map(function(m){ var p=byYm[m.ym]; return p?p.implied:null; }));
-    var lastM=ms[ms.length-1], cuts=lastM.cutsPriced, mid=ms[Math.min(ms.length-1,7)], midCuts=mid.cutsPriced;
+    var mid=ms[Math.min(ms.length-1,7)], midCuts=mid.cutsPriced;
     var shift=null; for(var i=ms.length-1;i>=0;i--){ var p=byYm[ms[i].ym]; if(p&&fin(p.implied)&&fin(ms[i].implied)){ shift=(ms[i].implied-p.implied)*100; break; } }
-    var verdict=!fin(midCuts)?'<b>Path not priced.</b>':midCuts>=0.5?'<b>'+(Math.round(midCuts*2)/2).toFixed(1).replace('.0','')+' cut'+(midCuts>=1.5?'s':'')+' priced by '+mid.label+'.</b>':midCuts<=-0.5?'<b>Hikes priced by '+mid.label+'.</b>':'<b>On hold through '+mid.label+'.</b>';
+    var verdict=!fin(midCuts)?'<b>Path not priced.</b>':midCuts>=0.5?'<b>'+(Math.round(midCuts*2)/2).toFixed(1).replace('.0','')+' cut'+(midCuts>=1.5?'s':'')+' priced by '+mid.label+'.</b>':midCuts<=-0.5?'<b>'+(Math.round(-midCuts*2)/2).toFixed(1).replace('.0','')+' hike'+(midCuts<=-1.5?'s':'')+' priced by '+mid.label+'.</b>':'<b>On hold through '+mid.label+'.</b>';
     var txt=(fin(rate)?'Effective rate '+num(rate,2)+'%'+(fin(ef.targetLo)?' (target '+num(ef.targetLo,2)+'–'+num(ef.targetHi,2)+')':'')+'. ':'')+(fin(shift)?'The far end moved '+(shift>0?'up ':'down ')+Math.abs(shift).toFixed(0)+' bp since '+(d.prev&&d.prev.asOf?fmtDay(d.prev.asOf):'last week')+'.':'');
     var html=read(verdict+' '+txt,fin(shift)?(shift<-5?'up':shift>5?'dn':''):'');
     var allV=nowV.concat(prevV).filter(fin), lo=Math.min.apply(null,allV), hi=Math.max.apply(null,allV);
     var xl=[{i:0,t:'Now'}]; ms.forEach(function(m,i){ if(i%Math.ceil(ms.length/6)===0||i===ms.length-1) xl.push({i:i+1,t:m.label.replace(' ','’')}); });
-    html+=chart({w:W,h:chH(),lo:Math.floor(lo*4)/4-.25,hi:Math.ceil(hi*4)/4+.25,fmt:function(v){ return v.toFixed(2)+'%'; },xl:xl,
+    html+=chart({w:W,h:chH(),lo:Math.floor(lo*4)/4-.25,hi:Math.ceil(hi*4)/4+.25,fmt:function(x){ return x.toFixed(2)+'%'; },xl:xl,marks:fin(rate)?[[rate,'','rgba(234,238,245,.35)']]:[],
       series:[{v:prevV,c:C.dim,w:1.3,dash:true,step:true},{v:nowV,c:acc(),w:1.8,dot:true,step:true}]});
-    html+='<div class="glm-leg"><span style="--c:'+acc()+'">Implied rate by month</span><span style="--c:'+C.dim+'">'+(d.prev&&d.prev.asOf?fmtDay(d.prev.asOf):'a week ago')+'</span></div>';
-    var pick=ms.filter(function(m,i){ return i<ms.length&&(i%2===1||i===ms.length-1); }).slice(0,6);
-    html+='<table class="glm-tbl"><tr><th>Month</th><th>Implied</th><th>Cuts priced</th><th>vs '+(d.prev&&d.prev.asOf?fmtDay(d.prev.asOf):'prev')+'</th></tr>'+pick.map(function(m){ var p=byYm[m.ym], dv=p&&fin(p.implied)&&fin(m.implied)?(m.implied-p.implied)*100:null;
+    html+=leg([[acc(),'implied rate by month, today'],[C.dim,'a week ago'+(d.prev&&d.prev.asOf?' ('+fmtDay(d.prev.asOf)+')':''),true],['rgba(234,238,245,.35)','today\'s effective rate',true]]);
+    var pick=ms.filter(function(m,i){ return i%2===1||i===ms.length-1; }).slice(0,6);
+    html+='<table class="glm-tbl"><tr><th>Month</th><th>Implied</th><th>Priced</th><th>vs '+(d.prev&&d.prev.asOf?fmtDay(d.prev.asOf):'prev')+'</th></tr>'+pick.map(function(m){ var p=byYm[m.ym], dv=p&&fin(p.implied)&&fin(m.implied)?(m.implied-p.implied)*100:null;
       return '<tr><td>'+esc(m.label)+'</td><td>'+num(m.implied,2)+'%</td><td class="'+(m.cutsPriced>0?'up':m.cutsPriced<0?'dn':'')+'">'+(fin(m.cutsPriced)?(m.cutsPriced>0?m.cutsPriced.toFixed(1)+' cut':m.cutsPriced<0?Math.abs(m.cutsPriced).toFixed(1)+' hike':'hold'):'—')+'</td><td class="'+(fin(dv)?(dv<0?'up':dv>0?'dn':''):'')+'">'+(fin(dv)?sign(dv)+Math.abs(dv).toFixed(0)+' bp':'—')+'</td></tr>'; }).join('')+'</table>';
     return html;
   };
-  /* 06 COT */
+  /* 06 COT — directional rails (the only green on the desk) */
   PAINT.cot=function(d,W){
     var mk=d.markets||[]; if(!mk.length) return empty('no markets yet');
     var groups=[['all','All']].concat(['Equities','Rates','Currencies','Commodities','Crypto'].filter(function(g){ return mk.some(function(m){ return m.group===g; }); }).map(function(g){ return [g,g]; }));
@@ -14872,80 +14933,120 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
     var withP=mk.filter(function(m){ return m.last&&fin(m.last.pctile3y); }), hot=withP.slice().sort(function(a,b){ return b.last.pctile3y-a.last.pctile3y; }), cold=withP.slice().sort(function(a,b){ return a.last.pctile3y-b.last.pctile3y; });
     var longs=hot.filter(function(m){ return m.last.pctile3y>=85; }).slice(0,3).map(function(m){ return m.name; }), shorts=cold.filter(function(m){ return m.last.pctile3y<=15; }).slice(0,3).map(function(m){ return m.name; });
     var verdict=(longs.length?'<b>Crowded long: '+longs.join(', ')+'.</b> ':'')+(shorts.length?'<b>Crowded short: '+shorts.join(', ')+'.</b> ':'')+(!longs.length&&!shorts.length?'<b>Nothing at an extreme.</b> ':'');
-    var html=read(verdict+'Speculators\' net position as a three-year percentile; the shaded ends are where reversals have the most fuel.');
+    var html=read(verdict+'Speculators\' net position as a three-year percentile; only the extremes are shaded.');
     html+=seg('cot',groups,cur);
-    html+='<div class="glm-rails glm-cot"><div class="glm-rail glm-rhead"><span class="l"></span><span class="t"><em>most short in 3y</em><em>most long in 3y</em></span><span class="v">net · Δ4w</span></div>'
-      +rows.map(function(m){ var L=m.last||{}, p=L.pctile3y, cl=fin(p)?(p>=85?'dn':p<=15?'up':''):'';
-        return rail(m.name,p,kfmt(L.net)+(fin(L.chg4w)?' · '+kfmt(L.chg4w):''),cl,BOTH,m.name+': net '+kfmt(L.net)+' contracts ('+num(L.netPctOi,1)+'% of open interest), '+ord(p)+' percentile of 3y, z '+num(L.z3y,2)+', change 4w '+kfmt(L.chg4w)); }).join('')+'</div>';
-    html+='<div class="glm-note">report of '+(d.asOf?fmtDay(d.asOf):'—')+' (the CFTC publishes Tuesday\'s positions on Friday)</div>';
+    html+='<div class="glm-rails glm-cot">'+railHead('crowded short','neutral','crowded long')
+      +rows.map(function(m){ var L=m.last||{}, p=L.pctile3y;
+        return railDir(m.name,'3y pctile · '+(L.date?fmtDay(L.date):'—'),p,kfmt(L.net)+(fin(L.chg4w)?' · '+kfmt(L.chg4w):''),m.name+': net '+kfmt(L.net)+' contracts ('+num(L.netPctOi,1)+'% of open interest), '+ord(p)+' percentile of 3y, z '+num(L.z3y,2)+', change 4w '+kfmt(L.chg4w)); }).join('')+'</div>';
+    html+='<div class="glm-note">value = net contracts · 4-week change · report of '+(d.asOf?fmtDay(d.asOf):'—')+' (the CFTC publishes Tuesday\'s positions on Friday)</div>';
     return html;
   };
-  /* 07 crypto leverage */
+  /* 07 crypto — funding + open interest are the read; liquidations behind the toggle */
   PAINT.crypto=function(d,W){
     var coins=d.coins||[]; if(!coins.length) return empty('no venue answered yet');
     var cur=S.coin; if(!coins.some(function(c){ return c.sym===cur; })) cur=coins[0].sym;
-    var c=coins.filter(function(x){ return x.sym===cur; })[0], lq=(d.liqs||{})[cur], st=d.stables||{};
+    var c=coins.filter(function(x){ return x.sym===cur; })[0], lq=(d.liqs||{})[cur], st=d.stables||{}, hist=(d.history||{})[cur]||{}, ht=(d.history||{}).t||[];
     var f8=c.fund8h, oi7=c.oiChg7d, oi24=c.oiChg24h;
     var lean=!fin(f8)?'':f8>=0.0005?'<b>Euphoric — longs paying up.</b>':f8>=0.0003?'<b>Long-heavy and fragile.</b>':f8<=-0.0001?'<b>Short-heavy.</b>':'<b>Neutral leverage.</b>';
     var txt=(fin(f8)?'Funding '+(f8*100).toFixed(3)+'% per 8h ('+pct(c.fundAnn,0)+' a year)':'Funding not published')+(fin(c.oiUsdTotal)?', open interest '+usd(c.oiUsdTotal):'')+(fin(oi7)?' ('+pct(oi7,0)+' in 7 days)':'')+'.';
-    var biggest=lq&&lq.biggest&&fin(lq.biggest.px)?' Biggest wipe-out in 24h: '+usd(lq.biggest.usd)+' of '+lq.biggest.side+'s at '+num(lq.biggest.px,lq.biggest.px<10?4:lq.biggest.px<1000?2:0)+'.':'';
-    var html=read(lean+' '+txt+biggest,fin(f8)?(f8>=0.0003?'dn':f8<=-0.0001?'up':''):'');
+    var html=read(lean+' '+txt,fin(f8)?(f8>=0.0003?'dn':f8<=-0.0001?'up':''):'');
     html+=seg('coin',coins.map(function(x){ return [x.sym,x.sym]; }),cur);
-    if(lq&&lq.buckets&&lq.buckets.length&&fin(lq.mark)){
+    html+=viewSeg('crypto',[['fund','Funding'],['oi','Open interest'],['liq','Liquidations 24h']]);
+    var v=S.views.crypto, hdays=ht.map(function(t){ return new Date(t*1000).toISOString().slice(0,10); });
+    if(v==='fund'||v==='oi'){
+      var arr=v==='fund'?(hist.fund8h||[]).map(function(x){ return fin(x)?x*100:null; }):(hist.oiUsd||[]).map(function(x){ return fin(x)?x/1e9:null; });
+      if(arr.filter(fin).length<2) html+=empty('history builds one point an hour — '+arr.filter(fin).length+' so far');
+      else html+=chart({w:W,h:chH(),fmt:v==='fund'?function(x){ return x.toFixed(3)+'%'; }:function(x){ return '$'+x.toFixed(1)+'B'; },xl:xlFor(hdays,4),marks:v==='fund'?[[0,'','rgba(234,238,245,.45)'],[0.03,'0.03% — rich'],[0.1,'0.1% — euphoric']]:[],series:[{v:arr,c:acc(),w:1.6,dot:true}]})
+        +leg([[acc(),v==='fund'?cur+' funding per 8h, averaged across venues, hourly points':cur+' open interest in $, summed across venues, hourly points']]);
+    } else if(lq&&lq.buckets&&lq.buckets.length&&fin(lq.mark)){
       var bk=lq.buckets, mx=0; bk.forEach(function(b){ mx=Math.max(mx,b.longUsd||0,b.shortUsd||0); });
-      var Hh=Math.max(170,Math.min(260,bk.length*4)), pl=62, pr=8, pw=W-pl-pr, rh=(Hh-14)/bk.length, out=['<svg class="glm-svg" viewBox="0 0 '+W+' '+Hh+'" width="'+W+'" height="'+Hh+'" aria-hidden="true">'];
+      var Hh=Math.max(170,Math.min(260,bk.length*4)), pl=62, pr=8, pw=W-pl-pr, rhh=(Hh-14)/bk.length, out=['<svg class="glm-svg" viewBox="0 0 '+W+' '+Hh+'" width="'+W+'" height="'+Hh+'" aria-hidden="true">'];
       var sorted=bk.slice().sort(function(a,b){ return b.px-a.px; }), markY=null;
-      sorted.forEach(function(b,i){ var yy=6+i*rh, v=(b.px>=lq.mark?b.shortUsd:b.longUsd)||0, w=mx>0?v/mx*pw:0;
+      sorted.forEach(function(b,i){ var yy=6+i*rhh, val=(b.px>=lq.mark?b.shortUsd:b.longUsd)||0, w=mx>0?val/mx*pw:0;
         if(markY==null&&b.px<lq.mark) markY=yy;
-        if(w>0) out.push('<rect x="'+pl+'" y="'+yy.toFixed(1)+'" width="'+Math.max(1,w).toFixed(1)+'" height="'+Math.max(1,rh-1.2).toFixed(1)+'" rx="1" fill="'+(b.px>=lq.mark?'rgba(57,208,127,.7)':'rgba(240,104,95,.75)')+'"/>');
-        if(i%Math.ceil(sorted.length/6)===0) out.push('<text class="glm-yt" x="'+(pl-4)+'" y="'+(yy+rh/2+3).toFixed(1)+'" text-anchor="end">'+esc(num(b.px,b.px<10?3:b.px<1000?1:0))+'</text>'); });
+        if(w>0) out.push('<rect x="'+pl+'" y="'+yy.toFixed(1)+'" width="'+Math.max(1,w).toFixed(1)+'" height="'+Math.max(1,rhh-1.2).toFixed(1)+'" rx="1" fill="'+(b.px>=lq.mark?'rgba(57,208,127,.7)':'rgba(240,104,95,.75)')+'"/>');
+        if(i%Math.ceil(sorted.length/6)===0) out.push('<text class="glm-yt" x="'+(pl-4)+'" y="'+(yy+rhh/2+3).toFixed(1)+'" text-anchor="end">'+esc(num(b.px,b.px<10?3:b.px<1000?1:0))+'</text>'); });
       if(markY==null) markY=Hh-8;
       out.push('<line x1="'+pl+'" x2="'+W+'" y1="'+markY.toFixed(1)+'" y2="'+markY.toFixed(1)+'" stroke="rgba(234,238,245,.75)" stroke-dasharray="3 3"/>');
-      out.push('<text class="glm-xt" x="'+(W-2)+'" y="'+(markY-4).toFixed(1)+'" text-anchor="end" fill="rgba(234,238,245,.9)">'+esc(cur+' '+num(lq.mark,lq.mark<10?4:lq.mark<1000?2:0)+' now')+'</text>');
-      out.push('<text class="glm-xt" x="'+(W-2)+'" y="16" text-anchor="end">shorts wiped above</text><text class="glm-xt" x="'+(W-2)+'" y="'+(Hh-4)+'" text-anchor="end">longs wiped below</text></svg>');
+      out.push('<text class="glm-xt" x="'+(W-2)+'" y="'+(markY-4).toFixed(1)+'" text-anchor="end" fill="rgba(234,238,245,.9)">'+esc(cur+' '+num(lq.mark,lq.mark<10?4:lq.mark<1000?2:0)+' now')+'</text></svg>');
       html+=out.join('');
-      html+='<div class="glm-leg"><span style="--c:'+C.dn+'">longs liquidated '+usd(lq.longUsd)+'</span><span style="--c:'+C.up+'">shorts liquidated '+usd(lq.shortUsd)+'</span><span>'+(lq.count||0)+' events · '+(lq.hours||0)+'h</span></div>';
-    } else html+='<div class="glm-empty"><span>'+esc(lq?'no liquidations recorded yet for '+cur:'liquidations not published yet for '+cur)+'</span></div>';
-    var fv=c.funding||{}, stT=last(st.total), st7=back(st.total,7), st30=back(st.total,30), s7=fin(stT)&&fin(st7)?stT-st7:null, s30=fin(stT)&&fin(st30)?stT-st30:null;
-    var fundP=fin(f8)?50+clamp(f8/0.001*50,-50,50):null;
-    html+=railsBox([
-      rail('Funding, 8h avg',fundP,fin(f8)?(f8*100).toFixed(3)+'%':'—',fin(f8)?(f8>=0.0003?'dn':f8<0?'up':''):'',BOTH,'Hyperliquid '+(fin(fv.hl)?(fv.hl*100).toFixed(3)+'%':'—')+' · Kraken '+(fin(fv.kf)?(fv.kf*100).toFixed(3)+'%':'—')+' · Bybit '+(fin(fv.bybit)?(fv.bybit*100).toFixed(3)+'%':'—')+' · OKX '+(fin(fv.okx)?(fv.okx*100).toFixed(3)+'%':'—')),
-      rail('Open interest, 24h',fin(oi24)?50+clamp(oi24*5,-50,50):null,pct(oi24,1),fin(oi24)?(oi24>10?'am':''):'',BOTH,'summed across the venues that answered; null when the venue count changed'),
-      rail('Open interest, 7d',fin(oi7)?50+clamp(oi7*2.5,-50,50):null,pct(oi7,1),fin(oi7)?(oi7>15?'am':''):'',BOTH,'summed across venues'),
-      rail('Liquidated, 24h',lq&&fin(lq.longUsd)&&fin(lq.shortUsd)&&(lq.longUsd+lq.shortUsd)>0?lq.shortUsd/(lq.longUsd+lq.shortUsd)*100:null,lq?usd((lq.longUsd||0)+(lq.shortUsd||0)):'—','',BOTH,'left = mostly longs wiped, right = mostly shorts'),
-      rail('Stablecoins, 30d',fin(s30)?50+clamp(s30/stT*100*5,-50,50):null,(fin(stT)?bn(stT):'—')+(fin(s30)?' · '+sign(s30)+bn(Math.abs(s30)).replace('$','$'):''),cls(s30),BOTH,'USDT + USDC + DAI + USDe supply; change over 30 days'+(fin(s7)?'; 7d '+sign(s7)+bn(Math.abs(s7)):''))]);
+      html+=leg([[C.dn,'longs liquidated below the price, last '+(lq.hours||24)+'h: '+usd(lq.longUsd)],[C.up,'shorts liquidated above: '+usd(lq.shortUsd)],['rgba(234,238,245,.5)',(lq.count||0)+' events · OKX']]);
+    } else html+=empty(lq?'no liquidations recorded yet for '+cur:'liquidations not published yet for '+cur);
+    var fv=c.funding||{}, stT=last(st.total), st30=back(st.total,30), s30=fin(stT)&&fin(st30)?stT-st30:null;
+    html+=railsBox([rh('Leverage · '+cur),
+      railTwo('Funding','8h · venue average',fin(f8)?50+clamp(f8/0.001*50,-50,50):null,fin(f8)?(f8*100).toFixed(3)+'%':'—',fin(f8)&&(f8>=0.0005||f8<=-0.0003),['shorts pay','neutral','longs pay'],'Hyperliquid '+(fin(fv.hl)?(fv.hl*100).toFixed(3)+'%':'—')+' · Kraken '+(fin(fv.kf)?(fv.kf*100).toFixed(3)+'%':'—')+' · Bybit '+(fin(fv.bybit)?(fv.bybit*100).toFixed(3)+'%':'—')+' · OKX '+(fin(fv.okx)?(fv.okx*100).toFixed(3)+'%':'—')),
+      railTwo('Open interest','24-hour change',fin(oi24)?50+clamp(oi24*5,-50,50):null,pct(oi24,1),fin(oi24)&&Math.abs(oi24)>=10,['unwinding','flat','building'],'summed across the venues that answered'),
+      railTwo('Open interest','7-day change',fin(oi7)?50+clamp(oi7*2.5,-50,50):null,pct(oi7,1),fin(oi7)&&Math.abs(oi7)>=15,null,'summed across venues'),
+      railOne('Liquidated','last 24h · vs 7-day pace',lq&&lq.d7&&fin(lq.d7.longUsd)&&(lq.d7.longUsd+lq.d7.shortUsd)>0?clamp(((lq.longUsd||0)+(lq.shortUsd||0))/((lq.d7.longUsd+lq.d7.shortUsd)/7)*50,0,100):null,lq?usd((lq.longUsd||0)+(lq.shortUsd||0)):'—',false,'24h liquidations against the 7-day daily average (100% = twice the pace)'),
+      rh('Dry powder'),
+      railTwo('Stablecoins','30-day change',fin(s30)&&fin(stT)?50+clamp(s30/stT*100*5,-50,50):null,(fin(stT)?bn(stT):'—')+(fin(s30)?' · '+sign(s30)+bn(Math.abs(s30)):''),false,['leaving','flat','arriving'],'USDT + USDC + DAI + USDe supply; change over 30 days')]);
     var ven=d.venues||{}, down=Object.keys(ven).filter(function(k){ return ven[k]!=='ok'; });
     if(down.length) html+='<div class="glm-note">venues not answering: '+esc(down.map(function(k){ return k+' ('+String(ven[k]).slice(0,40)+')'; }).join(', '))+'</div>';
     return html;
   };
-  /* 08 correlation matrix */
-  function corrOf(a,b,days,win){ var n=days.length, xs=[], ys=[]; var pa=null, pb=null, cnt=0;
-    for(var i=n-1;i>=1&&cnt<win;i--){ var a1=a[i], a0=a[i-1], b1=b[i], b0=b[i-1]; if(!fin(a1)||!fin(a0)||!fin(b1)||!fin(b0)||a0<=0||b0<=0) continue; xs.push(Math.log(a1/a0)); ys.push(Math.log(b1/b0)); cnt++; }
+  /* 08 correlations — the asset-class basket | my portfolio (the frames the app already holds) */
+  function corrOf(a,b,win){ var xs=[], ys=[]; for(var i=a.length-1;i>=1&&xs.length<win;i--){ var a1=a[i], a0=a[i-1], b1=b[i], b0=b[i-1]; if(!fin(a1)||!fin(a0)||!fin(b1)||!fin(b0)||a0<=0||b0<=0) continue; xs.push(Math.log(a1/a0)); ys.push(Math.log(b1/b0)); }
     if(xs.length<Math.max(10,win*.5)) return null; var m=xs.length, mx=0, my=0; for(var k=0;k<m;k++){ mx+=xs[k]; my+=ys[k]; } mx/=m; my/=m; var sxy=0, sxx=0, syy=0;
     for(k=0;k<m;k++){ sxy+=(xs[k]-mx)*(ys[k]-my); sxx+=(xs[k]-mx)*(xs[k]-mx); syy+=(ys[k]-my)*(ys[k]-my); } return sxx>0&&syy>0?sxy/Math.sqrt(sxx*syy):null; }
-  /* crypto trades weekends; a coin/stock pair aligns on the days both have a close — the stock has none on Saturday, so that day pairs with nothing */
-  function alignedCorr(A,B,days,win){ var a=[], b=[], d2=[]; for(var i=0;i<days.length;i++){ if(fin(A[i])&&fin(B[i])){ a.push(A[i]); b.push(B[i]); d2.push(days[i]); } } return corrOf(a,b,d2,win); }
-  PAINT.corr=function(d,W){
-    var A=d.assets||[], days=d.days||[], cl=d.closes||{}; if(A.length<3) return empty('basket too thin');
-    var win=S.corrWin===90?90:30, M30={}, M90={}, keys=A.map(function(a){ return a.sym; });
-    keys.forEach(function(x,i){ keys.forEach(function(y,j){ if(j<=i) return; M30[x+'|'+y]=alignedCorr(cl[x],cl[y],days,30); M90[x+'|'+y]=alignedCorr(cl[x],cl[y],days,90); }); });
-    var Mc=win===90?M90:M30, diffs=[]; Object.keys(M30).forEach(function(k){ if(fin(M30[k])&&fin(M90[k])) diffs.push([k,M30[k]-M90[k]]); }); diffs.sort(function(a,b){ return Math.abs(b[1])-Math.abs(a[1]); });
-    var top=diffs.slice(0,3), flag={}; top.forEach(function(t){ flag[t[0]]=t[1]; });
-    var nm={}; A.forEach(function(a){ nm[a.sym]=a.name; });
-    var verdict='<b>Nothing has shifted much.</b>'; if(top.length){ var t0=top[0][0].split('|'), p=t0[0], q=t0[1], c30=M30[top[0][0]], c90=M90[top[0][0]];
-      verdict='<b>'+esc(nm[p])+' and '+esc(nm[q])+' '+(c30>c90?'are moving together more':'have decoupled')+'</b> — '+num(c30,2)+' over 30 days vs '+num(c90,2)+' over 90.'; }
-    var html=read(verdict);
-    html+=seg('corr',[['30','30 days'],['90','90 days']],String(win));
+  function alignedCorr(A,B,win){ var a=[], b=[]; for(var i=0;i<Math.max(A.length,B.length);i++){ if(fin(A[i])&&fin(B[i])){ a.push(A[i]); b.push(B[i]); } } return corrOf(a,b,win); }
+  function framesCloses(sym,kind){
+    /* daily closes for a holding from what the app already holds: curated names (DATA / AIBO_FUNDS_LIVE / AIBO_CRYPTO_LIVE frames), US 500 / Coins 500 (the Market module's frames, when loaded) */
+    var tf=null; try{
+      if(kind==='cr'){ var cl=window.AIBO_CRYPTO_LIVE; if(cl&&cl[sym]&&cl[sym].tech) tf=cl[sym].tech.tf; }
+      else { var D=null; try{ D=(typeof DATA!=='undefined'&&DATA)||window.DATA; }catch(_){ D=window.DATA; } if(D&&D[sym]&&D[sym].live&&D[sym].live.tech) tf=D[sym].live.tech.tf;
+        if(!tf){ var fl=window.AIBO_FUNDS_LIVE; if(fl&&fl[sym]&&fl[sym].tech) tf=fl[sym].tech.tf; } }
+      if(!tf&&window.MktView&&MktView.market&&typeof MktView.market.frames==='function'){ var t2=MktView.market.frames(kind==='cr'?'mkc':'mk',sym); if(t2&&t2.d) tf=t2; }
+    }catch(_){ tf=null; }
+    if(!tf||typeof window.tfParse!=='function') return null; var P=window.tfParse(tf); if(!P||!P.d||P.d.length<12) return null; return P.d.map(function(b){ return b.c; });
+  }
+  var ALIAS={XAG:'SLV', SILVER:'SLV', XAU:'GLD', GOLD:'GLD', XBT:'BTC', WBTC:'BTC', STETH:'ETH', WETH:'ETH', GOOG:'GOOGL', BRKB:'BRK-B', 'BRK.B':'BRK-B'};
+  function matrixHTML(keys,nm,Mc,M30,M90,flag){
     var cols=keys.length, cell='<div class="glm-mx" style="grid-template-columns:38px repeat('+cols+',minmax(0,1fr))"><div class="h"></div>'+keys.map(function(k){ return '<div class="h">'+esc(k)+'</div>'; }).join('');
     keys.forEach(function(x,i){ cell+='<div class="h r">'+esc(x)+'</div>'; keys.forEach(function(y,j){ if(i===j){ cell+='<div class="d"></div>'; return; } var k=i<j?x+'|'+y:y+'|'+x, v=Mc[k];
       var bg=!fin(v)?'transparent':v>=0?'rgba(var(--gl-acc-rgb,31,198,220),'+(0.08+v*.62).toFixed(2)+')':'rgba(240,104,95,'+(0.08-v*.72).toFixed(2)+')';
       cell+='<div class="c'+(flag[k]!=null?' new':'')+'" style="background:'+bg+'" title="'+esc(nm[x]+' × '+nm[y]+': '+num(v,2)+(fin(M30[k])&&fin(M90[k])?' (30d '+num(M30[k],2)+', 90d '+num(M90[k],2)+')':''))+'">'+(fin(v)?v.toFixed(2).replace(/^(-?)0\./,'$1.'):'·')+'</div>'; }); });
-    cell+='</div>'; html+=cell;
-    html+='<div class="glm-leg"><span style="--c:'+acc()+'">moves together</span><span style="--c:'+C.dn+'">moves opposite</span><span style="--c:'+C.am+'">changed most, 30d vs 90d</span></div>';
+    return cell+'</div>';
+  }
+  function corrBlock(keys,nm,closes,win){
+    var M30={}, M90={}; keys.forEach(function(x,i){ keys.forEach(function(y,j){ if(j<=i) return; var A=closes[x], Bc=closes[y], k=x+'|'+y; if(!A||!Bc){ M30[k]=null; M90[k]=null; return; } M30[k]=alignedCorr(A,Bc,30); M90[k]=alignedCorr(A,Bc,90); }); });
+    var Mc=win===90?M90:M30, diffs=[]; Object.keys(M30).forEach(function(k){ if(fin(M30[k])&&fin(M90[k])) diffs.push([k,M30[k]-M90[k]]); }); diffs.sort(function(a,b){ return Math.abs(b[1])-Math.abs(a[1]); });
+    var top=diffs.slice(0,3), flag={}; top.forEach(function(t){ flag[t[0]]=t[1]; });
+    return {M30:M30, M90:M90, Mc:Mc, top:top, flag:flag, html:matrixHTML(keys,nm,Mc,M30,M90,flag)};
+  }
+  PAINT.corr=function(d,W){
+    var win=S.corrWin===90?90:30, v=S.views.corr, html='';
+    var A=d.assets||[], days=d.days||[], cl=d.closes||{};
+    var ctl=viewSeg('corr',[['basket','Asset classes'],['book','My portfolio']])+seg('corrwin',[['30','30 days'],['90','90 days']],String(win));
+    if(v==='book'){
+      var hb=holdings();
+      if(!hb) return read('<b>No positions on this device.</b> The Portfolio door shows real holdings once the positions token is pasted in Settings; the matrix needs them.')+ctl;
+      var rows=hb.rows.filter(function(r){ return r.grp!=='pcash'; }).sort(function(a,b){ return b.usd-a.usd; }).slice(0,12), keys=[], nm={}, closes={}, missing=[], kinds={};
+      rows.forEach(function(r){ var sym=r.sym, key=ALIAS[sym]||sym, kind=(r.grp==='pcother'||r.name==='Crypto'||/crypto/i.test(r.name||''))?'cr':'eq';
+        var c=framesCloses(key,kind); if(!c&&cl[key]) c=cl[key].filter(fin);          /* metals via GLD / SLV, coins via the basket */
+        if(!c&&kind!=='cr'){ c=framesCloses(key,'cr'); if(c) kind='cr'; }
+        if(!c){ missing.push(sym); return; } if(keys.indexOf(sym)>=0) return; keys.push(sym); nm[sym]=sym+(key!==sym?' ('+key+')':''); closes[sym]=c; kinds[sym]=kind; });
+      if(keys.length<2) return read('<b>Not enough price history on this device.</b> '+(missing.length?'No daily bars for '+esc(missing.join(', '))+'.':''))+ctl;
+      /* a coin trades weekends, a stock does not: without dated bars a coin/stock pair cannot be aligned — those cells stay blank, honestly */
+      var blk=corrBlock(keys,nm,closes,win); keys.forEach(function(x,i){ keys.forEach(function(y,j){ if(j<=i) return; if(kinds[x]!==kinds[y]){ var k=x+'|'+y; blk.M30[k]=null; blk.M90[k]=null; blk.Mc[k]=null; delete blk.flag[k]; } }); });
+      blk.html=matrixHTML(keys,nm,blk.Mc,blk.M30,blk.M90,blk.flag);
+      var top=Object.keys(blk.flag).sort(function(a,b){ return Math.abs(blk.flag[b])-Math.abs(blk.flag[a]); })[0];
+      var verdict=top?('<b>'+esc(top.split('|')[0])+' and '+esc(top.split('|')[1])+' '+(blk.M30[top]>blk.M90[top]?'are moving together more':'have decoupled')+'</b> — '+num(blk.M30[top],2)+' over 30 days vs '+num(blk.M90[top],2)+' over 90.'):'<b>Your biggest holdings\' correlations.</b>';
+      html+=read(verdict)+ctl+blk.html;
+      html+=leg([[acc(),'moves together'],[C.dn,'moves opposite'],[C.am,'changed most, 30d vs 90d']]);
+      var mixed=keys.some(function(x){ return kinds[x]==='cr'; })&&keys.some(function(x){ return kinds[x]==='eq'; });
+      html+='<div class="glm-note">your '+keys.length+' largest holdings with daily bars on this device'+(missing.length?' · no history for '+esc(missing.join(', ')):'')+(mixed?' · coin × stock cells are blank: a coin trades weekends and the bars carry no dates to align them (the asset-class view pairs BTC with SPY on dated closes)':'')+'</div>';
+      return html;
+    }
+    if(A.length<3) return empty('basket too thin');
+    var keys=A.map(function(a){ return a.sym; }), nm={}; A.forEach(function(a){ nm[a.sym]=a.name; });
+    var blk=corrBlock(keys,nm,cl,win);
+    var verdict='<b>Nothing has shifted much.</b>'; if(blk.top.length){ var t0=blk.top[0][0].split('|'), p=t0[0], q=t0[1], c30=blk.M30[blk.top[0][0]], c90=blk.M90[blk.top[0][0]];
+      verdict='<b>'+esc(nm[p])+' and '+esc(nm[q])+' '+(c30>c90?'are moving together more':'have decoupled')+'</b> — '+num(c30,2)+' over 30 days vs '+num(c90,2)+' over 90.'; }
+    html+=read(verdict)+ctl+blk.html;
+    html+=leg([[acc(),'moves together'],[C.dn,'moves opposite'],[C.am,'changed most, 30d vs 90d']]);
     return html;
   };
-  /* 09 portfolio risk — the holdings on this device × the backend factor table */
-  var ALIAS={XAG:'SLV', SILVER:'SLV', XAU:'GLD', GOLD:'GLD', XBT:'BTC', WBTC:'BTC', STETH:'ETH', WETH:'ETH', GOOG:'GOOGL', BRKB:'BRK-B', 'BRK.B':'BRK-B'};
+  /* 09 portfolio risk — the whole book in the ladder, collapsed */
   function holdings(){
     var ob=null; try{ ob=window.Studio&&window.Studio.ownedBook?window.Studio.ownedBook():null; }catch(_){ ob=null; }
     if(!ob||!ob.m||!ob.m.groups) return null;
@@ -14955,11 +15056,11 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
   }
   PAINT.risk=function(W){
     var F=sec('factors'), hb=holdings();
-    if(!hb) return read('<b>No positions on this device.</b> The Portfolio door shows real holdings once the positions token is pasted in Settings › Console; the risk read needs them.')+(F?'<div class="glm-note">factor table live: '+Object.keys(F.rows||{}).length+' names, '+F.window+'-session betas to '+F.bench.join(' / ')+'.</div>':'');
+    if(!hb) return read('<b>No positions on this device.</b> The Portfolio door shows real holdings once the positions token is pasted in Settings; the risk read needs them.')+(F?'<div class="glm-note">factor table live: '+Object.keys(F.rows||{}).length+' names, '+F.window+'-session betas to '+F.bench.join(' / ')+'.</div>':'');
     if(!F||!F.rows) return read('<b>Factor table not published yet.</b> Your book is on the device ('+usd(hb.total)+' across '+hb.rows.length+' lines); the betas arrive with the backend\'s next pass.');
     var bi={}; F.bench.forEach(function(b,i){ bi[b]=i; });
-    var covered=0, bSpy=0, bBtc=0, bTlt=0, bUup=0, ladder=[], uncovered=[], cash=0, crypto=0, byGroup={};
-    hb.rows.forEach(function(r){ var w=r.usd/hb.total, key=ALIAS[r.sym]||r.sym; byGroup[r.name]=(byGroup[r.name]||0)+r.usd;
+    var covered=0, bSpy=0, bBtc=0, bTlt=0, bUup=0, ladder=[], uncovered=[], cash=0, crypto=0;
+    hb.rows.forEach(function(r){ var w=r.usd/hb.total, key=ALIAS[r.sym]||r.sym;
       if(r.grp==='pcash'){ cash+=r.usd; return; }
       var f=F.rows[key]; if(!f||!f.b){ uncovered.push(r.sym); return; }
       if(f.k==='coin') crypto+=r.usd;
@@ -14970,15 +15071,18 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
     var verdict=covered>0?'<b>You are running '+bSpy.toFixed(2)+'× the market.</b>':'<b>No priced holding has a beta yet.</b>';
     var txt=covered>0?' Top five positions are '+num(top5,0)+'% of the book'+(cash>0?', cash '+num(cash/hb.total*100,0)+'%':'')+'; a 10% S&P drop implies about '+num(-10*bSpy,1)+'% on the covered part ('+num(covPct,0)+'% of the book has a beta).':'';
     var html=read(verdict+txt,bSpy>1.3?'dn':bSpy>0&&bSpy<0.8?'up':'');
-    ladder.sort(function(a,b){ return Math.abs(b.c)-Math.abs(a.c); }); var top=ladder.slice(0,10), mx=0; top.forEach(function(l){ mx=Math.max(mx,Math.abs(l.c)); });
-    if(top.length){ html+='<div class="glm-ladder">'+top.map(function(l){ var w=mx>0?Math.abs(l.c)/mx*100:0; return '<div class="glm-lrow" title="'+esc(l.sym+': weight '+num(l.w*100,1)+'%, beta to S&P '+num(l.b,2)+(fin(l.bb)?', to BTC '+num(l.bb,2):'')+', vol '+num(l.vol,0)+'%')+'"><span class="s">'+esc(l.sym)+'</span><span class="bar"><i class="'+(l.c<0?'dn':'')+'" style="width:'+w.toFixed(1)+'%"></i></span><span class="v">'+(fin(l.b)?num(l.b,2):'—')+'<small>'+num(l.w*100,0)+'%</small></span></div>'; }).join('')+'</div>'
-      +'<div class="glm-leg"><span style="--c:'+acc()+'">beta contribution = weight × beta to the S&amp;P (largest first)</span></div>'; }
-    html+=railsBox([
-      rail('Beta to S&P',50+clamp((bSpy-1)*50,-50,50),bSpy.toFixed(2),bSpy>1.3?'am':'',HOT,'1.0 = moves with the market; the shaded end is 1.5 and above'),
-      rail('Beta to bitcoin',50+clamp(bBtc*50,-50,50),bBtc.toFixed(2),bBtc>0.5?'am':'',HOT,'how much a 1% bitcoin move implies for the book'),
-      rail('Top-5 weight',top5,num(top5,0)+'%',top5>60?'am':'',HOT,'concentration — above 60% is shaded'),
-      rail('Crypto share',crypto/hb.total*100,num(crypto/hb.total*100,0)+'%','','',''),
-      rail('Cash',cash/hb.total*100,num(cash/hb.total*100,0)+'%','','','')]);
+    ladder.sort(function(a,b){ return Math.abs(b.c)-Math.abs(a.c); }); var mx=0; ladder.forEach(function(l){ mx=Math.max(mx,Math.abs(l.c)); });
+    var shown=S.ladderOpen?ladder:ladder.slice(0,8);
+    if(ladder.length){ html+='<div class="glm-ladder">'+shown.map(function(l){ var w=mx>0?Math.abs(l.c)/mx*100:0; return '<div class="glm-lrow" title="'+esc(l.sym+': weight '+num(l.w*100,1)+'%, beta to S&P '+num(l.b,2)+(fin(l.bb)?', to BTC '+num(l.bb,2):'')+', vol '+num(l.vol,0)+'%')+'"><span class="s">'+esc(l.sym)+'</span><span class="bar"><i class="'+(l.c<0?'dn':'')+'" style="width:'+w.toFixed(1)+'%"></i></span><span class="v">'+(fin(l.b)?num(l.b,2):'—')+'<small>'+num(l.w*100,0)+'%</small></span></div>'; }).join('')+'</div>'
+      +(ladder.length>8?'<button type="button" class="glm-more" data-glmladder>'+(S.ladderOpen?'show the biggest 8':'show all '+ladder.length+' holdings')+'</button>':'')
+      +leg([[acc(),'beta contribution = weight × beta to the S&P, 120 sessions · largest first']]); }
+    html+=railsBox([rh('Book · 120-session betas'),
+      railOne('Beta to S&P','120 sessions',50+clamp((bSpy-1)*50,-50,50),bSpy.toFixed(2),bSpy>=1.5,'1.0 = moves with the market; red from 1.5'),
+      railOne('Beta to bitcoin','120 sessions',50+clamp(bBtc*50,-50,50),bBtc.toFixed(2),bBtc>=0.6,'how much a 1% bitcoin move implies for the book'),
+      rh('Concentration · now'),
+      railOne('Top-5 weight','now',top5,num(top5,0)+'%',top5>=60,'the five largest positions\' share of the book'),
+      railOne('Crypto share','now',crypto/hb.total*100,num(crypto/hb.total*100,0)+'%',false,''),
+      railOne('Cash','now',cash/hb.total*100,num(cash/hb.total*100,0)+'%',false,'')]);
     var stress=[['S&P −10%',-10*bSpy,'SPY'],['Bitcoin −25%',-25*bBtc,'BTC'],['Long Treasuries −5% (yields up)',-5*bTlt,'TLT'],['Dollar +5%',5*bUup,'UUP']];
     html+='<table class="glm-tbl"><tr><th>If this happens</th><th>Covered book</th><th>Worst hit</th></tr>'+stress.map(function(s){ var bench=s[2], i=bi[bench], worst=null, wv=0;
       ladder.forEach(function(l){ var f=F.rows[ALIAS[l.sym]||l.sym], b=f&&f.b?f.b[i]:null; if(!fin(b)) return; var m=bench==='UUP'?5:bench==='TLT'?-5:bench==='BTC'?-25:-10, hit=l.w*b*m; if(hit<wv){ wv=hit; worst=l.sym; } });
@@ -14991,11 +15095,14 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
      token — private to the person, already on their devices). Without the token everything stays in this browser as before.
      Merge: union by id, the server's copy wins; a 409 (another device saved first) takes the server's document and re-applies once. ---- */
   var NOTES={doc:null, busy:false, err:null, at:0, armA:null};
-  function notesTok(){ try{ var P=window.AIBO_POS; if(P&&P.token){ var t=P.token(); if(t) return t; } }catch(_){} try{ return ls('aibo_pos_token_v1')||null; }catch(_){ return null; } }
+  /* 10-07 ACCOUNTS: a signed-in person's journal + alerts are their own (/me/notes.json with the session, backend v4.19); the account wins over the positions token */
+  function acctTok(){ try{ var A=window.AIBO_ACCOUNT; return (A&&A.token&&A.token())||null; }catch(_){ return null; } }
+  function notesTok(){ var a=acctTok(); if(a) return a; try{ var P=window.AIBO_POS; if(P&&P.token){ var t=P.token(); if(t) return t; } }catch(_){} try{ return ls('aibo_pos_token_v1')||null; }catch(_){ return null; } }
+  function tokName(){ return acctTok()?'your sign-in':'the positions token'; }
   function notesHdr(){ var h={'Content-Type':'application/json'}; var t=notesTok(); if(t) h.Authorization='Bearer '+t; return h; }
   function notesCall(method,body){
     var ctl=('AbortController' in window)?new AbortController():null, t=setTimeout(function(){ if(ctl) ctl.abort(); },12000);
-    return fetch(BASE+'/notes.json',{method:method, headers:notesHdr(), body:body?JSON.stringify(body):undefined, cache:'no-store', signal:ctl?ctl.signal:undefined})
+    return fetch(BASE+(acctTok()?'/me':'')+'/notes.json',{method:method, headers:notesHdr(), body:body?JSON.stringify(body):undefined, cache:'no-store', signal:ctl?ctl.signal:undefined})
       .then(function(r){ clearTimeout(t); return r.json().then(function(j){ return {status:r.status, body:j}; },function(){ return {status:r.status, body:null}; }); });
   }
   function notesMergeJournal(server){ var loc=journal(), by={}; server.forEach(function(e){ by[e.id]=e; }); var add=loc.filter(function(e){ return e&&e.id&&!by[e.id]&&!(S.deleted||{})[e.id]; });
@@ -15006,34 +15113,35 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
   function notesLoad(){
     if(!notesTok()||NOTES.busy) return; NOTES.busy=true;
     notesCall('GET').then(function(r){ NOTES.busy=false;
-      if(r.status!==200||!r.body||typeof r.body.rev!=='number'){ NOTES.err=r.status===401?'the positions token was not accepted':'the server could not be reached'; if(S.open) paintPanel('alerts'); return; }
+      if(r.status!==200||!r.body||typeof r.body.rev!=='number'){ NOTES.err=r.status===401?tokName()+' was not accepted':'the server could not be reached'; if(S.open) repaintNotes(); return; }
       var m=notesMergeJournal(r.body.journal||[]), seenU=Object.assign({},r.body.seen||{},seen());   /* a mark made here before the sync rides along */
       notesTake(r.body);
       if(m.pushed||JSON.stringify(seenU)!==JSON.stringify(r.body.seen||{})){ S.journal=m.list; S.seen=seenU; notesPut({journal:m.list, seen:seenU}); }
-      else if(S.open) paintPanel('alerts');
-    }).catch(function(){ NOTES.busy=false; NOTES.err='the server could not be reached'; if(S.open) paintPanel('alerts'); });
+      else if(S.open) repaintNotes();
+    }).catch(function(){ NOTES.busy=false; NOTES.err='the server could not be reached'; if(S.open) repaintNotes(); });
   }
   function notesPut(patch,retried){
     if(!notesTok()) return; var base=NOTES.doc?NOTES.doc.rev:0;
     notesCall('PUT',Object.assign({baseRev:base},patch)).then(function(r){
-      if(r.status===200&&r.body&&typeof r.body.rev==='number'){ notesTake(r.body); if(S.open) paintPanel('alerts'); return; }
+      if(r.status===200&&r.body&&typeof r.body.rev==='number'){ notesTake(r.body); if(S.open) repaintNotes(); return; }
       if(r.status===409&&r.body&&r.body.current&&!retried){ NOTES.doc=r.body.current; var p2={};
         if(patch.journal){ p2.journal=notesMergeJournal(r.body.current.journal||[]).list; }
         if(patch.seen){ p2.seen=Object.assign({},r.body.current.seen||{},patch.seen); }
         if(patch.alerts){ p2.alerts=patch.alerts; }
+        if(patch.why){ p2.why=Object.assign({},r.body.current.why||{},patch.why); }
         notesPut(p2,true); return; }
-      NOTES.err=(r.status===422&&r.body&&r.body.error)?String(r.body.error):(r.status===401?'the positions token was not accepted':'could not save — try again');
-      if(S.open) paintPanel('alerts');
-    }).catch(function(){ NOTES.err='could not save — the server is unreachable'; if(S.open) paintPanel('alerts'); });
+      NOTES.err=(r.status===422&&r.body&&r.body.error)?String(r.body.error):(r.status===401?tokName()+' was not accepted':'could not save — try again');
+      if(S.open) repaintNotes();
+    }).catch(function(){ NOTES.err='could not save — the server is unreachable'; if(S.open) repaintNotes(); });
   }
   function alertsList(){ return (NOTES.doc&&Array.isArray(NOTES.doc.alerts))?NOTES.doc.alerts:[]; }
   function alertAdd(){ var sy=$('[data-glmasym]'), lv=$('[data-glmalvl]'); if(!sy||!lv) return;
     var sym=(sy.value||'').trim().toUpperCase(), level=parseFloat(lv.value);
     if(!sym){ sy.focus(); sy.classList.add('miss'); setTimeout(function(){ sy.classList.remove('miss'); },600); return; }
     if(!(level>0)){ lv.focus(); lv.classList.add('miss'); setTimeout(function(){ lv.classList.remove('miss'); },600); return; }
-    if(!notesTok()){ NOTES.err='price alerts need the positions token on this device (Settings › Connected accounts)'; paintPanel('alerts'); return; }
+    if(!notesTok()){ NOTES.err='price alerts need the positions token on this device (Settings › Connected accounts)'; repaintNotes(); return; }
     var list=alertsList().slice(); list.push({id:'a'+Date.now().toString(36), sym:sym, level:level}); NOTES.err=null; notesPut({alerts:list}); }
-  function alertDel(id,btn){ if(NOTES.armA!==id){ NOTES.armA=id; $$('[data-glmadel]').forEach(function(b){ b.classList.toggle('arm',b.getAttribute('data-glmadel')===id); b.textContent=b.getAttribute('data-glmadel')===id?'sure?':'×'; }); clearTimeout(NOTES.armT); NOTES.armT=setTimeout(function(){ NOTES.armA=null; if(S.open) paintPanel('alerts'); },2500); return; }
+  function alertDel(id,btn){ if(NOTES.armA!==id){ NOTES.armA=id; $$('[data-glmadel]').forEach(function(b){ b.classList.toggle('arm',b.getAttribute('data-glmadel')===id); b.textContent=b.getAttribute('data-glmadel')===id?'sure?':'×'; }); clearTimeout(NOTES.armT); NOTES.armT=setTimeout(function(){ NOTES.armA=null; if(S.open) repaintNotes(); },2500); return; }
     NOTES.armA=null; notesPut({alerts:alertsList().filter(function(a){ return a.id!==id; })}); }
   function alertSeen(id){ var list=alertsList().map(function(a){ return a.id===id&&a.state==='fired'?Object.assign({},a,{state:'seen'}):a; }); notesPut({alerts:list}); }
   function priceRules(){ var q=null; try{ q=(window.MktView&&MktView.market&&MktView.market.state&&MktView.market.state.data)||null; }catch(_){}
@@ -15057,30 +15165,68 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
   }
   function seen(){ if(S.seen) return S.seen; try{ S.seen=JSON.parse(ls(LS.seen)||'{}')||{}; }catch(_){ S.seen={}; } return S.seen; }
   function markSeen(id){ if(id.indexOf('px-')===0){ alertSeen(id.slice(3)); return; }
-    var sn=seen(), r=rules().filter(function(x){ return x.id===id; })[0]; if(!r) return; if(sn[id]===(r.v||'1')) delete sn[id]; else sn[id]=r.v||'1'; lsSet(LS.seen,JSON.stringify(sn)); paintPanel('alerts'); if(notesTok()) notesPut({seen:sn}); }
+    var sn=seen(), r=rules().filter(function(x){ return x.id===id; })[0]; if(!r) return; if(sn[id]===(r.v||'1')) delete sn[id]; else sn[id]=r.v||'1'; lsSet(LS.seen,JSON.stringify(sn)); repaintNotes(); if(notesTok()) notesPut({seen:sn}); }
   function journal(){ if(S.journal) return S.journal; try{ S.journal=JSON.parse(ls(LS.journal)||'[]')||[]; }catch(_){ S.journal=[]; } if(!Array.isArray(S.journal)) S.journal=[]; return S.journal; }
   function journalSave(){ lsSet(LS.journal,JSON.stringify(journal())); if(notesTok()) notesPut({journal:journal()}); }
   function journalAdd(){ var ta=$('[data-glmjtxt]'), sy=$('[data-glmjsym]'); if(!ta) return; var t=ta.value.trim(); if(!t){ ta.focus(); ta.classList.add('miss'); setTimeout(function(){ ta.classList.remove('miss'); },600); return; }
-    journal().unshift({id:String(Date.now()), d:new Date().toISOString().slice(0,10), sym:(sy&&sy.value||'').trim().toUpperCase().slice(0,12), t:t.slice(0,600)}); journalSave(); paintPanel('alerts'); }
-  function journalDel(id,btn){ if(S.arm!==id){ S.arm=id; $$('[data-glmjdel]').forEach(function(b){ b.classList.toggle('arm',b.getAttribute('data-glmjdel')===id); b.textContent=b.getAttribute('data-glmjdel')===id?'sure?':'×'; }); clearTimeout(S.armT); S.armT=setTimeout(function(){ S.arm=null; if(S.open) paintPanel('alerts'); },2500); return; }
-    S.arm=null; var j=journal(), i=-1; j.forEach(function(e,ix){ if(e.id===id) i=ix; }); if(i>=0) j.splice(i,1); (S.deleted=S.deleted||{})[id]=1; journalSave(); paintPanel('alerts'); }
+    journal().unshift({id:String(Date.now()), d:new Date().toISOString().slice(0,10), sym:(sy&&sy.value||'').trim().toUpperCase().slice(0,12), t:t.slice(0,600)}); journalSave(); repaintNotes(); }
+  function journalDel(id,btn){ if(S.arm!==id){ S.arm=id; $$('[data-glmjdel]').forEach(function(b){ b.classList.toggle('arm',b.getAttribute('data-glmjdel')===id); b.textContent=b.getAttribute('data-glmjdel')===id?'sure?':'×'; }); clearTimeout(S.armT); S.armT=setTimeout(function(){ S.arm=null; if(S.open) repaintNotes(); },2500); return; }
+    S.arm=null; var j=journal(), i=-1; j.forEach(function(e,ix){ if(e.id===id) i=ix; }); if(i>=0) j.splice(i,1); (S.deleted=S.deleted||{})[id]=1; journalSave(); repaintNotes(); }
   function wireJournal(){ var ta=$('[data-glmjtxt]'); if(ta) ta.addEventListener('keydown',function(e){ if((e.metaKey||e.ctrlKey)&&e.key==='Enter') journalAdd(); }); }
+  function repaintNotes(){ paintPanel('alerts'); paintPanel('journal'); }
+  /* 10 alerts — regime rules + the person's price alerts (the journal moved to card 11) */
   PAINT.alerts=function(W){
     var rs=priceRules().concat(rules()), sn=seen(), isSeen=function(r){ return r.px?r.a.state==='seen':sn[r.id]===(r.v||'1'); };
     var fired=rs.filter(function(r){ return r.on; }), unseen=fired.filter(function(r){ return !isSeen(r); }), armed=rs.filter(function(r){ return !r.on; });
     var tok=!!notesTok();
     var verdict=!rs.length?'<b>No panels to watch yet.</b>':unseen.length?'<b>'+unseen.length+' alert'+(unseen.length>1?'s':'')+' fired.</b>':fired.length?'<b>'+fired.length+' fired, all seen.</b>':'<b>All quiet.</b>';
-    var html=read(verdict+' '+(rs.length?rs.length+' regime rules watch the panels above; tap one to mark it seen.':'They arm themselves as the feeds land.'),unseen.length?'dn':'');
-    html+='<div class="glm-h3">Price alerts</div><div class="glm-jadd glm-aadd"><input type="text" class="glm-in sym" data-glmasym placeholder="ticker" maxlength="16" autocapitalize="characters"><input type="number" inputmode="decimal" step="any" min="0" class="glm-in" data-glmalvl placeholder="price level"><button type="button" class="glm-btn" data-glmaadd>Add alert</button></div>'
+    var html=read(verdict+' '+(rs.length?rs.length+' rules watch the cards above and your price levels; tap one to mark it seen.':'They arm themselves as the feeds land.'),unseen.length?'dn':'');
+    html+='<div class="glm-h3">Price alerts</div><div class="glm-jadd glm-aadd"><input type="text" class="glm-in sym" data-glmasym placeholder="ticker" maxlength="16" autocapitalize="characters"><input type="number" inputmode="decimal" step="any" min="0" class="glm-in" data-glmalvl placeholder="price level"><button type="button" class="glm-btn" data-glmaadd>Add</button></div>'
       +(NOTES.err?'<div class="glm-note dn">'+esc(NOTES.err)+'</div>':'')
-      +(!tok?'<div class="glm-note">Price alerts and the cross-device journal need the positions token on this device — Settings › Connected accounts.</div>':'');
+      +(!tok?'<div class="glm-note">Price alerts and the cross-device sync need the positions token on this device — Settings › Connected accounts.</div>':'');
     var pxA=armed.filter(function(r){ return r.px; }), rgA=armed.filter(function(r){ return !r.px; });
-    html+='<div class="glm-h3">Alerts</div><div class="glm-list">'+(fired.length?fired.map(function(r){ var sw=isSeen(r); return '<div class="glm-item'+(sw?' seen':'')+(r.px?' px':'')+'"><button type="button" class="glm-seenbtn" data-glmseen="'+esc(r.id)+'"><span class="pill '+(sw?'':'hit')+'">'+(sw?'seen':'fired')+'</span><span class="tx">'+esc(r.t)+'<small>'+esc(r.s)+'</small></span></button>'+(r.px?'<button type="button" class="glm-del" data-glmadel="'+esc(r.a.id)+'" aria-label="Delete alert">×</button>':'')+'</div>'; }).join(''):'')
+    html+='<div class="glm-h3">Fired</div><div class="glm-list">'+(fired.length?fired.map(function(r){ var sw=isSeen(r); return '<div class="glm-item'+(sw?' seen':'')+(r.px?' px':'')+'"><button type="button" class="glm-seenbtn" data-glmseen="'+esc(r.id)+'"><span class="pill '+(sw?'':'hit')+'">'+(sw?'seen':'fired')+'</span><span class="tx">'+esc(r.t)+'<small>'+esc(r.s)+'</small></span></button>'+(r.px?'<button type="button" class="glm-del" data-glmadel="'+esc(r.a.id)+'" aria-label="Delete alert">×</button>':'')+'</div>'; }).join(''):'<div class="glm-note">nothing fired</div>')+'</div>';
+    html+='<div class="glm-h3">Armed</div><div class="glm-list">'
       +pxA.map(function(r){ return '<div class="glm-item dim px"><span class="pill arm">armed</span><span class="tx">'+esc(r.t)+'<small>'+esc(r.s)+'</small></span><button type="button" class="glm-del" data-glmadel="'+esc(r.a.id)+'" aria-label="Delete alert">×</button></div>'; }).join('')
-      +rgA.slice(0,6).map(function(r){ return '<div class="glm-item dim"><span class="pill arm">armed</span><span class="tx">'+esc(r.t)+'<small>'+esc(r.s)+'</small></span></div>'; }).join('')+(rgA.length>6?'<div class="glm-note">+'+(rgA.length-6)+' more armed</div>':'')+'</div>';
-    var j=journal();
-    html+='<div class="glm-h3">Journal</div><div class="glm-jadd"><input type="text" class="glm-in sym" data-glmjsym placeholder="ticker" maxlength="12" autocapitalize="characters"><textarea class="glm-in" data-glmjtxt rows="2" placeholder="what you did and why — e.g. trimmed NVDA a third: breadth narrowing, grade slipped to B"></textarea><button type="button" class="glm-btn" data-glmjadd>Add</button></div>';
-    html+='<div class="glm-list">'+(j.length?j.slice(0,30).map(function(e){ return '<div class="glm-item"><span class="pill">'+esc(fmtDay(e.d))+'</span><span class="tx">'+(e.sym?'<b>'+esc(e.sym)+'</b> ':'')+esc(e.t)+'</span><button type="button" class="glm-del" data-glmjdel="'+esc(e.id)+'" aria-label="Delete entry">×</button></div>'; }).join(''):'<div class="glm-note">'+(tok?'no entries yet — the journal is kept on the server and shows on every device with the positions token':'no entries yet — without the positions token the journal lives in this browser only')+'</div>')+'</div>';
+      +rgA.slice(0,6).map(function(r){ return '<div class="glm-item dim"><span class="pill arm">armed</span><span class="tx">'+esc(r.t)+'<small>'+esc(r.s)+'</small></span></div>'; }).join('')+(rgA.length>6?'<div class="glm-note">+'+(rgA.length-6)+' more regime rules armed</div>':'')+'</div>';
+    return html;
+  };
+
+  /* ---- 11 JOURNAL & TRADING HISTORY: executed trades from /trades.json (backend v4.19, positions bearer), the FIFO P&L the backend attached,
+     a "why" per trade (notes.json `why`), the free-text entries, a running P&L line. An account that cannot supply fills says so. ---- */
+  var TR={data:null, busy:false, err:null, at:0, status:0, open:null};
+  function tradesLoad(force){
+    if(!notesTok()){ TR.err=null; TR.data=null; return; } if(TR.busy) return; var now=Date.now(); if(!force&&TR.data&&now-TR.at<15*60*1000) return; if(!force&&TR.err&&now-TR.at<3*60*1000) return;
+    TR.busy=true; var ctl=('AbortController' in window)?new AbortController():null, t=setTimeout(function(){ if(ctl) ctl.abort(); },15000);
+    fetch(BASE+'/trades.json',{headers:notesHdr(), cache:'no-store', signal:ctl?ctl.signal:undefined}).then(function(r){ TR.status=r.status; if(r.status===503){ TR.err='not built yet — the backend\'s first trades pass has not run'; return null; } if(r.status===401){ TR.err=tokName()+' was not accepted'; return null; } if(!r.ok){ TR.err='trades feed error ('+r.status+')'; return null; } return r.json(); })
+      .then(function(j){ if(j&&j.trades){ TR.data=j; TR.err=null; } else if(j) TR.err='trades feed malformed'; })
+      .catch(function(e){ TR.err=(e&&e.name==='AbortError')?'trades feed unreachable (timed out)':'trades feed unreachable'; })
+      .then(function(){ clearTimeout(t); TR.busy=false; TR.at=Date.now(); if(S.open) paintPanel('journal'); });
+  }
+  function whyMap(){ return (NOTES.doc&&NOTES.doc.why&&typeof NOTES.doc.why==='object')?NOTES.doc.why:{}; }
+  function whyOpen(id){ TR.open=TR.open===id?null:id; paintPanel('journal'); var ta=$('[data-glmwhytxt="'+id+'"]'); if(ta){ ta.focus(); } }
+  function whySave(id){ var ta=$('[data-glmwhytxt="'+id+'"]'); if(!ta) return; var t=ta.value.trim().slice(0,600); var m=Object.assign({},whyMap()); if(t) m[id]=t; else delete m[id]; if(!NOTES.doc) NOTES.doc={rev:0}; NOTES.doc.why=m; TR.open=null; notesPut({why:m}); paintPanel('journal'); }
+  function fmtTs(ts){ var d=ts?new Date(ts):null; return d&&!isNaN(d)?d.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—'; }
+  function pnlCls(v){ return fin(v)?(v>0?'up':v<0?'dn':''):''; }
+  PAINT.journal=function(W){
+    var tok=!!notesTok(), j=journal(), why=whyMap(), html='';
+    if(!tok) html+=read('<b>Trading history needs the positions token on this device</b> — Settings › Connected accounts. Your free-text entries below stay in this browser until then.');
+    else if(!TR.data) html+=read(TR.err?'<b>Trades not available:</b> '+esc(TR.err)+'.':'<b>Loading your trades…</b>')+(TR.err?'<button type="button" class="glm-btn glm-more" data-glmtrretry>retry</button>':'');
+    else {
+      var D=TR.data, tot=D.totals||{}, trades=D.trades||[], ven=D.venues||{};
+      html+=read('<b>Realised P&L '+usdFull(tot.realized)+'</b> across '+(tot.trades||trades.length)+' trades'+(fin(tot.fees)?', fees '+usdFull(tot.fees):'')+'.',pnlCls(tot.realized));
+      var run=D.running||[]; if(run.length>=2){ var rd=run.map(function(r){ return String(r.ts||'').slice(0,10); }), rv=run.map(function(r){ return r.cum; });
+        html+=chart({w:W,h:Math.round(chH()*.7),fmt:function(x){ return usd(x); },xl:xlFor(rd,4),marks:[[0,'','rgba(234,238,245,.45)']],series:[{v:rv,c:acc(),w:1.6,dot:true,step:true,fill:'rgba(var(--gl-acc-rgb,31,198,220),.08)'}]})+leg([[acc(),'cumulative realised P&L after fees, per closing trade']]); }
+      var down=Object.keys(ven).filter(function(k){ return ven[k]&&ven[k].ok===false; });
+      if(down.length) html+='<div class="glm-note dn">'+down.map(function(k){ return esc(String((ven[k]||{}).err||k+' not available')); }).join(' · ')+'</div>';
+      html+='<div class="glm-h3">Trades'+(trades.length>40?' · newest 40 of '+trades.length:'')+'</div><div class="glm-list glm-trades">'+(trades.length?trades.slice(0,40).map(function(t){ var id=String(t.id), open=TR.open===id, w=why[id];
+        return '<div class="glm-item tr'+(open?' open':'')+'"><span class="pill '+(t.side==='sell'?'sell':'buy')+'">'+esc(t.side||'')+'</span><span class="tx"><b>'+esc(t.sym)+'</b> '+esc(num(t.qty,t.qty<1?4:2))+' @ '+esc(num(t.price,t.price<1?4:2))+(fin(t.realizedPnl)||fin(t.brokerPnl)?' <u class="'+pnlCls(fin(t.realizedPnl)?t.realizedPnl:t.brokerPnl)+'">'+esc(usdFull(fin(t.realizedPnl)?t.realizedPnl:t.brokerPnl))+'</u>':'')
+          +'<small>'+esc(fmtTs(t.ts))+' · '+esc(t.venue||'')+(t.note?' · '+esc(t.note):'')+'</small>'+(w&&!open?'<em class="why">'+esc(w)+'</em>':'')+'</span><button type="button" class="glm-del why'+(w?' has':'')+'" data-glmwhy="'+esc(id)+'" aria-label="Why I did this" title="why I did this">'+(w?'✎':'+')+'</button></div>'
+          +(open?'<div class="glm-whybox"><textarea class="glm-in" rows="2" data-glmwhytxt="'+esc(id)+'" placeholder="why I did this — the thesis, the setup, what would prove it wrong">'+esc(w||'')+'</textarea><button type="button" class="glm-btn" data-glmwhysave="'+esc(id)+'">Save</button></div>':''); }).join(''):'<div class="glm-note">no trades landed yet'+(down.length?'':' — the accounts answered, but with no fills in the window')+'</div>')+'</div>';
+    }
+    html+='<div class="glm-h3">Entries</div><div class="glm-jadd"><input type="text" class="glm-in sym" data-glmjsym placeholder="ticker" maxlength="12" autocapitalize="characters"><textarea class="glm-in" data-glmjtxt rows="2" placeholder="a thought that is not a trade — e.g. breadth narrowing, grades slipping on the chip names"></textarea><button type="button" class="glm-btn" data-glmjadd>Add</button></div>';
+    html+='<div class="glm-list">'+(j.length?j.slice(0,30).map(function(e){ return '<div class="glm-item"><span class="pill">'+esc(fmtDay(e.d))+'</span><span class="tx">'+(e.sym?'<b>'+esc(e.sym)+'</b> ':'')+esc(e.t)+'</span><button type="button" class="glm-del" data-glmjdel="'+esc(e.id)+'" aria-label="Delete entry">×</button></div>'; }).join(''):'<div class="glm-note">no entries yet</div>')+'</div>';
+    if(NOTES.err) html+='<div class="glm-note dn">'+esc(NOTES.err)+'</div>';
     return html;
   };
 
@@ -15096,7 +15242,7 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
   function show(panel){
     if(!H.getAttribute('data-gl')) return;
     build(); S.open=true; leaveOthers(); B.classList.add('gl-macro');
-    paintAll(); load(false); startTimer(); notesLoad();
+    paintAll(); load(false); startTimer(); notesLoad(); tradesLoad(false);
     if(window.GL48&&typeof window.GL48.sync==='function'){ try{ window.GL48.sync(); }catch(_){} }
     if(window.GL48&&typeof window.GL48.resetZoom==='function'){ try{ window.GL48.resetZoom(); }catch(_){} }
     try{ root.focus({preventScroll:true}); }catch(_){}
@@ -15108,8 +15254,9 @@ html[data-gl] .glm-item:has(.glm-seenbtn){display:flex;gap:9px;}
     if(window.GL48&&typeof window.GL48.sync==='function'){ try{ window.GL48.sync(); }catch(_){} }
   }
   function jump(k){ var c=$('#glmp-'+k), main=$('[data-glmmain]'); if(!c||!main) return; S.jumpTo=k; var top=c.getBoundingClientRect().top-main.getBoundingClientRect().top+main.scrollTop-6; try{ main.scrollTo({top:top, behavior:'smooth'}); }catch(_){ main.scrollTop=top; } }
-  function state(){ return {open:S.open, err:S.err, at:S.at, fetching:S.fetching, backoffUntil:S.backoff, have:S.data?Object.keys(S.data.sections).filter(function(k){ return !!S.data.sections[k]; }):[], corrWin:S.corrWin, cotGroup:S.cotGroup, coin:S.coin, alerts:rules().map(function(r){ return {id:r.id,on:r.on}; }), journal:journal().length, holdings:!!holdings()}; }
-  window.GLMacro={show:show, hide:hide, jump:jump, refresh:function(){ load(true); }, state:state, PANELS:PANELS.map(function(p){ return p.k; })};
+  function state(){ return {open:S.open, err:S.err, at:S.at, fetching:S.fetching, backoffUntil:S.backoff, have:S.data?Object.keys(S.data.sections).filter(function(k){ return !!S.data.sections[k]; }):[], corrWin:S.corrWin, cotGroup:S.cotGroup, coin:S.coin, views:Object.assign({},S.views), ladderOpen:S.ladderOpen,
+    alerts:rules().map(function(r){ return {id:r.id,on:r.on}; }), priceAlerts:alertsList().length, journal:journal().length, holdings:!!holdings(), notes:{err:NOTES.err, rev:NOTES.doc?NOTES.doc.rev:null, why:Object.keys(whyMap()).length}, trades:{n:TR.data?(TR.data.trades||[]).length:0, err:TR.err, status:TR.status}}; }
+  window.GLMacro={show:show, hide:hide, jump:jump, refresh:function(){ load(true); tradesLoad(true); }, state:state, view:function(p,v){ if(v!=null&&VIEWS[p]!=null){ setView(p,v); if(S.open) paintPanel(p); } return S.views[p]; }, PANELS:PANELS.map(function(p){ return p.k; })};
 
   /* a dock door or another Atlas row tapped while open hides the page (capture phase, before the shim's own delegates) */
   document.addEventListener('click',function(e){
@@ -15486,8 +15633,12 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
   'use strict';
   var BASE=String(window.AIBO_LIVE_URL||'https://asset-grading-production.up.railway.app/universe.json').replace(/\/universe\.json.*$/,'');
   var LS_KEY='aibo.lists.key', REFRESH=60*1000, TIMEOUT=15000, MAX_RES=12;
-  var S={key:null, doc:null, active:null, fam:'mk', edit:false, target:null, busy:false, err:null, at:0,
+  var S={key:null, acct:null, doc:null, active:null, fam:'mk', edit:false, target:null, busy:false, err:null, at:0,
          idx:null, idxBusy:false, idxErr:null, mounted:false, armed:false, look:{}};
+  /* 10-07 ACCOUNTS: a signed-in person's lists are their own (/me/lists.json with the session, backend v4.19) — the account wins
+     over the shared key on a device that holds both; account.js is bundled before this file and sets window.AIBO_ACCOUNT. */
+  try{ S.acct=(window.AIBO_ACCOUNT&&window.AIBO_ACCOUNT.token&&window.AIBO_ACCOUNT.token())||null; }catch(_){ S.acct=null; }
+  function haveAuth(){ return !!(S.acct||S.key); }
 
   /* ---------- the key ---------- */
   function readHash(w){ try{ var m=/[#&]k=([A-Za-z0-9_\-]{3,128})/.exec(String(w.location.hash||'')); return m?m[1]:null; }catch(_){ return null; } }
@@ -15522,9 +15673,9 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
   /* ---------- the backend ---------- */
   function call(method,path,body){
     var ctl=('AbortController' in window)?new AbortController():null, to=ctl?setTimeout(function(){ try{ ctl.abort(); }catch(_){} },TIMEOUT):null;
-    var opt={method:method, cache:'no-store', headers:{'Authorization':'Bearer '+S.key}, signal:ctl&&ctl.signal};
+    var opt={method:method, cache:'no-store', headers:{'Authorization':'Bearer '+(S.acct||S.key)}, signal:ctl&&ctl.signal};
     if(body!==undefined){ opt.headers['Content-Type']='application/json'; opt.body=JSON.stringify(body); }
-    return fetch(BASE+path,opt).then(function(r){
+    return fetch(BASE+(S.acct?'/me':'')+path,opt).then(function(r){
       if(to) clearTimeout(to);
       return r.json().catch(function(){ return {}; }).then(function(j){ return {status:r.status, body:j}; });
     },function(e){ if(to) clearTimeout(to); throw e; });
@@ -15537,13 +15688,13 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
     if(sig(j)!==before){ paintMenu(); paintBar(); show(false); }
   }
   function load(){
-    if(!S.key||S.busy) return;
+    if(!haveAuth()||S.busy) return;
     S.busy=true;
     call('GET','/lists.json').then(function(r){
       S.busy=false;
       if(r.status===200&&docOk(r.body)){ take(r.body); return; }
       S.err=(r.status===401)?'key':(r.status===404?'off':'http '+r.status);
-      if(!S.doc&&S.err==='key') toast('This device’s list key was not accepted');
+      if(!S.doc&&S.err==='key') toast(S.acct?'Your sign-in has expired — sign in again in Settings':'This device’s list key was not accepted');
       paintMenu();
     }).catch(function(){ S.busy=false; S.err='unreachable'; });
   }
@@ -15556,7 +15707,7 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
       if(r.status===200&&docOk(r.body)){ var eqBefore=Object.keys(meta()).length; take(r.body); if(done) done(r.body);
         var a=api(); if(a&&S.active){ if(Object.keys(meta()).length!==eqBefore) a.reapply(); } return; }
       if(r.status===409&&r.body&&docOk(r.body.current)&&!retried){ S.doc=r.body.current; change(fn,done,true); return; }
-      toast(r.status===422?String((r.body&&r.body.error)||'Not found'):(r.status===401?'List key not accepted':'Could not save — try again'));
+      toast(r.status===422?String((r.body&&r.body.error)||'Not found'):(r.status===401?(S.acct?'Your sign-in has expired':'List key not accepted'):'Could not save — try again'));
       if(r.status===409) load();
     }).catch(function(){ toast('Could not save — the server is unreachable'); });
   }
@@ -15602,7 +15753,7 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
     var m=document.getElementById('mkUni'); if(!m||!S.mounted) return;
     [].slice.call(m.querySelectorAll('.gll-sep,.gll-item,.gll-new')).forEach(function(n){ n.parentNode.removeChild(n); });
     if(!S.doc) return;
-    m.appendChild(el('div','gll-sep','Shared lists'));
+    m.appendChild(el('div','gll-sep',S.acct?'My lists':'Shared lists'));
     lists().forEach(function(l){
       var b=el('button','gll-item'+(l.id===S.active?' on':''),esc(l.name)+'<i>'+(l.items||[]).length+'</i>'); b.type='button'; b.setAttribute('data-wl',l.id);
       b.addEventListener('click',function(e){ e.stopPropagation(); pick(l.id); });
@@ -15685,7 +15836,7 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
   function paintRes(){
     if(!resEl) return;
     var q=qEl?String(qEl.value||'').trim().toUpperCase():'';
-    if(!S.key||!S.doc||!q||document.activeElement!==qEl){ resEl.classList.remove('open'); return; }
+    if(!haveAuth()||!S.doc||!q||document.activeElement!==qEl){ resEl.classList.remove('open'); return; }
     var t=targetId(), tl=t&&listOf(t), inT={}; if(tl) (tl.items||[]).forEach(function(it){ inT[it]=1; });
     var h='<div class="gll-into"><span>Add to</span>';
     lists().forEach(function(l){ h+='<button type="button" data-t="'+esc(l.id)+'" class="'+(l.id===t?'on':'')+'">'+esc(l.name)+'</button>'; });
@@ -15740,7 +15891,7 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
 
   /* ---------- mount ---------- */
   function mount(){
-    if(S.mounted||!S.key) return;
+    if(S.mounted||!haveAuth()) return;
     var ctl=document.getElementById('mkCtl'), a=api(); qEl=document.getElementById('mkQ');
     if(!ctl||!a||!qEl) return;
     S.mounted=true;
@@ -15769,10 +15920,10 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
       return out;
     },
     bars:function(sym){ var m=meta()['eq:'+String(sym).toUpperCase()]; return (m&&Array.isArray(m.bars)&&m.bars.length>1)?m.bars:null; },
-    state:function(){ return {key:!!S.key, doc:S.doc, active:S.active, fam:S.fam, edit:S.edit, err:S.err, mounted:S.mounted}; },
+    state:function(){ return {key:haveAuth(), acct:!!S.acct, doc:S.doc, active:S.active, fam:S.fam, edit:S.edit, err:S.err, mounted:S.mounted}; },
     reload:load
   };
-  if(!S.key) return;
+  if(!haveAuth()) return;
   load();
   try{ var a0=api(); if(a0&&a0.built()) mount(); }catch(_){}
   document.addEventListener('visibilitychange',function(){ if(!document.hidden&&Date.now()-S.at>5000) load(); });
