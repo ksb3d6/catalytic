@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Railway static server for the hosted (SCRUBBED) AI Build-Out app.
 
-Inert on GitHub Pages (Pages serves index.html directly and ignores this file);
-Railway's nixpacks detects it and runs the same five-file kit at a public URL.
-No-store headers so a fresh push goes live immediately (the PWA service worker
-adds its own stale-while-revalidate layer on top for installed home-screen apps).
+Railway's nixpacks detects it and runs the kit at a public URL
+(`railway up --service aibo-app` from this folder).
+No-store headers so a fresh push goes live immediately; the PWA service worker
+(sw.js v3) is NETWORK FIRST over the kit's own files only — its cache is the
+offline / slow-network fallback, and it never caches the backend's answers.
 """
 import http.server
 import os
@@ -17,6 +18,10 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 class Handler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header("Cache-Control", "no-store, must-revalidate")
+        # 10-07 sweep: no other site may frame the app — a framing page could overlay its own UI on the
+        # bearer-backed one-tap controls (Delete list, Sign out everywhere). Same-origin frames (yields.html) still load.
+        self.send_header("Content-Security-Policy", "frame-ancestors 'self'")
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
         super().end_headers()
 
     def log_message(self, fmt, *args):

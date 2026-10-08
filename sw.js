@@ -6,8 +6,13 @@
    iteration. Every good answer still refreshes the cache, so the app keeps
    working offline exactly as before.
    On upgrade from v1 the old cache is dropped and open windows reload once,
-   so nobody has to open the app twice to leave the old copy behind. */
-const CACHE = 'aibo-v2';
+   so nobody has to open the app twice to leave the old copy behind.
+   v3 (10-07): the kit's OWN files only. The backend's answers (positions,
+   notes, trades, /me/*) carry a bearer and no Vary, so a cached copy outlived
+   sign-out and answered for the next token on a slow network; they now go
+   straight to the network (the app keeps its own caches and honest
+   "unreachable" rows). v3 drops the v2 cache with every stored API body. */
+const CACHE = 'aibo-v3';
 const CORE = ['./', './index.html', './manifest.json', './icon-180.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -35,9 +40,11 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  if (new URL(e.request.url).origin !== self.location.origin) return;   // 10-07: never cache the backend (see v3)
   const page = e.request.mode === 'navigate';
   e.respondWith(
-    caches.match(e.request, { ignoreSearch: true }).then(hit => {
+    /* ignoreSearch for the page only (its ?v=); anything else matches its full URL */
+    caches.match(e.request, page ? { ignoreSearch: true } : {}).then(hit => {
       /* a navigation Request cannot be re-issued with options, so the page is fetched by URL — past the HTTP cache */
       const net = (page ? fetch(e.request.url, { cache: 'no-store', credentials: 'same-origin' }) : fetch(e.request)).then(res => {
         if (res && res.ok) {
