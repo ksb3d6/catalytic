@@ -7762,13 +7762,17 @@ try{
 try{
   var POS_URL   = window.AIBO_POS_URL || 'https://asset-grading-production.up.railway.app/positions.json';
   var TOKEN_KEY = 'aibo_pos_token_v1';
+  var ACCT_KEY  = 'aibo.acct.token';       /* 10-08 ACCOUNTS: a signed-in person's session (stage48/account.js) — their own
+                                             connections' positions ride /me/positions.json (backend v4.21); the owner's token flow is unchanged */
   var POS_CACHE = 'aibo_pos_v1';
   var POS_MIN   = 30;                       /* backend refreshes hourly; 30 min is plenty */
   var LS_OK=false; try{ var k='__pt'+Date.now(); localStorage.setItem(k,'1'); localStorage.removeItem(k); LS_OK=true; }catch(_){ LS_OK=false; }
   var memTok=null, memPayload=null;
   var PS={ at:null, src:null, data:null, err:null, busy:false, queued:false };
 
-  function getToken(){ if(LS_OK){ try{ return localStorage.getItem(TOKEN_KEY)||null; }catch(_){ return memTok; } } return memTok; }
+  function acctTok(){ if(LS_OK){ try{ return localStorage.getItem(ACCT_KEY)||null; }catch(_){ return null; } } return null; }
+  function getToken(){ var a=acctTok(); if(a) return a; if(LS_OK){ try{ return localStorage.getItem(TOKEN_KEY)||null; }catch(_){ return memTok; } } return memTok; }
+  function posUrl(){ return acctTok()?POS_URL.replace(/\/positions\.json.*$/,'/me/positions.json'):POS_URL; }
   function storeToken(t){ memTok=t; if(LS_OK){ try{ localStorage.setItem(TOKEN_KEY,t); }catch(_){ } } }
   function sync(){ try{ if(window.Studio&&window.Studio.posSync) window.Studio.posSync(); }catch(_){ } }
   function okShape(j){ return !!(j && j.schemaVersion!=null && j.accounts && Object.prototype.toString.call(j.accounts)==='[object Array]'); }
@@ -7784,7 +7788,7 @@ try{
     var to=ctl?setTimeout(function(){ ctl.abort(); },9000):null;
     function settle(){ if(to)clearTimeout(to); PS.busy=false;
       if(PS.queued){ PS.queued=false; setTimeout(fetchPositions,0); } }
-    return fetch(POS_URL,{ signal:ctl&&ctl.signal, cache:'no-store', headers:{ 'Authorization':'Bearer '+tok } })
+    return fetch(posUrl(),{ signal:ctl&&ctl.signal, cache:'no-store', headers:{ 'Authorization':'Bearer '+tok } })
       .then(function(r){
         if(r.status===401) throw {auth:1};
         if(!r.ok) throw new Error('HTTP '+r.status);
@@ -7811,6 +7815,7 @@ try{
     refresh: fetchPositions,
     state: PS,
     hasToken: function(){ return !!getToken(); },
+    viaAccount: function(){ return !!acctTok(); },
     token: function(){ return getToken(); },
     setToken: function(t){ t=String(t==null?'':t).trim(); if(!t) return false;
       storeToken(t); PS.err=null; PS.src=null; sync(); fetchPositions(); return true; },
@@ -11278,6 +11283,25 @@ html[data-gl="light"] #glAccount .gla-msg.ok{color:#0f7a5c;}
 html[data-gl="light"] #glAccount .gla-warn{color:#c62f3b;}
 html[data-gl="light"] #glaToast{background:#fff;}
 
+/* 10-08 CONNECTIONS: the Exchanges & brokers section */
+#glAccount .gla-conn{align-items:flex-start;}
+#glAccount .gla-conn .gla-dot{flex:0 0 auto;width:9px;height:9px;border-radius:50%;margin-top:6px;background:var(--muted2);}
+#glAccount .gla-conn[data-st="ok"] .gla-dot{background:#39d07f;}
+#glAccount .gla-conn[data-st="error"] .gla-dot{background:#ff6b7a;}
+#glAccount .gla-conn[data-st="pending"] .gla-dot{background:var(--gl-acc,#1FC6DC);animation:glaPulse 1s ease-in-out infinite alternate;}
+@keyframes glaPulse{from{opacity:.35}to{opacity:1}}
+#glAccount .gla-conn .gla-kind{color:var(--muted2);}
+#glAccount .gla-conn .gla-err{color:#ff8a95;}
+#glAccount .gla-x.arm{background:#ff6b7a;border-color:transparent;color:#2a0509;}
+#glAccount .gla-head.gla-sub{margin-top:4px;}
+#glAccount .gla-kinds{display:flex;flex-wrap:wrap;gap:6px;}
+#glAccount .gla-kind{appearance:none;border:1px solid var(--hair);background:transparent;color:var(--ink);border-radius:999px;padding:8px 12px;font:600 12.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+#glAccount .gla-addform{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:10px;background:rgba(var(--gl-acc-rgb,31,198,220),.08);}
+#glAccount .gla-perm{font-size:12.5px;line-height:1.4;color:var(--ink);padding:8px 10px;border-radius:8px;border:1px dashed var(--gl-acc,#1FC6DC);}
+#glAccount .gla-ta{resize:vertical;min-height:72px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;}
+/* signed in: the owner's token row is not the way in any more — the person's own connections are */
+html[data-glacct] #posConnect{display:none;}
+
 </style>
 <script id="gl48Acct">
 /* Stage 48 — ACCOUNTS (2026-10-07; the owner: "email and password … what most people are used to", Google as the second door,
@@ -11316,7 +11340,8 @@ html[data-gl="light"] #glaToast{background:#fff;}
                  'aibo.gl.macro.corr','aibo.gl.macro.cot','aibo.gl.macro.coin','aibo.gl.macro.views','aibo.gl.worlds.scope','aibo.gl.worlds.ghost',
                  'aibo.gl.own'];   /* 10-07: + the Macro desk card views and What I own — the header promised them, they did not follow */
   var BOOK_KEYS=['aibo_saves_v1','aibo_last_v1'];
-  var S={tok:null, user:null, cfg:null, mode:'in', busy:false, err:null, note:null, devices:null, pkPlatform:false, card:null, pull:{prefs:null, book:null}, reqs:0, link:null};
+  var S={tok:null, user:null, cfg:null, mode:'in', busy:false, err:null, note:null, devices:null, pkPlatform:false, card:null, pull:{prefs:null, book:null}, reqs:0, link:null,
+         conns:null, addKind:null, armRm:null, pollT:null};
 
   function ls(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } }
   function lsSet(k,v){ try{ if(v==null) localStorage.removeItem(k); else localStorage.setItem(k,v); }catch(_){} }
@@ -11368,8 +11393,9 @@ html[data-gl="light"] #glaToast{background:#fff;}
   }
 
   /* ---------- signed in / out ---------- */
-  function setSession(tok,user){ S.tok=tok||null; S.user=user||null; lsSet(LS_TOK,S.tok); lsSet(LS_USER,S.user?JSON.stringify(S.user):null); }
-  function forget(){ setSession(null,null); lsSet(LS_PREF,null); lsSet(LS_BOOK,null); S.devices=null; }
+  function setSession(tok,user){ S.tok=tok||null; S.user=user||null; lsSet(LS_TOK,S.tok); lsSet(LS_USER,S.user?JSON.stringify(S.user):null); mark(); }
+  function forget(){ setSession(null,null); lsSet(LS_PREF,null); lsSet(LS_BOOK,null); lsSet('aibo_pos_v1',null); S.devices=null; S.conns=null; mark(); }
+  function mark(){ try{ if(signedIn()) document.documentElement.setAttribute('data-glacct','1'); else document.documentElement.removeAttribute('data-glacct'); }catch(_){} }
   /* 10-07: sign out / delete put this device's Portfolio saves back to what they were BEFORE the sign-in — a borrowed iPad
      kept the account's saves (dollar figures) after "Sign out". An expired session keeps them (still the person's device). */
   function keepBook(){ if(ls(LS_BEFORE)==null) lsSet(LS_BEFORE,JSON.stringify(snap(BOOK_KEYS))); }
@@ -11577,6 +11603,38 @@ html[data-gl="light"] #glaToast{background:#fff;}
     else h+='<div class="gla-list">'+dv.devices.map(function(d){ return '<div class="gla-item'+(d.current?' me':'')+'"><span>'+esc(d.label||'Device')+(d.current?' <i>this device</i>':'')+'<em>'+esc(d.where||'')+(d.lastAt?' · '+fmtWhen(d.lastAt):'')+(d.via?' · '+esc(d.via):'')+'</em></span>'+(d.current?'':'<button type="button" class="gla-x" data-glaact="dev-revoke" data-id="'+esc(d.id)+'" aria-label="Sign out">Sign out</button>')+'</div>'; }).join('')+'</div>'
       +'<div class="gla-links"><button type="button" data-glaact="signout-all">Sign out everywhere</button></div><div class="gla-note">An account is for one person; up to '+esc(dv.max)+' devices stay signed in. Being used from several places at once signs the other devices out.</div>';
     h+='</div>';
+    /* 10-08 CONNECTIONS: the person's own exchanges and brokers (backend v4.21 /me/connections); their positions then ride
+       /me/positions.json into the Portfolio exactly as the owner's token flow does */
+    h+='<div class="gla-sec gla-conns"><div class="gla-head">Exchanges &amp; brokers</div>';
+    var C=S.conns;
+    if(!C) h+='<div class="gla-note">Loading…</div>';
+    else {
+      if(C.connections.length) h+='<div class="gla-list">'+C.connections.map(function(x){
+        var st=x.status||'pending', when=x.lastOkAt?('synced '+fmtWhen(x.lastOkAt)):(st==='pending'?'connecting…':'never synced');
+        var shown=Object.keys(x.shown||{}).filter(function(k){ return k!=='holdings'; }).map(function(k){ return esc(x.shown[k]); }).join(' · ');
+        return '<div class="gla-item gla-conn" data-st="'+esc(st)+'"><i class="gla-dot"></i><span><b>'+esc(x.label)+'</b>'+(x.label!==x.name?' <em class="gla-kind">'+esc(x.name)+'</em>':'')
+          +'<em>'+esc(when)+(typeof x.assets==='number'?' · '+x.assets+' asset'+(x.assets===1?'':'s'):'')+(shown?' · '+shown:'')+'</em>'
+          +(x.lastError?'<em class="gla-err">'+esc(x.lastError)+'</em>':'')+'</span>'
+          +'<button type="button" class="gla-x'+(S.armRm===x.id?' arm':'')+'" data-glaact="conn-remove" data-id="'+esc(x.id)+'">'+(S.armRm===x.id?'Sure?':'Remove')+'</button></div>'; }).join('')+'</div>';
+      else h+='<div class="gla-note">Nothing connected yet. Connect a read-only key and your real holdings show in Portfolio, priced live.</div>';
+      if(S.addKind){
+        var k=null; (C.catalog||[]).forEach(function(q){ if(q.id===S.addKind) k=q; });
+        if(k){
+          h+='<div class="gla-addform"><div class="gla-head">'+esc(k.name)+'</div>'+(k.help?'<div class="gla-note">'+esc(k.help)+'</div>':'')
+            +(k.permission?'<div class="gla-perm">'+esc(k.permission)+'</div>':'')
+            +'<input type="text" class="gla-in" data-glaf="label" placeholder="A name for it (optional)" autocomplete="off">';
+          k.fields.forEach(function(f){
+            if(f.id==='holdings') h+='<textarea class="gla-in gla-ta" data-glaf="holdings" rows="4" placeholder="'+esc(f.label)+'" autocomplete="off" autocapitalize="characters" spellcheck="false"></textarea>';
+            else h+='<input type="'+(f.secret?'password':'text')+'" class="gla-in" data-glaf="'+esc(f.id)+'" placeholder="'+esc(f.label)+'" autocomplete="off" autocapitalize="off" spellcheck="false">'; });
+          h+='<div class="gla-row"><button type="button" class="gla-btn primary" data-glaact="conn-save">Save and connect</button><button type="button" class="gla-btn" data-glaact="conn-cancel">Cancel</button></div></div>';
+        }
+      } else if(C.connections.length<C.max){
+        h+='<div class="gla-head gla-sub">Connect</div><div class="gla-kinds">'+(C.catalog||[]).map(function(q){ return '<button type="button" class="gla-kind" data-glaact="conn-kind" data-kind="'+esc(q.id)+'">'+esc(q.name)+'</button>'; }).join('')+'</div>';
+      }
+      if(C.connections.length) h+='<div class="gla-links"><button type="button" data-glaact="conn-sync">'+(C.syncing?'Syncing…':'Sync now')+'</button></div>';
+      h+='<div class="gla-note">Keys are read-only by permission and stored encrypted; a secret is never shown back. Nothing here can trade or withdraw.</div>';
+    }
+    h+='</div>';
     /* more */
     h+='<details class="gla-more"><summary>Change password</summary><div class="gla-sec">'
       +(u.hasPassword?'<input type="password" class="gla-in" data-gla="cur" placeholder="Current password" autocomplete="current-password">':'<div class="gla-note">This account signs in with Google and has no password yet.</div>')
@@ -11597,6 +11655,18 @@ html[data-gl="light"] #glaToast{background:#fff;}
         :'An account keeps your lists, journal, price alerts, settings and Portfolio saves on the server, the same on every device. The graded Watchlist is the shared base everyone sees.';
     paintMsg(); if(!signedIn()) mountGoogle();
     if(signedIn()&&!S.devices&&!S.devErr) api('GET','/auth/devices').then(function(r){ if(r.status===200&&r.body.devices){ S.devices=r.body; paint(); } else if(r.status===401) expired(); else { S.devErr=true; paint(); } });
+    if(signedIn()&&!S.conns&&!S.connsBusy) loadConns();
+  }
+  function loadConns(){
+    S.connsBusy=true;
+    api('GET','/me/connections').then(function(r){
+      S.connsBusy=false;
+      if(r.status!==200||!r.body||!Array.isArray(r.body.connections)){ if(r.status===401) expired(); return; }
+      var was=S.conns; S.conns=r.body; paint();
+      var pending=r.body.syncing||r.body.connections.some(function(x){ return x.status==='pending'; });
+      clearTimeout(S.pollT); if(pending) S.pollT=setTimeout(loadConns,3000);
+      else if(was&&(was.syncing||was.connections.some(function(x){ return x.status==='pending'; }))){ try{ if(window.AIBO_POS&&AIBO_POS.refresh) AIBO_POS.refresh(); }catch(_){} }
+    });
   }
 
   function onAct(e){
@@ -11635,6 +11705,24 @@ html[data-gl="light"] #glaToast{background:#fff;}
     if(a==='email-confirm'){ var ec=val('[data-gla="ecode"]'); if(!ec) return fail('The 6-digit code, please'); busy(true);
       api('POST','/auth/email/confirm',{code:ec}).then(function(r){ busy(false); if(r.status===200){ takeUser(r.body.user); toast('E-mail changed'); paint(); } else fail(errText(r)); }); return; }
     if(a==='email-cancel'){ busy(true); api('POST','/auth/email/cancel',{}).then(function(r){ busy(false); if(r.status===200) takeUser(r.body.user); paint(); }); return; }
+    if(a==='conn-kind'){ S.addKind=b.getAttribute('data-kind'); S.err=S.note=null; paint(); var f=$('.gla-addform .gla-in',S.card); if(f) f.focus(); return; }
+    if(a==='conn-cancel'){ S.addKind=null; paint(); return; }
+    if(a==='conn-save'){
+      var body={kind:S.addKind}; $$('[data-glaf]',S.card).forEach(function(i){ body[i.getAttribute('data-glaf')]=String(i.value||'').trim(); });
+      busy(true);
+      api('POST','/me/connections',body).then(function(r){ busy(false);
+        if(r.status===201){ S.addKind=null; S.conns=null; toast('Connected — fetching your holdings'); paint(); }
+        else fail(errText(r)); });
+      return;
+    }
+    if(a==='conn-remove'){
+      var cid=b.getAttribute('data-id');
+      if(S.armRm!==cid){ S.armRm=cid; paint(); setTimeout(function(){ if(S.armRm===cid){ S.armRm=null; paint(); } },3500); return; }
+      S.armRm=null; busy(true);
+      api('POST','/me/connections/'+encodeURIComponent(cid)+'/remove',{}).then(function(r){ busy(false); S.conns=null; paint(); try{ if(window.AIBO_POS&&AIBO_POS.refresh) AIBO_POS.refresh(); }catch(_){} });
+      return;
+    }
+    if(a==='conn-sync'){ busy(true); api('POST','/me/connections/sync',{}).then(function(r){ busy(false); if(r.status===200){ S.conns=null; paint(); } else fail(errText(r)); }); return; }
     if(a==='delete'){
       if(!S.armDel){ S.armDel=true; paint(); var d=$('details.danger',S.card); if(d) d.open=true; setTimeout(function(){ if(S.armDel){ S.armDel=false; paint(); } },4000); return; }
       S.armDel=false; busy(true);
@@ -11646,7 +11734,7 @@ html[data-gl="light"] #glaToast{background:#fff;}
     var b=e.target.closest('[data-glaact="alertmail"]'); if(!b) return;
     api('POST','/auth/prefs',{alertEmails:!!b.checked}).then(function(r){ if(r.status===200) takeUser(r.body.user); });
   }
-  function onKey(e){ if(e.key!=='Enter') return; var f=e.target.closest('.gla-form'); if(!f) return; var p=$('.gla-btn.primary',f); if(p) p.click(); }
+  function onKey(e){ if(e.key!=='Enter') return; if(e.target.tagName==='TEXTAREA') return; var f=e.target.closest('.gla-form,.gla-addform'); if(!f) return; var p=$('.gla-btn.primary',f); if(p) p.click(); }
 
   /* ---------- Settings: the card at the top of the page ---------- */
   function inject(){
@@ -11672,9 +11760,11 @@ html[data-gl="light"] #glaToast{background:#fff;}
   }
 
   /* ---------- boot ---------- */
+  mark();
   window.AIBO_ACCOUNT={
     token:function(){ return S.tok; }, signedIn:signedIn, user:function(){ return S.user; }, signOut:function(){ forget(); }, expired:function(){ expired(); },
-    state:function(){ return {signedIn:signedIn(), user:S.user, cfg:S.cfg, mode:S.mode, card:!!S.card, devices:S.devices?S.devices.devices.length:null, reqs:S.reqs, link:S.link, err:S.err, note:S.note, sync:{prefs:mem(LS_PREF).failed||null, book:mem(LS_BOOK).failed||null}}; },
+    state:function(){ return {signedIn:signedIn(), user:S.user, cfg:S.cfg, mode:S.mode, card:!!S.card, devices:S.devices?S.devices.devices.length:null, reqs:S.reqs, link:S.link, err:S.err, note:S.note,
+                              conns:S.conns?S.conns.connections.map(function(x){ return {id:x.id, kind:x.kind, status:x.status, shown:x.shown}; }):null, addKind:S.addKind, sync:{prefs:mem(LS_PREF).failed||null, book:mem(LS_BOOK).failed||null}}; },
     pull:function(){ return Promise.all([pull('prefs'),pull('book')]); }, push:function(){ return Promise.all([push('prefs'),push('book')]); }
   };
   if(S.link&&S.link.kind==='verify'){
