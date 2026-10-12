@@ -14416,9 +14416,11 @@ html[data-gl] .glr-walk:active{transform:scale(.9);background:rgba(var(--gl-wh-r
 html[data-gl] .glr-walk:disabled{opacity:.28;cursor:default;transform:none;}
 
 /* ---- the plot ---- */
-html[data-gl] .glr-plot{position:relative;flex:none;height:240px;touch-action:pan-y;-webkit-user-select:none;user-select:none;}
-@media (min-width:900px){ html[data-gl] .glr-plot{height:300px;} }
-@media (min-width:1500px){ html[data-gl] .glr-plot{height:340px;} }
+/* 10-12 (the owner: "the graph is too compressed vertically"): the plot takes real height — about half a phone's screen, more on wider screens */
+html[data-gl] .glr-plot{position:relative;flex:none;height:52vh;height:52dvh;min-height:340px;max-height:520px;touch-action:pan-y;-webkit-user-select:none;user-select:none;}
+@media (min-width:900px){ html[data-gl] .glr-plot{height:440px;min-height:0;max-height:none;} }
+@media (min-width:1500px){ html[data-gl] .glr-plot{height:500px;} }
+@media (orientation:landscape) and (max-height:520px){ html[data-gl] .glr-plot{height:300px;min-height:0;} }
 html[data-gl] .glr-svg{display:block;width:100%;height:100%;}
 html[data-gl] .glr-band{fill:transparent;}
 html[data-gl] .glr-band.sh{fill:rgba(var(--gl-wh-rgb,255,255,255),.045);}
