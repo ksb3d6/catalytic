@@ -7574,7 +7574,7 @@ try{
   var LIVE_URL  = window.AIBO_LIVE_URL || 'https://asset-grading-production.up.railway.app/universe.json';
   var CACHE_KEY = 'aibo_live_v1';
   var AUTO_MIN  = 10;
-  var S = { at:null, src:null, n:0, fresh:0, tokens:null, open:false, q:'' };
+  var S = { at:null, src:null, n:0, fresh:0, tokens:null, open:false, q:'', retries:0, rt:0, lastOk:0, inflight:null };
 
   /* ---------- data ---------- */
   function apply(payload, src){
@@ -7592,10 +7592,17 @@ try{
     paintChip(); if(S.open) paintPanel();
     return true;
   }
+  /* 10-12 (the owner: "it keeps saying offline"): a failed fetch used to wait for the TEN-MINUTE poll, so one dropped request (a phone
+     waking up, one bar of signal, a slow first byte past 9 s) read OFFLINE for up to ten minutes — and the offline copy rarely exists
+     on iOS (the 5.5 MB feed is over the localStorage quota), so there was nothing to fall back on. Now a failure retries at 15 s,
+     30 s, 60 s, then every two minutes until a feed lands; the tab being shown again or the network coming back fetches at once;
+     one request in flight at a time; the chip's title says what is happening. */
+  function retrySoon(){ clearTimeout(S.rt); var d=[15,30,60][S.retries]||120; S.retries++; S.rt=setTimeout(function(){ S.rt=0; if(!document.hidden) fetchLive(); },d*1000); }
   function fetchLive(){
+    if(S.inflight) return S.inflight;
     var ctl = ('AbortController' in window) ? new AbortController() : null;
     var to  = ctl ? setTimeout(function(){ ctl.abort(); }, 9000) : null;
-    return fetch(LIVE_URL, { signal: ctl && ctl.signal, cache: 'no-store' })
+    S.inflight = fetch(LIVE_URL, { signal: ctl && ctl.signal, cache: 'no-store' })
       .then(function(r){
         /* 10-07: 9 s is the time-to-headers budget; the 1.7 MB gzipped body gets 60 s of its own —
            one bar of LTE aborted every poll and every refresh mid-body */
@@ -7609,10 +7616,16 @@ try{
            decision to move the frames out of universe.json (FINAL_SWEEP_STATUS.md #4). */
         try{ localStorage.setItem(CACHE_KEY, JSON.stringify(j)); chip.title=''; }
         catch(e){ chip.title='offline copy not saved ('+((e&&e.name)||'error')+')'; }
-        apply(j, 'live');
+        if(apply(j, 'live')){ S.retries=0; S.lastOk=Date.now(); clearTimeout(S.rt); S.rt=0; }
+        else { chip.title='the feed answered without prices — retrying'; retrySoon(); }
       })
-      .catch(function(){ if(to) clearTimeout(to); if(!S.at) paintChip(); });
+      .catch(function(e){ if(to) clearTimeout(to); if(!S.at) paintChip();
+        chip.title=(e&&e.name==='AbortError')?'the feed is slow to answer — retrying':'the feed did not answer — retrying'; retrySoon(); })
+      .then(function(){ S.inflight=null; });
+    return S.inflight;
   }
+  document.addEventListener('visibilitychange', function(){ if(document.hidden) return; if(S.src!=='live'||Date.now()-S.lastOk>2*60*1000) fetchLive(); });
+  window.addEventListener('online', function(){ fetchLive(); });
   function bootCache(){
     try{ var raw = localStorage.getItem(CACHE_KEY);
       if(raw) apply(JSON.parse(raw), 'cache');
@@ -14500,6 +14513,10 @@ html[data-gl] .glr-legcap small{font-size:10px;letter-spacing:0;text-transform:n
 html[data-gl] .glr-all{appearance:none;flex:none;height:24px;padding:0 9px;border-radius:7px;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.1);background:rgba(var(--gl-wh-rgb,255,255,255),.05);color:rgba(var(--gl-ink-rgb,234,238,245),.55);
   font:700 10.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 html[data-gl] .glr-all.on{color:var(--gl-acci);border-color:rgba(var(--gl-acc-rgb),.5);background:rgba(var(--gl-acc-rgb),.14);}
+html[data-gl] .glr-all[hidden]{display:none;}
+/* 10-12 (the owner): All | Up | Down — only the sectors up, or only the ones down, over the range; the counts ride the labels */
+html[data-gl] .glr-dir{flex:none;max-width:none;margin:0;}
+html[data-gl] .glr-dir button{flex:none;font:700 10.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.04em;padding:5px 9px;white-space:nowrap;}
 html[data-gl] .glr-legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 6px;}
 @media (min-width:600px){ html[data-gl] .glr-legend{grid-template-columns:repeat(3,minmax(0,1fr));} }
 @media (min-width:1500px){ html[data-gl] .glr-legend{grid-template-columns:repeat(4,minmax(0,1fr));} }
@@ -14566,7 +14583,7 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
     XLU:'#ffa28a',PBW:'#7ad780',XME:'#91c1ff',MOO:'#ff9cb4',KRE:'#bdc848',OIH:'#35d0ff',IGV:'#f697e7',TAN:'#edb333',KIE:'#0ed9d4',SMH:'#ccabfe',
     XOP:'#ffa56e',IBB:'#4fdb9e',GDX:'#a5bbff'};
   var root=null;                                           /* the host inside the Macro card (set by mount) */
-  var S={open:false, range:'1M', off:0, hidden:{}, only:null, hi:null, hov:null,
+  var S={open:false, range:'1M', off:0, hidden:{}, only:null, dir:null, hi:null, hov:null,   /* dir: null | 'up' | 'dn' — 10-12 (the owner): show only the sectors up / down over the range */
          data:null, err:null, at:0, fetching:false, backoff:0, timer:0, ctrl:null, raf:0, ro:null,
          list:[], win:null, ser:null, geo:null, scrub:-1, pd:null};
 
@@ -14658,7 +14675,9 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
   }
   function compute(){ S.win=window_(S.range,S.off); S.ser=series(S.win); }
   function canWalk(dir){ if(dir>0&&S.off<=0) return false; var w=window_(S.range,S.off-dir); return !!w&&w.pts.length>=2; }   /* dir −1 = earlier = a larger offset */
-  function shown(sr){ return sr.has&&!S.hidden[sr.sym]&&(!S.only||S.only[sr.sym]); }
+  function shownBase(sr){ return sr.has&&!S.hidden[sr.sym]&&(!S.only||S.only[sr.sym]); }
+  function dirOk(sr){ return !S.dir||(sr.last!=null&&(S.dir==='up'?sr.last>0:sr.last<0)); }
+  function shown(sr){ return shownBase(sr)&&dirOk(sr); }
   function visible(){ return (S.ser||[]).filter(shown); }
   function hiSym(){ return S.hi||S.hov||null; }
 
@@ -14672,12 +14691,15 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
       +'<div class="glr-plot" data-glrplot><svg class="glr-svg" data-glrsvg aria-hidden="true"></svg>'
       +'<div class="glr-cross" data-glrcross hidden></div><div class="glr-read" data-glrread hidden></div><div class="glr-state" data-glrstate hidden></div>'
       +'<div class="glr-win" data-glrwin></div></div>'
-      +'<div class="glr-legrow"><span class="glr-legcap">Sectors <small data-glrnote></small></span><button type="button" class="glr-all" data-glrall title="Show every sector">all</button></div>'
+      +'<div class="glr-legrow"><span class="glr-legcap">Sectors <small data-glrnote></small></span>'
+      +'<div class="gl-seg glr-dir" role="tablist" aria-label="Which sectors"><button type="button" role="tab" data-glrdir="all">All</button><button type="button" role="tab" data-glrdir="up">Up</button><button type="button" role="tab" data-glrdir="dn">Down</button></div>'
+      +'<button type="button" class="glr-all" data-glrall title="Show every hidden sector again" hidden>reset</button></div>'
       +'<div class="glr-legend" data-glrleg role="list"></div>';
     host.addEventListener('click',function(e){ var b;
       if((b=e.target.closest('[data-glrr]'))){ range(b.getAttribute('data-glrr')); return; }
       if((b=e.target.closest('[data-glrw]'))){ walk(+b.getAttribute('data-glrw')); return; }
       if((b=e.target.closest('[data-glrall]'))){ S.hidden={}; S.only=null; S.hi=null; paintAll(); return; }
+      if((b=e.target.closest('[data-glrdir]'))){ dir(b.getAttribute('data-glrdir')); return; }
       if((b=e.target.closest('[data-glrtag]'))){ toggle(b.getAttribute('data-glrtag'),false); return; }
       if((b=e.target.closest('[data-glrretry]'))){ load(true); return; } });
     /* the plot: hover (mouse) / press-and-drag (touch) scrubs; a tap picks the nearest line */
@@ -14702,11 +14724,11 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
   function paintAll(){ if(!root||!S.open) return; compute(); paintRead(); paintRange(); paintNote(); paintLegend(); paintState(); draw(); }
   /* the card's read line (every desk card says its read in one sentence): who leads and who lags over the range, among the shown sectors */
   function paintRead(){
-    var el=$('[data-glrread1]'); if(!el) return; var vis=visible().filter(function(sr){ return sr.last!=null; }).slice().sort(function(a,b){ return b.last-a.last; });
+    var el=$('[data-glrread1]'); if(!el) return; var vis=(S.ser||[]).filter(shownBase).filter(function(sr){ return sr.last!=null; }).slice().sort(function(a,b){ return b.last-a.last; });
     if(!S.data){ el.innerHTML='<b>'+esc(S.fetching?'Loading the sectors…':(S.err||'Loading the sectors…'))+'</b>'; el.className='glm-read'; return; }
     if(vis.length<2){ el.innerHTML='<b>No read for this range yet.</b>'; el.className='glm-read'; return; }
     var top=vis[0], low=vis[vis.length-1], up=vis.filter(function(sr){ return sr.last>0; }).length;
-    el.innerHTML='<b>'+esc(top.name)+' is taking the capital</b> — '+pct(top.last)+' over '+esc(S.range)+(S.off?' (an earlier window)':'')+'; '+esc(low.name)+' lags at '+pct(low.last)+'. '+up+' of '+vis.length+' sectors are up.';
+    el.innerHTML='<b>'+esc(top.name)+' is taking the capital</b> — '+pct(top.last)+' over '+esc(S.range)+(S.off?' (an earlier window)':'')+'; '+esc(low.name)+' lags at '+pct(low.last)+'. '+up+' of '+vis.length+' sectors are up.'+(S.dir?' Showing the '+(S.dir==='up'?up:vis.length-up)+' '+(S.dir==='up'?'up':'down')+'.':'');
     el.className='glm-read '+(up>vis.length*.6?'up':up<vis.length*.4?'dn':'');
   }
   function paintRange(){
@@ -14727,16 +14749,25 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
     var leg=$('[data-glrleg]'); if(!leg) return; var hs=hiSym(), bySym={}; (S.ser||[]).forEach(function(sr){ bySym[sr.sym]=sr; });
     var list=(S.list.length?S.list:UNIV.map(function(u){ return {sym:u[0],name:u[1],col:colour(u[0])}; })).map(function(s){ var sr=bySym[s.sym];
       return {sym:s.sym, name:s.name, col:s.col, sr:sr, na:!!S.data&&(!sr||!sr.has), off:!!S.hidden[s.sym]||(!!S.only&&!S.only[s.sym]), last:sr&&sr.has?sr.last:null}; });
+    if(S.dir) list=list.filter(function(x){ return !x.na&&x.last!=null&&(S.dir==='up'?x.last>0:x.last<0); });
     list.sort(function(a,b){ var ra=(a.na||a.off)?1:0, rb=(b.na||b.off)?1:0; if(ra!==rb) return ra-rb; return (b.last==null?-1e9:b.last)-(a.last==null?-1e9:a.last); });
     leg.innerHTML=list.map(function(x){ var on=!x.na&&!x.off;
       return '<button type="button" role="listitem" class="glr-tag'+(x.na?' na':'')+(x.off?' off':'')+(hs&&on?(hs===x.sym?' hi':' dim'):'')+'" data-glrtag="'+esc(x.sym)+'" style="--c:'+esc(x.col)+'" aria-pressed="'+(on?'true':'false')+'" title="'+esc(x.sym)+(x.na?' — no bars for this range':'')+'"><i></i><b>'+esc(x.name)+'</b><span>'+(x.na?'—':pct(x.last))+'</span></button>'; }).join('');
-    var all=$('[data-glrall]'); if(all) all.classList.toggle('on',!Object.keys(S.hidden).length&&!S.only);
+    var all=$('[data-glrall]'); if(all) all.hidden=!Object.keys(S.hidden).length&&!S.only;   /* "reset" only while something is hidden by hand */
+    paintDir();
+  }
+  /* the All | Up | Down seg: counts over the range (hand-hidden rows count too — they are a direction, hidden or not) */
+  function paintDir(){
+    var up=0, dn=0; (S.ser||[]).forEach(function(sr){ if(!sr.has||sr.last==null) return; if(sr.last>0) up++; else if(sr.last<0) dn++; });
+    $$('[data-glrdir]').forEach(function(b){ var k=b.getAttribute('data-glrdir'), on=(S.dir||'all')===k;
+      b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false');
+      b.textContent=k==='all'?'All':k==='up'?('Up'+(S.data?' '+up:'')):('Down'+(S.data?' '+dn:'')); });
   }
   function paintState(){
     var st=$('[data-glrstate]'); if(!st) return; var msg='', retry=false;
     if(!S.data){ if(S.fetching) msg='loading sectors…'; else if(S.err){ msg=S.err; retry=true; } else msg='loading sectors…'; }
     else if(!S.win||!S.win.pts.length) msg='no bars in this window';
-    else if(!visible().length) msg=(S.ser||[]).some(function(sr){ return sr.has; })?'no sector selected — tap a name or “all”':(S.win.kind==='h'?'no hourly bars for this range yet':'no bars in this window');
+    else if(!visible().length) msg=S.dir&&(S.ser||[]).some(shownBase)?('no sector is '+(S.dir==='up'?'up':'down')+' over this range'):(S.ser||[]).some(function(sr){ return sr.has; })?'no sector selected — tap a name or “reset”':(S.win.kind==='h'?'no hourly bars for this range yet':'no bars in this window');
     st.hidden=!msg; st.innerHTML=msg?('<span>'+esc(msg)+'</span>'+(retry?'<button type="button" data-glrretry>retry</button>':'')):'';
     st.classList.toggle('err',!!(retry||S.err&&!S.data));
   }
@@ -14834,12 +14865,13 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
     if(S.hi&&!S.only&&S.hidden[S.hi]) S.hi=null; if(S.hi&&S.only&&!S.only[S.hi]) S.hi=null;
     if(S.open) paintAll();
   }
+  function dir(d){ d=String(d||'all').toLowerCase(); if(d==='down') d='dn'; S.dir=(d==='up'||d==='dn')?d:null; if(S.hi&&S.ser){ var h=S.ser.filter(function(sr){ return sr.sym===S.hi; })[0]; if(h&&!dirOk(h)) S.hi=null; } if(S.open) paintAll(); }
   function highlight(sym){ sym=sym?String(sym).toUpperCase():null; S.hi=(sym&&sym!==S.hi)?sym:null; S.hov=null; paintHi(); paintLegend(); }
   function current(){ return {range:S.range, off:S.off, open:S.open}; }
-  function state(){ return {open:S.open, mounted:!!root, range:S.range, off:S.off, hidden:Object.keys(S.hidden), only:S.only?Object.keys(S.only):null, hi:S.hi, err:S.err, at:S.at, fetching:S.fetching,
+  function state(){ return {open:S.open, mounted:!!root, range:S.range, off:S.off, hidden:Object.keys(S.hidden), only:S.only?Object.keys(S.only):null, dir:S.dir, hi:S.hi, err:S.err, at:S.at, fetching:S.fetching,
     backoffUntil:S.backoff, n:S.list.length, asOf:S.data?S.data.asOf:null, win:S.win?{kind:S.win.kind, pts:S.win.pts.length, sessions:S.win.sessions.length, label:S.win.label}:null,
     series:(S.ser||[]).map(function(sr){ return {sym:sr.sym, name:sr.name, has:sr.has, n:sr.n, last:sr.last, shown:shown(sr)}; })}; }
-  window.GLRot={mount:mount, unmount:unmount, show:show, hide:hide, range:range, walk:walk, toggle:toggle, highlight:highlight, current:current, state:state, asOf:function(){ return S.data?S.data.asOf:null; }, RANGES:RANGES.slice(), COL:COL};
+  window.GLRot={mount:mount, unmount:unmount, show:show, hide:hide, range:range, walk:walk, toggle:toggle, dir:dir, highlight:highlight, current:current, state:state, asOf:function(){ return S.data?S.data.asOf:null; }, RANGES:RANGES.slice(), COL:COL};
 
   /* deep link: ?rot=5D on this document or the top one (the app runs inside latest.html's iframe) → the desk, open at the card */
   (function(){
@@ -15127,7 +15159,7 @@ html[data-gl] .glm-world td:last-child{color:rgba(var(--gl-ink-rgb,234,238,245),
   function curSet(){ return root.getAttribute('data-glmset')||'desk'; }
   var HELP={
     yc:'The Treasury curve — today against a month and a year ago, by maturity. A normal curve rises with maturity; when short yields sit above long ones (the 10-year minus the 2-year below zero) it is inverted: bond buyers expect cuts, and recessions have followed most inversions, often only after the curve un-inverts. "10y − 2y" is that spread\'s five-year history. "Around the world" lists other governments\' 2-, 10- and 30-year yields; each row names its source.',
-    rot:'Every sector ETF rebased to 0% at the start of the range, so the lines show who is taking the capital. Tap a sector\'s name to hide or show it, "all" brings every sector back; ← → walk the window; hover or press the plot for a read-out. 1D and 5D use hourly bars, the longer ranges daily closes. Colour is the sector here, fixed per name.',
+    rot:'Every sector ETF rebased to 0% at the start of the range, so the lines show who is taking the capital. Tap a sector\'s name to hide or show it; Up | Down keeps only the sectors that are up, or only the ones down, over the range, All shows both sides, "reset" brings every hidden sector back; ← → walk the window; hover or press the plot for a read-out. 1D and 5D use hourly bars, the longer ranges daily closes. Colour is the sector here, fixed per name.',
     breadth:'The index can rise on a few giants while most stocks fall. The default lines are the share of the US 500 above their own 50-day and 200-day averages: above ~65% the move is broad, under ~45% (the shaded band) it is narrow and fragile. The toggle shows the advance/decline line (the running total of names up minus names down — when it falls while the index rises, the rally is thinning) and new 20-day highs minus new 20-day lows. The rails: today\'s advancers against decliners, then the 20-session measures.',
     vol:'VIX is the price of 30-day S&P protection, read from its daily history: under 20 is calm, 20–30 elevated, 30 and above is stress — in a strong sell-off it spikes and then decays over weeks. The rails: where today sits in its one-year range, and how far it moved in 5 and 20 sessions (a fast rise is fear arriving, a slow bleed is fear leaving). The VIX term structure, MOVE, SKEW and the put/call ratio are licensed data and are not shown here.',
     credit:'A PROXY for credit stress built from licensed prices: junk-bond ETFs (HYG) divided by 7–10-year Treasuries (IEF), and investment-grade bonds (LQD) divided by the same, each rebased to 100 at the first day shown. When the line falls, credit is lagging Treasuries — investors want more compensation for default risk, which is what a widening spread means; when it rises, risk appetite is back. It is not an option-adjusted spread (those series are licensed and cannot be shown), so read the direction and the one-year percentile, not a level. The toggle adds the Chicago Fed\'s financial-conditions index (below zero = loose) and the share of banks tightening lending standards (quarterly), both Federal Reserve publications.',
