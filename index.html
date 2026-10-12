@@ -977,6 +977,13 @@ body.deck-studio #flowView,body.deck-studio #donutView,body.deck-studio #cardsVi
 .st8 .saves-backup-btns{padding:0 14px 12px;display:flex;gap:8px}
 .st8 #posAccounts{padding:0 14px}
 .st8 #posAccounts:empty{display:none}
+/* 10-12 (the owner: "I don't like that they're in the settings area"): the saves + the library are the Portfolio deck's PRESETS pane */
+#studioView .st8-pane{max-width:760px;margin-top:10px}
+#studioView .st8-pane .saves{margin:0;border:0;padding:0;background:transparent}
+#studioView .st8-pane .st8-cap:first-child{margin-top:8px}
+#studioView .st8-pane .dk-books .dk-book{justify-content:flex-start}
+#studioView .st8-pane .dk-book-tx{display:flex;flex-direction:column;gap:1px;min-width:0}
+#studioView .st8-pane .dk-book-tx small{white-space:normal;line-height:1.25}
 /* ============ Stage 44 — THE TERMINAL SKIN (the owner: apply the mockup's UI to
    the entire AIBO). Touch devices only; desktop stays conventional. One
    language: #101A28-class cards · #1E2C3E hairlines · 10-12px radii ·
@@ -1414,8 +1421,9 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
     <button class="dk-navitem" data-pane="build">Build</button>
     <button class="dk-navitem" data-pane="exposure">Exposure</button>
     <button class="dk-navitem" data-pane="book">Book</button>
+    <button class="dk-navitem" data-pane="presets">Presets</button>
   </div>
-  <button class="helpbtn st-only" id="stGear" data-dk="console" title="Settings — book · portfolios · accounts" aria-label="Settings"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.4.9a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.4-.9-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.4-.9a7.6 7.6 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 2.6-1.5l2.4.9 2-3.4z"/></svg></button>
+  <button class="helpbtn st-only" id="stGear" data-dk="console" title="Settings — book · accounts" aria-label="Settings"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.4.9a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.4-.9-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.4-.9a7.6 7.6 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 2.6-1.5l2.4.9 2-3.4z"/></svg></button>
   <div class="sthud">
     <button type="button" class="sthud-t" data-dk="console"><b id="hudTotal">$100,000</b><span id="hudSub">invested · no cash</span></button>
     <button type="button" class="sthud-bar" id="dkBar" data-dk="console" aria-label="Sleeve split — tap for the console"></button>
@@ -1455,6 +1463,7 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
     <button type="button" class="mtab" data-mp="build"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/><rect x="8.5" y="4" width="7" height="7" rx="1"/></svg><span>Build</span></button>
     <button type="button" class="mtab" data-mp="exposure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4v8h8"/></svg><span>Exposure</span></button>
     <button type="button" class="mtab" data-mp="book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5a2 2 0 0 1 2-2h12v18H7a2 2 0 0 0-2 2z"/><path d="M5 19a2 2 0 0 1 2-2h12"/></svg><span>Book</span></button>
+    <button type="button" class="mtab" data-mp="presets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4z"/></svg><span>Presets</span></button>
     <button type="button" class="mtab" data-mg="1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.4.9a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.4-.9-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.4-.9a7.6 7.6 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 2.6-1.5l2.4.9 2-3.4z"/></svg><span>Settings</span></button>
   </div>
 </div>
@@ -1729,6 +1738,79 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
 
 
   </section>
+<section class="dk-pane" data-pane="presets">
+  <h2>Presets — your saved setups and the library</h2>
+  <div class="muted" style="font-size:12px">Save the book you have built and load it back any time; the library holds the framework's built-in books. Loading replaces the whole book — every tile asks twice.</div>
+  <div class="st8 st8-pane">
+  <div class="dk-group st8-card">
+    <div class="st8-row st8-static"><span class="st8-ring st8-ring-lg" id="st8ActiveRing"></span><div><div class="st8-lab" style="font-weight:600">Your current book</div><div class="st8-sub" id="st8ActiveSub">—</div></div><span class="st8-val"><span class="st8-activetag">ACTIVE</span></span></div>
+  </div>
+  <div class="st8-foot">The ring is your live sleeve split — it follows every slider.</div>
+
+  <div class="st8-cap">My setups</div>
+  <div class="dk-group st8-card">
+    <section class="saves" id="savesPanel">
+      <div class="saves-new st8-row st8-static">
+        <input type="text" id="saveName" placeholder="name this setup (optional)…" autocomplete="off" spellcheck="false">
+        <button class="btn primary" data-act="savenew">Save</button>
+      </div>
+      <div class="saves-list" id="savesList"></div>
+      <div class="saves-head st8-row st8-static" style="min-height:34px"><span class="saves-status st8-sub" id="savesStatus"></span></div>
+      <div class="saves-file">
+        <button class="st8-row st8-act" data-act="dlbackup"><span class="st8-lab">Download backup</span><span class="st8-chev">›</span></button>
+        <button class="st8-row st8-act" data-act="openbackup"><span class="st8-lab">Restore from file</span><span class="st8-chev">›</span></button>
+        <button class="st8-row st8-act" data-act="setuplink"><span class="st8-lab">Copy a link to this book</span><span class="st8-chev">›</span></button>
+        <input type="file" id="backupFile" accept="application/json,.json,text/plain" hidden>
+      </div>
+      <details class="saves-backup st8-disc">
+        <summary class="st8-row"><span class="st8-lab">Use a code instead</span><span class="st8-chev st8-dn">›</span></summary>
+        <div class="st8-foot" style="padding:4px 2px 6px">If downloads don't work in your viewer, copy this code into Notes to keep your setups. Paste it back below to restore.</div>
+        <textarea id="backupBox" rows="4" spellcheck="false" placeholder="paste a backup code or a copied book here…"></textarea>
+        <div class="saves-backup-btns">
+          <button class="btn" data-act="backupcopy">Copy code</button>
+          <button class="btn" data-act="backuprestore">Paste &amp; restore</button>
+        </div>
+      </details>
+    </section>
+  </div>
+  <div class="st8-foot">Each save's ring is its sleeve split — saved on this device. "Copy a link to this book" puts the book you have built into a link: open it on any device or browser and it lands under My setups, loaded, so your book travels with you.</div>
+
+  <div class="st8-cap">Library — the 22 built-in books</div>
+  <select class="dk-hiddensel" id="presetSel" aria-label="Load a preset or book">
+      <option value="">Presets &amp; books…</option>
+      <optgroup label="Framework shapes">
+        <option value="p:unified">§5.1 Unified (canonical)</option>
+        <option value="p:choke">Chokepoint tilt</option>
+        <option value="p:power">Power build-out</option>
+        <option value="p:conviction">Conviction · names</option>
+        <option value="p:etfcore">ETF core · hands-off</option>
+        <option value="p:tollbooths">Toll booths · financing</option>
+      </optgroup>
+      <optgroup label="Complete Set · books #1–#8">
+        <option value="b:b1">#1 ETF Core · B</option>
+        <option value="b:b2">#2 Balanced Barbell · B+</option>
+        <option value="b:b3">#3 BB Wide · B+</option>
+        <option value="b:b4">#4 Quality Darts · A−</option>
+        <option value="b:b5">#5 QD Wide · A−</option>
+        <option value="b:b6">#6 Anchor+Field · B+</option>
+        <option value="b:b7">#7 Full Coverage · B+</option>
+        <option value="b:b8">#8 Every Name an ETF</option>
+      </optgroup>
+      <optgroup label="Complete Set · books #9–#16">
+        <option value="b:b9">#9 Toll Booths · A−</option>
+        <option value="b:b10">#10 Quality Cut · B+</option>
+        <option value="b:b11">#11 QC ETF-Enriched · B+</option>
+        <option value="b:b12">#12 Full Send · B−</option>
+        <option value="b:b13">#13 TT All-ETF</option>
+        <option value="b:b14">#14 Pure Spice · C</option>
+        <option value="b:b15">#15 Complete Build · B+</option>
+        <option value="b:b16">#16 Conviction Build · A−</option>
+      </optgroup>
+  </select>
+  <div class="dk-books" id="dkBooks"></div>
+  <div class="st8-foot">A book's ring is its <b>stock-segment mix</b> — the shape it gives your Stocks sleeve. First tap arms, second loads.</div>
+  </div>
+</section>
 </main>
 
 </div>
@@ -1756,11 +1838,6 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
     <div class="st8-foot">Sleeves are set in dollars. Metals and Cash&nbsp;·&nbsp;HYSA ship at $0 — dial either above zero to fold it into the donut.</div>
     <div class="read st8-foot" id="readLine"></div>
 
-    <div class="st8-cap">Portfolios</div>
-    <div class="dk-group st8-card">
-      <button class="st8-row st8-act" data-st8go="port"><span class="st8-lab" style="color:var(--gl-ink,#EAEEF5)">Portfolios</span><span class="st8-val" id="st8CurBook">your saves &amp; the library</span><span class="st8-chev">›</span></button>
-    </div>
-
     <div class="st8-cap">Connected accounts</div>
     <div class="dk-group st8-card">
       <div class="st8-row st8-static"><span class="st8-lab">Status</span><span class="st8-val read" id="posStatus">not connected</span></div>
@@ -1786,74 +1863,6 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
     <div class="st8-foot">Each of these asks twice. Nothing here can fire on one tap.</div>
   </div>
 
-  <div class="st8-scr" data-st8scr="port">
-    <div class="dk-group st8-card">
-      <div class="st8-row st8-static"><span class="st8-ring st8-ring-lg" id="st8ActiveRing"></span><div><div class="st8-lab" style="font-weight:600">Your current book</div><div class="st8-sub" id="st8ActiveSub">—</div></div><span class="st8-val"><span class="st8-activetag">ACTIVE</span></span></div>
-    </div>
-    <div class="st8-foot">The ring is your live sleeve split — it follows every slider.</div>
-
-    <div class="st8-cap">My setups</div>
-    <div class="dk-group st8-card">
-      <section class="saves" id="savesPanel">
-        <div class="saves-new st8-row st8-static">
-          <input type="text" id="saveName" placeholder="name this setup (optional)…" autocomplete="off" spellcheck="false">
-          <button class="btn primary" data-act="savenew">Save</button>
-        </div>
-        <div class="saves-list" id="savesList"></div>
-        <div class="saves-head st8-row st8-static" style="min-height:34px"><span class="saves-status st8-sub" id="savesStatus"></span></div>
-        <div class="saves-file">
-          <button class="st8-row st8-act" data-act="dlbackup"><span class="st8-lab">Download backup</span><span class="st8-chev">›</span></button>
-          <button class="st8-row st8-act" data-act="openbackup"><span class="st8-lab">Restore from file</span><span class="st8-chev">›</span></button>
-          <input type="file" id="backupFile" accept="application/json,.json,text/plain" hidden>
-        </div>
-        <details class="saves-backup st8-disc">
-          <summary class="st8-row"><span class="st8-lab">Use a code instead</span><span class="st8-chev st8-dn">›</span></summary>
-          <div class="st8-foot" style="padding:4px 2px 6px">If downloads don't work in your viewer, copy this code into Notes to keep your setups. Paste it back below to restore.</div>
-          <textarea id="backupBox" rows="4" spellcheck="false" placeholder="paste a backup code or a copied book here…"></textarea>
-          <div class="saves-backup-btns">
-            <button class="btn" data-act="backupcopy">Copy code</button>
-            <button class="btn" data-act="backuprestore">Paste &amp; restore</button>
-          </div>
-        </details>
-      </section>
-    </div>
-    <div class="st8-foot">Each save's ring is its sleeve split — saved on this device, loading always asks twice.</div>
-
-    <div class="st8-cap">Library — the 22 built-in books</div>
-    <select class="dk-hiddensel" id="presetSel" aria-label="Load a preset or book">
-        <option value="">Presets &amp; books…</option>
-        <optgroup label="Framework shapes">
-          <option value="p:unified">§5.1 Unified (canonical)</option>
-          <option value="p:choke">Chokepoint tilt</option>
-          <option value="p:power">Power build-out</option>
-          <option value="p:conviction">Conviction · names</option>
-          <option value="p:etfcore">ETF core · hands-off</option>
-          <option value="p:tollbooths">Toll booths · financing</option>
-        </optgroup>
-        <optgroup label="Complete Set · books #1–#8">
-          <option value="b:b1">#1 ETF Core · B</option>
-          <option value="b:b2">#2 Balanced Barbell · B+</option>
-          <option value="b:b3">#3 BB Wide · B+</option>
-          <option value="b:b4">#4 Quality Darts · A−</option>
-          <option value="b:b5">#5 QD Wide · A−</option>
-          <option value="b:b6">#6 Anchor+Field · B+</option>
-          <option value="b:b7">#7 Full Coverage · B+</option>
-          <option value="b:b8">#8 Every Name an ETF</option>
-        </optgroup>
-        <optgroup label="Complete Set · books #9–#16">
-          <option value="b:b9">#9 Toll Booths · A−</option>
-          <option value="b:b10">#10 Quality Cut · B+</option>
-          <option value="b:b11">#11 QC ETF-Enriched · B+</option>
-          <option value="b:b12">#12 Full Send · B−</option>
-          <option value="b:b13">#13 TT All-ETF</option>
-          <option value="b:b14">#14 Pure Spice · C</option>
-          <option value="b:b15">#15 Complete Build · B+</option>
-          <option value="b:b16">#16 Conviction Build · A−</option>
-        </optgroup>
-    </select>
-    <div class="dk-books" id="dkBooks"></div>
-    <div class="st8-foot">A book's ring is its <b>stock-segment mix</b> — the shape it gives your Stocks sleeve. First tap arms, second loads.</div>
-  </div>
 
   </div>
 </aside>
@@ -6473,7 +6482,8 @@ document.addEventListener('click',e=>{
   else if(act==='clear'){ if(!armGate(b))return; ALLDEFS.forEach(d=>segState(d.id).holdings=[]); buildCards(); buildCryptoCards(); rerenderFocus(); paint(); toast('Cleared all holdings'); }
   else if(act==='copy'){ copyBook(); }
   else if(act==='savenew'){ saveCurrent(); }
-  else if(act==='loadsave'){ loadSave(b.getAttribute('data-name')); }
+  else if(act==='loadsave'){ loadSave(b.getAttribute('data-name')); if(window.Studio) Studio.switchPane('cockpit'); }   /* 10-12: show the loaded book */
+  else if(act==='setuplink'){ copySetupLink(); }
   else if(act==='delsave'){ deleteSave(b.getAttribute('data-name')); }
   else if(act==='renamesave'){ renameTarget=b.getAttribute('data-name'); renderSaves(); }
   else if(act==='renameok'){ commitRename(b.getAttribute('data-name')); }
@@ -6677,6 +6687,28 @@ function exportSave(name){ const o=readSaves(), e=o[name]; if(!e)return;
     toast('Exported “'+name+'” to a file'); }
   catch(_){ toast('Export not supported here — open “use a code” and Copy code instead'); } }
 function copyText(txt,msg){ const done=()=>toast(msg||'Copied'); if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done));} else fallbackCopy(txt,done); }
+/* 10-12 (the owner: "give me a token or something"): ONE link carries the book as a saved setup. Open it on any device or browser and the
+   setup lands under My setups and loads (same name = replaced). Until accounts are switched on, this is how a book travels. */
+function setupEnc(o){ return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function setupDec(c){ c=String(c).replace(/-/g,'+').replace(/_/g,'/'); while(c.length%4) c+='='; return JSON.parse(decodeURIComponent(escape(atob(c)))); }
+function copySetupLink(){
+  const inp=$('#saveName'); const name=(inp&&inp.value||'').trim()||'My book';
+  let w=window; try{ if(window.top&&window.top!==window&&window.top.location.href) w=window.top; }catch(_){ w=window; }
+  const url=w.location.origin+w.location.pathname+'#setup='+setupEnc({n:name,c:currentConfig(),t:Date.now()});
+  copyText(url,'Link copied — it carries “'+name+'” as a saved setup');
+}
+function importSetupHash(){
+  const read=w=>{ try{ const m=/[#&]setup=([A-Za-z0-9_\-]{16,})/.exec(String(w.location.hash||'')); return m?m[1]:null; }catch(_){ return null; } };
+  const strip=w=>{ try{ const h=String(w.location.hash||'').replace(/([#&])setup=[A-Za-z0-9_\-]+&?/,'$1').replace(/[#&]$/,''); w.history.replaceState(null,'',w.location.pathname+w.location.search+h); }catch(_){} };
+  let code=read(window), top=null; try{ if(window.top&&window.top!==window){ top=window.top; code=code||read(top); } }catch(_){ top=null; }
+  if(!code) return null;
+  if(read(window)) strip(window); if(top&&read(top)) strip(top);
+  let o=null; try{ o=setupDec(code); }catch(_){ o=null; }
+  if(!o||!o.c||typeof o.c!=='object'||!o.c.sleeves) return null;
+  const name=String(o.n||'My book').slice(0,60), saves=readSaves();
+  saves[name]={cfg:o.c, ts:+o.t||Date.now()}; writeSaves(saves);
+  return {name:name, cfg:o.c};
+}
 function backupCopy(){ const o=readSaves(); if(!Object.keys(o).length){ toast('Nothing saved to back up yet'); return; } copyText(JSON.stringify(o),'Backup code copied — paste it somewhere safe'); }
 function downloadBackup(){
   const o=readSaves(); if(!Object.keys(o).length){ toast('Nothing saved to back up yet — save a setup first'); return; }
@@ -6724,6 +6756,8 @@ function init(){
   // bring back the last session if this viewer kept it
   let restored=false, gone=[];
   if(LS_OK){ try{ const last=localStorage.getItem(LAST_KEY); if(last){ gone=applyConfigObj(JSON.parse(last)); restored=true; } }catch(_){ } }
+  let imported=null; try{ imported=importSetupHash(); }catch(_){ imported=null; }   /* 10-12: a #setup= link — saved under My setups and loaded over whatever was here */
+  if(imported){ try{ gone=applyConfigObj(imported.cfg); restored=true; }catch(_){ imported=null; } }
   /* 10-12 (the owner: "people are going to want to see a blank slate"): a FRESH device starts with the Stocks and Crypto names EMPTY — the sleeves,
      their weights and the index funds stay, so the framework is there and the names are the person's to add. The example build is one
      "Reset everything" away (Settings) and `?example=1` on the build opens straight onto it (the QA suites that drive the example use it).
@@ -6742,7 +6776,8 @@ function init(){
   paint();
   const nm=$('#saveName'); if(nm) nm.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); saveCurrent(); } });
   const bf=$('#backupFile'); if(bf) bf.addEventListener('change',e=>{ const f=e.target.files&&e.target.files[0]; if(f) handleBackupFile(f); });
-  if(restored) setTimeout(()=>toast('↩ Restored your last session'+(gone.length?goneNote(gone):' · Reset for the default build')),250);
+  if(imported){ autosaveLast(); setTimeout(()=>{ toast('“'+imported.name+'” saved under My setups and loaded'); if(window.GL48&&GL48.go) GL48.go('studio','presets'); else if(window.Studio){ Studio.setDeck('studio'); Studio.switchPane('presets'); } },700); }
+  else if(restored) setTimeout(()=>toast('↩ Restored your last session'+(gone.length?goneNote(gone):' · Reset for the default build')),250);
 }
 document.addEventListener('DOMContentLoaded',init);
 
@@ -6770,6 +6805,7 @@ function renderHud(){
   const cash = state.sleeves.cash || 0;
   const sEl = document.getElementById('hudSub');
   if(sEl) sEl.textContent = cash>0 ? ('book · incl. '+fmtUsd(cash)+' cash') : 'invested · no cash';
+  if(typeof st8PaintActive==='function') st8PaintActive();   /* 10-12: the Presets pane's ring follows the sliders live */
   const bar = document.getElementById('dkBar');
   if(bar){
     bar.innerHTML = DK_SLEEVES.map(s=>{
@@ -7045,6 +7081,7 @@ function dkSwitchPane(id){
   const panes = document.querySelectorAll('.dk-pane');
   panes.forEach(p=>p.classList.toggle('dk-active', p.getAttribute('data-pane')===id));
   document.querySelectorAll('.dk-navitem').forEach(n=>n.classList.toggle('dk-on', n.getAttribute('data-pane')===id));
+  if(id==='presets'&&typeof st8PaintActive==='function') st8PaintActive();   /* 10-12: the "Your current book" ring on the Presets pane */
   // jump to the top of the freshly shown pane
   try{ window.scrollTo(0,0); }catch(_){ }
 }
@@ -10540,11 +10577,12 @@ function st8PaintActive(){
   if(sub)sub.textContent=(t?t.textContent:'')+' invested · follows your sliders live';
 }
 function st8Go(scr){
+  /* 10-12: the Portfolios screen left the sheet for the Portfolio deck's Presets pane — the old route lands there */
+  if(scr==='port'){ if(window.Studio){ Studio.closeConsole(); Studio.switchPane('presets'); } return; }
   document.querySelectorAll('#dkSheet .st8-scr').forEach(function(x){x.classList.toggle('on',x.getAttribute('data-st8scr')===scr);});
   var t=document.getElementById('st8Title'), bk=document.getElementById('st8Back');
-  if(t)t.textContent=(scr==='port')?'Portfolios':'Settings';
-  if(bk)bk.hidden=(scr!=='port');
-  if(scr==='port')st8PaintActive();
+  if(t)t.textContent='Settings';
+  if(bk)bk.hidden=true;
   var bd=document.querySelector('#dkSheet .dk-sheet-body'); if(bd)bd.scrollTop=0;
 }
 if(window.ST8)ST8.rebuildBooks();   /* tiles were built before this engine existed */
@@ -10752,8 +10790,8 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
   html[data-gl] body:is(.gl-cal,.gl-fin) #glSub{display:none!important;}
   html[data-gl] body:is(.gl-cal,.gl-fin,.gl-tech,.gl-rot,.gl-macro,.gl-settings) #glMk{display:none!important;}   /* 10-11: a page over the views takes the Markets seg with it, click or no click */
   html[data-gl] body.gl-chrome.deck-studio:not(.gl-settings) #studioView{padding-top:48px;}
-  /* 10-11 Portfolio's seg has SIX segments (Risk + Trades): the labels stay on one line at 360 */
-  @media (max-width:420px){ html[data-gl] #glSub .gl-seg button{font-size:11.5px;padding:7px 2px;} }
+  /* 10-11 Portfolio's seg has SIX segments (Risk + Trades) — SEVEN since 10-12 (Presets): the labels stay on one line at 360 */
+  @media (max-width:420px){ html[data-gl] #glSub .gl-seg button{font-size:11px;padding:7px 2px;flex:1 1 auto;} }   /* 10-12: seven labels — each cell sized to its word, so Exposure and Holdings keep their gap at 390 */
   /* 10-11 THE MARKETS SEG — Tape | Map | Grades — the Studio seg's twin, under the strip while a Markets view is up (body.gl-mk, shim.js sync()).
      The views beneath start 48px lower (the seg is fixed); the Tape's table top is measured (--gl-tw-top), so its height follows. */
   html[data-gl] body.gl-chrome.gl-mk:not(.gl-settings) #glMk:not([hidden]){display:block;position:fixed;top:40px;left:0;right:0;z-index:54;
@@ -11271,7 +11309,8 @@ html[data-gl] .gl-modenote{font:400 11.5px/1.3 -apple-system,BlinkMacSystemFont,
 <!-- the Calendar door: a fixed layer under the strip; calendar.js fills it -->
 <section id="glCal" aria-label="Calendar"></section>
 <!-- Portfolio's panes (10-12, the owner: Build right after the Cockpit — "they're pretty much the same thing"; Cockpit reads Overview, Book reads Holdings; the ids stay):
-     Overview · Build · Exposure · Holdings · Risk · Trades — Risk and Trades are sets of the Macro layer shown over the Studio deck (shim.js) -->
+     Overview · Build · Exposure · Holdings · Risk · Trades · Presets — Risk and Trades are sets of the Macro layer shown over the Studio deck (shim.js);
+     Presets (10-12, the owner: "I don't like that they're in the settings area") = the saves + the 22-book library, moved out of Settings -->
 <div id="glSub" role="tablist" aria-label="Portfolio" hidden>
   <div class="gl-seg">
     <button type="button" role="tab" data-glpane="cockpit">Overview</button>
@@ -11280,6 +11319,7 @@ html[data-gl] .gl-modenote{font:400 11.5px/1.3 -apple-system,BlinkMacSystemFont,
     <button type="button" role="tab" data-glpane="book">Holdings</button>
     <button type="button" role="tab" data-glpane="risk">Risk</button>
     <button type="button" role="tab" data-glpane="trades">Trades</button>
+    <button type="button" role="tab" data-glpane="presets">Presets</button>
   </div>
 </div>
 <!-- Markets' views: the Tape lands; Map = the flow chart; Grades = the wheel | scorecard (its own face seg rides those views) -->
@@ -17380,7 +17420,7 @@ html[data-gl="light"] .glr-tag{background:#f3f4f7;border-color:#e4e7ec;color:#1c
      door: tape (Markets) | fin (Research) | studio (Portfolio) | macro | calendar | alerts | settings  — and the OLD names still land:
        go('atlas')            → go('tape','map')           go('atlas','donut'|'sc'|'flow'|'cards') → go('tape', …)     go('atlas','yd') → go('macro','yc')
        go('fin','grading')    → go('tape','grades')        go('fin','donut'|'sc') → go('tape', face)
-     opt: tape — mkt | map | grades | donut | sc | cards ;  studio — cockpit | book | exposure | build | risk | trades ;  macro — a panel | yd | rot ;
+     opt: tape — mkt | map | grades | donut | sc | cards ;  studio — cockpit | book | exposure | build | risk | trades | presets (10-12: the saves + library) ;  macro — a panel | yd | rot ;
           calendar — today | grid | agenda ;  fin — a company key.  go('macro','yd') and go('macro','rot') land on the desk's cards (10-12). ---- */
   function go(door,opt){
     closeLearn(); closeSearch(); leaveRot(); leaveMacro(); leaveTech();         /* every door leaves the pages and sheets that sit over the views */
