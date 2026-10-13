@@ -14247,8 +14247,11 @@ html[data-gl="light"] #glTech [fill^="rgba(234,238,245"]{fill:var(--ink);}
     row.classList.add('dragging'); list.classList.add('glt-dragging'); try{ h.setPointerCapture(e.pointerId); }catch(_){} e.preventDefault(); }
   function dragMove(e){ if(!DRAG) return; var dy=e.clientY-DRAG.y0; DRAG.row.style.transform='translateY('+dy+'px)';
     var mid=DRAG.top0+dy+DRAG.h/2, prev=DRAG.row.previousElementSibling, next=DRAG.row.nextElementSibling;
-    if(isOnRow(prev)){ var pr=prev.getBoundingClientRect(); if(mid<pr.top+pr.height/2){ DRAG.list.insertBefore(DRAG.row,prev); DRAG.y0+=pr.height; DRAG.top0-=pr.height; DRAG.row.style.transform='translateY('+(e.clientY-DRAG.y0)+'px)'; return; } }
-    if(isOnRow(next)){ var nr=next.getBoundingClientRect(); if(mid>nr.top+nr.height/2){ DRAG.list.insertBefore(next,DRAG.row); DRAG.y0-=nr.height; DRAG.top0+=nr.height; DRAG.row.style.transform='translateY('+(e.clientY-DRAG.y0)+'px)'; } } }
+    /* 10-13 (the owner: "it just jumps to the top or the bottom"): after a reinsert the row's LAYOUT top moves by the neighbour's height, so the
+       finger origin must move the OTHER way to keep the row under the finger (y0 -= h going up, += h going down). The signs were flipped:
+       the row leapt two rows, crossed the next middle at once and cascaded to the end of the list. */
+    if(isOnRow(prev)){ var pr=prev.getBoundingClientRect(); if(mid<pr.top+pr.height/2){ DRAG.list.insertBefore(DRAG.row,prev); DRAG.y0-=pr.height; DRAG.top0-=pr.height; DRAG.row.style.transform='translateY('+(e.clientY-DRAG.y0)+'px)'; return; } }
+    if(isOnRow(next)){ var nr=next.getBoundingClientRect(); if(mid>nr.top+nr.height/2){ DRAG.list.insertBefore(next,DRAG.row); DRAG.y0+=nr.height; DRAG.top0+=nr.height; DRAG.row.style.transform='translateY('+(e.clientY-DRAG.y0)+'px)'; } } }
   function dragEnd(){ if(!DRAG) return; var list=DRAG.list, row=DRAG.row; row.style.transform=''; row.classList.remove('dragging'); list.classList.remove('glt-dragging');
     var ids=[].filter.call(list.children,isOnRow).map(function(x){ return x.getAttribute('data-ind'); });
     DRAG=null; if(ids.length&&ids.join(',')!==ORDER.join(',')) setOrder(ids); else repaintInfo(); }
