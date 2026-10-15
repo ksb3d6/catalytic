@@ -7627,6 +7627,8 @@ try{
     window.AIBO_CRYPTO_LIVE = S.tokens;
     window.AIBO_FUNDS_LIVE = (payload.funds && payload.funds.tickers) || null;   /* Stage 22 */
     S.at = payload.generatedAt || null; S.src = src; S.n = n; S.fresh = fresh;
+    /* 10-15: the backend's status block (counts, dates, the earnings watch's worklist — never a holding) for the Glass modules; Calendar › Today listens */
+    window.AIBO_STATUS = payload.status || null; try{ window.dispatchEvent(new CustomEvent('aibolive')); }catch(_){}
     paintChip(); if(S.open) paintPanel();
     return true;
   }
@@ -12054,6 +12056,8 @@ html[data-gl] .glc-tl{appearance:none;width:100%;border:0;border-top:1px solid r
   transition:transform .3s cubic-bezier(.3,1.6,.5,1),background-color .25s;}
 html[data-gl] .glc-tl:active{transform:scale(.985);background:rgba(var(--gl-wh-rgb,255,255,255),.07);transition-duration:.05s;}
 html[data-gl] .glc-tl b{flex:1;min-width:0;font-weight:600;font-size:13px;color:var(--gl-ink,#fff);line-height:1.35;}
+html[data-gl] .glc-tl b small{display:block;font-weight:500;font-size:11px;color:rgba(var(--gl-ink-rgb,234,238,245),.55);line-height:1.35;margin-top:1px;}   /* 10-15: the earnings watch's second line */
+html[data-gl] .glc-ewfoot{padding-top:6px;font-size:11.5px;}
 html[data-gl] .glc-tl i{font-style:normal;color:rgba(var(--gl-ink-rgb,234,238,245),.4);font-size:16px;line-height:1;}
 html[data-gl] .glc-tl.up{box-shadow:inset 2px 0 0 #39d07f;} html[data-gl] .glc-tl.dn{box-shadow:inset 2px 0 0 #f0685f;}
 html[data-gl] .glc-tday .glc-tchips{display:flex;flex-wrap:wrap;gap:3px;}
@@ -12361,6 +12365,10 @@ html[data-gl] .glc-cov p b{color:var(--gl-ink,#fff);font-weight:600;margin-right
     var x=days[T], v=x?visible(x):null, h='';
     h+='<section class="glc-ag today glc-td" data-today="1"><h5>'+dayLabel(T,T)+'</h5>'
       +((v&&(v.earn.length+v.div.length+v.split.length+v.econ.length))?rowsFor(v,T):'<div class="glc-tnone">Nothing on the calendar today.</div>')+'</section>';
+    /* 10-15 (the owner: "we need to know when they happen… and go get the data as soon as it's available"): THE EARNINGS WATCH — the backend's
+       worklist (status.earnings.items, via the live feed): who reports today, who has filed and been re-graded (and when), who is still
+       being polled. A graded name opens on Research; a US 500 name on its Market card. */
+    h+=earningsWatch(T);
     /* the market, one line per read — from the Macro desk's own numbers; a missing feed is simply not a line */
     var M=null; try{ M=(window.GLMacro&&window.GLMacro.brief)?window.GLMacro.brief():null; }catch(_){ M=null; }
     h+='<section class="glc-ag glc-td"><h5>The market<small>from the Macro desk</small></h5>';
@@ -12379,6 +12387,26 @@ html[data-gl] .glc-cov p b{color:var(--gl-ink,#fff);font-weight:600;margin-right
       w+='<button type="button" class="glc-row glc-tday" data-goto="'+k+'"><span class="k">'+DOW[(d.getUTCDay()+6)%7]+' '+d.getUTCDate()+'</span><span class="m glc-tchips">'+(chips||'<small>'+t2+' other US release'+(t2>1?'s':'')+'</small>')+'</span><span class="v"><small>'+esc(rel(dayDiff(k,T)))+'</small></span></button>'; });
     h+='<section class="glc-ag glc-td"><h5>Next seven days</h5>'+(any?w:'<div class="glc-tnone">Nothing in the next seven days for the current filters.</div>')+'</section>';
     body.className='glc-body today'; body.innerHTML=h+'<div class="glc-end"></div>';
+  }
+  function earningsWatch(T){
+    var ST=window.AIBO_STATUS||null, E=ST&&ST.earnings, items=(E&&Array.isArray(E.items))?E.items:null;
+    var h='<section class="glc-ag glc-td glc-ew" data-glcew><h5>Earnings watch<small>the day a company files, the app re-grades it and refreshes its fundamentals</small></h5>';
+    if(!ST) return h+'<div class="glc-tnone">Waiting for the live feed…</div></section>';
+    if(!items) return h+'<div class="glc-tnone">The earnings watch has not reported yet.</div></section>';
+    var tod=items.filter(function(it){ return it.reportDate===T||(it.done&&String(it.done).slice(0,10)===T); }), later=items.filter(function(it){ return it.reportDate>T; });
+    var earlier=items.filter(function(it){ return it.reportDate<T&&!it.done; });
+    function nm(sym){ var n=nameOf(sym); return n&&n!==sym?sym+' · '+n:sym; }
+    function hm(iso){ try{ var d=new Date(iso); if(isNaN(d)) return ''; return NYT.format(d)+' NY'; }catch(_){ return ''; } }
+    function row(it){ var done=!!it.done, k=it.kind==='curated'?'data-glgo="fin" data-glgoopt="'+esc(it.sym)+'"':'data-glcard="'+esc(it.sym)+'"';
+      var sub=done?('filed · re-graded '+hm(it.done)+(it.newPeriod?' · statements through '+esc(it.newPeriod):'')+(it.fundRefreshed?' · fundamentals refreshed':''))
+                  :(it.polls?('waiting for the filing · checked '+it.polls+'×'+(it.lastPolled?', last '+hm(it.lastPolled):'')):'reports today · not checked yet');
+      return '<button type="button" class="glc-tl'+(done?' up':'')+'" '+k+'><b>'+esc(nm(it.sym))+'<small>'+sub+'</small></b><i>›</i></button>'; }
+    if(!tod.length&&!earlier.length) h+='<div class="glc-tnone">No graded or US 500 company reports today.</div>';
+    else { tod.sort(function(a,b){ return (b.done?1:0)-(a.done?1:0)||a.sym.localeCompare(b.sym); }); h+=tod.map(row).join('');
+      if(earlier.length) h+='<div class="glc-tnone">Still waiting on '+earlier.length+' earlier filing'+(earlier.length>1?'s':'')+': '+earlier.map(function(it){ return esc(it.sym); }).join(', ')+'.</div>'; }
+    var done=tod.filter(function(it){ return it.done; }).length, cad=E.hot?(E.hotMin||15):60;
+    h+='<div class="glc-tnone glc-ewfoot">'+(tod.length?done+' of '+tod.length+' filed. ':'')+'Checking every '+cad+' minutes'+(E.hot?' (filing window)':'')+(later.length?' · '+later.length+' more report in the next days':'')+'.</div>';
+    return h+'</section>';
   }
   function setLayout(l){ if(l==='month') l='grid'; if(!/^(today|grid|agenda)$/.test(l||'')) return false; S.pref.layout=l; try{ sessionStorage.setItem(SS_LAY,l); }catch(_){} return true; }
 
@@ -12417,6 +12445,7 @@ html[data-gl] .glc-cov p b{color:var(--gl-ink,#fff);font-weight:600;margin-right
     if((b=t.closest('[data-retry]'))){ closeSheet(); refresh(true); return; }
     if((b=t.closest('[data-info]'))){ openInfo(); return; }
     if((b=t.closest('[data-lay]'))){ setLayout(b.getAttribute('data-lay')); savePref(); document.getElementById('glcBody')._scrolled=false; render(); return; }
+    if((b=t.closest('[data-glcard]'))){ var cs=b.getAttribute('data-glcard'); try{ if(window.MktView&&window.MktView.market&&window.MktView.market.openCard) window.MktView.market.openCard(cs); else if(window.openSheet) window.openSheet(cs); }catch(_){} return; }
     if((b=t.closest('[data-glgo]'))){ var gd=b.getAttribute('data-glgo'), go=b.getAttribute('data-glgoopt'); try{ if(window.GL48&&window.GL48.go) window.GL48.go(gd,go||undefined); }catch(_){} return; }
     if((b=t.closest('[data-glsettings]'))){ openSettingsFromCal(); return; }
     if((b=t.closest('[data-posretry]'))){ try{ if(window.AIBO_POS&&window.AIBO_POS.refresh) window.AIBO_POS.refresh(); }catch(_){} refresh(true); return; }
@@ -12442,7 +12471,8 @@ html[data-gl] .glc-cov p b{color:var(--gl-ink,#fff);font-weight:600;margin-right
     var tk=hasTok(); if(tk!==S.tok){ S.tok=tk; if(tk) refresh(true); else render(); return; }   /* token pasted: ask the private feed now · forgotten: chips + note follow it even with Held off */
     if(heldState()!==S.heldState) render(); },1500);
   window.addEventListener('resize',function(){ if(document.body.classList.contains('gl-cal')&&S.pref.layout==='grid'&&S.pub) render(); });
-  window.addEventListener('glmacro',function(){ if(document.body.classList.contains('gl-cal')&&S.pref.layout==='today'&&S.pub) render(); });   /* 10-11: the market lines follow the desk */
+  window.addEventListener('glmacro',function(){ if(document.body.classList.contains('gl-cal')&&S.pref.layout==='today'&&S.pub) render(); });
+  window.addEventListener('aibolive',function(){ if(document.body.classList.contains('gl-cal')&&S.pref.layout==='today'&&S.pub) render(); });   /* 10-15: the earnings watch follows the live feed */   /* 10-11: the market lines follow the desk */
 })();
 
 </script>
@@ -15012,6 +15042,19 @@ html[data-gl] .glm-leg span:not([style])::before{display:none;}
    notch, red at both ends, the ends named above the track; DIRECTIONAL (COT) = green right / red left, a strong centre line. ---- */
 html[data-gl] .glm-rails{display:grid;gap:8px;margin-top:10px;}
 html[data-gl] .glm-rh{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:rgba(var(--gl-ink-rgb,234,238,245),.42);margin:4px 0 -2px;}
+/* 10-15 the AI build-out funding card */
+html[data-gl] .glm-fundbar{margin-top:8px;border-radius:6px;overflow:hidden;}
+html[data-gl] .glm-fundbar text{font-family:ui-monospace,"SF Mono",Menlo,monospace;}
+html[data-gl] .glm-fundhist{display:grid;grid-template-columns:minmax(0,1fr);gap:2px;margin-top:6px;}
+html[data-gl] .glm-fundhist span{font-size:10.5px;color:rgba(var(--gl-ink-rgb,234,238,245),.5);}
+html[data-gl] .glm-fundhist .glm-fundbar{margin-top:0;opacity:.75;}
+html[data-gl] .glm-fundsig p{margin:6px 0 0;font-size:12px;line-height:1.45;color:rgba(var(--gl-ink-rgb,234,238,245),.78);}
+html[data-gl] .glm-fundsig p b{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-weight:600;color:var(--ink,var(--gl-ink,#EAEEF5));margin-right:6px;}
+html[data-gl] .glm-fundsig p span{color:rgba(var(--gl-ink-rgb,234,238,245),.5);font-size:11px;}
+html[data-gl] .glm-fundsig a{color:var(--gl-acci);text-decoration:none;font-size:11px;}
+html[data-gl] .glm-fundrev{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;margin-top:10px;padding-top:8px;border-top:1px solid rgba(var(--gl-wh-rgb,255,255,255),.07);font-size:11px;color:rgba(var(--gl-ink-rgb,234,238,245),.55);line-height:1.4;}
+html[data-gl] .glm-fundrev span:last-child{font-family:ui-monospace,"SF Mono",Menlo,monospace;white-space:nowrap;}
+html[data-gl] .glm-fundrev b{color:#f0685f;font-weight:600;}
 html[data-gl] .glm-rail{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) 78px;align-items:center;gap:8px;font-size:12px;min-height:22px;}
 html[data-gl] .glm-rail.named{margin-top:10px;}
 html[data-gl] .glm-rail.head{min-height:14px;margin-top:8px;}
@@ -15187,19 +15230,21 @@ html[data-gl] .glm-world td:last-child{color:rgba(var(--gl-ink-rgb,234,238,245),
     {k:'credit',   t:'Credit stress',        g:'Fear'},
     {k:'liquidity',t:'Liquidity and dollar', g:'Money'},
     {k:'corr',     t:'Correlation matrix',   g:'Money'},
+    {k:'funding',  t:'AI build-out funding', g:'Money'},
     {k:'cot',      t:'Futures positioning',  g:'Crowding'},
     {k:'crypto',   t:'Crypto leverage',      g:'Crowding'},
     {k:'risk',     t:'Portfolio risk',       g:'Your book'},
     {k:'alerts',   t:'Alerts',               g:'Your book'},
     {k:'journal',  t:'Journal & trading history', g:'Your book'}];
-  var SETS={desk:['yc','fedpath','rot','breadth','vol','credit','liquidity','corr','cot','crypto'], risk:['risk','corr'], trades:['journal'], alerts:['alerts']};
+  var SETS={desk:['yc','fedpath','rot','breadth','vol','credit','liquidity','corr','funding','cot','crypto'], risk:['risk','corr'], trades:['journal'], alerts:['alerts']};
   var SET_TITLE={desk:'Macro desk', risk:'Risk', trades:'Trades', alerts:'Alerts'};
   /* the desk's chip row: group captions, one chip per card */
-  var GROUPS=[['Rates',['yc','fedpath']],['Rotation',['rot','breadth']],['Fear',['vol','credit']],['Money',['liquidity','corr']],['Crowding',['cot','crypto']]];
+  var GROUPS=[['Rates',['yc','fedpath']],['Rotation',['rot','breadth']],['Fear',['vol','credit']],['Money',['liquidity','corr','funding']],['Crowding',['cot','crypto']]];
   function pad2(n){ return (n<10?'0':'')+n; }
   function curSet(){ return root.getAttribute('data-glmset')||'desk'; }
   var HELP={
     yc:'The Treasury curve — today against a month and a year ago, by maturity. A normal curve rises with maturity; when short yields sit above long ones (the 10-year minus the 2-year below zero) it is inverted: bond buyers expect cuts, and recessions have followed most inversions, often only after the curve un-inverts. "10y − 2y" is that spread\'s five-year history. "Around the world" lists other governments\' 2-, 10- and 30-year yields; each row names its source.',
+    funding:'Who is paying for the AI build-out, by capital source: what the hyperscalers fund from their own cash flow, what private credit lends (mostly to the neoclouds, against GPUs and offtake contracts), what the public bond and securitisation markets provide, and what sovereign wealth, governments and private equity put in. No market publishes this series — it is a research estimate, so the card names its source and horizon, keeps the earlier editions underneath so the drift shows, and is reviewed every month by a routine that researches the newest published estimates and opens a pull request for a person to approve. The one measured number is the rail: the debt share of hyperscaler capital spending. The Flow chart\'s capital boxes read the same feed.',
     rot:'Every sector ETF rebased to 0% at the start of the range, so the lines show who is taking the capital. Tap a sector\'s name to hide or show it; Up | Down keeps only the sectors that are up, or only the ones down, over the range, All shows both sides, "reset" brings every hidden sector back; ← → walk the window; hover or press the plot for a read-out. 1D and 5D use hourly bars, the longer ranges daily closes. Colour is the sector here, fixed per name.',
     breadth:'The index can rise on a few giants while most stocks fall. The default lines are the share of the US 500 above their own 50-day and 200-day averages: above ~65% the move is broad, under ~45% (the shaded band) it is narrow and fragile. The toggle shows the advance/decline line (the running total of names up minus names down — when it falls while the index rises, the rally is thinning) and new 20-day highs minus new 20-day lows. The rails: today\'s advancers against decliners, then the 20-session measures.',
     vol:'VIX is the price of 30-day S&P protection, read from its daily history: under 20 is calm, 20–30 elevated, 30 and above is stress — in a strong sell-off it spikes and then decays over weeks. The rails: where today sits in its one-year range, and how far it moved in 5 and 20 sessions (a fast rise is fear arriving, a slow bleed is fear leaving). The VIX term structure, MOVE, SKEW and the put/call ratio are licensed data and are not shown here.',
@@ -15212,7 +15257,7 @@ html[data-gl] .glm-world td:last-child{color:rgba(var(--gl-ink-rgb,234,238,245),
     risk:'Your real holdings (from the Portfolio door, never sent anywhere) run through the backend\'s factor table: each name\'s beta to the S&P, to bitcoin, to long Treasuries and to the dollar, from the last 120 sessions. Book beta is the weighted sum — 1.4 means the book moves 1.4× the market. The ladder shows every holding\'s share of that beta (collapsed to the biggest; expand for all). The stress table is simple arithmetic, not a forecast.',
     alerts:'Regime alerts are computed from the other cards — VIX above 30 or up 8+ points in five sessions, junk bonds at a one-year low against Treasuries (the proxy), breadth under 40%, BTC / ETH / SOL funding above 0.05% or open interest up 15% in a week, net liquidity down $150B+ in 13 weeks, the Fed path (Treasury yields) moving 25 bp+ in a week, a futures market at a three-year positioning extreme — and re-arm by themselves when the condition clears. Price alerts are yours: a ticker and a level; the backend checks them every hour against the quotes it already holds and fires once (up to an hour late, never intraday-exact). Tap a fired alert to mark it seen. With the positions token on the device, alerts and seen-marks sync across your devices.',
     journal:'Your executed trades, pulled from the accounts the app already reads (Kraken, IBKR), with the realised P&L of every closing trade matched first-in-first-out against your buys, a running total, and a "why" field per trade — the thesis, written when it is fresh, so it can be checked later. Free-text entries without a trade sit in the same list. Everything syncs through the positions token. An account that cannot supply fills says so on the card, and what to change.'};
-  var SRC={yc:'U.S. Department of the Treasury (daily par yield curve) · around the world: each country\'s statistics office or central bank, named on its row', rot:'daily and hourly sector-ETF closes via Financial Modeling Prep (licensed) — rebased on this device', breadth:'US 500 daily closes © Financial Modeling Prep — computed on the backend, hourly', vol:'Cboe VIX, daily closes via Financial Modeling Prep',
+  var SRC={funding:'Morgan Stanley Research (the headline split, 2025–28) · J.P. Morgan Asset Management and CreditSights (signals) — a research estimate reviewed monthly on the backend, config/funding_mix.json', yc:'U.S. Department of the Treasury (daily par yield curve) · around the world: each country\'s statistics office or central bank, named on its row', rot:'daily and hourly sector-ETF closes via Financial Modeling Prep (licensed) — rebased on this device', breadth:'US 500 daily closes © Financial Modeling Prep — computed on the backend, hourly', vol:'Cboe VIX, daily closes via Financial Modeling Prep',
     credit:'ETF closes via Financial Modeling Prep (HYG, LQD, IEF) · Federal Reserve Bank of Chicago (NFCI) · Federal Reserve Board (senior loan officer survey)', liquidity:'Federal Reserve Board (H.4.1, broad dollar, M2) · US Treasury (TGA) · Federal Reserve Bank of New York (reverse repo), via FRED',
     fedpath:'Federal Reserve Bank of New York (EFFR) · US Department of the Treasury (daily par yields)', cot:'US Commodity Futures Trading Commission, Commitments of Traders (public)',
     crypto:'Hyperliquid public API · Kraken Futures public API · DefiLlama (stablecoin supply)', corr:'daily closes via Financial Modeling Prep (ETFs) and Kraken (coins); your holdings from the frames the app holds; computed on this device',
@@ -15314,6 +15359,7 @@ html[data-gl] .glm-world td:last-child{color:rgba(var(--gl-ink-rgb,234,238,245),
   /* ---------- the feed ---------- */
   function load(force){
     yieldsLoad(force);                                                    /* the Yield curves card rides the same refresh */
+    fundingLoad(force);                                                   /* 10-15: the AI build-out funding card (/funding.json) */
     if(S.fetching) return; var now=Date.now();
     if(!force&&S.backoff>now) return;
     if(!force&&S.data&&now-S.at<REFRESH) return;
@@ -15324,6 +15370,18 @@ html[data-gl] .glm-world td:last-child{color:rgba(var(--gl-ink-rgb,234,238,245),
       .then(function(j){ if(!j||!j.sections) throw new Error('shape'); S.data=j; S.err=null; S.at=Date.now(); S.backoff=0; })
       .catch(function(e){ S.err=(e&&e.status===503)?'macro feed not published yet (503)':(e&&e.status)?('macro feed error ('+e.status+')'):(e&&e.name==='AbortError')?'macro feed unreachable (timed out)':(e&&e.message==='shape')?'macro feed malformed':'macro feed unreachable'; S.backoff=Date.now()+BACKOFF; })
       .then(function(){ clearTimeout(to); S.fetching=false; S.ctrl=null; if(S.open) paintAll(); else announce(); });
+  }
+  /* ---------- the funding feed (the AI build-out funding card) — /funding.json: a reviewed file (backend v4.24), the Flow chart reads the same ---------- */
+  var FD={data:null, err:null, at:0, fetching:false, backoff:0};
+  function fundingLoad(force){
+    if(FD.fetching) return; var now=Date.now();
+    if(!force&&FD.backoff>now) return;
+    if(!force&&FD.data&&now-FD.at<REFRESH) return;
+    FD.fetching=true; var ctrl=null; try{ ctrl=new AbortController(); }catch(_){} var to=setTimeout(function(){ if(ctrl) ctrl.abort(); },TIMEOUT), opt={cache:'no-store'}; if(ctrl) opt.signal=ctrl.signal;
+    fetch(BASE+'/funding.json',opt).then(function(r){ if(!r.ok){ var e=new Error('http '+r.status); e.status=r.status; throw e; } return r.json(); })
+      .then(function(j){ if(j&&Array.isArray(j.mix)&&j.mix.length>=4) FD.data=j; else throw new Error('shape'); FD.err=null; })
+      .catch(function(e){ FD.err=(e&&e.status===503)?'funding feed not published yet (503)':(e&&e.status)?('funding feed error ('+e.status+')'):(e&&e.name==='AbortError')?'funding feed unreachable (timeout)':'funding feed unreachable'; if(!FD.data) FD.backoff=Date.now()+BACKOFF; })
+      .then(function(){ clearTimeout(to); FD.fetching=false; FD.at=Date.now(); if(S.open) paintPanel('funding'); announce(); });
   }
   /* ---------- the yields feeds (the Yield curves card) — /yields.json (US daily par curve since 1990) + /yields_intl.json (16 countries) ---------- */
   var YD={data:null, intl:null, err:null, at:0, fetching:false, backoff:0};
@@ -15420,8 +15478,8 @@ html[data-gl] .glm-world td:last-child{color:rgba(var(--gl-ink-rgb,234,238,245),
   function paintPanel(k){
     var body=$('[data-glmbody="'+k+'"]'); if(!body) return; var W=_lastW||bodyW(); if(W<60) W=320;
     var fn=PAINT[k], html='';
-    if(k==='risk'||k==='alerts'||k==='journal'||k==='yc'||k==='rot'){ try{ html=fn(W); }catch(e){ html=empty('panel error: '+(e&&e.message)); } body.innerHTML=html;
-      asOfLine(k,k==='journal'?(TR.data||null):k==='yc'?(YD.data||null):k==='rot'?{asOf:(window.GLRot&&window.GLRot.asOf)?window.GLRot.asOf():null}:S.data);
+    if(k==='risk'||k==='alerts'||k==='journal'||k==='yc'||k==='rot'||k==='funding'){ try{ html=fn(W); }catch(e){ html=empty('panel error: '+(e&&e.message)); } body.innerHTML=html;
+      asOfLine(k,k==='journal'?(TR.data||null):k==='yc'?(YD.data||null):k==='funding'?(FD.data?{asOf:FD.data.asOf}:null):k==='rot'?{asOf:(window.GLRot&&window.GLRot.asOf)?window.GLRot.asOf():null}:S.data);
       if(k==='journal') wireJournal();
       if(k==='rot'){ var host=body.querySelector('[data-glrothost]'); if(host&&window.GLRot&&window.GLRot.mount) window.GLRot.mount(host); else body.innerHTML=empty('sector rotation module not mounted'); }
       return; }
@@ -15469,6 +15527,54 @@ html[data-gl] .glm-world td:last-child{color:rgba(var(--gl-ink-rgb,234,238,245),
       rh('Level'),
       railOne('10-year','today · 1y pctile',pctile(y10,cur[i10]),fin(cur[i10])?num(cur[i10],2)+'%':'—',false,'where today\'s 10-year sits in its one-year range'),
       railOne('30-year','today · 1y pctile',pctile(y30,cur[i30]),fin(cur[i30])?num(cur[i30],2)+'%':'—',false,'where today\'s 30-year sits in its one-year range')]);
+    return html;
+  };
+  /* 10-15 AI build-out funding — who pays for the build-out: a stacked bar of the four capital sources from /funding.json (a reviewed
+     file: Morgan Stanley's split today, newer signals beside it, a monthly check-in routine opens a pull request), the previous
+     editions underneath so the numbers' drift shows, the measured debt share as a rail, the dated signals as lines. */
+  var FUND_COL={self:null, private_credit:'#e8b04a', debt:'#7fb6c9', sovereign:'#a78bfa'};
+  function fundCol(id){ return FUND_COL[id]||acc(); }
+  function fundBar(segs,W,h,lab){
+    var x=0, out='<svg class="glm-svg glm-fundbar" viewBox="0 0 '+W+' '+h+'" width="'+W+'" height="'+h+'" role="img" aria-label="'+esc(lab||'')+'">';
+    segs.forEach(function(s){ var w=Math.max(0,W*s.pct/100); if(w<=0) return; var tx=w>=58?('<text x="'+(x+8)+'" y="'+(h/2+4)+'" font-size="11" font-weight="700" fill="rgba(10,14,20,.92)">'+esc(Math.round(s.pct)+'%')+'</text>'+(w>=118?'<text x="'+(x+8)+'" y="'+(h/2+4)+'" dx="'+(String(Math.round(s.pct)).length*7+16)+'" font-size="10" font-weight="600" fill="rgba(10,14,20,.78)">'+esc(s.short||s.label||'')+'</text>':'')):'';
+      out+='<rect x="'+x.toFixed(1)+'" y="0" width="'+w.toFixed(1)+'" height="'+h+'" rx="'+(x===0?6:0)+'" fill="'+esc(s.col)+'"><title>'+esc((s.label||s.id)+' '+Math.round(s.pct)+'%')+'</title></rect>'+tx; x+=w; });
+    return out+'</svg>';
+  }
+  PAINT.funding=function(W){
+    var D=FD.data; if(!D) return empty(FD.fetching?'loading the funding feed…':(FD.err||'loading the funding feed…'),!!FD.err&&!FD.fetching);
+    var mix={}; D.mix.forEach(function(m){ if(m&&m.id) mix[m.id]=m; });
+    var self=mix.self, pc=mix.private_credit, debt=mix.debt, sov=mix.sovereign; if(!self||!pc||!debt||!sov) return empty('funding feed: unexpected shape');
+    var H=D.headline||{}, order=[self,pc,debt,sov], SHORT={self:'self-funding', private_credit:'private credit', debt:'public debt', sovereign:'sovereign · gov · PE'};
+    var outside=order.slice(1).slice().sort(function(a,b){ return b.pct-a.pct; })[0];
+    var verdict='<b>'+(self.pct>=50?'Hyperscalers fund most of it themselves.':self.pct>=40?'Hyperscalers fund about half of it themselves.':'Outside money funds most of the build-out.')+'</b>';
+    var LONG={private_credit:'private credit', debt:'public debt', sovereign:'sovereign, government and private equity'};
+    var rest=order.slice(1).filter(function(m){ return m.id!==outside.id; }).map(function(m){ return LONG[m.id]+' ~'+Math.round(m.pct)+'%'; });
+    var txt=' '+esc(LONG[outside.id].replace(/^./,function(c){ return c.toUpperCase(); }))+' at ~'+Math.round(outside.pct)+'% is the biggest outside source; '+esc(rest.join(', '))+' ('+esc(H.sourceShort||H.source||'the funding feed')+(H.horizon?', '+esc(H.horizon):'')+').';
+    var html=read(verdict+txt,'');
+    html+=fundBar(order.map(function(m){ return {id:m.id, pct:+m.pct||0, col:fundCol(m.id), label:m.label, short:SHORT[m.id]}; }),W,34,'the capital split today');
+    html+=leg(order.map(function(m){ return [fundCol(m.id), (m.label||m.id)+' '+Math.round(m.pct)+'%'+(fin(+m.usdB)?' · '+bn(+m.usdB):'')]; }));
+    /* earlier editions: the drift */
+    var hist=(D.history||[]).filter(function(x){ return x&&x.mix; });
+    if(hist.length){ html+='<div class="glm-rh">Earlier editions</div>';
+      hist.slice(-3).reverse().forEach(function(x){ var mm=x.mix, segs=[];
+        if(fin(+mm.self)) segs.push({id:'self',pct:+mm.self,col:fundCol('self'),short:'self-funding',label:'Hyperscaler self-funding'});
+        if(fin(+mm.private_credit)) segs.push({id:'private_credit',pct:+mm.private_credit,col:fundCol('private_credit'),short:'private credit',label:'Private credit'});
+        if(fin(+mm.private_credit_and_debt)) segs.push({id:'pcd',pct:+mm.private_credit_and_debt,col:fundCol('private_credit'),short:'private credit & debt',label:'Private credit & debt'});
+        if(fin(+mm.debt)) segs.push({id:'debt',pct:+mm.debt,col:fundCol('debt'),short:'public debt',label:'Public debt'});
+        if(fin(+mm.sovereign)) segs.push({id:'sovereign',pct:+mm.sovereign,col:fundCol('sovereign'),short:'sovereign · gov · PE',label:'Sovereign · government · PE / VC'});
+        if(fin(+mm.other)) segs.push({id:'other',pct:+mm.other,col:fundCol('sovereign'),short:'VC · sovereign · gov',label:'VC · sovereign · gov'});
+        html+='<div class="glm-fundhist"><span>'+esc(x.asOf||'')+(x.source?' · '+esc(x.source):'')+'</span>'+fundBar(segs,W,18,'edition '+(x.asOf||''))+'</div>'; }); }
+    /* the measured rail(s) */
+    var mets=(D.metrics||[]).filter(function(m){ return m&&fin(+m.value); });
+    if(mets.length) html+=railsBox([rh('Measured, not estimated')].concat(mets.map(function(m){ var v=+m.value, tf=(m.asOf?esc(m.asOf):'')+(fin(+m.prev)?' · was '+Math.round(+m.prev)+(m.unit||'%')+(m.prevLabel?' '+esc(m.prevLabel):''):'');
+      return railOne(m.label||m.id, tf, v, Math.round(v)+(m.unit||'%'), v>=30, (m.note||'')+(m.source?' — '+m.source:'')); })));
+    /* what moved: the dated signals */
+    var sig=(D.signals||[]).slice().sort(function(a,b){ return String(b.date||'').localeCompare(String(a.date||'')); });
+    if(sig.length){ html+='<div class="glm-rh">What moved since</div><div class="glm-fundsig">'+sig.slice(0,4).map(function(s){ return '<p><b>'+esc(s.date||'')+'</b> <span>'+esc(s.source||'')+'</span><br>'+esc(s.text||'')+(s.url?' <a href="'+esc(s.url)+'" target="_blank" rel="noopener">source ↗</a>':'')+'</p>'; }).join('')+'</div>'; }
+    /* the review: when, by whom, and when the next check-in is due */
+    var asOf=D.asOf?new Date(D.asOf):null, ok=asOf&&!isNaN(asOf), nxt=ok?new Date(Date.UTC(asOf.getUTCFullYear(),asOf.getUTCMonth()+1,1)):null, late=ok&&(Date.now()-asOf.getTime())>35*864e5;
+    var fmtD=function(d){ return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}); };
+    html+='<div class="glm-fundrev"><span>'+esc(H.sourceShort||H.source||'the funding feed')+(H.published?' ('+esc(H.published)+')':'')+' · an estimate, reviewed monthly: a routine proposes, a person approves'+(late?' · <b>review overdue</b>':'')+'</span><span>'+(ok?'reviewed '+fmtD(asOf)+(nxt?' · next check-in '+fmtD(nxt):''):'')+'</span></div>';
     return html;
   };
   /* Sector rotation — rotation.js draws into the host (GLRot.mount, called by paintPanel after this HTML lands) */
