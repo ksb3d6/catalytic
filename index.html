@@ -1486,7 +1486,7 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
       <h1>The AI Capital Flow — Vertical Universe</h1>
       <p class="sub">Neoclouds and hyperscalers sit in <b>separate boxes</b> at the centre top, fed by capital from the left. The <b>pay ribbons</b> show where the money comes from: private credit pours into neoclouds, while hyperscalers self-fund and take only a hair-thin &asymp;2%. The money then flows downhill into compute, power and networking; physical inputs feed from the left, outputs draw off to the right. <b>Tap any name for its full fundamentals.</b></p>
     </div>
-    <div class="notes">ribbon width &asymp; relative capital &middot; italic chip = ETF<br>capital split per the credit-risk funding note (Jun 2026)</div>
+    <div class="notes">ribbon width &asymp; relative capital &middot; italic chip = ETF<br><span id="flowCapNote">capital split per the credit-risk funding note (Jun 2026)</span></div>
   </div>
   <div class="toolbar">
     <span class="tl">Zoom</span>
@@ -1530,13 +1530,13 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
             <div class="crow"><span class="dot" style="background:#4683F2"></span> Equipment</div>
             <div class="crow"><span class="dot" style="background:var(--gl-dn,#F2564F)"></span> Raw materials</div>
           </div>
-          <div class="lnote">Capital split (~40% self-funding / ~43% private credit &amp; debt / ~17% VC&middot;sovereign&middot;gov) is directional, per the Jun 2026 funding note. &lsquo;?&rsquo; chips are unidentified / held out of grading.</div>
+          <div class="lnote"><span id="flowCapSplit">Capital split (~40% self-funding / ~43% private credit &amp; debt / ~17% VC&middot;sovereign&middot;gov) is directional, per the Jun 2026 funding note.</span> &lsquo;?&rsquo; chips are unidentified / held out of grading.</div>
         </div>
       </div>
     </div>
   </div>
   <details class="howto-fold ffoot-fold"><summary>The story in prose</summary><div class="ffoot">
-    At the centre top, <b>neoclouds</b> and <b>hyperscalers</b> now sit in <b>separate boxes</b>, fed by three capital sources. The <b>pay ribbons</b> show where the money actually comes from: <b>private credit</b> (~43% of the funding bundle) pours almost entirely into <b>neoclouds</b> &mdash; debt-financed through GPU- and offtake-pledged SPVs &mdash; while <b>hyperscalers self-fund</b> via IG bonds and operating cash (the blue loop recycles it back) and take only a hair-thin <b>&asymp;2%</b> of private credit. <b>Both buyers then fund the physical build-out</b> &mdash; <b>compute</b>, <b>power</b> and <b>networking</b> &mdash; with <b>hyperscalers carrying the larger share of power and the network</b> (they build the data centres, substations and fibre themselves) and <b>neoclouds the more compute-concentrated</b>, debt-financed buyer. The spine then flows down &mdash; <b>compute → memory → foundry</b> → <b>equipment &amp; EDA</b> &mdash; and steps off to <b>raw materials</b>. Networking silicon reconverges into the foundry from the side, so the fabs are the shared chokepoint &mdash; a web, not a tree. The fragility isn&rsquo;t the blue-chip hyperscalers &mdash; it is the <b>neocloud / private-credit junction</b>. Bands and tethers are impressionistic, not measured.
+    At the centre top, <b>neoclouds</b> and <b>hyperscalers</b> now sit in <b>separate boxes</b>, fed by three capital sources. The <b>pay ribbons</b> show where the money actually comes from: <b>private credit</b> (its share is on the capital box at the top left, refreshed from the funding feed) pours almost entirely into <b>neoclouds</b> &mdash; debt-financed through GPU- and offtake-pledged SPVs &mdash; while <b>hyperscalers self-fund</b> via IG bonds and operating cash (the blue loop recycles it back) and take only a hair-thin <b>&asymp;2%</b> of private credit. <b>Both buyers then fund the physical build-out</b> &mdash; <b>compute</b>, <b>power</b> and <b>networking</b> &mdash; with <b>hyperscalers carrying the larger share of power and the network</b> (they build the data centres, substations and fibre themselves) and <b>neoclouds the more compute-concentrated</b>, debt-financed buyer. The spine then flows down &mdash; <b>compute → memory → foundry</b> → <b>equipment &amp; EDA</b> &mdash; and steps off to <b>raw materials</b>. Networking silicon reconverges into the foundry from the side, so the fabs are the shared chokepoint &mdash; a web, not a tree. The fragility isn&rsquo;t the blue-chip hyperscalers &mdash; it is the <b>neocloud / private-credit junction</b>. Bands and tethers are impressionistic, not measured.
   </div></details>
 </div>
 <div class="cr-only"><div id="cflowMount"></div></div>
@@ -3703,7 +3703,45 @@ function draw(dim){
 
 function run(){ const dim=layout(); draw(dim); }
 
-return { run };
+/* ---- THE FUNDING MIX IS A FEED (10-15, the owner: "I want those to be floating numbers too that get checked… maybe every month"):
+   GET <API>/funding.json (backend v4.24, config/funding_mix.json — reviewed monthly by a routine that opens a pull request, a
+   person approves; the freshness register turns the row LATE after 35 days). mix: [{id: self | private_credit | debt | sovereign,
+   label, pct, usdB, note}]. The three capital boxes keep their titles (worlds.js finds build-out cards by title) — the shares,
+   the sub-split on the credit box and the two notes repaint; the pay ribbons scale with their source's share. ---- */
+const FUND_BASE=String(window.AIBO_LIVE_URL||'https://asset-grading-production.up.railway.app/universe.json').replace(/\/universe\.json.*$/,'');
+const FUND_BASEPCT={cap_self:40, cap_debt:43, cap_off:17};   /* the baked ribbon widths were drawn to this split */
+const FUND_SW={}; RIBBONS.forEach((r,i)=>{ if(FUND_BASEPCT[r.from]) FUND_SW[i]=[r.sw,r.tw]; });
+let FUNDING=null;
+function fundPct(mix,id){ const m=(mix||[]).find(x=>x&&x.id===id); return m&&isFinite(+m.pct)?+m.pct:null; }
+function applyFunding(j){
+  if(!j||!Array.isArray(j.mix)) return false;
+  const self=fundPct(j.mix,'self'), pc=fundPct(j.mix,'private_credit'), debt=fundPct(j.mix,'debt'), sov=fundPct(j.mix,'sovereign');
+  if(self==null||pc==null||debt==null||sov==null) return false;
+  FUNDING=j;
+  const r=v=>'~'+Math.round(v)+'%';
+  C.cap_self.share=r(self); C.cap_debt.share=r(pc+debt); C.cap_off.share=r(sov);
+  C.cap_debt.desc='private credit '+r(pc)+' \u00b7 bonds & ABS '+r(debt);
+  C.cap_off.desc='sovereign \u00b7 government \u00b7 PE / VC \u00b7 largely not investable';
+  /* the cards are built ONCE at load (Object.keys(C).forEach(buildCard)) — repaint the three capital cards' share + desc in place */
+  ['cap_self','cap_debt','cap_off'].forEach(id=>{ const el=els[id]; if(!el) return; const cs=el.querySelector('.cs'); if(cs) cs.textContent=C[id].share; const ds=el.querySelector('.desc'); if(ds) ds.textContent=C[id].desc; });
+  const pct={cap_self:self, cap_debt:pc+debt, cap_off:sov};
+  RIBBONS.forEach((rb,i)=>{ if(!FUND_SW[i]) return; const k=pct[rb.from]/FUND_BASEPCT[rb.from]; rb.sw=Math.max(4,Math.round(FUND_SW[i][0]*k)); rb.tw=Math.max(5,Math.round(FUND_SW[i][1]*k)); });
+  const h=j.headline||{}, when=j.asOf?new Date(j.asOf):null, whenTx=(when&&!isNaN(when))?when.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):(j.asOf||'');
+  const split=document.getElementById('flowCapSplit'); if(split) split.textContent='Capital split ('+r(self)+' self-funding / '+r(pc)+' private credit / '+r(debt)+' public debt / '+r(sov)+' sovereign\u00b7government\u00b7PE) per '+(h.source||'the funding feed')+(h.horizon?' \u2014 '+h.horizon:'')+'; reviewed '+whenTx+'.';
+  const note=document.getElementById('flowCapNote'); if(note) note.textContent='capital split: '+(h.sourceShort||h.source||'funding feed')+(h.published?' ('+h.published+')':'')+' \u00b7 reviewed '+whenTx;
+  return true;
+}
+function loadFunding(){
+  if(FUNDING||loadFunding.busy) return; loadFunding.busy=true;
+  try{ const c=JSON.parse(localStorage.getItem('aibo_funding_v1')||'null'); if(c&&applyFunding(c)&&activeView==='flow') run(); }catch(_){}
+  const ctl=('AbortController' in window)?new AbortController():null, to=ctl?setTimeout(()=>ctl.abort(),9000):null;
+  fetch(FUND_BASE+'/funding.json',{signal:ctl&&ctl.signal,cache:'no-store'}).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(j=>{ if(to) clearTimeout(to); if(applyFunding(j)){ try{ localStorage.setItem('aibo_funding_v1',JSON.stringify(j)); }catch(_){} if(typeof activeView!=='undefined'&&activeView==='flow') run(); } })
+    .catch(()=>{ if(to) clearTimeout(to); }).then(()=>{ loadFunding.busy=false; });
+}
+const _run0=run; run=function(){ loadFunding(); _run0(); };
+
+return { run:function(){ run(); }, funding:function(){ return FUNDING; }, applyFunding:applyFunding };
 })();
 
 /* ====================================================================== */
