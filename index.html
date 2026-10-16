@@ -1775,9 +1775,17 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
   </div>
   <div class="st8-foot">Each save's ring is its sleeve split — saved on this device. "Copy a link to this book" puts the book you have built into a link: open it on any device or browser and it lands under My setups, loaded, so your book travels with you.</div>
 
-  <div class="st8-cap">Library — the 22 built-in books</div>
+  <div class="st8-cap" id="st8LibCap">Library — the 22 built-in books</div>
   <select class="dk-hiddensel" id="presetSel" aria-label="Load a preset or book">
       <option value="">Presets &amp; books…</option>
+      <optgroup label="Starter templates · categories only" data-starter="1">
+        <option value="t:balanced">Balanced · 50 / 30 / 10 / 5 / 5</option>
+        <option value="t:growth">Growth · 35 / 45 / 15 / 0 / 5</option>
+        <option value="t:steady">Steady · 55 / 15 / 0 / 10 / 20</option>
+        <option value="t:cryptofwd">Crypto-forward · 30 / 25 / 40 / 0 / 5</option>
+        <option value="t:allweather">All-weather · 40 / 20 / 5 / 20 / 15</option>
+        <option value="t:blank">Blank · an even split, nothing chosen</option>
+      </optgroup>
       <optgroup label="Framework shapes">
         <option value="p:unified">§5.1 Unified (canonical)</option>
         <option value="p:choke">Chokepoint tilt</option>
@@ -1808,7 +1816,7 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
       </optgroup>
   </select>
   <div class="dk-books" id="dkBooks"></div>
-  <div class="st8-foot">A book's ring is its <b>stock-segment mix</b> — the shape it gives your Stocks sleeve. First tap arms, second loads.</div>
+  <div class="st8-foot" id="st8LibFoot">A book's ring is its <b>stock-segment mix</b> — the shape it gives your Stocks sleeve. First tap arms, second loads.</div>
   </div>
 </section>
 </main>
@@ -5107,7 +5115,7 @@ function addIndexFund(t){
   return true;
 }
 function removeIndexFund(t){
-  if(state.stock.length<=1) return false;
+  if(state.stock.length<=(isBasic()?0:1)) return false;      /* 10-16: a basic book may hold no index fund at all */
   const i=state.stock.findIndex(f=>f.t===t); if(i<0) return false;
   state.stock.splice(i,1);
   const tot=state.stock.reduce((a,f)=>a+f.weight,0);
@@ -5399,6 +5407,27 @@ function applyPreset(p){
     if(p.holdings){ const arr=p.holdings[d.id]||[]; segState(d.id).holdings=arr.map(([t,w])=>({t,kind:isETF(t)?'etf':'name',w})); }
     else segState(d.id).holdings=fillSeg(d,p.fill||'auto');
   });
+}
+/* 10-16 (the owner: "the portfolio builder … the current one set up in my admin account only and the other ones can just have some very
+   basic templates that include just the asset categories and not any assets specifically"). The ROLE comes from the account module
+   (window.AIBO_ACCOUNT.role(): admin | member | guest | open). 'open' = accounts off or not known yet → everything as before.
+   member / guest = BASIC: the library shows only these starter templates (sleeve split only — every name cleared, no index fund
+   chosen; Metals stays gold + silver, the sleeve's own two metals); Reset = the Balanced template; a fresh device starts with no
+   index fund either. The admin keeps the full library, the example build and Reset as before. Order: indices / ai / crypto / metals / cash. */
+const STARTERS={balanced:{label:'Balanced',w:{indices:50,ai:30,crypto:10,metals:5,cash:5}}, growth:{label:'Growth',w:{indices:35,ai:45,crypto:15,metals:0,cash:5}},
+  steady:{label:'Steady',w:{indices:55,ai:15,crypto:0,metals:10,cash:20}}, cryptofwd:{label:'Crypto-forward',w:{indices:30,ai:25,crypto:40,metals:0,cash:5}},
+  allweather:{label:'All-weather',w:{indices:40,ai:20,crypto:5,metals:20,cash:15}}, blank:{label:'Blank',w:{indices:20,ai:20,crypto:20,metals:20,cash:20}}};
+function studioRole(){ try{ return (window.AIBO_ACCOUNT&&window.AIBO_ACCOUNT.role)?window.AIBO_ACCOUNT.role():'open'; }catch(_){ return 'open'; } }
+function isBasic(){ const r=studioRole(); return r==='member'||r==='guest'; }
+function applyStarter(key){
+  const t=STARTERS[key]; if(!t) return false;
+  const total=(typeof totalUsd==='function'&&totalUsd()>0)?totalUsd():100000;
+  SLEEVE_KEYS.forEach(k=>{ state.sleeves[k]=Math.round(total*(t.w[k]||0)/100); });
+  state.sleeveLock={indices:false,ai:false,crypto:false,metals:false,cash:false};
+  ALLDEFS.forEach(d=>{ segState(d.id).holdings=[]; });
+  state.stock=[];
+  showIndexDetail=showAiDetail=showCryptoDetail=showMetalsDetail=false;
+  return true;
 }
 function factoryReset(){
   state.sleeves={...DEFAULT_SLEEVES}; state.sleeveLock={indices:false,ai:false,crypto:false,metals:false,cash:false}; state.lens='rec';
@@ -6190,7 +6219,8 @@ function renderMixer(defs, sel){
 }
 function renderStockMixer(sel){
   const el=$(sel); if(!el)return;
-  const many=state.stock.length>1, room=state.stock.length<IDX_MAX;
+  const many=state.stock.length>1||(isBasic()&&state.stock.length>0), room=state.stock.length<IDX_MAX;
+  if(!state.stock.length) idxPickOpen=true;                 /* 10-16: an empty Indices sleeve opens straight on the fund picker */
   let h = state.stock.map(f=>`<div class="seg-row" data-seg="${f.id}">
       <button class="lock${f.locked?' on':''}" data-act="lock" data-seg="${f.id}" aria-label="lock ${f.t}" title="Lock this weight">${lockIcon(f.locked)}</button>
       <span class="dot" style="background:${fundCol(f.t)}"></span>
@@ -6513,6 +6543,7 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]'); if(!b)return;
   const act=b.getAttribute('data-act');
   if(act==='autofill'){ autoFillAll(); buildCards(); rerenderFocus(); paint(); toast('Filled every segment with top grades + best ETF'); }
+  else if(act==='reset'&&isBasic()){ if(!armGate(b))return; applyStarter('balanced'); syncSleeveUI(); syncSleeveOpenUI(); buildMixer(); buildCards(); buildCryptoCards(); rerenderFocus(); paint(); toast('Reset — the Balanced template, nothing chosen'); }   /* 10-16 */
   else if(act==='reset'){ if(!armGate(b))return; factoryReset(); showIndexDetail=showAiDetail=showCryptoDetail=true;
     document.querySelectorAll('[data-act="lens"]').forEach(x=>x.classList.toggle('on',x.getAttribute('data-lens')==='rec'));
     syncSleeveUI(); syncSleeveOpenUI();
@@ -6582,6 +6613,7 @@ document.addEventListener('change',e=>{
     if(!v)return; const i=v.indexOf(':'), kind=v.slice(0,i), key=v.slice(i+1);
     if(kind==='p'){ const p=PRESETS.find(x=>x.id===key); if(p){ applyPreset(p); buildMixer(); buildCards(); rerenderFocus(); paint(); toast('Loaded · '+p.label); } }
     else if(kind==='b'){ const bk=BOOKS[key]; if(bk){ applyBook(key); buildMixer(); buildCards(); rerenderFocus(); paint(); toast('Loaded book · '+bk.label); } }
+    else if(kind==='t'){ if(applyStarter(key)){ syncSleeveUI(); syncSleeveOpenUI(); buildMixer(); buildCards(); buildCryptoCards(); rerenderFocus(); paint(); toast('Template · '+STARTERS[key].label+' — pick your own names in each category'); } }
   }
 });
 
@@ -6784,7 +6816,7 @@ function restoreFromBox(){
   try{ applyConfig(raw); refreshAllUI(); autosaveLast(); const bb=$('#backupBox'); if(bb)bb.value=''; toast('Setup loaded into the studio'); }
   catch(_){ toast('Could not read that code'); }
 }
-let _asT=null, _inited=false;   // 10-07: no LAST_KEY write before init() has read it (a slow cold open saved the factory build over the last session)
+let _asT=null, _inited=false, _freshBlank=false;   // 10-07: no LAST_KEY write before init() has read it (a slow cold open saved the factory build over the last session)
 function autosaveLast(){ if(!LS_OK||!_inited)return; clearTimeout(_asT); _asT=setTimeout(()=>{ try{ localStorage.setItem(LAST_KEY,JSON.stringify(currentConfig())); }catch(_){ } },500); }
 
 /* ============================================================ INIT ========= */
@@ -6800,7 +6832,8 @@ function init(){
      their weights and the index funds stay, so the framework is there and the names are the person's to add. The example build is one
      "Reset everything" away (Settings) and `?example=1` on the build opens straight onto it (the QA suites that drive the example use it).
      A device with a last session is untouched. And every open starts with the sleeves COLLAPSED in the donut (the ⌄ opens one). */
-  if(!restored&&!/[?&]example=1/.test(location.search)){ state.segments.forEach(sg=>{ sg.holdings=[]; }); state.crypto.forEach(sg=>{ sg.holdings=[]; }); }
+  if(!restored&&!/[?&]example=1/.test(location.search)){ state.segments.forEach(sg=>{ sg.holdings=[]; }); state.crypto.forEach(sg=>{ sg.holdings=[]; }); _freshBlank=true;
+    if(isBasic()){ state.stock=[]; _freshBlank=false; } }   /* 10-16: a member / guest starts with no index fund chosen either */
   showIndexDetail=showAiDetail=showCryptoDetail=showMetalsDetail=false;
   _inited=true;
   buildMixer();
@@ -7146,7 +7179,13 @@ function dkBuildBooks(){
   const host=document.getElementById('dkBooks'); const sel=document.getElementById('presetSel');
   if(!host||!sel) return;
   let html='';
+  const basic=(typeof isBasic==='function')&&isBasic();      /* 10-16: basic = the starter templates only; otherwise the full library, no starters */
+  const cap=document.getElementById('st8LibCap'), foot=document.getElementById('st8LibFoot');
+  if(cap) cap.textContent=basic?'Starter templates — categories only':'Library — the 22 built-in books';
+  if(foot) foot.innerHTML=basic?'A template sets only the split between <b>Indices, Stocks, Crypto, Metals and Cash</b> — it chooses no names and no funds; you pick those in each category. First tap arms, second loads.'
+                               :'A book\'s ring is its <b>stock-segment mix</b> — the shape it gives your Stocks sleeve. First tap arms, second loads.';
   Array.prototype.forEach.call(sel.children, node=>{
+    if(node.tagName==='OPTGROUP'&&(!!node.getAttribute('data-starter'))!==basic) return;
     if(node.tagName==='OPTGROUP'){
       html += '<div class="dk-books-cat">'+dkEsc(node.getAttribute('label')||'')+'</div>';
       Array.prototype.forEach.call(node.children, opt=>{ html += dkBookBtn(opt); });
@@ -7220,6 +7259,10 @@ function sel_dispatch(v){
 }
 
 dkInit();
+/* 10-16: the role can land after boot (the account module asks the server once) — rebuild the library, and a device that booted blank
+   gets its basic shape (no index fund) once */
+window.addEventListener('aiborole',function(){ try{ dkBuildBooks();
+  if(_freshBlank&&isBasic()){ _freshBlank=false; state.stock=[]; buildMixer(); paint(); } }catch(_){ } });
 
 
 
@@ -7263,6 +7306,9 @@ window.Studio = { setDeck:setDeck, switchPane:dkSwitchPane, openConsole:dkOpenCo
 window.ST8={ sleeves:function(){ return Object.assign({},state.sleeves); },
   bookL:function(k){ return (BOOKS[k]&&BOOKS[k].L)||null; },
   presetW:function(k){ for(var j=0;j<PRESETS.length;j++) if(PRESETS[j].id===k) return PRESETS[j].weights||null; return null; },
+  starterW:function(k){ return (STARTERS[k]&&STARTERS[k].w)||null; },
+  indexFunds:function(){ return state.stock.map(function(f){ return f.t; }); },   /* 10-16: read-only, for the suites */
+  role:function(){ return studioRole(); },
   rebuildBooks:function(){ try{dkBuildBooks();}catch(_){}} };
 
 })();
@@ -10618,6 +10664,7 @@ function st8BookRing(val){ try{
   var i=val.indexOf(':'),kind=val.slice(0,i),key=val.slice(i+1),pairs=[],k;
   if(kind==='b'){ var L=ST8.bookL(key);
     if(L)for(k in L){ if(L[k]&&L[k][0]>0) pairs.push([ST8_SEGCOL[k]||'#5B7189',L[k][0]]); } }
+  else if(kind==='t'){ var T=null; try{ T=ST8.starterW(key); }catch(_){ T=null; } if(T) return st8SleeveRing(T); }   /* 10-16: a starter's ring = its sleeve split */
   else if(kind==='p'){ var W=ST8.presetW(key);
     if(W)for(k in W){ if(W[k]>0) pairs.push([ST8_SEGCOL[k]||'#5B7189',W[k]]); } }
   pairs.sort(function(x,y){return y[1]-x[1];});
@@ -11467,6 +11514,9 @@ html[data-gl="light"] #glaToast{background:#fff;}
 /* signed in: the owner's token row is not the way in any more — the person's own connections are */
 html[data-glacct] #posConnect{display:none;}
 
+/* 10-16 the Admin section */
+#glAccount .gla-admin .gla-head.gla-sub{margin-top:6px;}
+
 </style>
 <script id="gl48Acct">
 /* Stage 48 — ACCOUNTS (2026-10-07; the owner: "email and password … what most people are used to", Google as the second door,
@@ -11495,7 +11545,13 @@ html[data-glacct] #posConnect{display:none;}
    CONTRACT (window.AIBO_ACCOUNT, read by lists.js and macro.js at load — this script is bundled first):
      token()      the session token or null      signedIn()   boolean      user()   the cached public user or null
      signOut()    forgets the session here        state()      for the QA suite
-     expired()    a session the server refused elsewhere (lists.js on a 401) — forget it, say so */
+     expired()    a session the server refused elsewhere (lists.js on a 401) — forget it, say so
+     role()       10-16: 'admin' (signed in, an AIBO_ADMIN_EMAILS account) | 'member' (signed in) | 'guest' (accounts on, signed out)
+                  | 'open' (accounts off or not known yet — the app behaves exactly as before). Fires window 'aiborole' when it changes;
+                  the Studio reads it: the full book library is the admin's, everyone else gets category-only starter templates.
+   ADMIN (10-16, the owner: "my user profile … as an admin", "only one other user profile … for my friend"): an admin's card carries an Admin
+   section — invite an address (sign-up is invite-only: backend v4.26 AIBO_SIGNUP_MODE), see who joined, the members, and "Move the
+   shared watchlist into my account" (POST /admin/lists/import — the shared-key lists are retired after it). */
 (function(){
   'use strict';
   var BASE=String(window.AIBO_LIVE_URL||'https://asset-grading-production.up.railway.app/universe.json').replace(/\/universe\.json.*$/,'');
@@ -11552,7 +11608,7 @@ html[data-glacct] #posConnect{display:none;}
   function loadConfig(force){
     if(S.cfg&&!force) return Promise.resolve(S.cfg);
     return api('GET','/auth/config',undefined,true).then(function(r){
-      if(r.status===200&&r.body&&typeof r.body.enabled==='boolean'){ S.cfg=r.body; lsSet(LS_CFG,JSON.stringify({at:Date.now(), cfg:r.body})); return S.cfg; }
+      if(r.status===200&&r.body&&typeof r.body.enabled==='boolean'){ S.cfg=r.body; lsSet(LS_CFG,JSON.stringify({at:Date.now(), cfg:r.body})); announceRole(); return S.cfg; }
       return S.cfg||{enabled:false, unreachable:true};   /* 10-07: not kept — a redeploy moment hid the card for the whole session */
     });
   }
@@ -11560,13 +11616,16 @@ html[data-glacct] #posConnect{display:none;}
   /* ---------- signed in / out ---------- */
   function setSession(tok,user){ S.tok=tok||null; S.user=user||null; lsSet(LS_TOK,S.tok); lsSet(LS_USER,S.user?JSON.stringify(S.user):null); mark(); }
   function forget(){ setSession(null,null); lsSet(LS_PREF,null); lsSet(LS_BOOK,null); lsSet('aibo_pos_v1',null); S.devices=null; S.conns=null; mark(); }
-  function mark(){ try{ if(signedIn()) document.documentElement.setAttribute('data-glacct','1'); else document.documentElement.removeAttribute('data-glacct'); }catch(_){} }
+  function mark(){ try{ if(signedIn()) document.documentElement.setAttribute('data-glacct','1'); else document.documentElement.removeAttribute('data-glacct'); }catch(_){} announceRole(); }
   /* 10-07: sign out / delete put this device's Portfolio saves back to what they were BEFORE the sign-in — a borrowed iPad
      kept the account's saves (dollar figures) after "Sign out". An expired session keeps them (still the person's device). */
   function keepBook(){ if(ls(LS_BEFORE)==null) lsSet(LS_BEFORE,JSON.stringify(snap(BOOK_KEYS))); }
   function leaveBook(){ var b=null; try{ b=JSON.parse(ls(LS_BEFORE)||'null'); }catch(_){} applySnap(b||{},BOOK_KEYS); lsSet(LS_BEFORE,null); }
-  function takeUser(u){ if(u&&u.id){ S.user=u; lsSet(LS_USER,JSON.stringify(u)); } }
+  function takeUser(u){ if(u&&u.id){ S.user=u; lsSet(LS_USER,JSON.stringify(u)); } announceRole(); }
   function signedIn(){ return !!S.tok; }
+  function role(){ if(signedIn()) return (S.user&&S.user.admin)?'admin':'member'; return (S.cfg&&S.cfg.enabled)?'guest':'open'; }
+  var lastRole=null, roleReady=false;    /* the role is announced only once window.AIBO_ACCOUNT exists (the Studio asks it back) */
+  function announceRole(){ if(!roleReady) return; var r=role(); if(r===lastRole) return; lastRole=r; try{ document.documentElement.setAttribute('data-glrole',r); window.dispatchEvent(new CustomEvent('aiborole',{detail:{role:r}})); }catch(_){} }
   function signInWith(r,how){
     /* a fresh session: pull the account's prefs + book onto this device (or push this device's as the first copy), then reload so
        the Tape, the Macro desk and the theme all read the account */
@@ -11731,6 +11790,7 @@ html[data-glacct] #posConnect{display:none;}
       h+='<input type="email" class="gla-in" data-gla="email" placeholder="E-mail" autocomplete="username" inputmode="email">'
         +'<input type="password" class="gla-in" data-gla="pw" placeholder="'+(m==='up'?'Choose a password (10+ characters)':'Password')+'" autocomplete="'+(m==='up'?'new-password':'current-password')+'">'
         +(m==='up'?'<input type="text" class="gla-in" data-gla="name" placeholder="Your name (optional)" autocomplete="name">':'')
+        +(m==='up'&&S.cfg&&S.cfg.signup==='invite'?'<div class="gla-note">Invite-only for now: use the e-mail address you were invited with.</div>':'')
         +'<div class="gla-msg" hidden></div>'
         +'<button type="button" class="gla-btn primary" data-glaact="submit">'+(m==='up'?'Create account':'Sign in')+'</button>'
         +'<div class="gla-links">'+(m==='up'?'<button type="button" data-glaact="mode-in">I have an account</button>':'<button type="button" data-glaact="mode-up">Create an account</button><i>·</i><button type="button" data-glaact="mode-forgot">Forgot password?</button>')+'</div>';
@@ -11768,6 +11828,7 @@ html[data-glacct] #posConnect{display:none;}
     else h+='<div class="gla-list">'+dv.devices.map(function(d){ return '<div class="gla-item'+(d.current?' me':'')+'"><span>'+esc(d.label||'Device')+(d.current?' <i>this device</i>':'')+'<em>'+esc(d.where||'')+(d.lastAt?' · '+fmtWhen(d.lastAt):'')+(d.via?' · '+esc(d.via):'')+'</em></span>'+(d.current?'':'<button type="button" class="gla-x" data-glaact="dev-revoke" data-id="'+esc(d.id)+'" aria-label="Sign out">Sign out</button>')+'</div>'; }).join('')+'</div>'
       +'<div class="gla-links"><button type="button" data-glaact="signout-all">Sign out everywhere</button></div><div class="gla-note">An account is for one person; up to '+esc(dv.max)+' devices stay signed in. Being used from several places at once signs the other devices out.</div>';
     h+='</div>';
+    if(u.admin) h+=htmlAdmin();
     /* 10-08 CONNECTIONS: the person's own exchanges and brokers (backend v4.21 /me/connections); their positions then ride
        /me/positions.json into the Portfolio exactly as the owner's token flow does */
     h+='<div class="gla-sec gla-conns"><div class="gla-head">Exchanges &amp; brokers</div>';
@@ -11812,6 +11873,31 @@ html[data-glacct] #posConnect{display:none;}
       +'<button type="button" class="gla-btn danger" data-glaact="delete">'+(S.armDel?'Tap again — deletes everything':'Delete my account')+'</button><div class="gla-note">Your lists, journal, alerts, settings and saves go with it. There is no undo.</div></div></details>';
     return h;
   }
+  /* ---------- 10-16 the Admin section (admin accounts only) ---------- */
+  function htmlAdmin(){
+    var A=S.adm||{}, inv=A.inv, ov=A.ov, h='<div class="gla-sec gla-admin"><div class="gla-head">Admin</div>';
+    h+='<div class="gla-note">Sign-up is invite-only. Add someone’s e-mail here, then send them the app link — they create their account with that address. Nothing is e-mailed from here.</div>';
+    h+='<div class="gla-row"><input type="email" class="gla-in" data-gla="invite" placeholder="Their e-mail" autocomplete="off" inputmode="email"><button type="button" class="gla-btn" data-glaact="inv-add">Invite</button></div>';
+    if(A.err) h+='<div class="gla-note gla-warn">'+esc(A.err)+'</div>';
+    if(!inv) h+='<div class="gla-note">Loading…</div>';
+    else if(!inv.invites.length) h+='<div class="gla-note">No invites yet.</div>';
+    else h+='<div class="gla-list">'+inv.invites.map(function(x){ return '<div class="gla-item" data-inv="'+esc(x.email)+'"><span>'+esc(x.email)+'<em>'+(x.joined?'joined':'invited '+esc(fmtWhen(x.at))+' · not joined yet')+'</em></span>'
+      +'<button type="button" class="gla-x'+(S.armInv===x.email?' arm':'')+'" data-glaact="inv-rm" data-email="'+esc(x.email)+'">'+(S.armInv===x.email?'Sure?':'Remove')+'</button></div>'; }).join('')+'</div>';
+    if(ov&&ov.users) h+='<div class="gla-head gla-sub">Members · '+ov.users.length+'</div><div class="gla-list">'+ov.users.map(function(x){ return '<div class="gla-item"><span>'+esc(x.email)+(x.admin?' <i>admin</i>':'')+'<em>'
+      +(x.lastLoginAt?'last signed in '+esc(fmtWhen(x.lastLoginAt)):'never signed in')+' · '+x.devices+' device'+(x.devices===1?'':'s')+(x.disabled?' · disabled':'')+(x.shareFlags24h?' · sharing flagged':'')+'</em></span></div>'; }).join('')+'</div>';
+    h+='<div class="gla-links"><button type="button" data-glaact="lists-import">'+(A.importing?'Moving…':'Move the shared watchlist into my account')+'</button></div>';
+    if(A.imported!=null) h+='<div class="gla-note">'+(A.imported?'Moved '+A.imported+' list'+(A.imported>1?'s':'')+' ('+A.items+' names) into your account. They show under My lists in the Tape.':'Nothing new to move — your account already has those lists.')+'</div>';
+    return h+'</div>';
+  }
+  function loadAdmin(){
+    S.adm=S.adm||{}; if(S.adm.busy) return; S.adm.busy=true;
+    Promise.all([api('GET','/admin/invites'),api('GET','/admin/accounts')]).then(function(rs){
+      S.adm.busy=false; var a=rs[0], b=rs[1];
+      if(a.status===200&&a.body&&Array.isArray(a.body.invites)) S.adm.inv=a.body; else S.adm.err='Could not load the invites ('+errText(a)+')';
+      if(b.status===200&&b.body&&Array.isArray(b.body.users)) S.adm.ov=b.body;
+      S.adm.loaded=true; paint();
+    });
+  }
   function paint(){
     if(!S.card) return;
     var c=S.card; c.innerHTML=signedIn()?htmlIn():htmlOut();
@@ -11821,6 +11907,7 @@ html[data-glacct] #posConnect{display:none;}
     paintMsg(); if(!signedIn()) mountGoogle();
     if(signedIn()&&!S.devices&&!S.devErr) api('GET','/auth/devices').then(function(r){ if(r.status===200&&r.body.devices){ S.devices=r.body; paint(); } else if(r.status===401) expired(); else { S.devErr=true; paint(); } });
     if(signedIn()&&!S.conns&&!S.connsBusy) loadConns();
+    if(signedIn()&&S.user&&S.user.admin&&!(S.adm&&(S.adm.loaded||S.adm.busy))) loadAdmin();
   }
   function loadConns(){
     S.connsBusy=true;
@@ -11860,6 +11947,15 @@ html[data-glacct] #posConnect{display:none;}
       api('POST','/auth/verify',{code:vc}).then(function(r){ busy(false); if(r.status===200){ takeUser(r.body.user); toast('E-mail confirmed'); paint(); } else fail(errText(r)); }); return; }
     if(a==='verify-send'){ busy(true); api('POST','/auth/verify/send',{}).then(function(r){ busy(false); if(r.status===200) note('A new code is on its way'); else fail(errText(r)); }); return; }
     if(a==='dev-retry'){ S.devErr=false; S.devices=null; paint(); return; }
+    if(a==='inv-add'){ var ie=val('[data-gla="invite"]'); if(!ie) return; busy(true);
+      api('POST','/admin/invites',{email:ie, action:'add'}).then(function(r){ busy(false); S.adm=S.adm||{};
+        if(r.status===200){ S.adm.inv=r.body; S.adm.err=null; toast('Invited '+ie+' — send them the app link'); } else S.adm.err=errText(r); paint(); }); return; }
+    if(a==='inv-rm'){ var rmE=b.getAttribute('data-email'); if(S.armInv!==rmE){ S.armInv=rmE; paint(); return; } S.armInv=null; busy(true);
+      api('POST','/admin/invites',{email:rmE, action:'remove'}).then(function(r){ busy(false); S.adm=S.adm||{}; if(r.status===200) S.adm.inv=r.body; else S.adm.err=errText(r); paint(); }); return; }
+    if(a==='lists-import'){ S.adm=S.adm||{}; S.adm.importing=true; paint();
+      api('POST','/admin/lists/import',{}).then(function(r){ S.adm.importing=false;
+        if(r.status===200){ S.adm.imported=r.body.imported||0; S.adm.items=r.body.items||0; S.adm.err=null; if(S.adm.imported){ try{ localStorage.removeItem('aibo.lists.key'); }catch(_){} } }
+        else S.adm.err=errText(r); paint(); }); return; }
     if(a==='dev-revoke'){ busy(true); api('POST','/auth/devices/revoke',{id:b.getAttribute('data-id')}).then(function(r){ busy(false); S.devices=null; paint(); }); return; }
     if(a==='signout'){ signOut(false); return; }
     if(a==='signout-all'){ signOut(true); return; }
@@ -11926,12 +12022,14 @@ html[data-glacct] #posConnect{display:none;}
 
   /* ---------- boot ---------- */
   mark();
+  if(!signedIn()&&!S.cfg) loadConfig();          /* 10-16: the role (guest vs open) is known at boot, so the Studio can pick its library */
   window.AIBO_ACCOUNT={
-    token:function(){ return S.tok; }, signedIn:signedIn, user:function(){ return S.user; }, signOut:function(){ forget(); }, expired:function(){ expired(); },
+    token:function(){ return S.tok; }, signedIn:signedIn, user:function(){ return S.user; }, signOut:function(){ forget(); }, expired:function(){ expired(); }, role:role,
     state:function(){ return {signedIn:signedIn(), user:S.user, cfg:S.cfg, mode:S.mode, card:!!S.card, devices:S.devices?S.devices.devices.length:null, reqs:S.reqs, link:S.link, err:S.err, note:S.note,
                               conns:S.conns?S.conns.connections.map(function(x){ return {id:x.id, kind:x.kind, status:x.status, shown:x.shown}; }):null, addKind:S.addKind, sync:{prefs:mem(LS_PREF).failed||null, book:mem(LS_BOOK).failed||null}}; },
     pull:function(){ return Promise.all([pull('prefs'),pull('book')]); }, push:function(){ return Promise.all([push('prefs'),push('book')]); }
   };
+  roleReady=true; announceRole();
   if(S.link&&S.link.kind==='verify'){
     api('POST','/auth/verify',{token:S.link.token},!signedIn()).then(function(r){
       if(r.status===200){ if(signedIn()) takeUser(r.body.user); toast('E-mail confirmed'); } else toast(errText(r,'That link has expired')); S.link=null; if(S.card) paint(); });
@@ -16494,6 +16592,9 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
       S.busy=false;
       if(r.status===200&&docOk(r.body)){ take(r.body); return; }
       if(acctGone(r)){ dropAcct(r); return; }
+      /* 10-16 (backend v4.26): the shared-key lists are retired (410 'retired') — forget the key on this device, quietly; an account
+         keeps its own lists (the owner's were moved into his account from Settings › Account › Admin) */
+      if(r.status===410&&!r.acct){ try{ localStorage.removeItem(LS_KEY); }catch(_){} S.key=null; S.doc=null; S.err='retired'; leave(true); paintMenu(); paintRes(); return; }
       S.err=(r.status===401)?'key':(r.status===404?'off':'http '+r.status);
       if(!S.doc&&S.err==='key') toast(acct()?'Your sign-in has expired — sign in again in Settings':'This device’s list key was not accepted');
       paintMenu();
@@ -18342,6 +18443,7 @@ html[data-gl="light"] .glr-tag{background:#f3f4f7;border-color:#e4e7ec;color:#1c
     /* 10-05 (the owner: "the watch list stuff is not present on the phone or the iPad… it needs to be across the entire application"): the shared
        lists mount on any device that HOLDS THE KEY, and a key lives per browser — a home-screen app never sees the one Safari was given through
        the private link. So the key can be given here, on every device: paste the key or the whole private link. (lists.js reads it at load.) */
+    var acctOn=false; try{ acctOn=!!(window.AIBO_ACCOUNT&&window.AIBO_ACCOUNT.role&&window.AIBO_ACCOUNT.role()!=='open'); }catch(_){}   /* 10-16: accounts on = each person's own lists; the key card goes */
     var lcap=document.createElement('div'); lcap.className='st8-cap'; lcap.textContent='Shared lists';
     var lcard=document.createElement('div'); lcard.className='dk-group st8-card'; lcard.id='glListsKey';
     var hasKey=false; try{ hasKey=!!localStorage.getItem('aibo.lists.key'); }catch(_){}
@@ -18362,7 +18464,7 @@ html[data-gl="light"] .glr-tag{background:#f3f4f7;border-color:#e4e7ec;color:#1c
     dcard.innerHTML='<div class="st8-row st8-static gl-dsum na"><i></i><b>Checking the data feeds…</b></div>'
       +'<details class="gl-dfold"><summary>Every feed, its schedule and its source</summary><div class="gl-dlist"></div></details>';
     var dfoot=document.createElement('div'); dfoot.className='st8-foot gl-foot'; dfoot.textContent='Every number in the app is fetched on a schedule by the server. This is the register of those fetches — when each last landed, and whether that is on time.';
-    [[cap,card,foot],[gcap,gcard,gfoot],[lcap,lcard,lfoot],[dcap,dcard,dfoot]].forEach(function(trio){ trio.forEach(function(n){ if(about) main.insertBefore(n,about); else main.appendChild(n); }); });
+    [[cap,card,foot],[gcap,gcard,gfoot]].concat(acctOn?[]:[[lcap,lcard,lfoot]]).concat([[dcap,dcard,dfoot]]).forEach(function(trio){ trio.forEach(function(n){ if(about) main.insertBefore(n,about); else main.appendChild(n); }); });
     setTimeout(loadFresh,0);
     card.addEventListener('click',function(e){ var b=e.target.closest('[data-gltheme]'), m=e.target.closest('[data-glmode]');
       if(b){ e.stopPropagation(); setTheme(b.getAttribute('data-gltheme')); try{ localStorage.setItem('aibo.gl.dark',b.getAttribute('data-gltheme')); }catch(_){} }
