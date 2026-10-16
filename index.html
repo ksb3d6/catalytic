@@ -13996,6 +13996,11 @@ html[data-gl="light"] #glTech [fill^="rgba(234,238,245"]{fill:var(--ink);}
   /* ---- 10-07 the seven new renderers (same signature + conventions: p = 2 except the candle-based ones at 1, the tail window, tfSvg, colour by value).
      Volume comes from bars[i].v (backend v4.17; tfParse keeps it) — a frame without it returns '' and fit() says "no volume yet". ---- */
   var C_AM='#e8b04a', C_WH='rgba(234,238,245,.88)';
+  /* 10-17 (the owner: "anytime we have a moving average in the technicals, I want it to match the color scheme that the user has chosen … the
+     55 EMA is violet when I'm in violet mode and I love that, but the moving average is orange"): every AVERAGE line — the candle row's EMA,
+     the simple MA row, the volume row's 20-period average — draws in the EMA's literal, which skin.css repaints with the theme's
+     --gl-ma (violet in Violet, blue in Midnight, ink in Light …). With the theme off it stays the stock amber, like the EMA. */
+  var C_MA='#d4870f';
   function hasVol(bars){ if(!bars||bars.length<4) return false; var n=0; for(var i=0;i<bars.length;i++) if(typeof bars[i].v==='number'&&isFinite(bars[i].v)) n++; return n>=Math.ceil(bars.length*.6); }
   function smaOf(a,p){ var o=[], s=0; for(var i=0;i<a.length;i++){ var v=a[i]; if(v==null){ o.push(null); s=0; continue; } s+=v; if(i>=p) s-=(a[i-p]==null?0:a[i-p]); o.push(i>=p-1?s/p:null); } return o; }
   function rma(a,p){ var o=[], prev=null, s=0, k=0; for(var i=0;i<a.length;i++){ var v=a[i]; if(v==null){ o.push(null); continue; } if(prev==null){ s+=v; k++; if(k<p){ o.push(null); continue; } prev=s/p; o.push(prev); continue; } prev=(prev*(p-1)+v)/p; o.push(prev); } return o; }   /* Wilder's smoothing */
@@ -14011,11 +14016,11 @@ html[data-gl="light"] #glTech [fill^="rgba(234,238,245"]{fill:var(--ink);}
     var s='', bw=Math.max(1,(w-2*p)/n*.66);
     for(i=0;i<n;i++){ if(V[i]==null) continue; var up=B[i].o==null?(i?B[i].c>=B[i-1].c:true):B[i].c>=B[i].o;
       s+='<rect x="'+(X(i)-bw/2).toFixed(1)+'" y="'+Y(V[i]).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(.5,(h-p)-Y(V[i])).toFixed(1)+'" fill="'+(up?C_UP:C_DN)+'" opacity=".55"/>'; }
-    s+=polyline(X,Y,A,C_WH,'1.3','.9');
+    s+=polyline(X,Y,A,C_MA,'1.3','.95');      /* 10-17: the 20-period volume average in the theme's average colour */
     return window.tfSvg(w,h)+s+'</svg>';
   };
   window.tfSmaSVG=function(bars,w,h,tailN,opts){ if(!bars||bars.length<8) return ''; var o={}; if(opts){ for(var q in opts) if(Object.prototype.hasOwnProperty.call(opts,q)) o[q]=opts[q]; }
-    o.ema=smaOf(window.tfCloses(bars),maN()); o.col=C_AM; return window.tfCandleSVG(bars,w,h,tailN,o); };
+    o.ema=smaOf(window.tfCloses(bars),maN()); o.col=C_MA; return window.tfCandleSVG(bars,w,h,tailN,o); };   /* 10-17: theme colour, like the EMA */
   window.tfAtrSVG=function(bars,w,h,tailN){
     if(!bars||bars.length<16) return '';
     var tr=trueRanges(bars), at=rma(tr,14), cl=window.tfCloses(bars), pc=at.map(function(v,i){ return v==null?null:v/cl[i]*100; }), n=Math.min(tailN||60,bars.length), A=pc.slice(-n), p=2;
