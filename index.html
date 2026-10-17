@@ -9097,7 +9097,12 @@ window.MktView = (function(){
   function mkDFrame(tf,opts){
     var P=tfParse(tf); if(!P||!P.d) return '';
     var f=mkFrame('D',P.d,tfEmaOpts(opts,P,'d'));   /* round 10 §62 */
-    return f.indexOf('mn-n')>=0?('<span class="as-mrow mk-d1">'+f+'</span>'):'';
+    if(f.indexOf('mn-n')<0) return '';
+    /* 10-17 (the owner: "align that so it's in line with the other daily charts… two empty slots on either end"): the D frame is the THIRD of five
+       slots, like a graded row's; M W 4H H are blank slots (the row's gap grammar, dimmed) so every D in the Tape shares one column. */
+    f=f.replace('<span class="as-tbo">','<span class="as-tbo mk-d">');
+    var blank=function(lab){ return '<span class="as-tbo mk-blank"><i>'+lab+'</i><b class="as-tbo-gap">–</b></span>'; };
+    return '<span class="as-mrow mk-d1">'+blank('M')+blank('W')+f+blank('4H')+blank('H')+'</span>';
   }
   function fillChart(r){
     if(r.charted) return;
@@ -9118,7 +9123,7 @@ window.MktView = (function(){
   function mkWideFrame(r){
     var tr=r&&r.tr; if(!tr||!isMk(r)||r.fr||!r.tf||!tr.classList.contains('mx-open')) return;   /* §56: a framed row has no lone frame to widen */
     if(!r.charted) fillChart(r);
-    var tbo=tr.querySelector('td.c-chart .mk-d1 .as-tbo'); if(!tbo) return;
+    var tbo=tr.querySelector('td.c-chart .mk-d1 .as-tbo.mk-d'); if(!tbo) return;   /* 10-17: the D slot (blank M W 4H H slots sit beside it) */
     var mr=tbo.parentNode, lab=tbo.querySelector('i');
     var W=mr.clientWidth-(lab?Math.ceil(lab.getBoundingClientRect().width):0)-4; if(W<40) return;
     var x=tbo.querySelector('.mn-x'); if(!x){ x=document.createElement('span'); x.className='mn-x'; tbo.appendChild(x); }
@@ -9638,6 +9643,8 @@ window.MktView = (function(){
      (desktop, iPad landscape) keeps the 330px cell and the scrolling strip exactly as before. */
   +'@media(min-width:481px){#mktView .twrap .mkt td.c-chart{min-width:495px}'
   +'#mktView .mstrip .as-mrow{flex:0 0 469px;width:469px;overflow-x:visible}'
+  /* 10-17: a Market row's blank slots are as wide as a frame (label + 64px mini), so its D sits exactly under the graded rows' D */
+  +'#mktView .mstrip .mk-d1 .as-tbo.mk-blank .as-tbo-gap{display:inline-block;width:64px;text-align:center;opacity:.45}'
   +'#mktView .mode-s3 .mstrip .as-tbo{flex:0 0 calc((100% - 32px)/5)}}'
   +'#mktView .mk-note{margin:10px 4px 0;font-size:10.5px;color:var(--muted);line-height:1.55}'
   /* round 13 §84 (the owner 09-26: "on the horizontal iPhone on the tape I also want the technical dial and the sentiment
@@ -9760,7 +9767,7 @@ window.MktView = (function(){
   +'#mktView .mkt td.c-chart .mn-w,#mktView .mkt td.c-chart .mn-t{display:none}'
   +'#mktView .mkt td.c-chart .mn-n{display:block;width:100%}'
   +'#mktView .mkt td.c-chart .as-tbo{display:none}'
-  +'#mktView .mkt td.c-chart .as-tbo:nth-child(3),#mktView .mkt td.c-chart .mk-d1 .as-tbo{display:inline-flex;flex:1 1 100%}'
+  +'#mktView .mkt td.c-chart .as-tbo:nth-child(3),#mktView .mkt td.c-chart .mk-d1 .as-tbo.mk-d{display:inline-flex;flex:1 1 100%}'   /* 10-17: the D slot (3rd) either way */
   +'#mktView .mkt td.c-chart .as-tbo i{display:none}'
   +'#mktView .mkt td.c-chart .mn-n svg{height:44px}'
   +'#mktView .mk-chph{height:44px}#mktView .mode-s3 .mk-chph{height:44px}'
@@ -9799,7 +9806,8 @@ window.MktView = (function(){
   +'#mktView .mkt tbody tr.mk-row.mx-open td.c-mcap .mk-sub{display:block;margin:2px 0 0;font-size:10px;font-weight:500}'
   /* round 8 §43: an opened Market row's LONE daily frame is drawn WIDE across the frames line (mkWideFrame — the same
      renderer at the measured line width, every served bar); the 3.25-fraction mini (mn-t) steps aside; no CSS stretch */
-  +'#mktView .mkt tbody tr.mk-row.mx-open td.c-chart .mk-d1 .as-tbo{flex:1 1 100%}'
+  +'#mktView .mkt tbody tr.mk-row.mx-open td.c-chart .mk-d1 .as-tbo.mk-blank{display:none}'   /* 10-17: the open row shows the one real frame, wide */
+  +'#mktView .mkt tbody tr.mk-row.mx-open td.c-chart .mk-d1 .as-tbo.mk-d{flex:1 1 100%}'
   +'#mktView .mkt tbody tr.mk-row.mx-open td.c-chart .mk-d1 .as-tbo.mk-wide .mn-t{display:none}'
   +'#mktView .mkt tbody tr.mk-row.mx-open td.c-chart .mk-d1 .as-tbo.mk-wide .mn-x{display:block}'
   +'#mktView .mk-stats .st-cap{display:none}}';
@@ -13621,7 +13629,7 @@ html[data-gl] .glt-plot .sv{position:absolute;inset:0;}
 html[data-gl] .glt-plot .nx{position:absolute;top:0;bottom:0;right:2px;width:0;background:rgba(var(--gl-wh-rgb,255,255,255),.03);border:0;border-radius:0;pointer-events:none;}   /* §36: first in the frame = beneath the SVG and the pill; fit() sets right (the renderer's gutter) + width (the fraction of the bar span) */
 html[data-gl] .glt-plot .nx[hidden]{display:none;}
 html[data-gl] .glt-plot .sv svg{display:block;width:100%;height:100%;}
-html[data-gl] .glt-plot.tall{height:150px;margin-bottom:8px;}
+html[data-gl] .glt-plot.tall{height:calc(150px * var(--hx,1));margin-bottom:8px;}   /* 10-17: the Stack's RSI plots are taller too (portrait; landscape fills the screen as before) */
 html[data-gl] .glt-plot.tall.gap{height:56px;}
 html[data-gl] .glt-plot.gap{background:transparent;border-style:dashed;border-color:rgba(var(--gl-wh-rgb,255,255,255),.14);}
 html[data-gl] .glt-plot .rd{position:absolute;left:5px;top:5px;display:inline-flex;align-items:center;gap:5px;pointer-events:auto;white-space:nowrap;
@@ -13638,12 +13646,12 @@ html[data-gl] .glt-plot .gp[hidden]{display:none;}
 html[data-gl] .glt-wall{--glt-lw:62px;--glt-cw:300px;--glt-ch:100px;--glt-gap:6px;--glt-hh:16px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
   scroll-snap-type:x mandatory;scroll-padding-left:calc(var(--glt-lw) + var(--glt-gap));}
 html[data-gl] .glt-wall::-webkit-scrollbar{display:none;}
-html[data-gl] .glt-wgrid{display:grid;grid-template-columns:var(--glt-lw) repeat(5,var(--glt-cw));grid-template-rows:var(--glt-hh) repeat(var(--glt-n,4),var(--glt-ch));gap:var(--glt-gap);width:max-content;}
+html[data-gl] .glt-wgrid{display:grid;grid-template-columns:var(--glt-lw) repeat(5,var(--glt-cw));grid-template-rows:var(--glt-rows,var(--glt-hh) repeat(var(--glt-n,4),var(--glt-ch)));gap:var(--glt-gap);width:max-content;}   /* 10-17: --glt-rows from wallHTML (a taller RSI row) */
 html[data-gl] .glt-corner,html[data-gl] .glt-rl{position:sticky;left:0;z-index:2;background:rgb(var(--gl-bg-rgb));}   /* the label column stays while the columns scroll under it */
 html[data-gl] .glt-rl{display:flex;flex-direction:column;justify-content:center;gap:3px;padding:0 4px 0 1px;border-right:1px solid rgba(var(--gl-wh-rgb,255,255,255),.07);}
 html[data-gl] .glt-rl span{font:700 8px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.04em;color:rgba(var(--gl-ink-rgb,234,238,245),.6);white-space:nowrap;overflow:hidden;}
 html[data-gl] .glt-th{scroll-snap-align:start;font:700 9px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.14em;color:rgba(var(--gl-ink-rgb,234,238,245),.5);padding:4px 2px 0;align-self:end;}
-html[data-gl] .glt-plot.cell{width:var(--glt-cw);height:var(--glt-ch);scroll-snap-align:start;}
+html[data-gl] .glt-plot.cell{width:var(--glt-cw);height:calc(var(--glt-ch) * var(--hx,1));scroll-snap-align:start;}   /* 10-17: --hx = the row's height multiplier (RSI 1.6) */
 html[data-gl] .glt-plot.cell .rd{font-size:10px;padding:2px 5px;}
 html[data-gl] .glt-plot.cell .gp{font-size:10px;}
 
@@ -13883,10 +13891,10 @@ html[data-gl="light"] #glTech [fill^="rgba(234,238,245"]{fill:var(--ink);}
     {id:'bb',     s:'BOLLINGER',        r:['BOLLINGER'],        l:'Bollinger',  min:21, fn:'tfBbSVG',     why:'%B of the last close inside the 20/2 bands (1 = upper band, 0 = lower)',
       d:['Bollinger bands: the dashed line is the 20-period average of the close; the shaded band reaches two standard deviations above and below it, so it widens when price is volatile and squeezes when price goes quiet. A tight squeeze often comes before a large move.',
          'The label is %B — where the last close sits inside the band: 1.00 is the upper band, 0.50 the middle, 0.00 the lower band. Above 1 or below 0 means the close is outside the band.']},
-    {id:'rsi',    s:'RSI 14',           r:['RSI','14'],         l:'RSI',        min:16, fn:'tfRsiSVG',    opt:true, why:'RSI-14 of the last close · above 70 overbought, below 30 oversold',
+    {id:'rsi',    s:'RSI 14',           r:['RSI','14'],         l:'RSI',        min:16, fn:'tfRsiSVG',    opt:true, hx:1.6, why:'RSI-14 of the last close and its 14-period average · above 70 overbought, below 30 oversold',
       d:['The Relative Strength Index, 14 periods (Wilder’s standard). It compares the average size of the up-closes with the average size of the down-closes and prints the result from 0 to 100.',
-         'The dashed lines are 70 and 30, the faint one is 50. Above 70 the name is called overbought (the stretch is shaded red); below 30, oversold (shaded green). In a strong trend it can stay beyond a line for a long time — the line is a stretch warning, not a turn signal.',
-         'The label is the latest reading.']},
+         'The cyan line is the RSI; the line in your theme colour is its own 14-period average — RSI crossing up through its average is the momentum turn traders watch for, crossing down the other way. The dashed lines are 70 and 30 (the zones beyond them are tinted; the stretches the RSI spends beyond them are shaded), the dotted ones 60 and 40, the dashed grey line 50 — above 50 the up-closes are winning, below it the down-closes.',
+         'In a strong trend the RSI can sit beyond 70 or 30 for a long time: the line is a stretch warning, not a turn signal. The label is the latest reading; the levels are written down the right edge.']},
     {id:'macd',   s:'MACD 12·26·9',     r:['MACD','12·26·9'],   l:'MACD',       min:35, fn:'tfMacdSVG',   opt:true, why:'MACD line vs its 9-period signal · bars = the gap between them',
       d:['Moving Average Convergence Divergence, the standard 12 · 26 · 9. The grey MACD line is the 12-period EMA minus the 26-period EMA; the thin blue line is its signal — a 9-period EMA of the MACD line.',
          'The bars are the gap between the two (the histogram): green above zero while the MACD line is over its signal (momentum building upward), red below zero while it is under (momentum building downward). Bars shrinking toward zero mean that momentum is fading; the two lines crossing is the classic signal.',
@@ -13948,28 +13956,37 @@ html[data-gl="light"] #glTech [fill^="rgba(234,238,245"]{fill:var(--ink);}
   /* ---- the two oscillator renderers: the stock renderers' signature (bars, w, h, tailN) and conventions (p = 2, the tail window, tfSvg,
      the TF_ colours — colour by value). They compute over the FULL history and draw the tail, so the first drawn bar is already warm. ---- */
   var C_UP='#39d07f', C_DN='#f0685f', C_FL='#8A93A5', C_CY='#1FC6DC';
+  /* 10-17 (the owner's screenshot): the RSI pane the charting platforms draw — the RSI line with its own 14-period average (the average in the
+     theme's average colour, like every other MA), 70 / 30 dashed, 60 / 40 dotted, a dashed 50 midline, the extremes tinted (above 70, below
+     30), the stretches beyond a band shaded, and the levels labelled in a right gutter (axis labels inside the plot, the owner's rule). The range
+     is 20–80 and widens only when a reading leaves it. */
   window.tfRsiSVG=function(bars,w,h,tailN){
     if(!bars||bars.length<16) return '';
-    var cl=window.tfCloses(bars), r=window.tfRsi(cl,14), n=Math.min(tailN||60,cl.length), rr=r.slice(-n), p=2;
-    function X(i){ return p+i*(w-2*p)/(n-1); }
-    function Y(v){ return (h-p)-(v/100)*(h-2*p); }
-    var s='', y70=Y(70), y30=Y(30), i, seg='';
-    s+='<line x1="'+p+'" x2="'+(w-p)+'" y1="'+Y(50).toFixed(1)+'" y2="'+Y(50).toFixed(1)+'" stroke="'+C_FL+'" stroke-width=".6" opacity=".22"/>';
-    s+='<line x1="'+p+'" x2="'+(w-p)+'" y1="'+y70.toFixed(1)+'" y2="'+y70.toFixed(1)+'" stroke="'+C_DN+'" stroke-width=".7" stroke-dasharray="3 2.5" opacity=".5"/>';
-    s+='<line x1="'+p+'" x2="'+(w-p)+'" y1="'+y30.toFixed(1)+'" y2="'+y30.toFixed(1)+'" stroke="'+C_UP+'" stroke-width=".7" stroke-dasharray="3 2.5" opacity=".5"/>';
-    /* the stretches beyond a line, shaded between the curve and the line */
+    var cl=window.tfCloses(bars), r=window.tfRsi(cl,14), ma=smaOf(r,14), n=Math.min(tailN||60,cl.length), rr=r.slice(-n), mm=ma.slice(-n), p=2, i;
+    var vals=rr.filter(function(v){ return v!=null; }); if(!vals.length) return '';
+    var lo=Math.min(20,Math.max(0,Math.min.apply(null,vals)-3)), hi=Math.max(80,Math.min(100,Math.max.apply(null,vals)+3));
+    var gut=w>=140?19:w>=90?15:0, labels=h>=110?[80,70,60,50,40,30,20]:h>=60?[70,50,30]:[];
+    function X(i){ return p+i*(w-2*p-gut)/(n-1); } function Y(v){ return (h-p)-((v-lo)/(hi-lo))*(h-2*p); }
+    var xr=w-p-gut, s='';
+    /* the extreme zones, tinted */
+    if(hi>70) s+='<rect x="'+p+'" y="'+Y(hi).toFixed(1)+'" width="'+(xr-p).toFixed(1)+'" height="'+Math.max(0,Y(70)-Y(hi)).toFixed(1)+'" fill="'+C_DN+'" opacity=".07"/>';
+    if(lo<30) s+='<rect x="'+p+'" y="'+Y(30).toFixed(1)+'" width="'+(xr-p).toFixed(1)+'" height="'+Math.max(0,Y(lo)-Y(30)).toFixed(1)+'" fill="'+C_UP+'" opacity=".07"/>';
+    function hl(v,col,op,dash,sw){ if(v<lo||v>hi) return ''; var y=Y(v).toFixed(1); return '<line x1="'+p+'" x2="'+xr.toFixed(1)+'" y1="'+y+'" y2="'+y+'" stroke="'+col+'" stroke-width="'+(sw||.7)+'" stroke-dasharray="'+dash+'" opacity="'+op+'"/>'; }
+    s+=hl(80,C_FL,.22,'4 3')+hl(20,C_FL,.22,'4 3')+hl(60,C_FL,.3,'1 3')+hl(40,C_FL,.3,'1 3')+hl(50,C_FL,.38,'4 3')+hl(70,C_DN,.6,'3 2.5')+hl(30,C_UP,.6,'3 2.5');
+    /* the stretches beyond a band, shaded between the curve and the line */
     function zone(test,yl,col){ var d='', open=false, x0=0;
       for(var k=0;k<n;k++){ var v=rr[k], inz=(v!=null&&test(v));
         if(inz&&!open){ open=true; x0=X(k); d+='M'+x0.toFixed(1)+','+yl.toFixed(1); }
         if(inz) d+=' L'+X(k).toFixed(1)+','+Y(v).toFixed(1);
         if(open&&(!inz||k===n-1)){ d+=' L'+X(inz?k:k-1).toFixed(1)+','+yl.toFixed(1)+' Z '; open=false; } }
-      return d?'<path d="'+d+'" fill="'+col+'" opacity=".28"/>':''; }
-    s+=zone(function(v){ return v>70; },y70,C_DN)+zone(function(v){ return v<30; },y30,C_UP);
-    for(i=0;i<n;i++){ if(rr[i]==null) continue; seg+=(seg?' ':'')+X(i).toFixed(1)+','+Y(rr[i]).toFixed(1); }
-    if(!seg) return '';
-    var lastV=rr[n-1], col=lastV==null?C_FL:lastV>70?C_DN:lastV<30?C_UP:C_FL;
-    s+='<polyline points="'+seg+'" fill="none" stroke="'+C_FL+'" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
-    if(lastV!=null) s+='<circle cx="'+(w-p)+'" cy="'+Y(lastV).toFixed(1)+'" r="1.8" fill="'+col+'"/>';
+      return d?'<path d="'+d+'" fill="'+col+'" opacity=".26"/>':''; }
+    s+=zone(function(v){ return v>70; },Y(70),C_DN)+zone(function(v){ return v<30; },Y(30),C_UP);
+    /* the average first (under the RSI), then the RSI */
+    s+=polyline(X,Y,mm,C_MA,'1.3','.95');
+    s+=polyline(X,Y,rr,C_CY,'1.5','1');
+    var lastV=rr[n-1]; if(lastV!=null) s+='<circle cx="'+X(n-1).toFixed(1)+'" cy="'+Y(lastV).toFixed(1)+'" r="1.9" fill="'+(lastV>70?C_DN:lastV<30?C_UP:C_CY)+'"/>';
+    /* the levels, in the right gutter */
+    if(gut) labels.forEach(function(v){ if(v<lo||v>hi) return; var ty=Math.min(h-2,Math.max(8,Y(v)+2.6)); s+='<text x="'+(xr+3).toFixed(1)+'" y="'+ty.toFixed(1)+'" font-size="7.5" font-family="ui-monospace,Menlo,monospace" fill="rgba(234,238,245,.55)">'+v+'</text>'; });   /* the top / bottom label stays inside the plot */
     return window.tfSvg(w,h)+s+'</svg>';
   };
   function macdOf(cl){ var e12=window.tfEma(cl,12), e26=window.tfEma(cl,26), m=[], i, ms=[], idx=[];
@@ -14261,12 +14278,14 @@ html[data-gl="light"] #glTech [fill^="rgba(234,238,245"]{fill:var(--ink);}
   /* ---------- pieces ---------- */
   function plotHTML(kind,ind,tf,mode){                     /* an empty frame; fit() draws into it at its real size. ONE pill, top-left; nothing else over the plot */
     var I=byId(ind), T=byTf(tf);
-    return '<div class="glt-plot '+kind+'" data-ind="'+I.id+'" data-tf="'+T[0]+'" data-mode="'+(mode||'ind')+'" aria-label="'+esc(I.l+' · '+T[2])+'"><div class="nx" role="img" hidden></div><div class="sv"></div>'
+    return '<div class="glt-plot '+kind+'" data-ind="'+I.id+'" data-tf="'+T[0]+'" data-mode="'+(mode||'ind')+'"'+(I.hx?' style="--hx:'+I.hx+'"':'')+' aria-label="'+esc(I.l+' · '+T[2])+'"><div class="nx" role="img" hidden></div><div class="sv"></div>'
       +'<b class="rd gap" title="'+esc(I.why)+'"></b><span class="gp" hidden></span></div>';
   }
   function seg(cl,attr,items,cur){ return '<div class="gl-seg '+cl+'" role="tablist">'+items.map(function(it){ return '<button type="button" role="tab" '+attr+'="'+it[0]+'"'+(cur===it[0]?' class="on" aria-selected="true"':' aria-selected="false"')+'>'+it[1]+'</button>'; }).join('')+'</div>'; }
   function wallHTML(){
-    var h='<div class="glt-wall" data-techwall><div class="glt-wgrid" style="--glt-n:'+ACT().length+'"><div class="glt-corner"></div>';
+    /* 10-17: a row may be taller than the cell (IND.hx — RSI 1.6×, the owner: "go bigger"); the grid's rows follow */
+    var rows='var(--glt-hh) '+ACT().map(function(i){ return i.hx?('calc(var(--glt-ch) * '+i.hx+')'):'var(--glt-ch)'; }).join(' ');
+    var h='<div class="glt-wall" data-techwall><div class="glt-wgrid" style="--glt-n:'+ACT().length+';--glt-rows:'+rows+'"><div class="glt-corner"></div>';
     h+=TFS.map(function(t){ return '<div class="glt-th" data-tf="'+t[0]+'">'+t[2]+'</div>'; }).join('');
     ACT().forEach(function(i){ var rr=i.id==='candle'?['CANDLES',emaN()+' EMA']:i.id==='sma'?['CANDLES',maN()+' MA']:i.id==='rs'?['RS','vs '+benchName()]:i.r; h+='<div class="glt-rl" title="'+esc(i.s)+'">'+rr.map(function(x){ return '<span>'+x+'</span>'; }).join('')+'</div>'; TFS.forEach(function(t){ h+=plotHTML('cell',i.id,t[0],'ind'); }); });
     return h+'</div></div>';
