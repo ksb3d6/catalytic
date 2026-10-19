@@ -3745,7 +3745,7 @@ function loadFunding(){
   try{ const c=JSON.parse(localStorage.getItem('aibo_funding_v1')||'null'); if(c&&applyFunding(c)&&activeView==='flow') run(); }catch(_){}
   const ctl=('AbortController' in window)?new AbortController():null, to=ctl?setTimeout(()=>ctl.abort(),9000):null;
   fetch(FUND_BASE+'/funding.json',{signal:ctl&&ctl.signal,cache:'no-store'}).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .then(j=>{ if(to) clearTimeout(to); if(applyFunding(j)){ try{ localStorage.setItem('aibo_funding_v1',JSON.stringify(j)); }catch(_){} if(typeof activeView!=='undefined'&&activeView==='flow') run(); } })
+    .then(j=>{ if(to) clearTimeout(to); if(applyFunding(j)){ try{ localStorage.setItem('aibo_funding_v1',JSON.stringify(j)); }catch(_){} if(typeof activeView!=='undefined'&&activeView==='flow'){ /* 10-19: through the PUBLIC run — stage48/worlds.js wraps FlowView.run to re-place its worlds + the legend; the bare run() left the legend under the bottom world cards */ if(typeof FlowView!=='undefined'&&FlowView&&FlowView.run) FlowView.run(); else run(); } } })
     .catch(()=>{ if(to) clearTimeout(to); }).then(()=>{ loadFunding.busy=false; });
 }
 const _run0=run; run=function(){ loadFunding(); _run0(); };
@@ -14661,22 +14661,27 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
 </script>
 <style id="gl48RotCss">
 /* Stage 48 — SECTOR ROTATION (spec §69). Scoped to html[data-gl]; inert with the theme off.
-   10-12: the page is gone — the module renders INTO A CARD of the Macro desk (macro.js panel `rot`, host .glr-host). The card's shape:
-   ← range seg → · the plot (one chart, its own height) · "Sectors" + all · a ranked legend GRID of every sector by NAME, wrapped to the
-   card's width — nothing scrolls sideways (the owner: "I don't like just the ticker… I don't like to scroll").
-   Colour IS the series here (the owner's Koyfin reference): every line and legend row carries its sector's hue via --c. */
+   10-12: the page is gone — the module renders INTO A CARD of the Macro desk (macro.js panel `rot`, host .glr-host).
+   10-19 REDESIGN (the owner's pick D + views A/B): read line · Chart | Matrix | Leaders seg · ← range seg → · the view · quick picks · a FIXED family
+   grid of every fund (colour square · ticker · return · name; a row dims in place, never moves). Picked lines wear their family colour;
+   the rest are grey threads. Nothing scrolls sideways. The build tokenises the white / near-white literals for light mode. */
 #glRot{display:none;}                                           /* the old page root never mounts any more */
-html[data-gl] .glr-host{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
+html[data-gl] .glr-host{display:flex;flex-direction:column;gap:8px;margin-top:4px;--glr-up:57,208,127;--glr-dn:240,104,95;}
 
-/* ---- range row ---- */
+/* ---- view seg + range row ---- */
+html[data-gl] .glr-view{max-width:none;margin:0;}
+html[data-gl] .glr-view button{font:600 12px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:7px 4px;}
 html[data-gl] .glr-row{display:flex;align-items:center;gap:8px;min-height:32px;}
 html[data-gl] .glr-seg{flex:1 1 auto;max-width:520px;margin:0;}
 html[data-gl] .glr-seg button{font:700 12px/1 ui-monospace,"SF Mono",Menlo,monospace;padding:8px 2px;white-space:nowrap;letter-spacing:.02em;}
 @media (max-width:374px){ html[data-gl] .glr-seg button{font-size:11px;padding:8px 0;} }
 html[data-gl] .glr-walk{appearance:none;flex:none;width:34px;height:32px;border-radius:10px;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.12);background:rgba(var(--gl-wh-rgb,255,255,255),.06);color:rgba(var(--gl-ink-rgb,234,238,245),.85);
-  font:600 16px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .34s cubic-bezier(.3,1.9,.45,1),background-color .2s,opacity .2s;}
+  font:600 16px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .34s cubic-bezier(.3,1.9,.45,1),background-color .2s;}
 html[data-gl] .glr-walk:active{transform:scale(.9);background:rgba(var(--gl-wh-rgb,255,255,255),.14);transition-duration:.05s;}
 html[data-gl] .glr-walk:disabled{opacity:.28;cursor:default;transform:none;}
+/* which view shows: the host carries data-glrview */
+html[data-gl] .glr-host:not([data-glrview="chart"]) .glr-plot,html[data-gl] .glr-host:not([data-glrview="matrix"]) .glr-matrix,html[data-gl] .glr-host:not([data-glrview="bars"]) .glr-bars{display:none;}
+html[data-gl] .glr-host[data-glrview="matrix"] .glr-r2{display:none;}       /* the matrix has its own four horizons */
 
 /* ---- the plot ---- */
 /* 10-12 (the owner: "the graph is too compressed vertically"): the plot takes real height — about half a phone's screen, more on wider screens */
@@ -14694,9 +14699,11 @@ html[data-gl] .glr-xl.mid{stroke:rgba(var(--gl-wh-rgb,255,255,255),.04);stroke-d
 html[data-gl] .glr-xt{font:600 9.5px ui-monospace,"SF Mono",Menlo,monospace;fill:rgba(var(--gl-ink-rgb,234,238,245),.5);}
 html[data-gl] .glr-xt[data-kind="mid"]{fill:rgba(var(--gl-ink-rgb,234,238,245),.34);}
 html[data-gl] .glr-yt{font:600 9.5px ui-monospace,"SF Mono",Menlo,monospace;fill:rgba(var(--gl-ink-rgb,234,238,245),.6);paint-order:stroke;stroke:var(--panel2,var(--gl-d06,#0d151f));stroke-width:3px;stroke-linejoin:round;}
-html[data-gl] .glr-ln{fill:none;stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round;opacity:.92;transition:opacity .18s ease,stroke-width .18s ease;}
-html[data-gl] .glr-ln.dim{opacity:.22;}
-html[data-gl] .glr-ln.hi{opacity:1;stroke-width:2.4;}
+html[data-gl] .glr-ln{fill:none;stroke-width:1.9;stroke-linejoin:round;stroke-linecap:round;opacity:.95;transition:opacity .18s ease,stroke-width .18s ease;}
+html[data-gl] .glr-ln.thread{stroke:rgba(var(--gl-ink-rgb,234,238,245),.14);stroke-width:1;opacity:1;}    /* every unpicked sector: the context, not the clutter */
+html[data-gl] .glr-ln.dim,html[data-gl] .glr-dot.dim{opacity:.22;}
+html[data-gl] .glr-ln.hi{opacity:1;stroke-width:2.6;}
+html[data-gl] .glr-dot{transition:opacity .18s ease;}
 html[data-gl] .glr-cross{position:absolute;width:1px;background:rgba(var(--gl-ink-rgb,234,238,245),.45);pointer-events:none;transform:translateX(-.5px);}
 html[data-gl] .glr-cross[hidden]{display:none;}
 html[data-gl] .glr-read{position:absolute;top:8px;left:8px;z-index:3;pointer-events:none;max-width:min(66%,340px);padding:6px 8px;border-radius:9px;
@@ -14705,7 +14712,7 @@ html[data-gl] .glr-read.right{left:auto;right:8px;}
 html[data-gl] .glr-read[hidden]{display:none;}
 html[data-gl] .glr-read b{display:block;font:700 10px/1.2 ui-monospace,"SF Mono",Menlo,monospace;color:var(--gl-ink,#fff);margin-bottom:4px;white-space:nowrap;}
 html[data-gl] .glr-read .rs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px 10px;}
-html[data-gl] .glr-read .r{display:flex;align-items:center;gap:4px;font:600 9.5px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(var(--gl-ink-rgb,234,238,245),.85);white-space:nowrap;overflow:hidden;}
+html[data-gl] .glr-read .r{display:flex;align-items:center;gap:4px;font:600 9.5px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(var(--gl-ink-rgb,234,238,245),.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 html[data-gl] .glr-read .r i{flex:none;width:6px;height:6px;border-radius:50%;background:var(--c);}
 html[data-gl] .glr-read .r u{text-decoration:none;margin-left:auto;padding-left:6px;font-family:ui-monospace,"SF Mono",Menlo,monospace;color:rgba(var(--gl-ink-rgb,234,238,245),.6);}
 html[data-gl] .glr-read .r.na{opacity:.4;}
@@ -14713,29 +14720,39 @@ html[data-gl] .glr-state{position:absolute;inset:0;display:flex;flex-direction:c
   color:rgba(var(--gl-ink-rgb,234,238,245),.55);font-size:12.5px;font-weight:600;}
 html[data-gl] .glr-state[hidden]{display:none;}
 html[data-gl] .glr-state.err{color:rgba(240,104,95,.9);}
-html[data-gl] .glr-state button{appearance:none;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.14);background:rgba(var(--gl-wh-rgb,255,255,255),.06);color:rgba(var(--gl-ink-rgb,234,238,245),.85);border-radius:999px;padding:7px 14px;font:600 12px/1 inherit;cursor:pointer;}
+html[data-gl] .glr-state button{appearance:none;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.14);background:rgba(var(--gl-wh-rgb,255,255,255),.06);color:rgba(var(--gl-ink-rgb,234,238,245),.85);border-radius:999px;padding:7px 14px;font:600 12px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;}
 html[data-gl] .glr-win{position:absolute;left:8px;bottom:18px;z-index:1;pointer-events:none;font:600 9px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.06em;color:rgba(var(--gl-ink-rgb,234,238,245),.3);white-space:nowrap;}
 
-/* ---- the legend: every sector by name, ranked, wrapped — the row is the toggle ---- */
+/* ---- quick picks ---- */
+html[data-gl] .glr-picks{display:flex;flex-wrap:wrap;gap:5px;}
+html[data-gl] .glr-picks button{appearance:none;height:26px;padding:0 10px;border-radius:999px;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.1);background:rgba(var(--gl-wh-rgb,255,255,255),.05);color:rgba(var(--gl-ink-rgb,234,238,245),.72);
+  font:600 11px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;white-space:nowrap;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .2s,color .2s,transform .3s cubic-bezier(.3,1.6,.5,1);}
+html[data-gl] .glr-picks button.on{color:var(--gl-acci);border-color:rgba(var(--gl-acc-rgb),.5);background:rgba(var(--gl-acc-rgb),.14);}
+html[data-gl] .glr-picks button.na{opacity:.45;border-style:dashed;}
+html[data-gl] .glr-picks button:active{transform:scale(.95);transition-duration:.05s;}
+
+/* ---- the legend: a FIXED family grid — the row is the toggle, and it never moves ---- */
 html[data-gl] .glr-legrow{display:flex;align-items:center;gap:8px;}
 html[data-gl] .glr-legcap{flex:1;min-width:0;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:rgba(var(--gl-ink-rgb,234,238,245),.42);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 html[data-gl] .glr-legcap small{font-size:10px;letter-spacing:0;text-transform:none;color:rgba(var(--gl-ink-rgb,234,238,245),.38);margin-left:6px;}
-html[data-gl] .glr-all{appearance:none;flex:none;height:24px;padding:0 9px;border-radius:7px;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.1);background:rgba(var(--gl-wh-rgb,255,255,255),.05);color:rgba(var(--gl-ink-rgb,234,238,245),.55);
-  font:700 10.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;-webkit-tap-highlight-color:transparent;}
-html[data-gl] .glr-all.on{color:var(--gl-acci);border-color:rgba(var(--gl-acc-rgb),.5);background:rgba(var(--gl-acc-rgb),.14);}
-html[data-gl] .glr-all[hidden]{display:none;}
-/* 10-12 (the owner): All | Up | Down — only the sectors up, or only the ones down, over the range; the counts ride the labels */
-html[data-gl] .glr-dir{flex:none;max-width:none;margin:0;}
-html[data-gl] .glr-dir button{flex:none;font:700 10.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.04em;padding:5px 9px;white-space:nowrap;}
-html[data-gl] .glr-legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 6px;}
-@media (min-width:600px){ html[data-gl] .glr-legend{grid-template-columns:repeat(3,minmax(0,1fr));} }
-@media (min-width:1500px){ html[data-gl] .glr-legend{grid-template-columns:repeat(4,minmax(0,1fr));} }
-html[data-gl] .glr-tag{appearance:none;display:flex;align-items:center;gap:6px;min-width:0;height:26px;padding:0 6px 0 4px;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.07);border-radius:6px;background:rgba(var(--gl-wh-rgb,255,255,255),.035);color:rgba(var(--gl-ink-rgb,234,238,245),.9);
-  font:600 11px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;
+html[data-gl] .glr-legend{column-count:2;column-gap:10px;}
+@media (min-width:600px){ html[data-gl] .glr-legend{column-count:3;} }
+@media (min-width:1500px){ html[data-gl] .glr-legend{column-count:4;} }
+html[data-gl] .glr-fam{display:flex;flex-direction:column;gap:3px;break-inside:avoid;-webkit-column-break-inside:avoid;page-break-inside:avoid;margin:0 0 10px;}
+html[data-gl] .glr-famh{appearance:none;display:flex;align-items:center;gap:6px;min-width:0;height:22px;padding:0 4px 0 2px;border:0;border-bottom:1px solid rgba(var(--gl-wh-rgb,255,255,255),.08);background:transparent;color:rgba(var(--gl-ink-rgb,234,238,245),.78);
+  font:700 10.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.05em;text-transform:uppercase;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+html[data-gl] .glr-famh i{flex:none;width:12px;height:3px;border-radius:2px;background:var(--c);}
+html[data-gl] .glr-famh b{flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-gl] .glr-famh em{flex:none;font:500 9.5px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:0;text-transform:none;font-style:normal;color:rgba(var(--gl-ink-rgb,234,238,245),.4);}
+html[data-gl] .glr-tag{appearance:none;display:grid;grid-template-columns:auto auto 1fr;grid-template-areas:"sq sym val" "sq name name";align-items:center;column-gap:6px;row-gap:1px;min-width:0;padding:4px 6px 4px 4px;
+  border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.07);border-radius:6px;background:rgba(var(--gl-wh-rgb,255,255,255),.035);color:rgba(var(--gl-ink-rgb,234,238,245),.9);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;
   transition:opacity .18s ease,transform .3s cubic-bezier(.3,1.6,.5,1),background-color .2s;}
-html[data-gl] .glr-tag i{flex:none;width:3px;height:16px;border-radius:2px;background:var(--c);}
-html[data-gl] .glr-tag b{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-html[data-gl] .glr-tag span{flex:none;font:600 10.5px/1 ui-monospace,"SF Mono",Menlo,monospace;color:rgba(var(--gl-ink-rgb,234,238,245),.7);}
+html[data-gl] .glr-tag i{grid-area:sq;width:8px;height:8px;border-radius:2px;background:var(--c);}
+html[data-gl] .glr-tag b{grid-area:sym;font:700 11px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.02em;white-space:nowrap;}
+html[data-gl] .glr-tag em{grid-area:val;justify-self:end;font:600 10.5px/1 ui-monospace,"SF Mono",Menlo,monospace;font-style:normal;color:rgba(var(--gl-ink-rgb,234,238,245),.7);white-space:nowrap;}
+html[data-gl] .glr-tag em.up{color:rgb(var(--glr-up));}
+html[data-gl] .glr-tag em.dn{color:rgb(var(--glr-dn));}
+html[data-gl] .glr-tag span{grid-area:name;font:500 10px/1.15 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(var(--gl-ink-rgb,234,238,245),.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 html[data-gl] .glr-tag.off{opacity:.42;background:transparent;}
 html[data-gl] .glr-tag.off i{background:rgba(var(--gl-wh-rgb,255,255,255),.22);}
 html[data-gl] .glr-tag.na{opacity:.3;border-style:dashed;}
@@ -14743,7 +14760,58 @@ html[data-gl] .glr-tag.na i{background:rgba(var(--gl-wh-rgb,255,255,255),.14);}
 html[data-gl] .glr-tag.dim{opacity:.38;}
 html[data-gl] .glr-tag.hi{opacity:1;border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c);}
 html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
+
+/* ---- the Matrix view (mockup A): every fund in the fixed order × 1D · 1W · 1M · 3M, a sparkline, ↯ against the trend ---- */
+html[data-gl] .glr-matrix{overflow:hidden;}
+html[data-gl] .glr-mx{width:100%;border-collapse:collapse;table-layout:fixed;font:600 11px/1.2 ui-monospace,"SF Mono",Menlo,monospace;color:rgba(var(--gl-ink-rgb,234,238,245),.88);}
+html[data-gl] .glr-mx th,html[data-gl] .glr-mx td{padding:0 3px;height:28px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-gl] .glr-mx thead th{height:22px;font:600 9.5px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;color:rgba(var(--gl-ink-rgb,234,238,245),.42);border-bottom:1px solid rgba(var(--gl-wh-rgb,255,255,255),.08);}
+html[data-gl] .glr-mx th.s{text-align:left;width:40%;}
+html[data-gl] .glr-mx .sp{width:60px;text-align:center;}
+html[data-gl] .glr-mx .glr-spark{display:inline-block;vertical-align:middle;}
+html[data-gl] .glr-mxf th{height:24px;padding-top:6px;text-align:left;font:700 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:rgba(var(--gl-ink-rgb,234,238,245),.7);}
+html[data-gl] .glr-mxf th i{display:inline-block;width:12px;height:3px;border-radius:2px;background:var(--c);margin:0 6px 1px 0;}
+html[data-gl] .glr-mxr{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+html[data-gl] .glr-mxr th.s{font-weight:600;}
+html[data-gl] .glr-mxr th.s i{display:inline-block;width:7px;height:7px;border-radius:2px;background:var(--c);margin-right:5px;vertical-align:1px;}
+html[data-gl] .glr-mxr th.s b{font:700 11px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.02em;}
+html[data-gl] .glr-mxr th.s span{font:500 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(var(--gl-ink-rgb,234,238,245),.5);margin-left:6px;}
+html[data-gl] .glr-mxr th.s u{text-decoration:none;color:#f0b35a;margin-left:5px;font-weight:700;}
+html[data-gl] .glr-mxr.on th.s b{text-decoration:underline;text-decoration-color:var(--c);text-underline-offset:3px;}
+html[data-gl] .glr-mxr td.c{font-weight:600;color:rgba(var(--gl-ink-rgb,234,238,245),.9);border-left:2px solid var(--panel2,var(--gl-d06,#0d151f));}
+html[data-gl] .glr-mxr td.c.up{background:rgba(var(--glr-up),var(--a,.2));}
+html[data-gl] .glr-mxr td.c.dn{background:rgba(var(--glr-dn),var(--a,.2));}
+html[data-gl] .glr-mxr td.c.na{color:rgba(var(--gl-ink-rgb,234,238,245),.3);}
+@media (max-width:420px){ html[data-gl] .glr-mxr th.s span{display:none;} html[data-gl] .glr-mx th.s{width:30%;} html[data-gl] .glr-mx .sp{width:48px;} html[data-gl] .glr-mx .glr-spark{width:44px;} }
+html[data-gl] .glr-mx thead th.sp{text-align:center;}
+html[data-gl] .glr-mxnote,html[data-gl] .glr-mxstate{font:500 10px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(var(--gl-ink-rgb,234,238,245),.42);margin-top:8px;}
+html[data-gl] .glr-mxstate{text-align:center;padding:40px 12px;font-size:12.5px;font-weight:600;color:rgba(var(--gl-ink-rgb,234,238,245),.55);}
+
+/* ---- the Leaders view (mockup B): one diverging bar per fund over the range, sorted; a tap picks ---- */
+html[data-gl] .glr-bars{display:flex;flex-direction:column;gap:3px;}
+html[data-gl] .glr-barhead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font:600 9.5px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(var(--gl-ink-rgb,234,238,245),.42);padding:0 2px 4px;}
+html[data-gl] .glr-bar{appearance:none;display:grid;grid-template-columns:minmax(96px,30%) 1fr 58px;align-items:center;gap:8px;height:26px;padding:0 4px;border:0;border-radius:6px;background:transparent;color:rgba(var(--gl-ink-rgb,234,238,245),.9);
+  text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;opacity:.62;transition:opacity .18s ease,background-color .2s;}
+html[data-gl] .glr-bar.on{opacity:1;background:rgba(var(--gl-wh-rgb,255,255,255),.035);}
+html[data-gl] .glr-bar .l{display:flex;align-items:baseline;gap:6px;min-width:0;}
+html[data-gl] .glr-bar .l b{font:700 11px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.02em;flex:none;}
+html[data-gl] .glr-bar .l span{font:500 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(var(--gl-ink-rgb,234,238,245),.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-gl] .glr-bar .t{position:relative;height:12px;border-radius:3px;background:rgba(var(--gl-wh-rgb,255,255,255),.04);overflow:hidden;}
+html[data-gl] .glr-bar .t i{position:absolute;top:0;bottom:0;border-radius:2px;background:var(--c);}
+html[data-gl] .glr-bar .t u{position:absolute;top:-2px;bottom:-2px;width:1px;background:rgba(var(--gl-ink-rgb,234,238,245),.5);}
+html[data-gl] .glr-bar .v{justify-self:end;font:600 11px/1 ui-monospace,"SF Mono",Menlo,monospace;font-style:normal;color:rgba(var(--gl-ink-rgb,234,238,245),.75);}
+html[data-gl] .glr-bar .v.up{color:rgb(var(--glr-up));}
+html[data-gl] .glr-bar .v.dn{color:rgb(var(--glr-dn));}
+html[data-gl] .glr-bar.ag .l b::after{content:" ↯";color:#f0b35a;}
+@media (max-width:420px){ html[data-gl] .glr-bar{grid-template-columns:72px 1fr 52px;} html[data-gl] .glr-bar .l span{display:none;} }
 @media (prefers-reduced-motion:reduce){ html[data-gl] .glr-host *{transition:none!important;} }
+
+/* ---- light mode (light.css loads after this file; these are the pieces its generic rules miss) ---- */
+html[data-gl="light"] .glr-ln.thread{stroke:rgba(28,33,40,.11);}
+html[data-gl="light"] .glr-tag em.up,html[data-gl="light"] .glr-bar .v.up{color:#0f9d7a;}
+html[data-gl="light"] .glr-tag em.dn,html[data-gl="light"] .glr-bar .v.dn{color:#e5484d;}
+html[data-gl="light"] .glr-host{--glr-up:15,157,122;--glr-dn:229,72,77;}
+html[data-gl="light"] .glr-mxr td.c{border-left-color:#fff;}
 
 </style>
 <script id="gl48Rot">
@@ -14751,20 +14819,32 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
    "A cumulative chart for each narrative or sector, all over each other, so you can get a sense of what sectors are moving —
    capital rotation." Every sector ETF rebased to 0% at the first point of the range, one line per sector on a shared % axis,
    a range seg, day-shading + 12:30 ticks on the intraday ranges, a dotted 0% line, tap/hover to highlight, a scrub read-out.
-   This is the ONE chart where colour IS the series (the owner's own reference): 23 hues at equal lightness (OKLCH L .80) for a dark
-   ground, fixed per symbol — a hidden sector never repaints the survivors.
 
-   10-12 (the owner: "I want yield curves and sector rotation inside the macro desk so it's all one thing… I don't like just the ticker of
-   the sectors… I don't like to scroll"): THE PAGE IS GONE — this module now renders INTO A CARD of the Macro desk (macro.js panel `rot`
-   calls GLRot.mount(host) after every paint of that card). Under the plot sits ONE ranked legend GRID of every sector by NAME (its hue as
-   the bar, the range's return beside it), wrapped to the card's width — nothing scrolls sideways; a tap on a name hides / shows that
-   sector, "all" puts everything back. The chips row and the ticker tags are gone. The scrub read-out names the sectors too.
+   10-12: THE PAGE IS GONE — this module renders INTO A CARD of the Macro desk (macro.js panel `rot` calls GLRot.mount(host) after
+   every paint of that card).
+
+   10-19 REDESIGN (the owner's pick from the mockups: "D — keep the lines, fix the legend — nails it 100%", plus A and B as views;
+   "I don't like how when you click or unclick an ETF that it moves to the top. I want to be able to see it all… the name of the
+   ETF and the sector… overwhelmed by all the lines"; and "a comprehensive list of all sectors — I was looking for defense"):
+     · THREE VIEWS on one seg — Chart (the lines), Matrix (every sector × 1D · 1W · 1M · 3M as a heat table, ↯ when the last day
+       runs against the 3-month trend), Leaders (one diverging bar per sector over the range, sorted). The range seg drives Chart
+       and Leaders; Matrix has its own four horizons.
+     · The chart draws the PICKED sectors in their family colour with a dot at the right end; every other sector stays as a faint
+       grey thread behind them, so the context is there without the clutter. The card opens on Top 3 — never 37 lines unless asked.
+     · QUICK PICKS: Top 3 · Bottom 3 · Up · Down · Against trend · Mine · All · None. A quick pick is recomputed for every range;
+       tapping a row makes the pick a hand pick (the chip goes off, the set stays).
+     · The LEGEND is a FIXED FAMILY GRID — seven families, every fund always in the same place; a row = colour square · ticker ·
+       the range's return · the fund's name; tapping dims it in place and NEVER reorders; tapping a family header toggles the family.
+     · The UNIVERSE grew from 23 to 37 funds (defense ITA, transports, infrastructure, homebuilders, retail, cybersecurity, medical
+       devices, pharma, uranium, smart grid, copper, rare earths, lithium, silver miners). The feed's list wins; FAM below is the
+       family map + the names + the colour key, and a fund the map doesn't know lands in "Other".
    Contract (macro.js + shim.js are the other side):
-     window.GLRot = { mount(host), show([range]) → opens the desk at this card (the old route), hide() no-op, range(r), walk(n),
-                      toggle(sym), highlight(sym), current(), state(), asOf() }
+     window.GLRot = { mount(host), unmount(), show([range]) → opens the desk at this card, hide() no-op, range(r), walk(n),
+                      view(v), pick(mode), toggle(sym[,solo]), toggleFam(name), dir(d) (compat → pick up/dn/all), highlight(sym),
+                      current(), state(), asOf(), RANGES, VIEWS, MODES }
    Theme off = nothing mounted: mount()/show() are no-ops unless html[data-gl] is set. Deep link: ?rot=5D (this document or the top one).
 
-   DATA (backend v4.11, GET <API>/sectors.json — §69 contract): {schemaVersion, asOf, sectors:[{sym,name,group}], daily:{SYM:{d:[yyyymmdd],
+   DATA (backend v4.11+, GET <API>/sectors.json — §69 contract): {schemaVersion, asOf, sectors:[{sym,name,group}], daily:{SYM:{d:[yyyymmdd],
    c:[close]}}, hourly:{SYM:{t:[epoch s],c:[close]}}, coverage:{n,withDaily,withHourly,notes}}. Fetched on mount and every 60 min while
    mounted, AbortController 12 s, a 5-min backoff after any failure, cached in memory only. Honest states: "sector feed not published yet
    (503)", "unreachable", per-sector partial coverage greyed in the legend (a sector without hourly bars is grey on 1D/5D, drawn on 1M).
@@ -14774,28 +14854,36 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
      1M 3M 6M 1Y  calendar windows on the daily union: [end − n months, end], both ends inclusive, day-of-month clamped;
      YTD      [Jan 1, end] of the end's year.  ← → walk the window back/forward by its own length (YTD: whole prior years).
    Each sector is rebased at ITS first bar inside the window; a missing bar leaves a GAP (the path lifts its pen — never a line across
-   a missing day); a sector with fewer than two bars in the window is not drawn and its legend row is greyed for that range. */
+   a missing day); a sector with fewer than two bars in the window is not drawn and its legend row is greyed for that range.
+   The Matrix horizons come from the DAILY closes: 1D = last close vs the session before, 1W = vs five sessions before, 1M / 3M = the
+   calendar windows above. "Against trend" = sign(1D) ≠ sign(3M) with |1D| > 0.8%. */
 (function(){
   'use strict';
   var H=document.documentElement, B=document.body;
   var BASE=String(window.AIBO_LIVE_URL||'https://asset-grading-production.up.railway.app/universe.json').replace(/\/universe\.json.*$/,'');
   var FEED=BASE+'/sectors.json';
   var RANGES=['1D','5D','1M','3M','6M','YTD','1Y'], MONTHS={'1M':1,'3M':3,'6M':6,'1Y':12}, SESS={'1D':1,'5D':5};
+  var VIEWS=[['chart','Chart'],['matrix','Matrix'],['bars','Leaders']];
+  var MODES=[['top','Top 3'],['bot','Bottom 3'],['up','Up'],['dn','Down'],['against','Against trend'],['mine','Mine'],['all','All'],['none','None']];
+  var HZ=['1D','1W','1M','3M'], HZSCALE={'1D':2,'1W':4,'1M':8,'3M':15};        /* the matrix columns + the % at which a cell is fully coloured */
+  var AGAINST_MIN=0.8;
   var REFRESH=60*60*1000, BACKOFF=5*60*1000, TIMEOUT=12000;
-  /* the §69 universe, in the owner's screenshot order. The feed's own list wins when it answers; this is the fallback naming + the colour key. */
-  var UNIV=[['XLY','Cons. Discretionary'],['XLP','Cons. Staples'],['XLE','Energy'],['XLF','Financials'],['XLV','Health Care'],['XLI','Industrials'],
-    ['XLB','Materials'],['XLRE','Real Estate'],['XLK','Technology'],['XLC','Communications'],['XLU','Utilities'],['PBW','Clean Energy'],
-    ['XME','Metals & Mining'],['MOO','Agriculture'],['KRE','Regional Banks'],['OIH','Oil Services'],['IGV','Software'],['TAN','Solar'],
-    ['KIE','Insurance'],['SMH','Semiconductors'],['XOP','Oil & Gas E&P'],['IBB','Biotech'],['GDX','Gold Miners']];
-  /* 23 hues at OKLCH L .80, hue k·(360/23)+20° with k = i·7 mod 23 (7 is coprime with 23, so neighbours sit ~110° apart), chroma .15
-     clipped to the sRGB gamut. Fixed per symbol. */
-  var COL={XLY:'#ff9f9f',XLP:'#9ed062',XLE:'#75c8fe',XLF:'#ff97cc',XLV:'#d7be35',XLI:'#10d5eb',XLB:'#e59dfd',XLRE:'#fda944',XLK:'#0adcbb',XLC:'#b8b4fe',
-    XLU:'#ffa28a',PBW:'#7ad780',XME:'#91c1ff',MOO:'#ff9cb4',KRE:'#bdc848',OIH:'#35d0ff',IGV:'#f697e7',TAN:'#edb333',KIE:'#0ed9d4',SMH:'#ccabfe',
-    XOP:'#ffa56e',IBB:'#4fdb9e',GDX:'#a5bbff'};
+  /* the families, in the legend's fixed order: [name, colour, [[sym, fund name], …]] */
+  var FAM=[
+    ['Technology','#7fb6ff',[['XLK','Technology'],['SMH','Semiconductors'],['IGV','Software'],['CIBR','Cybersecurity'],['XLC','Communications']]],
+    ['Industrials & defense','#5fd3c7',[['XLI','Industrials'],['ITA','Aerospace & Defense'],['IYT','Transports'],['PAVE','Infrastructure']]],
+    ['Consumer & property','#f0b35a',[['XLY','Cons. Discretionary'],['XRT','Retail'],['XHB','Homebuilders'],['XLRE','Real Estate']]],
+    ['Defensives','#9ed062',[['XLP','Cons. Staples'],['XLV','Health Care'],['IBB','Biotech'],['IHI','Medical Devices'],['PPH','Pharma'],['XLU','Utilities']]],
+    ['Energy & power','#ff8a65',[['XLE','Energy'],['OIH','Oil Services'],['XOP','Oil & Gas E&P'],['URA','Uranium'],['TAN','Solar'],['PBW','Clean Energy'],['GRID','Smart Grid']]],
+    ['Materials & mining','#ffd86b',[['XLB','Materials'],['XME','Metals & Mining'],['COPX','Copper Miners'],['REMX','Rare Earths'],['LIT','Lithium & Battery'],['GDX','Gold Miners'],['SIL','Silver Miners'],['MOO','Agriculture']]],
+    ['Finance','#d19bff',[['XLF','Financials'],['KRE','Regional Banks'],['KIE','Insurance']]]];
+  var OTHER='Other', OTHERC='#b8c0cc';
+  var UNIV=[], FAMOF={}, FAMC={}, COL={};
+  FAM.forEach(function(f){ FAMC[f[0]]=f[1]; f[2].forEach(function(u,i){ UNIV.push([u[0],u[1]]); FAMOF[u[0]]=f[0]; COL[u[0]]=shade(f[1],i,f[2].length); }); });
   var root=null;                                           /* the host inside the Macro card (set by mount) */
-  var S={open:false, range:'1M', off:0, hidden:{}, only:null, dir:null, hi:null, hov:null,   /* dir: null | 'up' | 'dn' — 10-12 (the owner): show only the sectors up / down over the range */
+  var S={open:false, view:'chart', range:'1M', off:0, mode:'top', on:{}, hi:null, hov:null,   /* mode: a quick pick (recomputed per range) or null = picked by hand; on = {sym:1} */
          data:null, err:null, at:0, fetching:false, backoff:0, timer:0, ctrl:null, raf:0, ro:null,
-         list:[], win:null, ser:null, geo:null, scrub:-1, pd:null};
+         list:[], win:null, ser:null, geo:null, scrub:-1, pd:null, hz:null, hzAt:-1};
 
   /* ---------- helpers ---------- */
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -14815,8 +14903,16 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
   function fmtDay(ds,withYear){ var p=parts(ds); return MON[p[1]-1]+' '+p[2]+(withYear?', '+p[0]:''); }
   function dow(ds){ var p=parts(ds); return DOW[new Date(Date.UTC(p[0],p[1]-1,p[2])).getUTCDay()]; }
   function pct(v,dp){ if(v==null||!isFinite(v)) return '—'; var s=v.toFixed(dp==null?2:dp); if(+s===0) s=(0).toFixed(dp==null?2:dp); return (v>0?'+':v<0?'−':'')+s.replace('-','')+'%'; }
-  function colour(sym){ if(COL[sym]) return COL[sym]; var h=0; for(var i=0;i<sym.length;i++) h=(h*31+sym.charCodeAt(i))%360; return 'hsl('+h+',70%,72%)'; }
+  /* a family colour, shaded by the fund's place in the family (−22% … +22% lightness) so siblings read apart on the chart yet still as one family */
+  function shade(hex,i,n){ var m=/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex); if(!m) return hex;
+    var t=(n>1?i/(n-1):.5)-.5, a=t*.44, c=[parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)].map(function(v){ return Math.round(a<0?v*(1+a):v+(255-v)*a); });
+    return 'rgb('+c.join(',')+')'; }
+  function colour(sym){ if(COL[sym]) return COL[sym]; var h=0; for(var i=0;i<sym.length;i++) h=(h*31+sym.charCodeAt(i))%360; return 'hsl('+h+',55%,72%)'; }
+  function famOf(sym){ return FAMOF[sym]||OTHER; }
+  function famColour(f){ return FAMC[f]||OTHERC; }
   function daysBetween(a,b){ var p=parts(a), q=parts(b); return Math.round((Date.UTC(q[0],q[1]-1,q[2])-Date.UTC(p[0],p[1]-1,p[2]))/864e5); }
+  function sgn(v){ return v>0?' up':v<0?' dn':''; }
+  function mine(){ var K=null; try{ K=(window.GLOwn&&window.GLOwn.keys)?window.GLOwn.keys():null; }catch(_){} return K||{}; }
 
   /* ---------- the feed ---------- */
   function ingest(j){
@@ -14825,7 +14921,7 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
     (Array.isArray(j.sectors)&&j.sectors.length?j.sectors:UNIV.map(function(u){ return {sym:u[0],name:u[1]}; })).forEach(function(s){
       var sym=String(s.sym||'').toUpperCase(); if(!sym||seen[sym]) return; seen[sym]=1;
       var nm=s.name; if(!nm) for(var i=0;i<UNIV.length;i++) if(UNIV[i][0]===sym){ nm=UNIV[i][1]; break; }
-      list.push({sym:sym, name:String(nm||sym), group:s.group||'', col:colour(sym), dm:{}, hm:{}, nd:0, nh:0}); });
+      list.push({sym:sym, name:String(nm||sym), group:s.group||'', fam:famOf(sym), col:colour(sym), dm:{}, hm:{}, nd:0, nh:0}); });
     var dU={}, hU={};
     list.forEach(function(s){
       var D=j.daily&&j.daily[s.sym], Hh=j.hourly&&j.hourly[s.sym], i;
@@ -14836,7 +14932,7 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
     var sess=[], last=null;                                                  /* hourly sessions = runs of one New York date */
     hAx.forEach(function(t,i){ var d=nyDate(t); if(!last||last.date!==d){ last={date:d, i0:i, i1:i}; sess.push(last); } else last.i1=i; });
     S.data={asOf:j.asOf||null, list:list, dAx:dAx, hAx:hAx, sess:sess, cov:j.coverage||null};
-    S.list=list;
+    S.list=list; S.hz=null;
   }
   function load(force){
     if(S.fetching) return; var now=Date.now();
@@ -14879,38 +14975,79 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
     S.list.forEach(function(s){
       var map=win.kind==='h'?s.hm:s.dm, v=new Array(win.pts.length), base=null, n=0, lastV=null, lastI=-1;
       for(var i=0;i<win.pts.length;i++){ var c=map[win.pts[i]]; if(c==null){ v[i]=null; continue; } if(base==null) base=c; v[i]=(c/base-1)*100; n++; lastV=v[i]; lastI=i; }
-      out.push({sym:s.sym, name:s.name, col:s.col, v:v, n:n, has:n>=2, last:lastV, lastI:lastI});
+      out.push({sym:s.sym, name:s.name, fam:s.fam, col:s.col, v:v, n:n, has:n>=2, last:lastV, lastI:lastI});
     });
     return out;
   }
-  function compute(){ S.win=window_(S.range,S.off); S.ser=series(S.win); }
+  /* the matrix horizons, from the daily closes (cached per feed load) */
+  function horizons(){
+    if(S.hz&&S.hzAt===S.at) return S.hz; var D=S.data, out={}; if(!D){ return out; }
+    var ax=D.dAx, n=ax.length, m1={}, m3={};
+    series(window_('1M',0)).forEach(function(sr){ m1[sr.sym]=sr.has?sr.last:null; });
+    series(window_('3M',0)).forEach(function(sr){ m3[sr.sym]=sr.has?sr.last:null; });
+    S.list.forEach(function(s){
+      var last=null, li=-1, i; for(i=n-1;i>=0;i--){ if(s.dm[ax[i]]!=null){ last=s.dm[ax[i]]; li=i; break; } }
+      function back(k){ var c=0; for(var j=li-1;j>=0;j--){ if(s.dm[ax[j]]!=null){ c++; if(c===k) return s.dm[ax[j]]; } } return null; }
+      var p1=back(1), p5=back(5), sp=[]; for(i=Math.max(0,li-21);i<=li;i++){ var c=s.dm[ax[i]]; if(c!=null) sp.push(c); }
+      out[s.sym]={'1D':last!=null&&p1!=null?(last/p1-1)*100:null, '1W':last!=null&&p5!=null?(last/p5-1)*100:null, '1M':m1[s.sym]==null?null:m1[s.sym], '3M':m3[s.sym]==null?null:m3[s.sym], spark:sp};
+    });
+    S.hz=out; S.hzAt=S.at; return out;
+  }
+  function against(sym){ var h=horizons()[sym]; return !!(h&&h['1D']!=null&&h['3M']!=null&&h['1D']*h['3M']<0&&Math.abs(h['1D'])>AGAINST_MIN); }
+  /* the quick picks, computed over the current range's series */
+  function autoPick(mode){
+    var ser=(S.ser||[]).filter(function(sr){ return sr.has; }), out={}, K;
+    if(mode==='all'){ ser.forEach(function(sr){ out[sr.sym]=1; }); return out; }
+    if(mode==='none') return out;
+    if(mode==='mine'){ K=mine(); ser.forEach(function(sr){ if(K[sr.sym]) out[sr.sym]=1; }); return out; }
+    if(mode==='against'){ ser.forEach(function(sr){ if(against(sr.sym)) out[sr.sym]=1; }); return out; }
+    var s=ser.filter(function(sr){ return sr.last!=null; }).sort(function(a,b){ return b.last-a.last; });
+    if(mode==='top') s.slice(0,3).forEach(function(sr){ out[sr.sym]=1; });
+    else if(mode==='bot') s.slice(-3).forEach(function(sr){ out[sr.sym]=1; });
+    else if(mode==='up') s.forEach(function(sr){ if(sr.last>0) out[sr.sym]=1; });
+    else if(mode==='dn') s.forEach(function(sr){ if(sr.last<0) out[sr.sym]=1; });
+    return out;
+  }
+  function compute(){ S.win=window_(S.range,S.off); S.ser=series(S.win); if(S.mode) S.on=autoPick(S.mode); if(S.hi&&!(S.on[S.hi])) S.hi=null; }
   function canWalk(dir){ if(dir>0&&S.off<=0) return false; var w=window_(S.range,S.off-dir); return !!w&&w.pts.length>=2; }   /* dir −1 = earlier = a larger offset */
-  function shownBase(sr){ return sr.has&&!S.hidden[sr.sym]&&(!S.only||S.only[sr.sym]); }
-  function dirOk(sr){ return !S.dir||(sr.last!=null&&(S.dir==='up'?sr.last>0:sr.last<0)); }
-  function shown(sr){ return shownBase(sr)&&dirOk(sr); }
-  function visible(){ return (S.ser||[]).filter(shown); }
+  function picked(sr){ return sr.has&&!!S.on[sr.sym]; }
+  function visible(){ return (S.ser||[]).filter(picked); }
+  function threads(){ return (S.ser||[]).filter(function(sr){ return sr.has&&!S.on[sr.sym]; }); }
   function hiSym(){ return S.hi||S.hov||null; }
+  function famGroups(){
+    var list=S.list.length?S.list:UNIV.map(function(u){ return {sym:u[0],name:u[1],fam:famOf(u[0]),col:colour(u[0])}; }), by={}, order=[];
+    list.forEach(function(s){ var f=s.fam||famOf(s.sym); if(!by[f]){ by[f]=[]; order.push(f); } by[f].push(s); });
+    var fo=FAM.map(function(f){ return f[0]; }).concat([OTHER]); order.sort(function(a,b){ return fo.indexOf(a)-fo.indexOf(b); });
+    var rank={}; UNIV.forEach(function(u,i){ rank[u[0]]=i; });                /* inside a family the rows keep FAM's order, whatever order the feed sends */
+    return order.map(function(f){ return {fam:f, col:famColour(f), rows:by[f].slice().sort(function(a,b){ return (rank[a.sym]==null?1e9:rank[a.sym])-(rank[b.sym]==null?1e9:rank[b.sym]); })}; });
+  }
 
   /* ---------- mount: the card's body is the host; the UI is rebuilt into each new host (macro.js repaints the card's innerHTML) ---------- */
   function mount(host){
     if(!H.getAttribute('data-gl')||!host) return;              /* theme off = exact Stage 43 */
-    root=host; S.open=true;
-    host.innerHTML='<div class="glm-read" data-glrread1></div><div class="glr-row glr-r2"><button type="button" class="glr-walk" data-glrw="-1" aria-label="Earlier window">←</button>'
+    root=host; S.open=true; host.setAttribute('data-glrview',S.view);
+    host.innerHTML='<div class="glm-read" data-glrread1></div>'
+      +'<div class="gl-seg glr-view" role="tablist" aria-label="View">'+VIEWS.map(function(v){ return '<button type="button" role="tab" data-glrv="'+v[0]+'">'+v[1]+'</button>'; }).join('')+'</div>'
+      +'<div class="glr-row glr-r2"><button type="button" class="glr-walk" data-glrw="-1" aria-label="Earlier window">←</button>'
       +'<div class="gl-seg glr-seg" role="tablist" aria-label="Range">'+RANGES.map(function(r){ return '<button type="button" role="tab" data-glrr="'+r+'">'+r+'</button>'; }).join('')+'</div>'
       +'<button type="button" class="glr-walk" data-glrw="1" aria-label="Later window">→</button></div>'
       +'<div class="glr-plot" data-glrplot><svg class="glr-svg" data-glrsvg aria-hidden="true"></svg>'
       +'<div class="glr-cross" data-glrcross hidden></div><div class="glr-read" data-glrread hidden></div><div class="glr-state" data-glrstate hidden></div>'
       +'<div class="glr-win" data-glrwin></div></div>'
-      +'<div class="glr-legrow"><span class="glr-legcap">Sectors <small data-glrnote></small></span>'
-      +'<div class="gl-seg glr-dir" role="tablist" aria-label="Which sectors"><button type="button" role="tab" data-glrdir="all">All</button><button type="button" role="tab" data-glrdir="up">Up</button><button type="button" role="tab" data-glrdir="dn">Down</button></div>'
-      +'<button type="button" class="glr-all" data-glrall title="Show every hidden sector again" hidden>reset</button></div>'
+      +'<div class="glr-matrix" data-glrmx></div><div class="glr-bars" data-glrbars></div>'
+      +'<div class="glr-picks" data-glrpicks role="group" aria-label="Quick picks">'+MODES.map(function(m){ return '<button type="button" data-glrpick="'+m[0]+'">'+m[1]+'</button>'; }).join('')+'</div>'
+      +'<div class="glr-legrow"><span class="glr-legcap">Sectors <small data-glrnote></small></span></div>'
       +'<div class="glr-legend" data-glrleg role="list"></div>';
     host.addEventListener('click',function(e){ var b;
+      if((b=e.target.closest('[data-glrv]'))){ view(b.getAttribute('data-glrv')); return; }
       if((b=e.target.closest('[data-glrr]'))){ range(b.getAttribute('data-glrr')); return; }
       if((b=e.target.closest('[data-glrw]'))){ walk(+b.getAttribute('data-glrw')); return; }
-      if((b=e.target.closest('[data-glrall]'))){ S.hidden={}; S.only=null; S.hi=null; paintAll(); return; }
-      if((b=e.target.closest('[data-glrdir]'))){ dir(b.getAttribute('data-glrdir')); return; }
+      if((b=e.target.closest('[data-glrpick]'))){ pick(b.getAttribute('data-glrpick')); return; }
+      if((b=e.target.closest('[data-glrfam]'))){ toggleFam(b.getAttribute('data-glrfam')); return; }
       if((b=e.target.closest('[data-glrtag]'))){ toggle(b.getAttribute('data-glrtag'),false); return; }
+      if((b=e.target.closest('[data-glrbar]'))){ toggle(b.getAttribute('data-glrbar'),false); return; }
+      if((b=e.target.closest('[data-glrmx]'))&&b.hasAttribute('data-glrmxrow')){ toggle(b.getAttribute('data-glrmxrow'),false); return; }
+      if((b=e.target.closest('[data-glrmxrow]'))){ toggle(b.getAttribute('data-glrmxrow'),false); return; }
       if((b=e.target.closest('[data-glrretry]'))){ load(true); return; } });
     /* the plot: hover (mouse) / press-and-drag (touch) scrubs; a tap picks the nearest line */
     var plot=$('[data-glrplot]');
@@ -14920,7 +15057,7 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
       if(S.pd){ if(Math.abs(e.clientX-S.pd.x)>6||Math.abs(e.clientY-S.pd.y)>6) S.pd.moved=true; scrubAt(e); return; }
       if(e.pointerType==='mouse'){ scrubAt(e); var near=nearest(e); if(near!==S.hov){ S.hov=near; paintHi(); } } });
     function up(e){ var pd=S.pd; S.pd=null; if(!pd) return;
-      if(!pd.moved&&Date.now()-pd.t<450){ var near=nearest(e); S.hi=(near&&near!==S.hi)?near:null; S.hov=null; paintHi(); paintLegend(); }
+      if(!pd.moved&&Date.now()-pd.t<450){ var near=nearest(e); S.hi=(near&&near!==S.hi)?near:null; S.hov=null; paintHi(); }
       if(e.pointerType!=='mouse'){ unscrub(); } }
     plot.addEventListener('pointerup',up); plot.addEventListener('pointercancel',function(){ S.pd=null; unscrub(); });
     plot.addEventListener('pointerleave',function(e){ if(e.pointerType==='mouse'&&!S.pd){ unscrub(); if(S.hov){ S.hov=null; paintHi(); } } });
@@ -14931,15 +15068,26 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
   function unmount(){ S.open=false; stopTimer(); unscrub(); if(S.ro){ try{ S.ro.disconnect(); }catch(_){} S.ro=null; } root=null; }
 
   /* ---------- paint ---------- */
-  function paintAll(){ if(!root||!S.open) return; compute(); paintRead(); paintRange(); paintNote(); paintLegend(); paintState(); draw(); }
-  /* the card's read line (every desk card says its read in one sentence): who leads and who lags over the range, among the shown sectors */
+  function paintAll(){ if(!root||!S.open) return; compute(); paintView(); paintRead(); paintRange(); paintNote(); paintPicks(); paintLegend(); paintState(); draw(); paintMatrix(); paintBars(); }
+  function paintView(){ if(root) root.setAttribute('data-glrview',S.view); $$('[data-glrv]').forEach(function(b){ var on=b.getAttribute('data-glrv')===S.view; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); }); }
+  function showing(vis){
+    var n=vis.length, m=S.mode;
+    if(m==='top') return 'Showing the top 3.'; if(m==='bot') return 'Showing the bottom 3.';
+    if(m==='up') return 'Showing the '+n+' up.'; if(m==='dn') return 'Showing the '+n+' down.';
+    if(m==='against') return n?'Showing '+n+' running against their 3-month trend.':'Nothing is running against its 3-month trend today.';
+    if(m==='mine') return n?'Showing the '+n+' in your book.':'No sector fund in your book.';
+    if(m==='all') return 'Showing all '+n+'.'; if(m==='none') return 'Nothing picked.';
+    return 'Showing '+n+' picked by hand.';
+  }
+  /* the card's read line (every desk card says its read in one sentence): who leads and who lags over the range, among every sector with bars */
   function paintRead(){
-    var el=$('[data-glrread1]'); if(!el) return; var vis=(S.ser||[]).filter(shownBase).filter(function(sr){ return sr.last!=null; }).slice().sort(function(a,b){ return b.last-a.last; });
+    var el=$('[data-glrread1]'); if(!el) return; var all=(S.ser||[]).filter(function(sr){ return sr.has&&sr.last!=null; }).slice().sort(function(a,b){ return b.last-a.last; });
     if(!S.data){ el.innerHTML='<b>'+esc(S.fetching?'Loading the sectors…':(S.err||'Loading the sectors…'))+'</b>'; el.className='glm-read'; return; }
-    if(vis.length<2){ el.innerHTML='<b>No read for this range yet.</b>'; el.className='glm-read'; return; }
-    var top=vis[0], low=vis[vis.length-1], up=vis.filter(function(sr){ return sr.last>0; }).length;
-    el.innerHTML='<b>'+esc(top.name)+' is taking the capital</b> — '+pct(top.last)+' over '+esc(S.range)+(S.off?' (an earlier window)':'')+'; '+esc(low.name)+' lags at '+pct(low.last)+'. '+up+' of '+vis.length+' sectors are up.'+(S.dir?' Showing the '+(S.dir==='up'?up:vis.length-up)+' '+(S.dir==='up'?'up':'down')+'.':'');
-    el.className='glm-read '+(up>vis.length*.6?'up':up<vis.length*.4?'dn':'');
+    if(all.length<2){ el.innerHTML='<b>No read for this range yet.</b>'; el.className='glm-read'; return; }
+    var top=all[0], low=all[all.length-1], up=all.filter(function(sr){ return sr.last>0; }).length;
+    el.innerHTML='<b>'+esc(top.name)+' is taking the capital</b> — '+pct(top.last)+' over '+esc(S.range)+(S.off?' (an earlier window)':'')+'; '+esc(low.name)+' lags at '+pct(low.last)+'. '+up+' of '+all.length+' sectors are up.'
+      +(S.view==='matrix'?'':' '+esc(showing(visible())));
+    el.className='glm-read '+(up>all.length*.6?'up':up<all.length*.4?'dn':'');
   }
   function paintRange(){
     $$('[data-glrr]').forEach(function(b){ var on=b.getAttribute('data-glrr')===S.range; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); });
@@ -14949,43 +15097,49 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
   function paintNote(){
     var n=$('[data-glrnote]'); if(!n) return; var D=S.data, t='rebased to 0% at the start of the range';
     if(D){ var nh=0, nd=0; D.list.forEach(function(s){ if(s.nh) nh++; if(s.nd) nd++; });
-      t='tap a name to hide or show it';
+      t='tap a fund or a family to show or hide it';
       if(nd<D.list.length) t+=' · '+nd+' of '+D.list.length+' with daily bars'; if(nh<D.list.length) t+=' · '+nh+' of '+D.list.length+' with hourly bars';
       var cn=(D.cov&&Array.isArray(D.cov.notes))?D.cov.notes.filter(Boolean):[]; if(cn.length) t+=' · '+cn.join(' · '); }
     n.textContent=t; n.title=t;
   }
-  /* the legend = every sector by NAME, ranked by the range's return; off / no-bars rows dim at the end; the row is the toggle */
+  /* the quick picks: the active one lit; Up / Down / Against carry their counts; Mine is dashed when nothing in the book is a sector fund */
+  function paintPicks(){
+    var ser=(S.ser||[]).filter(function(sr){ return sr.has&&sr.last!=null; }), up=0, dn=0, ag=0, K=mine(), mn=0;
+    ser.forEach(function(sr){ if(sr.last>0) up++; else if(sr.last<0) dn++; if(S.data&&against(sr.sym)) ag++; if(K[sr.sym]) mn++; });
+    $$('[data-glrpick]').forEach(function(b){ var k=b.getAttribute('data-glrpick'), on=S.mode===k, lab=MODES.filter(function(m){ return m[0]===k; })[0][1];
+      b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false');
+      if(S.data){ if(k==='up') lab+=' '+up; else if(k==='dn') lab+=' '+dn; else if(k==='against') lab+=' '+ag; else if(k==='mine') lab+=' '+mn; }
+      b.textContent=lab; b.classList.toggle('na',k==='mine'&&S.data&&!mn);
+      b.title=k==='against'?'Sectors whose last day runs against their 3-month trend (more than 0.8% the other way)':k==='mine'?'The sector funds in your book':k==='top'?'The three best over the range':k==='bot'?'The three worst over the range':''; });
+  }
+  /* the legend = a FIXED family grid; a row dims in place and never moves (10-19) */
   function paintLegend(){
     var leg=$('[data-glrleg]'); if(!leg) return; var hs=hiSym(), bySym={}; (S.ser||[]).forEach(function(sr){ bySym[sr.sym]=sr; });
-    var list=(S.list.length?S.list:UNIV.map(function(u){ return {sym:u[0],name:u[1],col:colour(u[0])}; })).map(function(s){ var sr=bySym[s.sym];
-      return {sym:s.sym, name:s.name, col:s.col, sr:sr, na:!!S.data&&(!sr||!sr.has), off:!!S.hidden[s.sym]||(!!S.only&&!S.only[s.sym]), last:sr&&sr.has?sr.last:null}; });
-    if(S.dir) list=list.filter(function(x){ return !x.na&&x.last!=null&&(S.dir==='up'?x.last>0:x.last<0); });
-    list.sort(function(a,b){ var ra=(a.na||a.off)?1:0, rb=(b.na||b.off)?1:0; if(ra!==rb) return ra-rb; return (b.last==null?-1e9:b.last)-(a.last==null?-1e9:a.last); });
-    leg.innerHTML=list.map(function(x){ var on=!x.na&&!x.off;
-      return '<button type="button" role="listitem" class="glr-tag'+(x.na?' na':'')+(x.off?' off':'')+(hs&&on?(hs===x.sym?' hi':' dim'):'')+'" data-glrtag="'+esc(x.sym)+'" style="--c:'+esc(x.col)+'" aria-pressed="'+(on?'true':'false')+'" title="'+esc(x.sym)+(x.na?' — no bars for this range':'')+'"><i></i><b>'+esc(x.name)+'</b><span>'+(x.na?'—':pct(x.last))+'</span></button>'; }).join('');
-    var all=$('[data-glrall]'); if(all) all.hidden=!Object.keys(S.hidden).length&&!S.only;   /* "reset" only while something is hidden by hand */
-    paintDir();
-  }
-  /* the All | Up | Down seg: counts over the range (hand-hidden rows count too — they are a direction, hidden or not) */
-  function paintDir(){
-    var up=0, dn=0; (S.ser||[]).forEach(function(sr){ if(!sr.has||sr.last==null) return; if(sr.last>0) up++; else if(sr.last<0) dn++; });
-    $$('[data-glrdir]').forEach(function(b){ var k=b.getAttribute('data-glrdir'), on=(S.dir||'all')===k;
-      b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false');
-      b.textContent=k==='all'?'All':k==='up'?('Up'+(S.data?' '+up:'')):('Down'+(S.data?' '+dn:'')); });
+    leg.innerHTML=famGroups().map(function(g){
+      var rows=g.rows.map(function(s){ var sr=bySym[s.sym], na=!!S.data&&(!sr||!sr.has), on=!na&&!!S.on[s.sym], last=sr&&sr.has?sr.last:null;
+        return {sym:s.sym, name:s.name, col:s.col||colour(s.sym), na:na, on:on, last:last}; }), nOn=rows.filter(function(r){ return r.on; }).length, nOk=rows.filter(function(r){ return !r.na; }).length;
+      return '<section class="glr-fam" style="--c:'+esc(g.col)+'">'
+        +'<button type="button" class="glr-famh" data-glrfam="'+esc(g.fam)+'" title="Show or hide the whole family" aria-pressed="'+(nOn&&nOn===nOk?'true':'false')+'"><i></i><b>'+esc(g.fam)+'</b><em data-glrfamn title="'+(S.data?nOn+' of '+nOk+' on':rows.length+' funds')+'">'+(S.data?nOn+'/'+nOk:rows.length)+'</em></button>'
+        +rows.map(function(x){
+          return '<button type="button" role="listitem" class="glr-tag'+(x.na?' na':x.on?' on':' off')+(hs&&x.on?(hs===x.sym?' hi':' dim'):'')+'" data-glrtag="'+esc(x.sym)+'" style="--c:'+esc(x.col)+'" aria-pressed="'+(x.on?'true':'false')+'"'
+            +' title="'+esc(x.name+(x.na?' — no bars in this range':''))+'"><i></i><b>'+esc(x.sym)+'</b><em class="v'+(x.on?sgn(x.last):'')+'">'+pct(x.last,1)+'</em><span>'+esc(x.name)+'</span></button>'; }).join('')
+        +'</section>'; }).join('');
   }
   function paintState(){
     var st=$('[data-glrstate]'); if(!st) return; var msg='', retry=false;
     if(!S.data){ if(S.fetching) msg='loading sectors…'; else if(S.err){ msg=S.err; retry=true; } else msg='loading sectors…'; }
     else if(!S.win||!S.win.pts.length) msg='no bars in this window';
-    else if(!visible().length) msg=S.dir&&(S.ser||[]).some(shownBase)?('no sector is '+(S.dir==='up'?'up':'down')+' over this range'):(S.ser||[]).some(function(sr){ return sr.has; })?'no sector selected — tap a name or “reset”':(S.win.kind==='h'?'no hourly bars for this range yet':'no bars in this window');
+    else if(!visible().length){ var any=(S.ser||[]).some(function(sr){ return sr.has; });
+      msg=!any?'no sector has two bars in this window':S.mode==='mine'?'no sector fund in your book yet — the grey threads are the market':S.mode==='against'?'no sector is running against its 3-month trend today':
+          S.mode==='up'?'no sector is up over this range':S.mode==='dn'?'no sector is down over this range':'nothing picked — tap a fund below, or a quick pick'; }
     st.hidden=!msg; st.innerHTML=msg?('<span>'+esc(msg)+'</span>'+(retry?'<button type="button" data-glrretry>retry</button>':'')):'';
     st.classList.toggle('err',!!(retry||S.err&&!S.data));
   }
   function paintHi(){
     var hs=hiSym(), svg=$('[data-glrsvg]'); if(!svg) return; var g=svg.querySelector('[data-glrlines]'); if(!g) return;
-    var top=null; [].forEach.call(g.children,function(p){ var s=p.getAttribute('data-sym'); p.classList.toggle('hi',!!hs&&s===hs); p.classList.toggle('dim',!!hs&&s!==hs); if(hs&&s===hs) top=p; });
-    if(top&&top!==g.lastElementChild) g.appendChild(top);
-    $$('[data-glrtag]').forEach(function(t){ var s=t.getAttribute('data-glrtag'); if(t.classList.contains('off')||t.classList.contains('na')) return; t.classList.toggle('hi',!!hs&&s===hs); t.classList.toggle('dim',!!hs&&s!==hs); });
+    var top=[]; [].forEach.call(g.children,function(p){ if(p.classList.contains('thread')) return; var s=p.getAttribute('data-sym'); p.classList.toggle('hi',!!hs&&s===hs); p.classList.toggle('dim',!!hs&&s!==hs); if(hs&&s===hs) top.push(p); });
+    top.forEach(function(p){ g.appendChild(p); });
+    $$('[data-glrtag]').forEach(function(t){ var s=t.getAttribute('data-glrtag'); if(!t.classList.contains('on')) return; t.classList.toggle('hi',!!hs&&s===hs); t.classList.toggle('dim',!!hs&&s!==hs); });
   }
   function schedule(){ if(S.raf) return; S.raf=requestAnimationFrame(function(){ S.raf=0; if(!S.open) return; draw(); }); }
 
@@ -14995,8 +15149,8 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
   function geometry(){
     var plot=$('[data-glrplot]'); if(!plot) return null; var r=plot.getBoundingClientRect(), W=Math.round(r.width), Hh=Math.round(r.height); if(W<40||Hh<40) return null;
     var win=S.win, n=win?win.pts.length:0, vis=visible(), lo=0, hi=0;
-    vis.forEach(function(sr){ sr.v.forEach(function(y){ if(y==null) return; if(y<lo) lo=y; if(y>hi) hi=y; }); });
-    if(hi-lo<1e-6){ lo=-1; hi=1; } var span=hi-lo, pad=span*.07; lo-=pad; hi+=pad;
+    (vis.length?vis:(S.ser||[]).filter(function(sr){ return sr.has; })).forEach(function(sr){ sr.v.forEach(function(y){ if(y==null) return; if(y<lo) lo=y; if(y>hi) hi=y; }); });   /* the axis fits the PICKED lines; threads may run off the plot */
+    if(hi-lo<1e-6){ lo=-1; hi=1; } var span=hi-lo, pad=span*.08; lo-=pad; hi+=pad;
     var padL=6, padR=6, padT=8, padB=18, pw=W-padL-padR, ph=Hh-padT-padB;
     var y=function(v){ return padT+(hi-v)/(hi-lo)*ph; }, x=function(i){ return n>1?padL+i*pw/(n-1):padL+pw/2; };
     var step=niceStep((hi-lo)/5.5), ticks=[], t0=Math.ceil(lo/step)*step; for(var t=t0;t<=hi+1e-9;t+=step) ticks.push(+t.toFixed(6));
@@ -15016,10 +15170,11 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
       var every=Math.max(1,Math.ceil(cand.length/want)); cand.forEach(function(i,ix){ if(ix%every) return; var p=parts(win.pts[i]); out.push({i:i, kind:'day', t:(ix>0&&p[1]===1)||ix===0?MON[p[1]-1]+' ’'+String(p[0]).slice(2):MON[p[1]-1]}); }); }
     return out;
   }
+  function pathOf(sr,g){ var d='', pen=false, first=null, i; for(i=0;i<sr.v.length;i++){ var v=sr.v[i]; if(v==null){ pen=false; continue; } var px=g.x(i).toFixed(1), py=g.y(v).toFixed(1); d+=(pen?'L':'M')+px+' '+py; pen=true; if(first==null) first=py; } return {d:d, first:first}; }
   function draw(){
-    var svg=$('[data-glrsvg]'); if(!svg||!S.open) return; var g=geometry(); S.geo=g;
+    var svg=$('[data-glrsvg]'); if(!svg||!S.open||S.view!=='chart') return; var g=geometry(); S.geo=g;
     if(!g||!S.data||!S.win){ svg.innerHTML=''; return; }                       /* no feed / no window: an empty plot under the state line, never an axis around nothing */
-    var win=S.win, vis=visible(), out=[], i;
+    var win=S.win, vis=visible(), out=[];
     svg.setAttribute('viewBox','0 0 '+g.W+' '+g.H); svg.setAttribute('width',g.W); svg.setAttribute('height',g.H);
     if(win&&win.kind==='h'){ win.sessions.forEach(function(se,j){ var x0=g.x(se.i0)-g.slot/2, x1=g.x(se.i1)+g.slot/2; x0=Math.max(g.padL-3,x0); x1=Math.min(g.W-g.padR+3,x1);
       out.push('<rect class="glr-band'+(j%2?' sh':'')+'" data-day="'+esc(se.date)+'" x="'+x0.toFixed(1)+'" y="'+g.padT+'" width="'+(x1-x0).toFixed(1)+'" height="'+g.ph+'"/>'); }); }
@@ -15030,17 +15185,52 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
       out.push('<line class="glr-xl'+(t.kind==='mid'?' mid':'')+'" x1="'+xx.toFixed(1)+'" x2="'+xx.toFixed(1)+'" y1="'+g.padT+'" y2="'+(g.padT+g.ph)+'"/>');
       if(t.t) out.push('<text class="glr-xt" data-kind="'+t.kind+'" x="'+xx.toFixed(1)+'" y="'+(g.H-5)+'" text-anchor="'+anchor+'">'+esc(t.t)+'</text>'); });
     out.push('<g data-glrlines>');
-    var hs=hiSym(), top=null;
-    vis.forEach(function(sr){ var d='', pen=false, first=null;
-      for(i=0;i<sr.v.length;i++){ var v=sr.v[i]; if(v==null){ pen=false; continue; } var px=g.x(i).toFixed(1), py=g.y(v).toFixed(1); d+=(pen?'L':'M')+px+' '+py; pen=true; if(first==null) first=py; }
-      var el='<path class="glr-ln'+(hs?(hs===sr.sym?' hi':' dim'):'')+'" data-sym="'+esc(sr.sym)+'" data-y1="'+(first||'')+'" stroke="'+esc(sr.col)+'" d="'+d+'"/>';
-      if(hs===sr.sym) top=el; else out.push(el); });
-    if(top) out.push(top);
+    /* the threads first: every unpicked sector as a faint grey line (the context without the clutter); then the picked lines in family colour, a dot at the end */
+    threads().forEach(function(sr){ var p=pathOf(sr,g); out.push('<path class="glr-ln thread" data-sym="'+esc(sr.sym)+'" data-y1="'+(p.first||'')+'" d="'+p.d+'"/>'); });
+    var hs=hiSym(), top=[];
+    vis.forEach(function(sr){ var p=pathOf(sr,g), cls=hs?(hs===sr.sym?' hi':' dim'):'';
+      var el='<path class="glr-ln pick'+cls+'" data-sym="'+esc(sr.sym)+'" data-y1="'+(p.first||'')+'" stroke="'+esc(sr.col)+'" d="'+p.d+'"/>';
+      if(sr.lastI>=0) el+='<circle class="glr-dot'+cls+'" data-sym="'+esc(sr.sym)+'" cx="'+g.x(sr.lastI).toFixed(1)+'" cy="'+g.y(sr.last).toFixed(1)+'" r="3" fill="'+esc(sr.col)+'"/>';
+      if(hs===sr.sym) top.push(el); else out.push(el); });
+    top.forEach(function(el){ out.push(el); });
     out.push('</g>');
     g.ticks.forEach(function(t){ var yy=g.y(t); if(yy<g.padT+6||yy>g.padT+g.ph-2) return;
       out.push('<text class="glr-yt" x="'+(g.W-g.padR-2)+'" y="'+(yy-3).toFixed(1)+'" text-anchor="end">'+esc(pct(t,stepDp(g.step)))+'</text>'); });
     svg.innerHTML=out.join('');
     if(S.scrub>=0) paintScrub();
+  }
+  /* ---------- the Matrix view: every sector in the fixed family order × 1D · 1W · 1M · 3M, a 1-month sparkline, ↯ on a sector turning against its trend ---------- */
+  function spark(vals,col){ if(!vals||vals.length<2) return ''; var w=56, h=16, lo=Math.min.apply(null,vals), hi=Math.max.apply(null,vals), rg=(hi-lo)||1;
+    var pts=vals.map(function(v,i){ return (i*w/(vals.length-1)).toFixed(1)+','+((h-1)-(v-lo)*(h-2)/rg).toFixed(1); }).join(' ');
+    return '<svg class="glr-spark" viewBox="0 0 '+w+' '+h+'" width="'+w+'" height="'+h+'" aria-hidden="true"><polyline points="'+pts+'" fill="none" stroke="'+esc(col)+'" stroke-width="1.3" stroke-linejoin="round"/></svg>'; }
+  function cell(v,k){ if(v==null) return '<td class="c na">—</td>'; var a=Math.min(1,Math.abs(v)/HZSCALE[k]);
+    return '<td class="c'+sgn(v)+'" style="--a:'+(0.08+a*.72).toFixed(2)+'">'+pct(v,1)+'</td>'; }
+  function paintMatrix(){
+    var el=$('[data-glrmx]'); if(!el||S.view!=='matrix') return;
+    if(!S.data){ el.innerHTML='<div class="glr-mxstate">'+esc(S.fetching?'loading sectors…':(S.err||'loading sectors…'))+'</div>'; return; }
+    var hz=horizons(), out=['<table class="glr-mx"><thead><tr><th class="s">Sector</th><th class="sp">Trend</th>'+HZ.map(function(k){ return '<th>'+k+'</th>'; }).join('')+'</tr></thead><tbody>'];
+    famGroups().forEach(function(g){
+      out.push('<tr class="glr-mxf" style="--c:'+esc(g.col)+'"><th colspan="'+(2+HZ.length)+'"><i></i>'+esc(g.fam)+'</th></tr>');
+      g.rows.forEach(function(s){ var h=hz[s.sym]||{}, on=!!S.on[s.sym], ag=against(s.sym);
+        out.push('<tr class="glr-mxr'+(on?' on':'')+(ag?' ag':'')+'" data-glrmxrow="'+esc(s.sym)+'" style="--c:'+esc(s.col||colour(s.sym))+'" title="'+esc(s.name+(ag?' — the last day runs against the 3-month trend':''))+'">'
+          +'<th class="s"><i></i><b>'+esc(s.sym)+'</b><span>'+esc(s.name)+'</span>'+(ag?'<u class="ag" title="against the 3-month trend">↯</u>':'')+'</th>'
+          +'<td class="sp">'+spark(h.spark,s.col||colour(s.sym))+'</td>'+HZ.map(function(k){ return cell(h[k],k); }).join('')+'</tr>'); }); });
+    out.push('</tbody></table><div class="glr-mxnote">1D = the last close against the session before · 1W = five sessions · 1M and 3M = calendar windows · ↯ = the last day runs against the 3-month trend · the cell\'s colour is its size · tap a row to pick it for the chart</div>');
+    el.innerHTML=out.join('');
+  }
+  /* ---------- the Leaders view: one diverging bar per sector over the range, sorted; the picked ones lit, a tap picks ---------- */
+  function paintBars(){
+    var el=$('[data-glrbars]'); if(!el||S.view!=='bars') return;
+    if(!S.data){ el.innerHTML='<div class="glr-mxstate">'+esc(S.fetching?'loading sectors…':(S.err||'loading sectors…'))+'</div>'; return; }
+    var rows=(S.ser||[]).filter(function(sr){ return sr.has&&sr.last!=null; }).slice().sort(function(a,b){ return b.last-a.last; });
+    if(!rows.length){ el.innerHTML='<div class="glr-mxstate">no bars in this window</div>'; return; }
+    var lo=Math.min(0,rows[rows.length-1].last), hi=Math.max(0,rows[0].last), rg=(hi-lo)||1, z=(0-lo)/rg*100;
+    el.innerHTML='<div class="glr-barhead"><span>'+esc(S.win&&S.win.label||S.range)+'</span><span>'+rows.length+' funds · 0% at the line</span></div>'
+      +rows.map(function(sr){ var x=(sr.last-lo)/rg*100, l=Math.min(z,x), w=Math.abs(x-z);
+        return '<button type="button" class="glr-bar'+(S.on[sr.sym]?' on':'')+(against(sr.sym)?' ag':'')+'" data-glrbar="'+esc(sr.sym)+'" style="--c:'+esc(sr.col)+'" aria-pressed="'+(S.on[sr.sym]?'true':'false')+'">'
+          +'<span class="l"><b>'+esc(sr.sym)+'</b><span>'+esc(sr.name)+'</span></span>'
+          +'<span class="t"><u style="left:'+z.toFixed(2)+'%"></u><i style="left:'+l.toFixed(2)+'%;width:'+Math.max(w,.4).toFixed(2)+'%"></i></span>'
+          +'<em class="v'+sgn(sr.last)+'">'+pct(sr.last,1)+'</em></button>'; }).join('');
   }
   /* ---------- scrub + nearest line ---------- */
   function idxAt(clientX){ var g=S.geo, plot=$('[data-glrplot]'); if(!g||!plot||!S.win||!S.win.pts.length) return -1; var r=plot.getBoundingClientRect(), x=clientX-r.left;
@@ -15054,7 +15244,7 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
     var x=g.x(i); c.hidden=false; c.style.left=x.toFixed(1)+'px'; c.style.top=g.padT+'px'; c.style.height=g.ph+'px';
     var when=win.kind==='h'?dow(nyDate(win.pts[i]))+' '+fmtDay(nyDate(win.pts[i]))+' · '+nyTime(win.pts[i]):dow(win.pts[i])+' '+fmtDay(win.pts[i],true);
     var rows=visible().map(function(sr){ return {name:sr.name, col:sr.col, v:sr.v[i]}; }).sort(function(a,b){ return (b.v==null?-1e9:b.v)-(a.v==null?-1e9:a.v); });
-    rd.hidden=false; rd.innerHTML='<b>'+esc(when)+'</b><div class="rs">'+rows.map(function(r){ return '<span class="r'+(r.v==null?' na':'')+'" style="--c:'+esc(r.col)+'"><i></i>'+esc(r.name)+'<u>'+pct(r.v)+'</u></span>'; }).join('')+'</div>';
+    rd.hidden=false; rd.innerHTML='<b>'+esc(when)+'</b>'+(rows.length?'<div class="rs">'+rows.map(function(r){ return '<span class="r'+(r.v==null?' na':'')+'" style="--c:'+esc(r.col)+'"><i></i>'+esc(r.name)+'<u>'+pct(r.v)+'</u></span>'; }).join('')+'</div>':'');
     rd.classList.toggle('right',x<g.W/2);
   }
 
@@ -15067,21 +15257,31 @@ html[data-gl] .glr-tag:active{transform:scale(.97);transition-duration:.05s;}
   function hide(){ unscrub(); S.hov=null; S.pd=null; }     /* kept for the callers; the card is the desk's to show or hide */
   function range(r){ r=String(r||'').toUpperCase(); if(RANGES.indexOf(r)<0) return; if(r!==S.range){ S.range=r; S.off=0; } if(S.open) paintAll(); }
   function walk(n){ n=n<0?-1:1; if(!S.data||!canWalk(n)) return; S.off=Math.max(0,S.off+(n<0?1:-1)); if(S.open) paintAll(); }
+  function view(v){ v=String(v||'chart').toLowerCase(); if(v==='leaders') v='bars'; if(!VIEWS.some(function(x){ return x[0]===v; })) return; if(v!==S.view){ S.view=v; unscrub(); } if(S.open) paintAll(); }
+  function pick(mode){ mode=String(mode||'').toLowerCase(); if(mode==='bottom') mode='bot'; if(mode==='down') mode='dn'; if(!MODES.some(function(m){ return m[0]===mode; })) return; S.mode=mode; if(S.open) paintAll(); }
   function toggle(sym,solo){
     sym=String(sym||'').toUpperCase(); if(!sym) return;
-    if(solo){ if(S.only&&S.only[sym]&&Object.keys(S.only).length===1) S.only=null; else { S.only={}; S.only[sym]=1; } S.hidden={}; }
-    else if(S.only){ if(S.only[sym]) delete S.only[sym]; else S.only[sym]=1; if(!Object.keys(S.only).length) S.only=null; }
-    else { if(S.hidden[sym]) delete S.hidden[sym]; else S.hidden[sym]=1; }
-    if(S.hi&&!S.only&&S.hidden[S.hi]) S.hi=null; if(S.hi&&S.only&&!S.only[S.hi]) S.hi=null;
+    if(solo){ S.on={}; S.on[sym]=1; } else if(S.on[sym]) delete S.on[sym]; else S.on[sym]=1;
+    S.mode=null; if(S.hi&&!S.on[S.hi]) S.hi=null;
     if(S.open) paintAll();
   }
-  function dir(d){ d=String(d||'all').toLowerCase(); if(d==='down') d='dn'; S.dir=(d==='up'||d==='dn')?d:null; if(S.hi&&S.ser){ var h=S.ser.filter(function(sr){ return sr.sym===S.hi; })[0]; if(h&&!dirOk(h)) S.hi=null; } if(S.open) paintAll(); }
-  function highlight(sym){ sym=sym?String(sym).toUpperCase():null; S.hi=(sym&&sym!==S.hi)?sym:null; S.hov=null; paintHi(); paintLegend(); }
-  function current(){ return {range:S.range, off:S.off, open:S.open}; }
-  function state(){ return {open:S.open, mounted:!!root, range:S.range, off:S.off, hidden:Object.keys(S.hidden), only:S.only?Object.keys(S.only):null, dir:S.dir, hi:S.hi, err:S.err, at:S.at, fetching:S.fetching,
-    backoffUntil:S.backoff, n:S.list.length, asOf:S.data?S.data.asOf:null, win:S.win?{kind:S.win.kind, pts:S.win.pts.length, sessions:S.win.sessions.length, label:S.win.label}:null,
-    series:(S.ser||[]).map(function(sr){ return {sym:sr.sym, name:sr.name, has:sr.has, n:sr.n, last:sr.last, shown:shown(sr)}; })}; }
-  window.GLRot={mount:mount, unmount:unmount, show:show, hide:hide, range:range, walk:walk, toggle:toggle, dir:dir, highlight:highlight, current:current, state:state, asOf:function(){ return S.data?S.data.asOf:null; }, RANGES:RANGES.slice(), COL:COL};
+  function toggleFam(name){
+    var g=famGroups().filter(function(x){ return x.fam===name; })[0]; if(!g) return; var ok=g.rows.filter(function(s){ var sr=(S.ser||[]).filter(function(x){ return x.sym===s.sym; })[0]; return !S.data||(sr&&sr.has); });
+    var allOn=ok.length&&ok.every(function(s){ return !!S.on[s.sym]; });
+    ok.forEach(function(s){ if(allOn) delete S.on[s.sym]; else S.on[s.sym]=1; });
+    S.mode=null; if(S.hi&&!S.on[S.hi]) S.hi=null; if(S.open) paintAll();
+  }
+  function dir(d){ d=String(d||'all').toLowerCase(); if(d==='down') d='dn'; pick(d==='up'||d==='dn'?d:'all'); }
+  function highlight(sym){ sym=sym?String(sym).toUpperCase():null; S.hi=(sym&&sym!==S.hi&&S.on[sym])?sym:null; S.hov=null; paintHi(); }
+  function current(){ return {range:S.range, off:S.off, open:S.open, view:S.view, mode:S.mode}; }
+  function state(){ var on=Object.keys(S.on), hidden=(S.ser||[]).filter(function(sr){ return sr.has&&!S.on[sr.sym]; }).map(function(sr){ return sr.sym; });
+    return {open:S.open, mounted:!!root, view:S.view, mode:S.mode, range:S.range, off:S.off, on:on, hidden:hidden, only:null, dir:S.mode==='up'||S.mode==='dn'?S.mode:null, hi:S.hi, err:S.err, at:S.at, fetching:S.fetching,
+    backoffUntil:S.backoff, n:S.list.length, families:famGroups().map(function(g){ return {fam:g.fam, syms:g.rows.map(function(s){ return s.sym; })}; }), asOf:S.data?S.data.asOf:null,
+    win:S.win?{kind:S.win.kind, pts:S.win.pts.length, sessions:S.win.sessions.length, label:S.win.label}:null,
+    horizons:S.data?horizons():null,
+    series:(S.ser||[]).map(function(sr){ return {sym:sr.sym, name:sr.name, fam:sr.fam, has:sr.has, n:sr.n, last:sr.last, shown:picked(sr)}; })}; }
+  window.GLRot={mount:mount, unmount:unmount, show:show, hide:hide, range:range, walk:walk, view:view, pick:pick, toggle:toggle, toggleFam:toggleFam, dir:dir, highlight:highlight, current:current, state:state,
+    asOf:function(){ return S.data?S.data.asOf:null; }, RANGES:RANGES.slice(), VIEWS:VIEWS.map(function(v){ return v[0]; }), MODES:MODES.map(function(m){ return m[0]; }), FAM:FAM.map(function(f){ return {name:f[0], colour:f[1], syms:f[2].map(function(u){ return u[0]; })}; })};
 
   /* deep link: ?rot=5D on this document or the top one (the app runs inside latest.html's iframe) → the desk, open at the card */
   (function(){
@@ -15384,7 +15584,7 @@ html[data-gl] .glm-world td:last-child{color:rgba(var(--gl-ink-rgb,234,238,245),
   var HELP={
     yc:'The Treasury curve — today against a month and a year ago, by maturity. A normal curve rises with maturity; when short yields sit above long ones (the 10-year minus the 2-year below zero) it is inverted: bond buyers expect cuts, and recessions have followed most inversions, often only after the curve un-inverts. "10y − 2y" is that spread\'s five-year history. "Around the world" lists other governments\' 2-, 10- and 30-year yields; each row names its source.',
     funding:'Who is paying for the AI build-out, by capital source: what the hyperscalers fund from their own cash flow, what private credit lends (mostly to the neoclouds, against GPUs and offtake contracts), what the public bond and securitisation markets provide, and what sovereign wealth, governments and private equity put in. No market publishes this series — it is a research estimate, so the card names its source and horizon, keeps the earlier editions underneath so the drift shows, and is reviewed every month by a routine that researches the newest published estimates and opens a pull request for a person to approve. The one measured number is the rail: the debt share of hyperscaler capital spending. The Flow chart\'s capital boxes read the same feed.',
-    rot:'Every sector ETF rebased to 0% at the start of the range, so the lines show who is taking the capital. Tap a sector\'s name to hide or show it; Up | Down keeps only the sectors that are up, or only the ones down, over the range, All shows both sides, "reset" brings every hidden sector back; ← → walk the window; hover or press the plot for a read-out. 1D and 5D use hourly bars, the longer ranges daily closes. Colour is the sector here, fixed per name.',
+    rot:'Thirty-seven sector funds in seven families, rebased to 0% at the start of the range, so the lines show who is taking the capital. Chart draws the picked funds in their family colour over the rest as grey threads; Matrix lays every fund out over 1D · 1W · 1M · 3M (↯ = the last day runs against the 3-month trend); Leaders is one bar per fund, sorted. Quick picks: Top 3 (how the card opens) · Bottom 3 · Up · Down · Against trend · Mine (the sector funds in your book) · All · None. Tap a fund or a family in the grid below to show or hide it — rows never move; ← → walk the window; hover or press the plot for a read-out. 1D and 5D use hourly bars, the longer ranges daily closes.',
     breadth:'The index can rise on a few giants while most stocks fall. The default lines are the share of the US 500 above their own 50-day and 200-day averages: above ~65% the move is broad, under ~45% (the shaded band) it is narrow and fragile. The toggle shows the advance/decline line (the running total of names up minus names down — when it falls while the index rises, the rally is thinning) and new 20-day highs minus new 20-day lows. The rails: today\'s advancers against decliners, then the 20-session measures.',
     vol:'VIX is the price of 30-day S&P protection, read from its daily history: under 20 is calm, 20–30 elevated, 30 and above is stress — in a strong sell-off it spikes and then decays over weeks. The rails: where today sits in its one-year range, and how far it moved in 5 and 20 sessions (a fast rise is fear arriving, a slow bleed is fear leaving). The VIX term structure, MOVE, SKEW and the put/call ratio are licensed data and are not shown here.',
     credit:'A PROXY for credit stress built from licensed prices: junk-bond ETFs (HYG) divided by 7–10-year Treasuries (IEF), and investment-grade bonds (LQD) divided by the same, each rebased to 100 at the first day shown. When the line falls, credit is lagging Treasuries — investors want more compensation for default risk, which is what a widening spread means; when it rises, risk appetite is back. It is not an option-adjusted spread (those series are licensed and cannot be shown), so read the direction and the one-year percentile, not a level. The toggle adds the Chicago Fed\'s financial-conditions index (below zero = loose) and the share of banks tightening lending standards (quarterly), both Federal Reserve publications.',
