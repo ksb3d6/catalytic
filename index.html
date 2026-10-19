@@ -13908,7 +13908,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     {id:'bb',     s:'BOLLINGER',        r:['BOLLINGER'],        l:'Bollinger',  min:21, fn:'tfBbSVG',     why:'%B of the last close inside the 20/2 bands (1 = upper band, 0 = lower)',
       d:['Bollinger bands: the dashed line is the 20-period average of the close; the shaded band reaches two standard deviations above and below it, so it widens when price is volatile and squeezes when price goes quiet. A tight squeeze often comes before a large move.',
          'The label is %B — where the last close sits inside the band: 1.00 is the upper band, 0.50 the middle, 0.00 the lower band. Above 1 or below 0 means the close is outside the band.']},
-    {id:'rsi',    s:'RSI 14',           r:['RSI','14'],         l:'RSI',        min:16, fn:'tfRsiSVG',    opt:true, hx:1.6, why:'RSI-14 of the last close and its 14-period average · above 70 overbought, below 30 oversold',
+    {id:'rsi',    s:'RSI 14',           r:['RSI','14'],         l:'RSI',        min:16, fn:'tfRsiSVG',    opt:true, why:'RSI-14 of the last close and its 14-period average · above 70 overbought, below 30 oversold',
       d:['The Relative Strength Index, 14 periods (Wilder’s standard). It compares the average size of the up-closes with the average size of the down-closes and prints the result from 0 to 100.',
          'The cyan line is the RSI; the line in your theme colour is its own 14-period average — RSI crossing up through its average is the momentum turn traders watch for, crossing down the other way. The dashed lines are 70 and 30 (the zones beyond them are tinted; the stretches the RSI spends beyond them are shaded), the dotted ones 60 and 40, the dashed grey line 50 — above 50 the up-closes are winning, below it the down-closes.',
          'In a strong trend the RSI can sit beyond 70 or 30 for a long time: the line is a stretch warning, not a turn signal. The label is the latest reading; the levels are written down the right edge.']},
@@ -13981,8 +13981,14 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     if(!bars||bars.length<16) return '';
     var cl=window.tfCloses(bars), r=window.tfRsi(cl,14), ma=smaOf(r,14), n=Math.min(tailN||60,cl.length), rr=r.slice(-n), mm=ma.slice(-n), p=2, i;
     var vals=rr.filter(function(v){ return v!=null; }); if(!vals.length) return '';
-    var lo=Math.min(20,Math.max(0,Math.min.apply(null,vals)-3)), hi=Math.max(80,Math.min(100,Math.max.apply(null,vals)+3));
-    var gut=w>=140?19:w>=90?15:0, labels=h>=110?[80,70,60,50,40,30,20]:h>=60?[70,50,30]:[];
+    /* 10-19 (the owner: "I'm not a huge fan of the RSI taking up more vertical real estate… decide where it shows so that just the relevant area is shown"):
+       the pane is the standard row height again and WINDOWS ITSELF — the y-range is where the RSI and its average actually travelled in view
+       (±3), snapped outward to the 10-levels, at least 30 wide, inside 0–100; the level lines and labels are the ones that fall in the window. */
+    var mv=mm.filter(function(v){ return v!=null; }), all=vals.concat(mv), dlo=Math.min.apply(null,all)-3, dhi=Math.max.apply(null,all)+3;
+    var lo=Math.max(0,Math.floor(dlo/10)*10), hi=Math.min(100,Math.ceil(dhi/10)*10);
+    while(hi-lo<30){ if(lo>0&&(hi>=100||(dlo-lo)<=(hi-dhi))) lo-=10; else if(hi<100) hi+=10; else lo-=10; } lo=Math.max(0,lo); hi=Math.min(100,hi);
+    var gut=w>=140?19:w>=90?15:0, levels=[], lv; for(lv=lo;lv<=hi;lv+=10) levels.push(lv);
+    var perLv=(h-4)/Math.max(1,(hi-lo)/10), labels=h<40?[]:perLv>=11?levels:levels.filter(function(v){ return v%20===0; });
     function X(i){ return p+i*(w-2*p-gut)/(n-1); } function Y(v){ return (h-p)-((v-lo)/(hi-lo))*(h-2*p); }
     var xr=w-p-gut, s='';
     /* the extreme zones, tinted */
@@ -14300,7 +14306,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
   }
   function seg(cl,attr,items,cur){ return '<div class="gl-seg '+cl+'" role="tablist">'+items.map(function(it){ return '<button type="button" role="tab" '+attr+'="'+it[0]+'"'+(cur===it[0]?' class="on" aria-selected="true"':' aria-selected="false"')+'>'+it[1]+'</button>'; }).join('')+'</div>'; }
   function wallHTML(){
-    /* 10-17: a row may be taller than the cell (IND.hx — RSI 1.6×, the owner: "go bigger"); the grid's rows follow */
+    /* 10-17: a row MAY be taller than the cell (IND.hx; no row uses it since 10-19 — the RSI windows itself instead); the grid's rows follow */
     var rows='var(--glt-hh) '+ACT().map(function(i){ return i.hx?('calc(var(--glt-ch) * '+i.hx+')'):'var(--glt-ch)'; }).join(' ');
     var h='<div class="glt-wall" data-techwall><div class="glt-wgrid" style="--glt-n:'+ACT().length+';--glt-rows:'+rows+'"><div class="glt-corner"></div>';
     h+=TFS.map(function(t){ return '<div class="glt-th" data-tf="'+t[0]+'">'+t[2]+'</div>'; }).join('');
