@@ -9,6 +9,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Bull Whistle">
 <meta name="theme-color" content="#0D1320">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="icon" type="image/png" sizes="192x192" href="logo.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.json">
 <style>:root{
@@ -47,8 +50,10 @@ html,body{margin:0;background:
 .helpbtn{appearance:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--hair);
   background:var(--gl-d12,#101b2b);color:var(--ink);font-weight:800;font-size:13px;cursor:pointer;flex:none;}
 .helpbtn:hover{border-color:rgba(var(--gl-acc-rgb,31,198,220),.55);}
-.a-glyph{flex:none;width:24px;height:24px;border-radius:7px;background:var(--gl-acc,#1FC6DC);color:var(--gl-d08,#0D1320);font-weight:800;
-  font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;}
+.a-glyph{flex:none;height:24px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--ink);font-family:inherit;font-weight:800;
+  font-size:13.5px;letter-spacing:-.01em;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;user-select:none;}
+.a-glyph img{width:24px;height:24px;display:block;}
+.a-glyph .a-word{white-space:nowrap;line-height:1;}
 .a-pop{position:absolute;top:calc(100% + 6px);left:12px;z-index:60;background:var(--gl-d10,#121A26);border:1px solid #3a4a63;
   border-radius:10px;padding:10px 14px;display:none;max-width:320px;box-shadow:0 12px 30px rgba(0,0,0,.5);}
 .a-pop b{font-size:13.5px;} .a-pop span{display:block;font-size:11px;color:var(--muted);margin-top:3px;line-height:1.45;}
@@ -1352,8 +1357,10 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
   #mStrip{display:flex;position:fixed;top:0;left:0;right:0;z-index:55;height:40px;align-items:center;gap:6px;
     padding:0 8px;background:var(--panel);border-bottom:1px solid var(--hair);transition:transform .18s ease;}
   #mStrip.m-hide{transform:translateY(-100%);}
-  .m-glyph{flex:0 0 auto;width:20px;height:20px;border-radius:6px;background:var(--gl-acc,#1FC6DC);color:var(--gl-d08,#0D1320);
+  .m-glyph{flex:0 0 auto;width:20px;height:20px;border-radius:6px;background:transparent;color:var(--gl-d08,#0D1320);
     display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;}
+  .m-glyph img{width:20px;height:20px;display:block;}
+  .m-word{flex:0 0 auto;font-weight:800;font-size:13px;line-height:1;letter-spacing:-.01em;color:var(--ink);white-space:nowrap;margin-right:2px;}
   .m-seg{display:inline-flex;background:var(--gl-d12,#101b2b);border:1px solid var(--hair);border-radius:9px;padding:2px;gap:2px;flex:none;}
   .m-seg button{appearance:none;border:0;background:transparent;color:var(--muted);font-weight:700;font-size:10.5px;
     padding:5px 8px;border-radius:7px;}
@@ -1387,7 +1394,7 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
 <body>
 
 <div class="appbar">
-  <button type="button" class="a-glyph" id="aGlyph" aria-label="Bull Whistle — about">A</button>
+  <button type="button" class="a-glyph" id="aGlyph" aria-label="Bull Whistle — about"><img src="logo.png" alt=""><span class="a-word">Bull Whistle</span></button>
   <div class="a-pop" id="aPop" role="dialog"></div>
   <div class="brand"><b>Bull Whistle</b><span>the intelligent investment terminal</span></div>
   <span class="seglab">Deck</span>
@@ -1432,7 +1439,7 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
 
 <!-- Stage 12: mobile chrome (dock + strip) — proxies for the appbar controls -->
 <div id="mStrip">
-  <span class="m-glyph" aria-hidden="true">A</span>
+  <span class="m-glyph" aria-hidden="true"><img src="logo.png" alt=""></span><b class="m-word">Bull Whistle</b>
   <div class="m-seg atlas-only" id="mUni">
     <button type="button" data-mu="equity" aria-label="Equities">EQ</button>
     <button type="button" data-mu="crypto" aria-label="Crypto">CR</button>
@@ -10749,7 +10756,7 @@ html[data-gl]{--gl-dock-h:calc(43px + max(4px, var(--gl-safe-b,0px) * .4) - var(
 
 /* ---- primary actions carry the accent, with ink that actually reads on it ---- */
 html[data-gl] .btn.primary{background:var(--gl-acc);border-color:transparent;color:var(--gl-on-acc);}
-html[data-gl] .m-glyph{background:var(--gl-acc);color:var(--gl-on-acc);}
+html[data-gl] .m-glyph{background:transparent;color:var(--gl-on-acc);}
 
 /* ---- desktop appbar: same glass, stock navigation (fine-pointer keeps its appbar) ---- */
 html[data-gl] .appbar{background:rgba(var(--gl-bg-rgb),.72);-webkit-backdrop-filter:blur(26px) saturate(1.5);backdrop-filter:blur(26px) saturate(1.5);}
@@ -18014,7 +18021,7 @@ html[data-gl="light"] .glr-tag{background:#f3f4f7;border-color:#e4e7ec;color:#1c
   /* ---- §3 the strip's context title: [A] [title] …… [book HUD] [?]. Inserted after the badge; skin.css hides the
      universe + lens segs and takes the middle away from the HUD. ---- */
   var strip=$('#mStrip'), glyph=$('#mStrip .m-glyph'), title=null;
-  if(strip&&glyph){ title=document.createElement('b'); title.id='glTitle'; title.className='gl-title'; glyph.parentNode.insertBefore(title,glyph.nextSibling); }
+  if(strip&&glyph){ title=document.createElement('b'); title.id='glTitle'; title.className='gl-title'; var word=strip.querySelector('.m-word'); var aft=word||glyph; aft.parentNode.insertBefore(title,aft.nextSibling); }
   /* ---- THE STRIP ICONS (10-11): ? Learn · bell Alerts · You (account + settings), at the right end of the strip, after the book HUD.
      The You button also carries data-gldoor="settings" — account.js clicks that selector to open Settings from a #verify / #reset link. ---- */
   var icons=null;

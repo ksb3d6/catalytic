@@ -12,8 +12,9 @@
    sign-out and answered for the next token on a slow network; they now go
    straight to the network (the app keeps its own caches and honest
    "unreachable" rows). v3 drops the v2 cache with every stored API body. */
-const CACHE = 'aibo-v3';
-const CORE = ['./', './index.html', './manifest.json', './icon-180.png', './icon-512.png'];
+/* v4 (10-20): the Bull Whistle icon set — the cache bump drops the old placeholder icons so the new ones show on the next open. */
+const CACHE = 'aibo-v4';
+const CORE = ['./', './index.html', './manifest.json', './icon-180.png', './icon-512.png', './logo.png', './favicon-32.png', './favicon-16.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
