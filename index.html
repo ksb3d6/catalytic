@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover">
-<title>AI Build-Out — Interactive Grade Flow</title>
+<title>Bull Whistle — the intelligent investment terminal</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="AI Build-Out">
+<meta name="apple-mobile-web-app-title" content="Bull Whistle">
 <meta name="theme-color" content="#0D1320">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.json">
@@ -1387,9 +1387,9 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
 <body>
 
 <div class="appbar">
-  <button type="button" class="a-glyph" id="aGlyph" aria-label="AI Build-Out — about">A</button>
+  <button type="button" class="a-glyph" id="aGlyph" aria-label="Bull Whistle — about">A</button>
   <div class="a-pop" id="aPop" role="dialog"></div>
-  <div class="brand"><b>AI Build-Out</b><span>Capital-flow map × seven-pillar fundamentals · Jun 2026</span></div>
+  <div class="brand"><b>Bull Whistle</b><span>the intelligent investment terminal</span></div>
   <span class="seglab">Deck</span>
   <div class="seg" id="deckSeg">
     <button data-d="atlas" class="on">Grade Flow</button>
@@ -6790,7 +6790,7 @@ function downloadBackup(){
   try{
     const blob=new Blob([JSON.stringify(o,null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob), a=document.createElement('a');
-    a.href=url; a.download='ai-buildout-setups-'+new Date().toISOString().slice(0,10)+'.json';
+    a.href=url; a.download='bullwhistle-setups-'+new Date().toISOString().slice(0,10)+'.json';
     document.body.appendChild(a); a.click();
     setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },600);
     toast('Backup file saved — keep it in Files / iCloud');
@@ -7627,7 +7627,7 @@ window.ScView={render:render, renderCrypto:renderCrypto};
   dSync();
   /* glyph popovers (bar + strip) — content mirrors .brand so _sub() stays the writer */
   function brandHTML(){ var b=document.querySelector('.brand b'), s=document.querySelector('.brand span');
-    return '<b>'+(b?b.textContent:'AI Build-Out')+'</b><span>'+(s?s.textContent:'')+'</span>'; }
+    return '<b>'+(b?b.textContent:'Bull Whistle')+'</b><span>'+(s?s.textContent:'')+'</span>'; }
   var pop=document.getElementById('aPop'), glyph=document.getElementById('aGlyph');
   if(glyph) glyph.addEventListener('click', function(e){ e.stopPropagation();
     var was=bar.classList.contains('brand-open'); closeAll();
@@ -8988,7 +8988,7 @@ window.MktView = (function(){
          different pill: hollow, dashed in the grade's colour (mk-auto, --ag), the tooltip naming the period; Coins 500 never */
       var ag=gradeOf(r);
       if(ag&&GVAL[ag]){ var gc=gradeClass(ag); return '<span class="mk-gp mk-auto '+gc+'" style="--ag:var(--'+gc+')" title="auto grade · 4 pillars from filings · '+esc(r.auto.period||'—')+'">'+ag+'</span>'; }
-      return '<span class="mk-gp g-na" title="not graded — a Market universe name, no AIBO grade">—</span>';
+      return '<span class="mk-gp g-na" title="not graded">—</span>';
     }
     if(r.kind==='fd') return '<span class="mk-gap">—</span>';
     if(r.kind==='cr') return gradePill(r.grade)+(r.tok!=null?'<span class="mk-sub">tok '+r.tok+'</span>':'<span class="mk-sub">pre-token</span>');
