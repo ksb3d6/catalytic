@@ -19196,6 +19196,83 @@ function runTool(name,input){
   return Promise.race([fn(input||{}),t]).catch(function(e){ return {error:String(e&&e.message||e)}; });
 }
 
+
+/* =============================== YOUR COMPUTER FIRST (10-20, the owner: "tries to use my computer before it ever uses the Anthropic API") ===============================
+   A model served by Ollama on the person's own machine answers first; the cloud (main.py → Anthropic) only when the computer cannot be reached
+   or fails before it has said anything. The page probes {url}/api/tags (1.5 s), picks a tool-capable model, converts the same history and the
+   same tool definitions (fetched once from /ai/spec) to Ollama's chat shape, and hands the reply back in the cloud's shape so the loop above
+   does not care who answered. A phone that cannot see the computer simply uses the cloud. Setup lives in the sheet's Memory view. */
+var LOCAL_KEY='aibo.ai.local.v1', LOCAL_PREF=['gpt-oss','qwen3','qwen2.5','llama3.3','llama3.2','llama3.1','mistral-nemo','mistral-small','mistral','gemma3','phi4','command-r'];
+function localLoad(){ try{ var c=JSON.parse(ls(LOCAL_KEY)||'null'); if(c&&typeof c==='object') return {on:c.on!==false, url:String(c.url||'http://localhost:11434').replace(/\/+$/,''), model:String(c.model||'')}; }catch(_){} return {on:true, url:'http://localhost:11434', model:''}; }
+var L={cfg:localLoad(), ok:null, at:0, model:null, models:[], err:null, spec:null, specP:null};
+function localSave(){ lsSet(LOCAL_KEY,JSON.stringify(L.cfg)); L.at=0; L.ok=null; }
+function pickModel(names){ if(L.cfg.model&&names.indexOf(L.cfg.model)>=0) return L.cfg.model; for(var i=0;i<LOCAL_PREF.length;i++){ for(var j=0;j<names.length;j++) if(names[j].indexOf(LOCAL_PREF[i])===0) return names[j]; } return names[0]||null; }
+function localErr(e){
+  var m=String(e&&e.message||e||''); var safari=/Safari/.test(navigator.userAgent)&&!/Chrome|CriOS|Chromium|Edg/.test(navigator.userAgent);
+  if((e&&e.name==='AbortError')||/abort/i.test(m)) return 'no answer from '+L.cfg.url+' — is Ollama running on this computer?';
+  if(/Failed to fetch|NetworkError|Load failed|network/i.test(m)) return 'this page could not reach '+L.cfg.url+'. Either Ollama is not running, or it is not allowing this site — start it with OLLAMA_ORIGINS="'+location.origin+'"'
+    +(location.protocol==='https:'&&/^http:/.test(L.cfg.url)&&!/^http:\/\/(localhost|127\.0\.0\.1)/.test(L.cfg.url)?'. A plain-http address other than localhost is blocked from an https page':'')
+    +(safari&&location.protocol==='https:'?'. Safari also blocks plain-http localhost from an https page — use Chrome on this computer':'');
+  return m;
+}
+function localProbe(force){
+  if(!L.cfg.on) return Promise.resolve(false);
+  if(!force&&L.at&&Date.now()-L.at<60000) return Promise.resolve(!!L.ok);
+  var ctl=('AbortController' in W)?new AbortController():null, t=setTimeout(function(){ if(ctl) ctl.abort(); },force?5000:1500);
+  return fetch(L.cfg.url+'/api/tags',{signal:ctl?ctl.signal:undefined, cache:'no-store'}).then(function(r){ clearTimeout(t); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(j){ var names=((j&&j.models)||[]).map(function(m){ return m.name||m.model; }).filter(Boolean); L.models=names; L.model=pickModel(names); L.ok=!!L.model; L.err=L.ok?null:'Ollama answered but has no models — run: ollama pull llama3.1'; L.at=Date.now(); paintStatus(); return L.ok; },
+      function(e){ clearTimeout(t); L.ok=false; L.models=[]; L.at=Date.now(); L.err=localErr(e); paintStatus(); return false; });
+}
+function specLoad(){ if(L.spec) return Promise.resolve(L.spec); if(L.specP) return L.specP; L.specP=getJson(AI_URL.replace(/\/chat(\?.*)?$/,'/spec'),{},8000).then(function(j){ L.specP=null; if(j&&j.system&&Array.isArray(j.tools)) L.spec=j; return L.spec; },function(){ L.specP=null; return null; }); return L.specP; }
+function textOf(c){ if(typeof c==='string') return c; return (c||[]).filter(function(b){ return b&&b.type==='text'; }).map(function(b){ return b.text; }).join('\n'); }
+function toOllama(msgs,system){
+  var out=[{role:'system', content:system}], names={};
+  msgs.forEach(function(m){
+    if(m.role==='user'){
+      if(Array.isArray(m.content)&&m.content.length&&m.content[0]&&m.content[0].type==='tool_result'){ m.content.forEach(function(b){ var o={role:'tool', content:String(b.content||'').slice(0,12000)}; if(names[b.tool_use_id]) o.tool_name=names[b.tool_use_id]; out.push(o); }); }
+      else out.push({role:'user', content:textOf(m.content)});
+      return; }
+    var calls=(Array.isArray(m.content)?m.content:[]).filter(function(b){ return b&&b.type==='tool_use'; }), o={role:'assistant', content:textOf(m.content)};
+    if(calls.length) o.tool_calls=calls.map(function(c){ names[c.id]=c.name; return {function:{name:c.name, arguments:c.input||{}}}; });
+    out.push(o);
+  });
+  return out;
+}
+function callLocal(body){
+  var ctl=('AbortController' in W)?new AbortController():null; S.abort=ctl;
+  return specLoad().then(function(spec){
+    if(!spec) throw new Error('the assistant\'s instructions could not be fetched from the server');
+    var system=(body.mode==='reflect')?spec.reflect:(spec.system+(body.memory?'\n\nWhat you remember about this trader (keep using it; update it with the remember tool when you learn something durable):\n\n'+body.memory:''));
+    var tools=(body.mode==='reflect'?spec.reflect_tools:spec.tools).map(function(t){ return {type:'function', function:{name:t.name, description:t.description, parameters:t.input_schema}}; });
+    var req={model:L.model, messages:toOllama(body.messages,system), tools:tools, stream:true, options:{num_ctx:16384, num_predict:2048}};
+    return fetch(L.cfg.url+'/api/chat',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(req), signal:ctl?ctl.signal:undefined}).then(function(r){
+      if(!r.ok) return r.text().then(function(t){ throw new Error('your computer\'s model answered HTTP '+r.status+' '+t.slice(0,160)); });
+      var reader=r.body.getReader(), dec=new TextDecoder(), buf='', text='', calls=[], n=0;
+      function line(l){ l=l.trim(); if(!l) return; var j; try{ j=JSON.parse(l); }catch(_){ return; } if(j.error) throw new Error('your computer\'s model: '+j.error); var m=j.message||{};
+        if(m.content){ text+=m.content; if(body.onDelta) body.onDelta(m.content); }
+        (m.tool_calls||[]).forEach(function(c){ var f=c.function||{}, args=f.arguments; if(typeof args==='string'){ try{ args=JSON.parse(args); }catch(_){ args={}; } }
+          calls.push({type:'tool_use', id:'local_'+Date.now().toString(36)+'_'+(n++), name:f.name, input:(args&&typeof args==='object')?args:{}}); if(body.onTool) body.onTool(f.name); }); }
+      function pump(){ return reader.read().then(function(x){ if(x.done){ buf.split('\n').forEach(line); return; } buf+=dec.decode(x.value,{stream:true}); var parts=buf.split('\n'); buf=parts.pop(); parts.forEach(line); return pump(); }); }
+      return pump().then(function(){ var content=[]; if(text) content.push({type:'text', text:text}); content=content.concat(calls); if(!content.length) content.push({type:'text', text:'(no reply)'});
+        return {role:'assistant', content:content, stop_reason:calls.length?'tool_use':'end_turn', model:L.model, via:'local'}; });
+    });
+  });
+}
+function callAny(body){
+  return localProbe(false).then(function(ok){
+    if(!ok) return callModel(body).then(function(m){ m.via='cloud'; return m; });
+    var streamed=false, od=body.onDelta; body.onDelta=function(t){ streamed=true; if(od) od(t); };
+    return callLocal(body).catch(function(e){
+      if(e&&e.name==='AbortError') throw e;
+      L.ok=false; L.at=Date.now(); L.err=localErr(e); paintStatus();
+      if(streamed) throw e;
+      if(!anyTok()) throw new Error('Your computer did not answer ('+L.err+'), and the cloud needs your sign-in or the positions token.');
+      if(body.mode!=='reflect') note('Your computer did not answer — using the cloud. '+L.err);
+      body.onDelta=od; return callModel(body).then(function(m){ m.via='cloud'; return m; });
+    });
+  });
+}
+
 /* =============================== THE CONVERSATION =============================== */
 var S={open:false, busy:false, msgs:[], ui:[], mem:memLoad(), reflected:true, lastAt:0, view:'chat', err:null, abort:null, tools:[]};
 function convLoad(){ try{ var c=JSON.parse(ls(CONV_KEY)||'null'); if(c&&Array.isArray(c.msgs)&&Array.isArray(c.ui)){ S.msgs=c.msgs; S.ui=c.ui; S.reflected=c.reflected!==false; S.lastAt=c.lastAt||0; } }catch(_){} }
@@ -19234,7 +19311,8 @@ function parseSse(t,onDelta,onTool){ var final=null, err=null; t.split('\n\n').f
 
 function ask(text,voice){
   text=String(text||'').trim(); if(!text||S.busy) return;
-  if(!anyTok()){ addUi('note','The assistant needs your sign-in or the positions token on this device — Settings › Connected accounts.'); return; }
+  if(!anyTok()&&!L.ok){ if(L.cfg.on&&!L.at){ localProbe(true).then(function(){ ask(text,voice); }); return; }
+    addUi('note',L.cfg.on?'Neither your computer nor the cloud is available: '+(L.err||'Ollama was not found')+'. The cloud needs your sign-in or the positions token (Settings › Connected accounts).':'The assistant needs your sign-in or the positions token on this device — Settings › Connected accounts.'); return; }
   S.busy=true; S.err=null; S.reflected=false; S.lastAt=Date.now();
   S.msgs.push({role:'user', content:userContent(text,voice)}); addUi('user',text);
   var a=addUi('assistant',''), acc='', rounds=0, used=[];
@@ -19242,9 +19320,9 @@ function ask(text,voice){
   paintStatus(); scrollLog();
   function round(){
     acc=''; a.tools=[]; paintMsg(a);
-    return callModel({messages:S.msgs, memory:memText(), mode:'chat', voice:!!voice, onDelta:function(t){ acc+=t; a.text=(a.text||'')+t; paintMsgText(a); speakFeed(a.text); }, onTool:function(n){ a.tools.push(n); paintMsg(a); }})
+    return callAny({messages:S.msgs, memory:memText(), mode:'chat', voice:!!voice, onDelta:function(t){ acc+=t; a.text=(a.text||'')+t; paintMsgText(a); speakFeed(a.text); }, onTool:function(n){ a.tools.push(n); paintMsg(a); }})
       .then(function(msg){
-        S.msgs.push({role:'assistant', content:msg.content});
+        S.msgs.push({role:'assistant', content:msg.content}); a.via=msg.via||a.via;
         if(msg.stop_reason==='refusal'){ a.text=(a.text||'')+(a.text?'\n\n':'')+'I can\'t help with that one.'; return done(); }
         var calls=(msg.content||[]).filter(function(b){ return b.type==='tool_use'; });
         if(msg.stop_reason==='tool_use'&&calls.length&&rounds<MAX_ROUNDS){
@@ -19272,7 +19350,7 @@ function reflect(){
   var statsP=posTok()?tradesLoad(false).then(function(j){ return j?tradeStats(j.trades.map(function(t){ return normTrade(t,null); }),{}):null; }):Promise.resolve(null);
   return statsP.then(function(st){
     var text='CURRENT MEMORY\n'+(memText()||'(empty)')+'\n\nTRANSCRIPT ('+new Date().toDateString()+')\n'+transcript+(st&&st.available?'\n\nTRADE STATISTICS (all time)\n'+JSON.stringify({closed:st.closed_trades, win_rate_pct:st.win_rate_pct, profit_factor:st.profit_factor, expectancy:st.expectancy_per_trade, avg_win:st.avg_win, avg_loss:st.avg_loss, longest_loss_streak:st.longest_loss_streak, hold_days:st.hold_days, best:st.by_symbol_best.slice(0,3), worst:st.by_symbol_worst.slice(0,3), last_30_days:st.last_30_days}):'');
-    return callModel({messages:[{role:'user', content:text}], mode:'reflect'}).then(function(msg){
+    return callAny({messages:[{role:'user', content:text}], mode:'reflect'}).then(function(msg){
       var call=(msg.content||[]).filter(function(b){ return b.type==='tool_use'&&b.name==='save_memory'; })[0]; if(!call||!call.input) return false;
       var m=S.mem, inp=call.input; if(typeof inp.profile==='string'&&inp.profile.trim()) m.profile=inp.profile.trim().slice(0,6000);
       (Array.isArray(inp.insights)?inp.insights:[]).slice(0,4).forEach(function(t){ if(typeof t==='string'&&t.trim()) m.insights.push({at:nowIso(), kind:'pattern', text:t.trim().slice(0,300)}); });
@@ -19390,6 +19468,8 @@ body.bwai-open #aibo-live-chip{opacity:0!important;pointer-events:none!important
 .bwai-mem .ins span{flex:1;} .bwai-mem .ins em{font-style:normal;font-size:10.5px;color:var(--gl-fl,var(--muted,#8A93A5));white-space:nowrap;}\
 .bwai-mem .ins button{appearance:none;border:0;background:transparent;color:var(--gl-fl,var(--muted,#8A93A5));cursor:pointer;font-size:14px;}\
 .bwai-mem .acts{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;}\
+.bwai-lin{flex:1;min-width:120px;box-sizing:border-box;height:32px;padding:0 10px;border-radius:9px;border:1px solid rgba(var(--gl-ink-rgb,234,238,245),.14);background:rgba(var(--gl-ink-rgb,234,238,245),.06);color:inherit;font-family:inherit;font-size:13px;outline:0;}\
+.bwai-mem code{font:12px ui-monospace,Menlo,Consolas,monospace;background:rgba(var(--gl-ink-rgb,234,238,245),.08);border-radius:4px;padding:1px 4px;}\
 html[data-gl="light"] .bwai{box-shadow:0 -18px 60px rgba(0,0,0,.18);} html[data-gl="light"] .bwai-scrim{background:rgba(20,26,36,.25);}\
 html[data-gl="light"] .bwai-m.user .bwai-t{background:rgba(37,99,235,.10);border-color:rgba(37,99,235,.3);}\
 .bwai-btn-strip{} .appbar .bwai-abtn{appearance:none;height:30px;padding:0 10px;border-radius:9px;border:1px solid var(--hair);background:var(--gl-d12,#101b2b);color:var(--ink);font-family:inherit;font-weight:700;font-size:12px;line-height:1;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px;}\
@@ -19422,13 +19502,15 @@ function build(){
   root.addEventListener('click',function(e){ var b=e.target.closest('[data-act]'); if(!b) return; e.stopPropagation(); var k=b.getAttribute('data-act');
     if(k==='close') close(); else if(k==='new') newChat(); else if(k==='mem') toggleMem(); else if(k==='send'){ if(S.busy) stop(); else submit(); } else if(k==='mic') toggleMic(); else if(k==='conv') toggleConv(); else if(k==='speak') toggleSpeak();
     else if(k==='quick'){ var i=$in(); i.value=b.getAttribute('data-q')||''; submit(); } else if(k==='mem-save') memEditSave(); else if(k==='mem-forget'){ if(confirm('Forget everything the assistant has learned about you on this device?')){ memSave({v:1, profile:'', insights:[], convos:[], n:0}); paintMem(); } }
+    else if(k==='local-test') localTest();
     else if(k==='ins-del'){ var at=b.getAttribute('data-at'); S.mem.insights=S.mem.insights.filter(function(x){ return x.at!==at; }); memSave(S.mem); paintMem(); } });
+  root.addEventListener('change',function(e){ if(e.target.closest('[data-lon],[data-lurl],[data-lmodel]')) localCfgChange(); });
   var inp=$in(); inp.addEventListener('input',function(){ inp.style.height='auto'; inp.style.height=Math.min(140,inp.scrollHeight)+'px'; });
   inp.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey&&!(W.matchMedia&&W.matchMedia('(pointer:coarse)').matches)){ e.preventDefault(); submit(); } if(e.key==='Escape') close(); });
   paintLog(); paintStatus();
 }
 function submit(){ var i=$in(), t=i.value.trim(); if(!t) return; i.value=''; i.style.height='auto'; ask(t,false); }
-function open(){ build(); S.open=true; B.classList.add('bwai-open'); clearTimeout(reflT); paintLog(); paintStatus(); setTimeout(function(){ if(!(W.matchMedia&&W.matchMedia('(pointer:coarse)').matches)){ var i=$in(); if(i) i.focus(); } },80); }
+function open(){ build(); S.open=true; B.classList.add('bwai-open'); clearTimeout(reflT); localProbe(false); paintLog(); paintStatus(); setTimeout(function(){ if(!(W.matchMedia&&W.matchMedia('(pointer:coarse)').matches)){ var i=$in(); if(i) i.focus(); } },80); }
 function close(){ S.open=false; B.classList.remove('bwai-open'); if(V.on){ V.on=false; stopListen(); } speakCancel(); scheduleReflectSoon(); }
 function scheduleReflectSoon(){ clearTimeout(reflT); reflT=setTimeout(function(){ if(!S.busy&&!S.open) reflect(); },20*1000); }
 function toggle(){ if(S.open) close(); else open(); }
@@ -19442,7 +19524,7 @@ function msgHtml(u){
   var h='<div class="bwai-t" data-t>'+md(u.text||'')+'</div>';
   if(u.tools&&u.tools.length&&!u.done) h+='<div class="bwai-act"><i></i>'+esc(TOOL_LABEL[u.tools[u.tools.length-1]]||u.tools[u.tools.length-1])+'…</div>';
   else if(!u.done&&!u.text) h+='<div class="bwai-act"><i></i>Thinking…</div>';
-  if(u.done&&u.used&&u.used.length) h+='<div class="bwai-used">used: '+esc(u.used.map(function(n){ return n.replace(/^get_/,'').replace(/_/g,' '); }).join(' · '))+'</div>';
+  if(u.done&&(u.via||(u.used&&u.used.length))) h+='<div class="bwai-used">'+(u.via==='local'?'on your computer':u.via==='cloud'?'cloud':'')+((u.used&&u.used.length)?(u.via?' · ':'')+'used: '+esc(u.used.map(function(n){ return n.replace(/^get_/,'').replace(/_/g,' '); }).join(' · ')):'')+'</div>';
   return h;
 }
 function paintMsg(u){ var m=root&&D.getElementById(u.id); if(m){ m.className='bwai-m '+u.kind+(u.err?' err':''); m.innerHTML=msgHtml(u); scrollLog(); } }
@@ -19454,6 +19536,7 @@ function paintLive(t){ var l=$('[data-live]'); if(!l) return; if(t==null){ l.hid
 function paintStatus(){
   if(!root) return; var st=$('[data-st]'), m=S.mem, parts=[];
   if(V.listening) parts.push('listening'); else if(V.speaking) parts.push('speaking'); else if(S.busy) parts.push('working');
+  parts.push(L.cfg.on&&L.ok?'on your computer':(L.cfg.on&&L.ok===false?'cloud · computer not found':'cloud'));
   parts.push(m.profile?('knows you · '+(m.insights||[]).length+' notes'):'getting to know you');
   st.textContent=parts.join(' · ');
   var mic=$('[data-act="mic"]'); if(mic){ mic.classList.toggle('live',V.listening); mic.innerHTML=SVG_MIC; }
@@ -19465,11 +19548,23 @@ function toggleMem(){ S.view=S.view==='mem'?'chat':'mem'; var mem=$('[data-mem]'
 function paintMem(){
   var m=S.mem, box=$('[data-mem]'); if(!box) return;
   box.innerHTML='<div style="font-size:12px;color:var(--gl-fl,#8A93A5)">What the assistant has learned about you. It rewrites this after conversations and adds notes as it goes. Edit anything; it is yours.'+(acctTok()?' Synced to your account.':' Kept on this device.')+'</div>'
-    +'<h4>Profile</h4><textarea data-memtxt placeholder="Nothing yet — talk to it about your trading and it will start building this.">'+esc(m.profile||'')+'</textarea>'
+    +localSetupHtml()+'<h4>Profile</h4><textarea data-memtxt placeholder="Nothing yet — talk to it about your trading and it will start building this.">'+esc(m.profile||'')+'</textarea>'
     +'<div class="acts"><button type="button" class="bwai-hb" data-act="mem-save">Save profile</button><button type="button" class="bwai-hb" data-act="mem-forget">Forget everything</button></div>'
     +'<h4>Notes ('+(m.insights||[]).length+')</h4>'+((m.insights||[]).length?m.insights.slice().reverse().map(function(i){ return '<div class="ins"><span>'+esc(i.text)+'</span><em>'+esc(i.kind)+' · '+esc(String(i.at||'').slice(0,10))+'</em><button type="button" data-act="ins-del" data-at="'+esc(i.at)+'" aria-label="Delete">&#215;</button></div>'; }).join(''):'<div style="color:var(--gl-fl,#8A93A5)">none yet</div>')
     +'<h4>Recent conversations</h4>'+((m.convos||[]).length?m.convos.slice().reverse().map(function(c){ return '<div class="ins"><span>'+esc(c.summary)+'</span><em>'+esc(String(c.at||'').slice(0,10))+'</em></div>'; }).join(''):'<div style="color:var(--gl-fl,#8A93A5)">none yet</div>');
 }
+function localSetupHtml(){
+  var c=L.cfg, st=!c.on?'off — the cloud answers':(L.ok?'ready: '+esc(L.model)+' on this computer':(L.ok===false?'not reachable — '+esc(L.err||''):'not checked yet'));
+  var opts=(L.models.length?L.models:(c.model?[c.model]:[])).map(function(n){ return '<option value="'+esc(n)+'"'+(n===(L.model||c.model)?' selected':'')+'>'+esc(n)+'</option>'; }).join('');
+  return '<h4>Your computer first</h4>'
+    +'<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" data-lon'+(c.on?' checked':'')+'> Try a model on this computer (Ollama) before the Anthropic API</label>'
+    +'<div class="acts" style="margin:8px 0"><input class="bwai-lin" data-lurl value="'+esc(c.url)+'" placeholder="http://localhost:11434" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Ollama address">'
+    +'<select class="bwai-lin" data-lmodel aria-label="Model"><option value="">auto (best installed)</option>'+opts+'</select><button type="button" class="bwai-hb" data-act="local-test">Test</button></div>'
+    +'<div data-lstat style="font-size:12px;color:var(--gl-ink,#eaeef5)">'+st+'</div>'
+    +'<div style="font-size:11.5px;color:var(--gl-fl,#8A93A5);margin-top:6px;line-height:1.5">On the Mac: install Ollama, pull a model that can use tools (<code>ollama pull llama3.1</code> or <code>qwen2.5</code>), and let this site talk to it: <code>OLLAMA_ORIGINS="'+esc(location.origin)+'" ollama serve</code> (or <code>launchctl setenv OLLAMA_ORIGINS "'+esc(location.origin)+'"</code> and restart the Ollama app). Chrome reaches it from this page; Safari does not. A phone uses the cloud unless it can reach the computer.</div>';
+}
+function localTest(){ var st=$('[data-lstat]'); if(st) st.textContent='checking…'; localProbe(true).then(function(){ paintMem(); }); }
+function localCfgChange(){ var on=$('[data-lon]'), u=$('[data-lurl]'), m=$('[data-lmodel]'); if(on) L.cfg.on=!!on.checked; if(u) L.cfg.url=String(u.value||'http://localhost:11434').trim().replace(/\/+$/,'')||'http://localhost:11434'; if(m) L.cfg.model=m.value||''; localSave(); paintStatus(); }
 function memEditSave(){ var t=$('[data-memtxt]'); if(!t) return; S.mem.profile=t.value.trim().slice(0,6000); memSave(S.mem); note('Profile saved.'); }
 
 /* a small markdown: paragraphs, bullets, numbered lists, bold, code, tables as monospace */
@@ -19505,7 +19600,7 @@ try{ W.addEventListener('aibolive',function(){ S.liveAt=new Date().toLocaleTimeS
 D.addEventListener('visibilitychange',function(){ if(D.hidden&&V.on){ V.on=false; stopListen(); speakCancel(); } });
 
 W.AIBO_AI={open:open, close:close, toggle:toggle, ask:function(t){ open(); ask(t,false); }, memory:function(){ return S.mem; }, reflect:reflect, state:function(){ return {open:S.open, busy:S.busy, turns:S.ui.length, voice:{on:V.on, listening:V.listening, speaking:V.speaking, speak:V.speak}}; },
-  _t:{positions:positions, tradeStats:tradeStats, normTrade:normTrade, readsOf:readsOf, seriesOf:seriesOf, evalCond:evalCond, metricKey:metricKey, runScreen:runScreen, rowsToBars:rowsToBars, normTf:normTf, md:md, plain:plain, snapshot:snapshot, TOOLS:TOOLS, memText:memText}};
+  _t:{toOllama:toOllama, local:L, localProbe:localProbe, positions:positions, tradeStats:tradeStats, normTrade:normTrade, readsOf:readsOf, seriesOf:seriesOf, evalCond:evalCond, metricKey:metricKey, runScreen:runScreen, rowsToBars:rowsToBars, normTf:normTf, md:md, plain:plain, snapshot:snapshot, TOOLS:TOOLS, memText:memText}};
 })();
 
 </script>

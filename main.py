@@ -21,6 +21,10 @@ and lets the page run each tool call and continue the turn.
     POST /ai/chat      {messages, memory, snapshot, mode:'chat'|'reflect', voice}
                        -> text/event-stream: delta {text} · final {message} · error {message}
     GET  /ai/health    {ok, configured, model, gated}
+    GET  /ai/spec      {system, reflect, tools, reflect_tools} — for the page's "your computer first" path
+
+"Your computer first": the page tries a model served by Ollama on the person's own machine before it
+calls this endpoint at all (BWAI in index.html); the cloud answers only when the computer cannot.
 
 Access is GATED on the app's own credentials: the request carries the person's positions
 token or account session as a Bearer, and this server checks it against the backend once
@@ -309,6 +313,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.split("?")[0] == "/ai/health":
             return self._json(200, {"ok": True, "configured": ai_configured(), "model": AI_MODEL, "gated": not AI_OPEN})
+        if self.path.split("?")[0] == "/ai/spec":
+            # the prompt and the tool definitions, for the page's "your computer first" path (a model on the person's own machine
+            # runs the same instructions and the same tools; nothing here is secret)
+            return self._json(200, {"system": SYSTEM_CHAT, "reflect": SYSTEM_REFLECT, "tools": TOOLS_CHAT, "reflect_tools": TOOLS_REFLECT})
         return super().do_GET()
 
     def do_POST(self):
