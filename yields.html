@@ -148,7 +148,7 @@ function niceDate(iso){ var p=iso.split('-'); return p[1]+'/'+p[2]+'/'+p[0].slic
 /* 10-05: the curves come from the backend now (v4.14 jobs/yields.py — fetched from the Treasury four times a day). The file beside this
    page is only the fallback when the backend cannot be reached; whichever answers, the page says how old its newest session is. */
 var API=(function(){ try{ var u=(window.parent&&window.parent.AIBO_LIVE_URL)||''; if(u) return String(u).replace(/\/universe\.json.*$/,''); }catch(_){}
-  return 'https://asset-grading-production.up.railway.app'; })();
+  return 'https://api.bullwhistle.com'; })();
 function getJSON(remote,local){
   var ctl=('AbortController' in window)?new AbortController():null, t=setTimeout(function(){ if(ctl) ctl.abort(); },9000);
   return fetch(API+remote,ctl?{signal:ctl.signal}:{}).then(function(r){ clearTimeout(t); if(!r.ok) throw 0; return r.json(); })
