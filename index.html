@@ -10886,6 +10886,7 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
     html[data-gl] body.gl-tape #mktView .mk-deck.mk-searching{margin-bottom:6px;}    /* the search row still opens under the strip */
   }
   @media (max-width:379px){ html[data-gl] body.gl-tape #mStrip .m-hud{display:none;} }   /* the HUD keeps its slot only from 380px */
+  @media (max-width:379px){ html[data-gl] body.gl-chrome #mStrip .m-word{display:none;} }   /* 10-20: and on a 360 phone upright — with the Tape's 🔍 + Filters and five icons (the sparkle joined them) the wordmark overlapped the Filters button; measured: 390 clears by 4px, 360 does not */
 
   /* ---- §17 the Universe seg at the top of each Atlas view (+ the ? on the wheel / scorecard) ---- */
   html[data-gl] body.gl-chrome .gl-uni{display:flex;align-items:center;justify-content:center;position:relative;padding:8px 48px 0;}
@@ -11047,7 +11048,9 @@ html[data-gl] body.gl-chrome #mktView .twrap{max-height:calc(100dvh - var(--gl-t
   html[data-gl][data-land="top"] body.gl-chrome #mStrip .gl-title{visibility:hidden;}           /* the doors own the strip's middle; visibility (not display) keeps its flex:1 so the HUD stays at the right */
   /* §18 the Tape's controls share the strip with the doors sideways (round 9: SIX doors, 286px wide centred; the stats line is gone from the
      strip altogether, so only 🔍 + Filters sit left of the doors); below 700px the HUD goes too (the owner: "extra extra cautious of the top and bottom bars") */
-  @media (max-width:699px){ html[data-gl] body.gl-chrome #mStrip .m-hud{display:none;} }
+  @media (max-width:699px){ html[data-gl] body.gl-chrome #mStrip .m-hud{display:none;}
+    html[data-gl][data-land="top"] body.gl-chrome #mStrip .m-word{display:none;} }
+   /* 10-20: the "Bull Whistle" wordmark goes too on a narrow sideways phone — it pushed 🔍 + Filters into the doors at 667px (the bull stays) */
   /* §20/§23 STANDING RULE (round 6): sideways in top mode the doors LIVE in the strip, so nothing may tuck the strip away. Two things
      did: the stock scroll handler toggles #mStrip.m-hide on every body scroll (the Flow chart) and techlab.js adds it 1.5s after the
      last touch on the Technicals page — either way the doors went off the top edge with it (the owner: "I can't click on the Atlas in that
@@ -18782,7 +18785,7 @@ html[data-gl="light"] .glr-tag{background:#f3f4f7;border-color:#e4e7ec;color:#1c
 
 </script>
 <!-- BWAI:start -->
-<script>
+<script id="gl48Ai">
 /* ==================================================================================================
    10-20 BWAI — THE DESK ASSISTANT (the owner: "an interactive AI that has all the data of the watchlist, the
    portfolio and the trades … learn from it over time … ask what assets are doing certain things above certain
@@ -19592,7 +19595,9 @@ function md(src){
 function mountButtons(){
   var icons=D.getElementById('glIcons');
   if(icons&&!icons.querySelector('[data-bwai]')){ var b=el('button','gl-ibtn',SVG_SPARK); b.type='button'; b.setAttribute('data-bwai','1'); b.setAttribute('aria-label','Ask Bull Whistle'); b.title='Ask'; var you=icons.querySelector('.gl-you'); icons.insertBefore(b,you||null); b.addEventListener('click',function(e){ e.stopPropagation(); toggle(); }); }
-  var bar=D.querySelector('.appbar');
+  /* the plain app bar (desktop) only while the Glass theme is on: ?gl=off is exact Stage 43 — the regression oracle — and nothing of
+     this layer may mount there (shim.js: "truly off: no chrome mounted"; the invariant suite caught the button, 10-20) */
+  var bar=H.hasAttribute('data-gl')?D.querySelector('.appbar'):null;
   if(bar&&!bar.querySelector('.bwai-abtn')){ var a=el('button','bwai-abtn',SVG_SPARK+'Ask'); a.type='button'; a.title='Ask Bull Whistle'; var pop=D.getElementById('aPop'); bar.insertBefore(a,pop?pop.nextSibling:null); a.addEventListener('click',function(e){ e.stopPropagation(); toggle(); }); }
 }
 mountButtons(); var mt=0, mtries=0; mt=setInterval(function(){ mountButtons(); if(++mtries>20||D.querySelector('[data-bwai]')) clearInterval(mt); },500);
@@ -19602,6 +19607,7 @@ D.addEventListener('visibilitychange',function(){ if(D.hidden&&V.on){ V.on=false
 W.AIBO_AI={open:open, close:close, toggle:toggle, ask:function(t){ open(); ask(t,false); }, memory:function(){ return S.mem; }, reflect:reflect, state:function(){ return {open:S.open, busy:S.busy, turns:S.ui.length, voice:{on:V.on, listening:V.listening, speaking:V.speaking, speak:V.speak}}; },
   _t:{toOllama:toOllama, local:L, localProbe:localProbe, positions:positions, tradeStats:tradeStats, normTrade:normTrade, readsOf:readsOf, seriesOf:seriesOf, evalCond:evalCond, metricKey:metricKey, runScreen:runScreen, rowsToBars:rowsToBars, normTf:normTf, md:md, plain:plain, snapshot:snapshot, TOOLS:TOOLS, memText:memText}};
 })();
+
 
 </script>
 <!-- BWAI:end -->
