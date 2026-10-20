@@ -13999,10 +13999,13 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     /* 10-19 (the owner: "I'm not a huge fan of the RSI taking up more vertical real estate… decide where it shows so that just the relevant area is shown"):
        the pane is the standard row height again and WINDOWS ITSELF — the y-range is where the RSI and its average actually travelled in view
        (±3), snapped outward to the 10-levels, at least 30 wide, inside 0–100; the level lines and labels are the ones that fall in the window. */
-    var mv=mm.filter(function(v){ return v!=null; }), all=vals.concat(mv), dlo=Math.min.apply(null,all)-3, dhi=Math.max.apply(null,all)+3;
-    var lo=Math.max(0,Math.floor(dlo/10)*10), hi=Math.min(100,Math.ceil(dhi/10)*10);
-    while(hi-lo<30){ if(lo>0&&(hi>=100||(dlo-lo)<=(hi-dhi))) lo-=10; else if(hi<100) hi+=10; else lo-=10; } lo=Math.max(0,lo); hi=Math.min(100,hi);
-    var gut=w>=140?19:w>=90?15:0, levels=[], lv; for(lv=lo;lv<=hi;lv+=10) levels.push(lv);
+    /* 10-20 (the owner: "keep at least the 40 and the 60 within frame … putting the RSI in the middle means the top is like 100 and that's
+       unrealistic … I still want to see where the RSI is at all times, but it doesn't have to be in the middle"): the window is the
+       40–60 band plus whatever the RSI and its average actually travelled in view (±2, snapped outward to the 5s), nothing more —
+       no centring, no minimum beyond the band itself, and the top only reaches 100 when the RSI itself went there. */
+    var mv=mm.filter(function(v){ return v!=null; }), all=vals.concat(mv), dlo=Math.min.apply(null,all)-2, dhi=Math.max.apply(null,all)+2;
+    var lo=Math.max(0,Math.min(40,Math.floor(dlo/5)*5)), hi=Math.min(100,Math.max(60,Math.ceil(dhi/5)*5));
+    var gut=w>=140?19:w>=90?15:0, levels=[], lv; for(lv=Math.ceil(lo/10)*10;lv<=hi;lv+=10) levels.push(lv);
     var perLv=(h-4)/Math.max(1,(hi-lo)/10), labels=h<40?[]:perLv>=11?levels:levels.filter(function(v){ return v%20===0; });
     function X(i){ return p+i*(w-2*p-gut)/(n-1); } function Y(v){ return (h-p)-((v-lo)/(hi-lo))*(h-2*p); }
     var xr=w-p-gut, s='';
