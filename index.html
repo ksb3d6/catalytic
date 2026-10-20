@@ -16697,8 +16697,9 @@ window.GLW_DATA={"baked":"2026-10-08","worlds":{"index":["Whole market","#7C8AA5
 #mkUni .gll-item{display:flex;align-items:center;gap:8px;}
 #mkUni .gll-item i{font-style:normal;font-size:10px;color:var(--muted);margin-left:auto;}
 #mkUni .gll-new{color:var(--muted);border-top:1px dashed var(--hair);}
+#mkUni .gll-imp{color:var(--muted);}   /* 10-20: Import a list… (its own class — the suite counts .gll-new) */
 #mktView .mk-slot #mkUni .gll-sep{flex:1 0 100%;border-top:0;margin:2px 0 0;padding:4px 0 0;}
-#mktView .mk-slot #mkUni .gll-new{border-style:dashed;}
+#mktView .mk-slot #mkUni .gll-new,#mktView .mk-slot #mkUni .gll-imp{border-style:dashed;}
 
 /* the list bar, between the Tape's controls and the table */
 #gllBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 10px 8px;}
@@ -16756,6 +16757,79 @@ html[data-gl="light"] #gllRes .gll-r:hover{background:rgba(0,0,0,.05);}
 html[data-gl="light"] #gllToast{background:#1f2937;color:#fff;border-color:transparent;}
 html[data-gl="light"] #gllBar .gll-b.arm{background:#d0323f;color:#fff;}
 html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty) .mk-sym::before{background:#d0323f;color:#fff;}
+
+/* ---------- IMPORT (10-20): the "Import a list…" entry in the List menu + the #gllImp sheet; EXPORT rides the list bar ---------- */
+#gllImpScrim{display:none;position:fixed;inset:0;background:rgba(4,8,14,.55);z-index:9300;}   /* above the LIVE chip (9200), under the toast (9500) */
+#gllImp{display:none;position:fixed;left:0;right:0;bottom:0;z-index:9301;flex-direction:column;box-sizing:border-box;max-height:calc(100dvh - 40px);
+  background:var(--panel,#121A26);border-top:1px solid rgba(var(--gl-wh-rgb,255,255,255),.14);border-top-left-radius:22px;border-top-right-radius:22px;box-shadow:0 -18px 50px rgba(0,0,0,.5);
+  padding:10px 14px calc(var(--gl-dock-h,46px) + var(--gl-safe-b,0px) + 12px);color:var(--ink);font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+body.gll-imp-open #gllImpScrim,body.gll-imp-open #gllImp{display:flex;}
+#gllImp .gll-ihead{display:flex;align-items:center;gap:8px;padding:4px 2px 10px;flex:none;}
+#gllImp .gll-ihead b{font-size:15px;color:var(--ink);white-space:nowrap;}
+#gllImp .gll-ihead span{font-size:10.5px;color:var(--muted);min-width:0;}
+#gllImp .gll-iclose{margin-left:auto;flex:none;background:none;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.16);border-radius:7px;color:var(--muted);font-size:14px;width:28px;height:28px;cursor:pointer;}
+#gllImp .gll-ibody{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:10px;}
+#gllImp .gll-itext{width:100%;min-height:84px;max-height:38vh;resize:vertical;box-sizing:border-box;background:rgba(var(--gl-wh-rgb,255,255,255),.04);border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.14);border-radius:12px;color:var(--ink);padding:10px 12px;
+  font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;flex:none;}
+#gllImp .gll-itext::placeholder{color:var(--muted2);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+#gllImp .gll-idrop{flex:none;border:1px dashed rgba(var(--gl-wh-rgb,255,255,255),.22);border-radius:12px;padding:9px 12px;display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;}
+#gllImp .gll-idrop.over{border-color:var(--gl-acc,#1FC6DC);background:rgba(31,198,220,.06);}
+#gllImp .gll-idrop b{color:var(--ink);font-weight:600;}
+#gllImp .gll-idropt{flex:1 1 auto;min-width:0;}
+#gllImp .gll-ipick{margin-left:auto;flex:none;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.16);border-radius:999px;padding:6px 11px;color:var(--ink);font-weight:600;font-size:11.5px;white-space:nowrap;cursor:pointer;}
+#gllImp .gll-iopts{flex:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+#gllImp .gll-iopts label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);flex:none;}
+#gllImp .gll-iname{flex:1 1 150px;min-width:0;box-sizing:border-box;background:rgba(var(--gl-wh-rgb,255,255,255),.04);border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.14);border-radius:9px;color:var(--ink);padding:8px 10px;font:600 14px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+#gllImp .gll-seg{display:inline-flex;border:1px solid var(--hair);border-radius:9px;padding:2px;gap:2px;flex:none;}
+#gllImp .gll-seg button{appearance:none;border:0;background:transparent;color:var(--muted);font:600 11.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:6px 9px;border-radius:7px;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;}
+#gllImp .gll-seg button.on{background:var(--sel-bg);color:var(--sel-ink);}
+#gllImp .gll-ipreview{flex:none;}
+#gllImp .gll-icounts{font-size:12px;color:var(--muted);padding:2px 2px 6px;border-bottom:1px solid var(--hair);}
+#gllImp .gll-icounts b{color:var(--ink);font-weight:700;}
+#gllImp .gll-icounts .w{color:#f5b84a;}
+#gllImp .gll-icounts .d{color:var(--sel-ink);}
+#gllImp .gll-isec{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 2px 2px;}
+#gllImp .gll-isec i{font-style:normal;margin-left:6px;color:var(--muted2);}
+#gllImp .gll-ir{display:grid;grid-template-columns:68px 1fr auto 26px;align-items:center;gap:8px;padding:5px 2px;border-radius:9px;}
+#gllImp .gll-ir b{font-weight:700;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#gllImp .gll-ir .gll-rn{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px;}
+#gllImp .gll-ir.out b{color:var(--muted2);text-decoration:line-through;}
+#gllImp .gll-ir.out{grid-template-columns:68px 1fr auto;}
+#gllImp .gll-ir.unk b{color:#f5b84a;}
+#gllImp .gll-ir.dropped b,#gllImp .gll-ir.dropped .gll-rn,#gllImp .gll-ir.dropped .gll-tag{opacity:.4;}
+#gllImp .gll-ir.dropped b{text-decoration:line-through;}
+#gllImp .gll-ix{appearance:none;width:24px;height:24px;border-radius:7px;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.16);background:transparent;color:var(--muted);font-size:14px;line-height:1;cursor:pointer;padding:0;}
+#gllImp .gll-ir.ask{grid-template-columns:68px 1fr;background:rgba(245,184,74,.06);padding:7px 6px;}
+#gllImp .gll-ask{grid-column:1 / -1;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);}
+#gllImp .gll-ask button{appearance:none;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.16);background:transparent;border-radius:999px;padding:5px 10px;color:var(--ink);font:600 11.5px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;}
+#gllImp .gll-ask button.on{background:var(--sel-bg);color:var(--sel-ink);border-color:transparent;}
+#gllImp .gll-tag{font:700 9px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.08em;padding:3px 5px;border-radius:5px;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.16);color:var(--muted);white-space:nowrap;}
+#gllImp .gll-tag.gll-GRADED{color:#9fe8f4;border-color:rgba(159,232,244,.4);}
+#gllImp .gll-tag.gll-US500,#gllImp .gll-tag.gll-ETF{color:#8fd3ff;border-color:rgba(143,211,255,.4);}
+#gllImp .gll-tag.gll-COINS500,#gllImp .gll-tag.gll-COIN{color:#c9a8ff;border-color:rgba(201,168,255,.4);}
+#gllImp .gll-tag.gll-OTC{color:#f5b84a;border-color:rgba(245,184,74,.45);}
+#gllImp .gll-tag.gll-NOTFOUND{color:#f5b84a;border-color:rgba(245,184,74,.45);}
+#gllImp .gll-tag.gll-LEFTOUT{color:var(--muted2);border-style:dashed;}
+#gllImp .gll-tag:empty{display:none;}
+#gllImp .gll-ifoot{flex:none;display:flex;align-items:center;gap:10px;padding-top:10px;margin-top:8px;border-top:1px solid var(--hair);}
+#gllImp .gll-inote{font-size:11px;color:var(--muted);flex:1 1 auto;min-width:0;}
+#gllImp .gll-igo{appearance:none;flex:none;background:var(--gl-acc,#1FC6DC);color:var(--gl-on-acc,#04121a);border:0;border-radius:999px;padding:10px 16px;font:800 13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;white-space:nowrap;cursor:pointer;}
+#gllImp .gll-igo:disabled{opacity:.45;cursor:default;}
+@media (max-width:480px){ #gllImp .gll-ihead span{display:none;} #gllImp .gll-ir{grid-template-columns:62px 1fr auto 26px;} }
+@media (max-height:600px){ #gllImp{max-height:92vh;} }
+/* desktop (html[data-gldesk], shim.js): a centred panel under the strip; the preview wants more than the 380 of the Learn / Search sheets */
+html[data-gldesk] #gllImp{top:46px;bottom:auto;left:50%;right:auto;transform:translateX(-50%);width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 70px);
+  border-radius:14px;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.12);box-shadow:0 18px 50px rgba(0,0,0,.55);padding-bottom:12px;}
+html[data-gldesk] #gllImpScrim{background:rgba(4,8,14,.35);}
+/* light mode */
+html[data-gl="light"] #gllImp{box-shadow:0 18px 50px rgba(0,0,0,.18);}
+html[data-gl="light"] #gllImp .gll-iclose,html[data-gl="light"] #gllImp .gll-itext,html[data-gl="light"] #gllImp .gll-idrop,html[data-gl="light"] #gllImp .gll-ipick,html[data-gl="light"] #gllImp .gll-iname,
+html[data-gl="light"] #gllImp .gll-ix,html[data-gl="light"] #gllImp .gll-ask button,html[data-gl="light"] #gllImp .gll-tag{border-color:rgba(0,0,0,.16);}
+html[data-gl="light"] #gllImp .gll-itext,html[data-gl="light"] #gllImp .gll-iname{background:rgba(0,0,0,.03);}
+html[data-gl="light"] #gllImp .gll-tag.gll-GRADED{color:#0b6b7a;border-color:rgba(11,107,122,.4);}
+html[data-gl="light"] #gllImp .gll-tag.gll-US500,html[data-gl="light"] #gllImp .gll-tag.gll-ETF{color:#0b5d8a;border-color:rgba(11,93,138,.4);}
+html[data-gl="light"] #gllImp .gll-tag.gll-COINS500,html[data-gl="light"] #gllImp .gll-tag.gll-COIN{color:#5b3fa6;border-color:rgba(91,63,166,.4);}
+html[data-gl="light"] #gllImp .gll-tag.gll-OTC,html[data-gl="light"] #gllImp .gll-tag.gll-NOTFOUND,html[data-gl="light"] #gllImp .gll-icounts .w,html[data-gl="light"] #gllImp .gll-ir.unk b{color:#8a5a00;border-color:rgba(138,90,0,.45);}
 
 </style>
 <script id="gl48Lists">
@@ -16870,18 +16944,20 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
     }).catch(function(){ S.busy=false; S.err='unreachable'; });
   }
   /* change(fn): apply fn(listsCopy) -> false to cancel; PUT; on a 409 re-apply once on the newer document */
-  function change(fn,done,retried){
+  /* 10-20: change(fn,done,retried,fail) — with fail, an error goes to fail(r) instead of the toast (the import saver reads a 422 itself) */
+  function change(fn,done,retried,fail){
     if(!S.doc){ toast('Lists are not loaded yet'); return; }
     var copy=JSON.parse(JSON.stringify(lists()));
     if(fn(copy)===false) return;
     call('PUT','/lists.json',{baseRev:S.doc.rev, lists:copy}).then(function(r){
       if(r.status===200&&docOk(r.body)){ var eqBefore=Object.keys(meta()).length; take(r.body); if(done) done(r.body);
         var a=api(); if(a&&S.active){ if(Object.keys(meta()).length!==eqBefore) a.reapply(); } return; }
-      if(r.status===409&&r.body&&docOk(r.body.current)&&!retried){ S.doc=r.body.current; change(fn,done,true); return; }
+      if(r.status===409&&r.body&&docOk(r.body.current)&&!retried){ S.doc=r.body.current; change(fn,done,true,fail); return; }
       if(acctGone(r)){ dropAcct(r); return; }
+      if(fail){ fail(r); if(r.status===409) load(); return; }
       toast(r.status===422?String((r.body&&r.body.error)||'Not found'):(r.status===401?(acct()?'Your sign-in has expired':'List key not accepted'):'Could not save — try again'));
       if(r.status===409) load();
-    }).catch(function(){ toast('Could not save — the server is unreachable'); });
+    }).catch(function(){ if(fail) fail({status:0}); else toast('Could not save — the server is unreachable'); });
   }
   function newId(){ return 'l'+Date.now().toString(36)+Math.floor(Math.random()*1296).toString(36); }
   function askName(title,cur){ var v=null; try{ v=window.prompt(title,cur||''); }catch(_){} v=(v==null?'':String(v)).replace(/\s+/g,' ').trim().slice(0,40); return v||null; }
@@ -16923,7 +16999,7 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
   /* ---------- the universe menu entries ---------- */
   function paintMenu(){
     var m=document.getElementById('mkUni'); if(!m||!S.mounted) return;
-    [].slice.call(m.querySelectorAll('.gll-sep,.gll-item,.gll-new')).forEach(function(n){ n.parentNode.removeChild(n); });
+    [].slice.call(m.querySelectorAll('.gll-sep,.gll-item,.gll-new,.gll-imp')).forEach(function(n){ n.parentNode.removeChild(n); });
     if(!S.doc) return;
     m.appendChild(el('div','gll-sep',acct()?'My lists':'Shared lists'));
     lists().forEach(function(l){
@@ -16934,6 +17010,9 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
     var nb=el('button','gll-new','+ New list'); nb.type='button';
     nb.addEventListener('click',function(e){ e.stopPropagation(); var dd=document.getElementById('mkUniDD'); if(dd) dd.classList.remove('open'); createList(); });
     m.appendChild(nb);
+    var ib=el('button','gll-imp','Import a list…'); ib.type='button'; ib.title='Paste symbols, a CSV, or a TradingView export';
+    ib.addEventListener('click',function(e){ e.stopPropagation(); var dd=document.getElementById('mkUniDD'); if(dd) dd.classList.remove('open'); impOpen(); });
+    m.appendChild(ib);
   }
 
   /* ---------- the list bar ---------- */
@@ -16945,6 +17024,7 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
     if(k.eq&&k.cr) h+='<span class="gll-seg"><button type="button" data-f="mk" class="'+(S.fam==='mk'?'on':'')+'">Stocks '+k.eq+'</button><button type="button" data-f="mkc" class="'+(S.fam==='mkc'?'on':'')+'">Coins '+k.cr+'</button></span>';
     h+='<span class="gll-sp"></span>';
     if(k.eq+k.cr) h+='<button type="button" class="gll-b'+(S.edit?' on':'')+'" data-a="edit">'+(S.edit?'Done':'Remove names')+'</button>';
+    if(k.eq+k.cr) h+='<button type="button" class="gll-b" data-a="exp" title="A .txt in TradingView\'s format">Export</button>';
     h+='<button type="button" class="gll-b" data-a="ren">Rename</button><button type="button" class="gll-b'+(S.armed?' arm':'')+'" data-a="del">'+(S.armed?'Tap again to delete':'Delete list')+'</button>';
     bar.innerHTML=h; bar.hidden=false;
   }
@@ -16954,6 +17034,7 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
     if(b.dataset.f){ S.fam=b.dataset.f; paintBar(); show(true); return; }
     var a=b.dataset.a;
     if(a==='edit'){ S.edit=!S.edit; S.armed=false; paintBar(); var tw=document.querySelector('#mktView .twrap'); if(tw) tw.classList.toggle('gll-edit',S.edit); return; }
+    if(a==='exp'){ exportList(l); return; }
     if(a==='ren'){ var nm=askName('Rename the list',l.name); if(!nm||nm===l.name) return; var id=l.id;
       change(function(L){ var x=L.filter(function(q){ return q.id===id; })[0]; if(!x) return false; x.name=nm; }); return; }
     if(a==='del'){
@@ -16986,9 +17067,9 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
   function idxKeep(j){ try{ if(window.caches) caches.open(IDX_CACHE).then(function(c){ return c.put(IDX_URL,new Response(JSON.stringify(j),{headers:{'Content-Type':'application/json','X-Aibo-Day':idxDay()}})); }).catch(function(){}); }catch(_){} }
   function idxTake(j){
     S.idxBusy=false;
-    var eq=(j.eq||[]).map(function(a){ return {k:'eq:'+a[0], sym:a[0], name:a[1], tag:a[3]?'ETF':a[2], U:String(a[1]).toUpperCase()}; });
+    var eq=(j.eq||[]).map(function(a){ return {k:'eq:'+a[0], sym:a[0], name:a[1], tag:a[3]?'ETF':a[2], ex:a[2], U:String(a[1]).toUpperCase()}; });
     var cr=(j.cr||[]).map(function(a){ return {k:'cr:'+a[0], sym:String(a[1]).toUpperCase(), name:a[2], tag:'COIN', U:String(a[2]).toUpperCase()}; });
-    S.idx={eq:eq, cr:cr}; S.idxErr=null; paintRes();
+    S.idx={eq:eq, cr:cr}; S.idxErr=null; paintRes(); if(IMP.open){ impParse(); impPaint(); }   /* 10-20: the Import preview waits on the index */
   }
   function loadIndex(){
     if(S.idx||S.idxBusy) return;
@@ -17086,6 +17167,319 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
     }).catch(function(){ S.look[q]={err:'Lookup failed — server unreachable'}; paintRes(); });
   }
 
+
+  /* ---------- IMPORT + EXPORT (10-20; the owner's friend, the first beta user: "is there a way to port over a TradingView watch list?") ----------
+     Two doors IN: "Import a list…" in the List menu opens a sheet (#gllImp) — paste anything (commas, lines, spaces, tabs, a CSV with
+     columns, $cashtags, EXCHANGE:SYMBOL prefixes, crypto pairs like BINANCE:BTCUSDT / COINBASE:ETH-USD / KRAKEN:SOLUSD) or drop the .txt
+     TradingView writes from its watchlist menu › "Export list" (NASDAQ:AAPL,NYSE:TSM,… with "###Section" markers; "Import list…" reads the
+     same thing back). The preview is honest: matched names with their universe (graded · US 500 · Coins 500 · the index's exchange), names
+     not in any universe (kept as plain tickers, flagged — the server looks them up on save), one symbol that is both a stock and a coin
+     (the person picks), duplicates folded, TradingView sections as one list per section or one list. One door OUT: "Export" on the list
+     bar writes the same format back (exchange-prefixed where known, coins as CRYPTO:BTCUSD) so the round trip works.
+     THE MATCHER IS PURE: parseWith(text, ctx) takes a hand-built universe (the suite checks it); parse(text) binds the live one — the
+     /symbols.json index, DATA + CRYPTO_NAMES (graded), the Market feed (US 500 / Coins 500). NO TradingView share-link sync and NO reading
+     of tradingview.com pages (their Terms of Use §3; the owner's decision 10-20) — a screenshot path may come later through the desk assistant.
+     Server limits honoured here (jobs/lists.py): 25 NEW stocks per save → chunked PUTs; 250 names per list; 24 lists; a 422
+     "not found: X, Y" drops those names, retries the chunk, and the sheet says who was left out. */
+  var STOCK_EX={NASDAQ:1,NYSE:1,AMEX:1,ARCA:1,NYSEARCA:1,NYSEAMERICAN:1,BATS:1,CBOE:1,OTC:1,OTCQB:1,OTCQX:1,PINK:1,TSX:1,TSXV:1,CSE:1,NEO:1,LSE:1,LSIN:1,XETR:1,FWB:1,
+    TRADEGATE:1,GETTEX:1,EURONEXT:1,MIL:1,BME:1,SIX:1,SWB:1,HKEX:1,TSE:1,TYO:1,SSE:1,SZSE:1,KRX:1,KOSDAQ:1,TWSE:1,ASX:1,NZX:1,NSE:1,BSE:1,JSE:1,TADAWUL:1,BMFBOVESPA:1,
+    BMV:1,BIST:1,MOEX:1,SGX:1,IDX:1,SET:1,PSE:1,OMXSTO:1,OMXHEX:1,OMXCOP:1,OSL:1,WSE:1,VIE:1,MUN:1,BER:1,HAM:1,DUS:1,STU:1,HAN:1,ASE:1};
+  var CRYPTO_EX={BINANCE:1,BINANCEUS:1,COINBASE:1,KRAKEN:1,BYBIT:1,OKX:1,OKEX:1,BITSTAMP:1,BITFINEX:1,KUCOIN:1,GEMINI:1,HUOBI:1,HTX:1,GATEIO:1,MEXC:1,BITGET:1,CRYPTO:1,
+    CRYPTOCAP:1,BITMEX:1,POLONIEX:1,UPBIT:1,BITHUMB:1,HITBTC:1,PHEMEX:1,DERIBIT:1,CRYPTOCOM:1,BITRUE:1,WHITEBIT:1,BINGX:1,BITPANDA:1,COINEX:1,LBANK:1,BITMART:1,PYTH:1,
+    UNISWAP:1,UNISWAP3ETH:1,PANCAKESWAP:1,RAYDIUM:1,ORCA:1,JUPITER:1,BITKUB:1,BITSO:1,INDODAX:1,WAZIRX:1,COINDCX:1,ZAIF:1,BITFLYER:1,BLOFIN:1,HYPERLIQUID:1,COINBASEINTL:1};
+  var NOT_OURS={TVC:1,FX:1,FX_IDC:1,OANDA:1,FOREXCOM:1,FXCM:1,SAXO:1,PEPPERSTONE:1,CAPITALCOM:1,ICMARKETS:1,CME:1,CME_MINI:1,CBOT:1,CBOT_MINI:1,NYMEX:1,COMEX:1,ICEUS:1,
+    ICEEUR:1,EUREX:1,SP:1,DJ:1,INDEX:1,ECONOMICS:1,FRED:1,QUANDL:1,SKILLING:1,EIGHTCAP:1,VANTAGE:1,BLACKBULL:1,ACTIVTRADES:1,EASYMARKETS:1,GLOBALPRIME:1,FUSIONMARKETS:1,
+    TRADENATION:1,SPREADEX:1,CURRENCYCOM:1,FXOPEN:1,MOEX_FUT:1,NASDAQ_INDEX:1};
+  var QUOTES=['USDT','USDC','BUSD','TUSD','FDUSD','USDE','USD','EUR','GBP','JPY','KRW','AUD','CAD','CHF','BRL','TRY','BTC','ETH','BNB'];
+  var HEAD_WORDS={SYMBOL:1,SYMBOLS:1,TICKER:1,TICKERS:1,NAME:1,DESCRIPTION:1,PRICE:1,LAST:1,CHANGE:1,'CHANGE %':1,'CHANGE%':1,'% CHANGE':1,CHG:1,VOLUME:1,VOL:1,
+    'MARKET CAP':1,MKTCAP:1,SECTOR:1,INDUSTRY:1,EXCHANGE:1,NOTES:1,NOTE:1,QTY:1,QUANTITY:1,SHARES:1,COST:1,VALUE:1,DATE:1,WEIGHT:1,'AVG COST':1,'COST BASIS':1};
+  var TOKEN_RE=/^[A-Z0-9][A-Z0-9.\-_\/!]{0,19}$/, NUM_RE=/^[\-+$]?\d[\d,]*(\.\d+)?%?$/;
+  function isWord(c){ return /[a-z]/.test(c)&&/[A-Z]/.test(c); }                      /* mixed case = prose (Apple, Inc), never a ticker */
+  function symShape(c){ var u=String(c).replace(/^\$/,'').toUpperCase().replace(/^[A-Z0-9_]+:/,''); return TOKEN_RE.test(u)&&!NUM_RE.test(u); }
+  function cellsOf(line){ return line.split(/[,;\t]/).map(function(c){ return c.trim().replace(/^"(.*)"$/,'$1').trim(); }).filter(Boolean); }
+  /* the text → sections of raw symbol tokens. A "###Name" cell (TradingView) or a "# Name" line opens a section; a CSV row (cells with
+     prose or numbers) gives up its symbol column only; a CSV header line is skipped; a line of words keeps only what reads as a symbol. */
+  function parseText(text){
+    var secs=[{name:'',toks:[]}], cur=secs[0], first=true;
+    String(text||'').replace(/^\uFEFF/,'').split(/\r\n|\r|\n/).forEach(function(line){
+      line=line.trim(); if(!line) return;
+      var segs=[{sec:cur, cells:[]}], plain=[];
+      cellsOf(line).forEach(function(c){
+        var h=/^#+\s*(.*)$/.exec(c);
+        if(h){ cur={name:h[1].trim().slice(0,40), toks:[]}; secs.push(cur); segs.push({sec:cur, cells:[]}); return; }
+        segs[segs.length-1].cells.push(c); plain.push(c);
+      });
+      if(!plain.length) return;
+      if(first){ first=false;
+        if(plain.length>=2&&plain.some(function(c){ return HEAD_WORDS[c.toUpperCase()]; })&&!plain.some(function(c){ return /^[A-Z0-9_]+:/i.test(c); })) return; }   /* a CSV header */
+      if(plain.length>=2&&plain.some(function(c){ return isWord(c)||NUM_RE.test(c); })){                 /* a CSV row: its symbol column only */
+        var pick=null, home=null;
+        plain.forEach(function(c){ if(!pick&&/^[A-Z0-9_]+:/i.test(c)&&symShape(c)) pick=c; });
+        plain.forEach(function(c){ if(!pick&&symShape(c)&&!isWord(c)) pick=c; });
+        if(pick){ segs.forEach(function(g){ if(!home&&g.cells.indexOf(pick)>=0) home=g.sec; }); (home||cur).toks.push(pick); }
+        return;
+      }
+      segs.forEach(function(g){ g.cells.forEach(function(c){
+        var toks=c.split(/\s+/);
+        if(toks.length>1&&toks.some(isWord)&&symShape(toks[0])&&!isWord(toks[0])) toks=[toks[0]];         /* "AAPL Apple Inc" = the symbol, then its name */
+        toks.forEach(function(t){ if(t&&symShape(t)&&!isWord(t)) g.sec.toks.push(t); });
+      }); });
+    });
+    return secs.filter(function(s,i){ return s.toks.length||(s.name&&i>0); });
+  }
+  function pairSplit(t){
+    var u=t.replace(/\.P$/,'').replace(/\.PERP$/,'').replace(/PERP$/,''), m=/^([A-Z0-9]{2,})([\-_\/])([A-Z0-9]+)$/.exec(u);
+    if(m) return QUOTES.indexOf(m[3])>=0?{base:m[1], quote:m[3], sep:true}:null;
+    for(var i=0;i<QUOTES.length;i++){ var q=QUOTES[i]; if(u.length>=q.length+2&&u.slice(-q.length)===q) return {base:u.slice(0,-q.length), quote:q, sep:false}; }
+    return null;
+  }
+  /* one raw token → {sym, ex, hint:''|'eq'|'cr'|'skip', quote} */
+  function normTok(raw){
+    var t=String(raw).trim().replace(/^\$/,'').toUpperCase(), ex=null, m=/^([A-Z0-9_]+):(.+)$/.exec(t), hint='', quote=null;
+    if(m){ ex=m[1]; t=m[2]; hint=CRYPTO_EX[ex]?'cr':(NOT_OURS[ex]?'skip':'eq'); }
+    if(hint!=='eq'&&hint!=='skip'){ var p=pairSplit(t); if(p&&(hint==='cr'||p.sep)){ t=p.base; quote=p.quote; hint='cr'; } }
+    return {raw:String(raw).trim(), sym:t, ex:ex, hint:hint, quote:quote};
+  }
+  function rankU(u){ return u==='graded'?3:(u==='us500'||u==='coins500')?2:(u==='index'?1:0); }
+  function uniTag(e){ return e.uni==='graded'?'GRADED':e.uni==='us500'?'US 500':e.uni==='coins500'?'COINS 500':(e.kind==='cr'?'COIN':(e.etf?'ETF':(e.exch||''))); }
+  function eqLook(ctx,s){ var c=[s,s.replace(/\./g,'-'),s.replace(/-/g,'.')]; for(var i=0;i<c.length;i++){ var r=ctx.eq(c[i]); if(r) return r; } return null; }
+  function setEq(e,r){ e.kind='eq'; e.sym=r.sym; e.item='eq:'+r.sym; e.name=r.name||''; e.uni=r.uni||'index'; e.exch=r.exch||''; e.etf=!!r.etf; e.tag=uniTag(e); e.keep=true; }
+  function setCr(e,r){ e.kind='cr'; e.sym=r.sym; e.item='cr:'+r.id; e.name=r.name||''; e.uni=r.uni||'index'; e.exch=''; e.tag=uniTag(e); e.keep=true; }
+  function applyPick(e,which){ e.pick=which; if(which==='cr') setCr(e,e.alt.cr); else setEq(e,e.alt.eq); e.kind='ask'; }
+  /* one normalised token → an entry {raw, sym, kind:'eq'|'cr'|'ask'|'none'|'skip', item, name, uni, tag, keep, why} */
+  function matchOne(n,ctx){
+    var e={raw:n.raw, sym:n.sym, ex:n.ex, kind:'none', item:null, name:'', uni:'none', tag:'', keep:false, why:''};
+    if(n.hint==='skip'){ e.kind='skip'; e.tag='LEFT OUT'; e.why='an index, futures or forex symbol — not something Bull Whistle tracks'; return e; }
+    var eq=n.hint==='cr'?null:eqLook(ctx,n.sym), cr=n.hint==='eq'?null:ctx.cr(n.sym);
+    if(!eq&&!cr&&!n.hint&&!n.quote){ var p=pairSplit(n.sym); if(p){ var c2=ctx.cr(p.base); if(c2){ cr=c2; n.quote=p.quote; } } }
+    if(eq&&cr&&!n.hint){ e.alt={eq:eq, cr:cr}; applyPick(e, rankU(eq.uni)>=rankU(cr.uni)?'eq':'cr'); e.why='a stock and a coin share this symbol'; return e; }
+    if(cr&&(n.hint==='cr'||!eq)){ setCr(e,cr); return e; }
+    if(eq){ setEq(e,eq); return e; }
+    if(n.hint==='cr'||n.quote){ e.tag='LEFT OUT'; e.why='no coin by this symbol in the Coins list'; return e; }
+    e.kind='eq'; e.item='eq:'+n.sym; e.tag='NOT FOUND'; e.keep=true; e.why='not in the universe — kept as a ticker; the server checks it on save';
+    return e;
+  }
+  /* THE PURE MATCHER. ctx = {eq(sym)→{sym,name,exch,etf,uni}|null, cr(sym)→{id,sym,name,uni}|null}; opt.mode = 'sections' | 'one' */
+  function parseWith(text,ctx,opt){
+    var mode=(opt&&opt.mode)||'sections', secs=parseText(text), out={sections:[], counts:{matched:0,unknown:0,ask:0,skipped:0,dupes:0,total:0}};
+    var seenAll={};
+    secs.forEach(function(s){
+      var seen=(mode==='one')?seenAll:{}, ents=[];
+      s.toks.forEach(function(raw){
+        var e=matchOne(normTok(raw),ctx);
+        if(e.kind!=='skip'&&e.kind!=='none'){ var k=e.kind==='ask'?'?'+e.sym:e.item; if(seen[k]){ out.counts.dupes++; return; } seen[k]=1; }
+        ents.push(e);
+      });
+      out.sections.push({name:s.name, entries:ents});
+    });
+    out.sections.forEach(function(s){ s.entries.forEach(function(e){
+      if(e.kind==='skip'||e.kind==='none') out.counts.skipped++;
+      else if(e.kind==='ask') out.counts.ask++;
+      else if(e.uni==='none') out.counts.unknown++;
+      else out.counts.matched++;
+      if(e.keep) out.counts.total++;
+    }); });
+    return out;
+  }
+  /* the live universe: the index (names + exchange), DATA / CRYPTO_NAMES (graded), the Market feed (US 500 / Coins 500) */
+  function liveCtx(){
+    var I=S.idx||{eq:[],cr:[]}, eqM={}, crM={}, mk=null, gE=null, cl=null;
+    I.eq.forEach(function(r){ if(!eqM[r.sym]) eqM[r.sym]=r; });
+    I.cr.forEach(function(r){ if(!crM[r.sym]) crM[r.sym]=r; });               /* cap-ranked: the biggest coin wins a shared symbol */
+    try{ mk=window.MktView&&MktView.market&&typeof MktView.market.rowOf==='function'?MktView.market:null; }catch(_){ mk=null; }
+    try{ gE=(typeof DATA!=='undefined'&&DATA)||window.DATA||null; }catch(_){ gE=window.DATA||null; }
+    try{ cl=window.AIBO_CRYPTO_LIVE||null; }catch(_){ cl=null; }
+    function row(fam,s){ try{ return mk?mk.rowOf(fam,s):null; }catch(_){ return null; } }   /* {sym,name,px,kind}: kind eq|cr = a graded row, mk|mkc = the feed */
+    return {
+      eq:function(s){ var r=eqM[s], g=gE&&Object.prototype.hasOwnProperty.call(gE,s)?gE[s]:null, m=row('mk',s);
+        if(!r&&!g&&!m) return null;
+        return {sym:s, name:(r&&r.name)||(g&&g.name)||(m&&m.name)||'', exch:(r&&r.ex)||'', etf:!!(r&&r.tag==='ETF'), uni:(g||(m&&m.kind==='eq'))?'graded':(m?'us500':'index')}; },
+      cr:function(s){ var r=crM[s]; if(!r) return null; var m=row('mkc',s), g=!!((m&&m.kind==='cr')||(cl&&cl[s]&&!cl[s].pretoken));
+        return {id:r.k.slice(3), sym:s, name:r.name||'', uni:g?'graded':(m?'coins500':'index')}; }
+    };
+  }
+  /* ---------- the Import sheet ---------- */
+  var IMP={open:false, text:'', file:null, name:'', named:false, mode:'sections', res:null, drop:{}, picks:{}, busy:false, status:'', left:[]};
+  var impEl=null, impScrim=null;
+  function impKey(si,e){ return si+':'+(e.item||('?'+e.sym)); }
+  function impParse(){
+    IMP.res=parseWith(IMP.text, liveCtx(), {mode:IMP.mode});
+    IMP.res.sections.forEach(function(s,si){ s.entries.forEach(function(e){
+      if(e.kind==='ask'){ var k=si+':ask:'+e.sym; if(IMP.picks[k]) applyPick(e,IMP.picks[k]); }
+      e.key=impKey(si,e); e.dropped=!!IMP.drop[e.key];
+    }); });
+    if(!IMP.named){ var f=IMP.file?IMP.file.replace(/\.[a-z0-9]+$/i,''):'', s0=IMP.res.sections.filter(function(s){ return s.name; })[0]; IMP.name=(f||(s0&&s0.name)||'Imported list').slice(0,40); }
+  }
+  /* the plan: [{name, items}] from the preview, drops and picks applied, duplicates folded again per list, 250 per list */
+  function impPlan(){
+    var R=IMP.res; if(!R) return [];
+    var multi=IMP.mode==='sections'&&R.sections.filter(function(s){ return s.entries.some(function(e){ return e.keep&&!e.dropped; }); }).length>1, lists=[];
+    function add(name,ents){ var seen={}, items=[]; ents.forEach(function(e){ if(!e.keep||e.dropped||!e.item||seen[e.item]) return; seen[e.item]=1; items.push(e.item); });
+      if(items.length) lists.push({name:name, items:items.slice(0,250), over:Math.max(0,items.length-250)}); }
+    if(multi) R.sections.forEach(function(s,i){ add((s.name||IMP.name||'Imported list').slice(0,40), s.entries); });
+    else { var all=[]; R.sections.forEach(function(s){ all=all.concat(s.entries); }); add(IMP.name||'Imported list', all); }
+    return lists;
+  }
+  function impCountsHtml(){
+    var c=IMP.res.counts, parts=['<b>'+c.matched+' matched</b>'];
+    if(c.unknown) parts.push('<span class="w">'+c.unknown+' not in the universe</span>');
+    if(c.ask) parts.push('<span class="d">'+c.ask+' to decide</span>');
+    if(c.dupes) parts.push(c.dupes+(c.dupes===1?' duplicate':' duplicates')+' folded');
+    if(c.skipped) parts.push(c.skipped+' left out');
+    var P=impPlan(); if(P.length>1) parts.push(P.length+' lists');
+    return parts.join(' · ');
+  }
+  function impPaint(){
+    if(!impEl) return;
+    var R=IMP.res, secs=R?R.sections:[], named=secs.filter(function(s){ return s.name; }).length, h='';
+    var seg=named>=2?'<span class="gll-seg gll-iseg"><button type="button" data-imode="sections" class="'+(IMP.mode==='sections'?'on':'')+'">One list per section</button><button type="button" data-imode="one" class="'+(IMP.mode==='one'?'on':'')+'">One list</button></span>':'';
+    impEl.querySelector('[data-iopts]').innerHTML='<label>Name</label><input type="text" class="gll-iname" maxlength="40" value="'+esc(IMP.name)+'" aria-label="Name of the new list">'+seg;
+    var pv=impEl.querySelector('[data-ipreview]');
+    if(!IMP.text.trim()){ pv.innerHTML='<div class="gll-none">The names show here as you paste — matched, not in the universe, or yours to decide.</div>'; }
+    else if(!S.idx){ pv.innerHTML='<div class="gll-none">'+(S.idxErr?'Search list unavailable — '+esc(S.idxErr):'Loading the search list…')+'</div>'; }
+    else {
+      var multi=IMP.mode==='sections'&&named>=1&&secs.length>1;
+      h='<div class="gll-icounts">'+impCountsHtml()+'</div>';
+      secs.forEach(function(s,si){
+        if(!s.entries.length) return;
+        if(multi||s.name) h+='<div class="gll-isec">'+esc(s.name||IMP.name||'Imported list')+'<i>'+s.entries.filter(function(e){ return e.keep&&!e.dropped; }).length+'</i></div>';
+        s.entries.forEach(function(e){
+          var cls='gll-ir'+(e.kind==='ask'?' ask':'')+(e.kind==='skip'||e.kind==='none'?' out':'')+(e.uni==='none'&&e.keep?' unk':'')+(e.dropped?' dropped':'');
+          h+='<div class="'+cls+'" data-k="'+esc(e.key)+'"><b>'+esc(e.sym)+'</b><span class="gll-rn">'+esc(e.name||e.why)+'</span>';
+          if(e.kind!=='ask') h+='<span class="gll-tag gll-'+esc(e.tag.replace(/\s/g,''))+'">'+esc(e.tag)+'</span>';
+          if(e.keep) h+='<button type="button" class="gll-ix" data-ix="'+esc(e.key)+'" aria-label="'+(e.dropped?'Keep':'Leave out')+'">'+(e.dropped?'+':'×')+'</button>';
+          if(e.kind==='ask'){ var a=e.alt; h+='<div class="gll-ask"><span>Which one?</span><button type="button" data-ipick="eq" data-isym="'+esc(e.sym)+'" data-isi="'+si+'" class="'+(e.pick==='eq'?'on':'')+'">'+esc(a.eq.name||e.sym)+' · '+esc(a.eq.exch||'stock')+'</button>'
+            +'<button type="button" data-ipick="cr" data-isym="'+esc(e.sym)+'" data-isi="'+si+'" class="'+(e.pick==='cr'?'on':'')+'">'+esc(a.cr.name||e.sym)+' · coin</button></div>'; }
+          h+='</div>';
+        });
+      });
+      pv.innerHTML=h;
+    }
+    impFoot();
+  }
+  function impFoot(){
+    var P=impPlan(), n=0; P.forEach(function(l){ n+=l.items.length; });
+    var note=impEl.querySelector('[data-inote]'), go=impEl.querySelector('[data-igo]');
+    var over=P.filter(function(l){ return l.over; }), have=lists().length;
+    if(IMP.busy) note.textContent=IMP.status;
+    else if(IMP.left.length) note.textContent='Left out — not found: '+IMP.left.join(', ');
+    else if(over.length) note.textContent='A list keeps 250 names at most — '+over.map(function(l){ return l.name+' loses '+l.over; }).join(', ');
+    else if(have+P.length>24) note.textContent='This app keeps 24 lists; you have '+have+' and this would add '+P.length;
+    else if(P.length>1) note.textContent=P.length+' lists: '+P.map(function(l){ return l.name; }).join(' · ');
+    else if(P.length===1&&P[0].name!==IMP.name&&IMP.mode==='sections') note.textContent='One list, “'+P[0].name+'”';
+    else note.textContent='';
+    go.textContent=IMP.busy?'Saving…':(n?'Add '+n+(n===1?' name':' names')+(P.length>1?' to '+P.length+' lists':''):'Nothing to add');
+    go.disabled=!!(IMP.busy||!n||have+P.length>24);
+  }
+  function impBuild(){
+    if(impEl) return;
+    impScrim=el('div'); impScrim.id='gllImpScrim';
+    impEl=el('div'); impEl.id='gllImp'; impEl.setAttribute('role','dialog'); impEl.setAttribute('aria-label','Import a list');
+    impEl.innerHTML='<div class="gll-ihead"><b>Import a list</b><span>paste symbols, a CSV, or a TradingView export</span><button type="button" class="gll-iclose" aria-label="Close">&#215;</button></div>'
+      +'<div class="gll-ibody">'
+      +'<textarea class="gll-itext" rows="4" spellcheck="false" autocapitalize="characters" autocomplete="off" placeholder="NVDA, AAPL, BTC&#10;NASDAQ:AVGO  NYSE:TSM  BINANCE:SOLUSDT&#10;###A section, then its names"></textarea>'
+      +'<div class="gll-idrop" data-idrop><span class="gll-idropi">&#10515;</span><span class="gll-idropt">Drop a <b>.txt</b> or <b>.csv</b> here</span><label class="gll-ipick">Choose a file<input type="file" accept=".txt,.csv,text/plain,text/csv" hidden></label></div>'
+      +'<div class="gll-iopts" data-iopts></div>'
+      +'<div class="gll-ipreview" data-ipreview></div>'
+      +'</div>'
+      +'<div class="gll-ifoot"><span class="gll-inote" data-inote></span><button type="button" class="gll-igo" data-igo disabled>Nothing to add</button></div>';
+    document.body.appendChild(impScrim); document.body.appendChild(impEl);
+    var ta=impEl.querySelector('.gll-itext'), fi=impEl.querySelector('input[type=file]'), dz=impEl.querySelector('[data-idrop]');
+    ta.addEventListener('input',function(){ IMP.text=ta.value; IMP.left=[]; impParse(); impPaint(); });
+    function readFile(f){ if(!f) return; var rd=new FileReader(); rd.onload=function(){ IMP.file=f.name; IMP.named=false; IMP.text=String(rd.result||''); ta.value=IMP.text; IMP.left=[]; impParse(); impPaint(); }; rd.readAsText(f); }
+    fi.addEventListener('change',function(){ readFile(fi.files&&fi.files[0]); fi.value=''; });
+    ['dragenter','dragover'].forEach(function(t){ dz.addEventListener(t,function(e){ e.preventDefault(); dz.classList.add('over'); }); });
+    ['dragleave','drop'].forEach(function(t){ dz.addEventListener(t,function(e){ e.preventDefault(); dz.classList.remove('over'); }); });
+    dz.addEventListener('drop',function(e){ var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) readFile(f);
+      else { var t=e.dataTransfer&&e.dataTransfer.getData('text'); if(t){ IMP.text=(IMP.text?IMP.text+'\n':'')+t; ta.value=IMP.text; impParse(); impPaint(); } } });
+    impEl.addEventListener('input',function(e){ var nm=e.target.closest('.gll-iname'); if(nm){ IMP.name=String(nm.value).replace(/\s+/g,' ').trim().slice(0,40); IMP.named=true; impPaintFoot(); } });
+    impEl.addEventListener('click',function(e){
+      if(e.target.closest('.gll-iclose')){ impClose(); return; }
+      var m=e.target.closest('[data-imode]'); if(m){ IMP.mode=m.getAttribute('data-imode'); impParse(); impPaint(); return; }
+      var x=e.target.closest('[data-ix]'); if(x){ var k=x.getAttribute('data-ix'); if(IMP.drop[k]) delete IMP.drop[k]; else IMP.drop[k]=1; impParse(); impPaint(); return; }
+      var p=e.target.closest('[data-ipick]'); if(p){ IMP.picks[p.getAttribute('data-isi')+':ask:'+p.getAttribute('data-isym')]=p.getAttribute('data-ipick'); impParse(); impPaint(); return; }
+      if(e.target.closest('[data-igo]')){ impGo(); return; }
+    });
+    impScrim.addEventListener('click',function(){ if(!IMP.busy) impClose(); });
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&IMP.open&&!IMP.busy) impClose(); });
+  }
+  function impPaintFoot(){ if(!IMP.res) return; impParse(); var c=impEl.querySelector('[data-ipreview] .gll-icounts'); if(c) c.innerHTML=impCountsHtml(); impFoot(); }
+  function impOpen(){
+    if(!S.doc){ toast('Lists are not loaded yet'); return; }
+    impBuild(); loadIndex();
+    try{ var st=MktView.market.state, at0=st.at, n=0; MktView.market.reload(false);        /* US 500 / Coins 500 labels need the feed */
+      var tm=setInterval(function(){ if(!IMP.open||++n>20){ clearInterval(tm); return; } if(st.at!==at0){ at0=st.at; if(IMP.text){ impParse(); impPaint(); } } },800); }catch(_){}
+    IMP.open=true; IMP.left=[]; document.body.classList.add('gll-imp-open');
+    impParse(); impPaint();
+    setTimeout(function(){ try{ if(!IMP.text) impEl.querySelector('.gll-itext').focus(); }catch(_){} },50);
+  }
+  function impClose(){ IMP.open=false; document.body.classList.remove('gll-imp-open'); }
+  function impReset(){ IMP.text=''; IMP.file=null; IMP.name=''; IMP.named=false; IMP.mode='sections'; IMP.res=null; IMP.drop={}; IMP.picks={}; IMP.left=[]; IMP.status=''; if(impEl) impEl.querySelector('.gll-itext').value=''; }
+  /* the save: one list at a time; each list in chunks of at most 25 stocks (the server validates new stocks live, 25 per save);
+     a 422 "not found: X, Y" takes X and Y out and sends the chunk again; the sheet reports who was left out */
+  function impGo(){
+    if(IMP.busy) return;
+    var P=impPlan(); if(!P.length) return;
+    IMP.busy=true; IMP.left=[]; var made=[], li=0, saved=0, total=0; P.forEach(function(l){ total+=l.items.length; });
+    function fail(msg){ IMP.busy=false; IMP.status=''; toast(msg); impPaint(); if(made.length){ load(); } }
+    function status(){ IMP.status='Saving '+(li<P.length?'“'+P[li].name+'”':'')+(P.length>1?' — list '+Math.min(li+1,P.length)+' of '+P.length:'')+' · '+saved+' of '+total+' names'; impPaint(); }
+    function nextList(){
+      if(li>=P.length){ IMP.busy=false; IMP.status='';
+        var n=saved, left=IMP.left.length; toast(n+(n===1?' name':' names')+' added'+(P.length>1?' to '+P.length+' lists':' to “'+P[0].name+'”')+(left?' · '+left+' not found':''));
+        var first=made[0]; impReset();
+        impClose(); if(first) pick(first); return; }
+      var p=P[li], id=newId(), items=p.items.slice(); status();
+      change(function(L){ if(L.length>=24) return false; L.push({id:id, name:p.name, items:[]}); },
+        function(){ made.push(id); chunks(id, items, function(){ li++; nextList(); }); }, false,
+        function(r){ fail(r&&r.status===422?String((r.body&&r.body.error)||'The server refused the list'):(r&&r.status===401?'Your sign-in has expired':'Could not save — try again')); });
+    }
+    function chunks(id, items, done){
+      if(!items.length) return done();
+      var take=[], eqN=0; while(items.length&&eqN<25){ var it=items[0]; if(it.indexOf('eq:')===0){ eqN++; } take.push(items.shift()); }
+      sendChunk(id, take, 0, function(n){ saved+=n; status(); chunks(id, items, done); });
+    }
+    function sendChunk(id, take, tries, ok){
+      if(!take.length) return ok(0);
+      change(function(L){ var x=L.filter(function(q){ return q.id===id; })[0]; if(!x) return false; take.forEach(function(it){ if(x.items.indexOf(it)<0) x.items.push(it); }); },
+        function(){ ok(take.length); }, false,
+        function(r){
+          var msg=String((r&&r.body&&r.body.error)||''), m=/not found:\s*(.+)$/i.exec(msg);
+          if(r&&r.status===422&&m&&tries<12){
+            var bad={}; m[1].split(/\s*,\s*/).forEach(function(s){ s=s.trim().toUpperCase(); if(s) bad[s]=1; });
+            var rest=take.filter(function(it){ var ref=it.slice(3); if(bad[ref.toUpperCase()]){ IMP.left.push(ref.toUpperCase()); return false; } return true; });
+            if(rest.length===take.length){ fail(msg||'The server refused the save'); return; }
+            sendChunk(id, rest, tries+1, ok); return;
+          }
+          fail(r&&r.status===422?(msg||'The server refused the save'):(r&&r.status===401?'Your sign-in has expired':'Could not save — try again'));
+        });
+    }
+    nextList();
+  }
+
+  /* ---------- export (TradingView's format) ---------- */
+  function tvExch(x){ x=String(x||'').toUpperCase().replace(/\s+/g,''); var map={NASDAQ:'NASDAQ',NYSE:'NYSE',AMEX:'AMEX',NYSEARCA:'AMEX',ARCA:'AMEX',BATS:'AMEX',NYSEAMERICAN:'AMEX',CBOE:'CBOE',OTC:'OTC',PNK:'OTC',OTCQB:'OTC',OTCQX:'OTC',NMS:'NASDAQ',NGM:'NASDAQ',NCM:'NASDAQ',NYQ:'NYSE',ASE:'AMEX',PCX:'AMEX'}; return map[x]||''; }
+  function exportText(l){
+    var M=meta(), I={}, R={eq:{},cr:{}};
+    (S.idx&&S.idx.eq||[]).forEach(function(r){ if(!I[r.sym]) I[r.sym]=r; });
+    try{ var st=window.MktView&&MktView.market&&MktView.market.state, d=st&&st.data;
+      if(d&&d.equities&&Array.isArray(d.equities.rows)) d.equities.rows.forEach(function(r){ if(r&&r.sym) R.eq[String(r.sym).toUpperCase()]=r.exch||''; });
+      if(d&&d.crypto&&Array.isArray(d.crypto.rows)) d.crypto.rows.forEach(function(r){ if(r&&r.id) R.cr[String(r.id)]=r.sym||''; }); }catch(_){}
+    var parts=['###'+String(l.name||'List').replace(/[,\r\n#]/g,' ').trim()];
+    (l.items||[]).forEach(function(it){
+      var ref=it.slice(3), m=M[it];
+      if(it.indexOf('eq:')===0){ var ex=tvExch((m&&m.exch)||(I[ref]&&I[ref].ex)||R.eq[ref]||''); parts.push((ex?ex+':':'')+ref.replace(/-/g,'.')); }   /* BRK-B is NYSE:BRK.B on TradingView */
+      else if(it.indexOf('cr:')===0){ var s=(m&&m.sym)||R.cr[ref]||''; if(s) parts.push('CRYPTO:'+String(s).toUpperCase()+'USD'); }
+    });
+    return parts.join(',');
+  }
+  function exportList(l){
+    var text=exportText(l), n=text.split(',').length-1, fn=String(l.name||'list').replace(/[\\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().slice(0,60)+'.txt', ok=false;
+    try{ var b=new Blob([text+'\n'],{type:'text/plain;charset=utf-8'}), a=document.createElement('a');
+      if('download' in a){ var u=URL.createObjectURL(b); a.href=u; a.download=fn; document.body.appendChild(a); a.click(); setTimeout(function(){ try{ document.body.removeChild(a); URL.revokeObjectURL(u); }catch(_){} },2000); ok=true; } }catch(_){ ok=false; }
+    if(!ok){ try{ navigator.clipboard.writeText(text).then(function(){ toast('Copied — '+n+' names in TradingView\'s format'); }); return; }catch(_){ toast('Could not write the file'); return; } }
+    toast(fn+' — '+n+(n===1?' name':' names')+' in TradingView\'s format');
+  }
+
   /* ---------- mount ---------- */
   function mount(){
     if(S.mounted||!haveAuth()) return;
@@ -17127,7 +17521,10 @@ html[data-gl="light"] #mktView .twrap.gll-edit table.mkt tbody tr:not(.mk-empty)
     },
     bars:function(sym){ var m=meta()['eq:'+String(sym).toUpperCase()]; return (m&&Array.isArray(m.bars)&&m.bars.length>1)?m.bars:null; },
     state:function(){ return {key:haveAuth(), acct:!!acct(), doc:S.doc, active:S.active, fam:S.fam, edit:S.edit, err:S.err, mounted:S.mounted}; },
-    reload:load
+    reload:load,
+    /* 10-20 import/export: parse(text) = the live universe; parseWith(text, ctx, opt) = the pure matcher for the suite; importOpen(); exportText(id) */
+    parse:function(t,opt){ return parseWith(t,liveCtx(),opt); }, parseWith:parseWith, importOpen:impOpen, importState:function(){ return {open:IMP.open, busy:IMP.busy, name:IMP.name, mode:IMP.mode, left:IMP.left.slice(), plan:impPlan(), counts:IMP.res?IMP.res.counts:null}; },
+    exportText:function(id){ var l=listOf(id); return l?exportText(l):null; }
   };
   if(!haveAuth()) return;
   load();
