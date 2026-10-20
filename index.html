@@ -7926,8 +7926,12 @@ try{
   var PS={ at:null, src:null, data:null, err:null, busy:false, queued:false };
 
   function acctTok(){ if(LS_OK){ try{ return localStorage.getItem(ACCT_KEY)||null; }catch(_){ return null; } } return null; }
-  function getToken(){ var a=acctTok(); if(a) return a; if(LS_OK){ try{ return localStorage.getItem(TOKEN_KEY)||null; }catch(_){ return memTok; } } return memTok; }
-  function posUrl(){ return acctTok()?POS_URL.replace(/\/positions\.json.*$/,'/me/positions.json'):POS_URL; }
+  /* 10-20 (the owner, on bullwhistle.com signed in as admin: "there's no field to paste my positions token"): the OWNER's device token wins
+     over the account session when both are on the device — it is the credential for /positions.json and nothing else is, so the
+     owner's book shows on any host he pastes it on; a signed-in person WITHOUT a device token reads their own /me/positions.json. */
+  function devTok(){ if(LS_OK){ try{ return localStorage.getItem(TOKEN_KEY)||null; }catch(_){ return memTok; } } return memTok; }
+  function getToken(){ return devTok()||acctTok(); }
+  function posUrl(){ return (!devTok()&&acctTok())?POS_URL.replace(/\/positions\.json.*$/,'/me/positions.json'):POS_URL; }
   function storeToken(t){ memTok=t; if(LS_OK){ try{ localStorage.setItem(TOKEN_KEY,t); }catch(_){ } } }
   function sync(){ try{ if(window.Studio&&window.Studio.posSync) window.Studio.posSync(); }catch(_){ } }
   function okShape(j){ return !!(j && j.schemaVersion!=null && j.accounts && Object.prototype.toString.call(j.accounts)==='[object Array]'); }
@@ -7970,7 +7974,7 @@ try{
     refresh: fetchPositions,
     state: PS,
     hasToken: function(){ return !!getToken(); },
-    viaAccount: function(){ return !!acctTok(); },
+    viaAccount: function(){ return !devTok()&&!!acctTok(); },
     token: function(){ return getToken(); },
     setToken: function(t){ t=String(t==null?'':t).trim(); if(!t) return false;
       storeToken(t); PS.err=null; PS.src=null; sync(); fetchPositions(); return true; },
@@ -11537,8 +11541,9 @@ html[data-gl="light"] #glaToast{background:#fff;}
 #glAccount .gla-addform{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:10px;background:rgba(var(--gl-acc-rgb,31,198,220),.08);}
 #glAccount .gla-perm{font-size:12.5px;line-height:1.4;color:var(--ink);padding:8px 10px;border-radius:8px;border:1px dashed var(--gl-acc,#1FC6DC);}
 #glAccount .gla-ta{resize:vertical;min-height:72px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;}
-/* signed in: the owner's token row is not the way in any more — the person's own connections are */
-html[data-glacct] #posConnect{display:none;}
+/* signed in: the owner's token row is not the way in — the person's own connections are. 10-20: except for the ADMIN (the owner),
+   who pastes his positions token here on every device (decision #14, owner feeds → admin account, is not built; the token is the credential). */
+html[data-glacct]:not([data-glrole="admin"]) #posConnect{display:none;}
 
 /* 10-16 the Admin section */
 #glAccount .gla-admin .gla-head.gla-sub{margin-top:6px;}
@@ -16234,6 +16239,9 @@ html[data-gl] .glm-world td:last-child{color:rgba(var(--gl-ink-rgb,234,238,245),
   function acctTok(){ try{ var A=window.AIBO_ACCOUNT; return (A&&A.token&&A.token())||null; }catch(_){ return null; } }
   function posTok(){ try{ var P=window.AIBO_POS; if(P&&P.token){ var t=P.token(); if(t) return t; } }catch(_){} return ls('aibo_pos_token_v1')||null; }
   function notesTok(){ return acctTok()||posTok(); }
+  /* 10-21 (backend v4.29, decision #14): the ADMIN's session is a trades credential too — /me/trades.json serves the owner's history */
+  function adminAcct(){ try{ var A=window.AIBO_ACCOUNT; return !!(A&&A.role&&A.role()==='admin'&&acctTok()); }catch(_){ return false; } }
+  function tradesCred(){ var pt=posTok(); if(pt) return {url:BASE+'/trades.json', tok:pt}; if(adminAcct()) return {url:BASE+'/me/trades.json', tok:acctTok()}; return null; }
   function tokName(){ return acctTok()?'your sign-in':'the positions token'; }
   function notesHdr(){ var h={'Content-Type':'application/json'}; var t=notesTok(); if(t) h.Authorization='Bearer '+t; return h; }
   function notesCall(method,body){
@@ -16334,9 +16342,9 @@ html[data-gl] .glm-world td:last-child{color:rgba(var(--gl-ink-rgb,234,238,245),
   var TR={data:null, busy:false, err:null, at:0, status:0, open:null};
   function tradesLoad(force){
     /* 10-07: /trades.json sits behind the POSITIONS bearer only (no /me/trades.json) — the account session got a 401 forever */
-    var pt=posTok(); if(!pt){ TR.err=null; TR.data=null; return; } if(TR.busy) return; var now=Date.now(); if(!force&&TR.data&&now-TR.at<15*60*1000) return; if(!force&&TR.err&&now-TR.at<3*60*1000) return;
+    var cr=tradesCred(); if(!cr){ TR.err=null; TR.data=null; return; } if(TR.busy) return; var now=Date.now(); if(!force&&TR.data&&now-TR.at<15*60*1000) return; if(!force&&TR.err&&now-TR.at<3*60*1000) return;
     TR.busy=true; var ctl=('AbortController' in window)?new AbortController():null, t=setTimeout(function(){ if(ctl) ctl.abort(); },15000);
-    fetch(BASE+'/trades.json',{headers:{Authorization:'Bearer '+pt}, cache:'no-store', signal:ctl?ctl.signal:undefined}).then(function(r){ TR.status=r.status; if(r.status===503){ TR.err='not built yet — the backend\'s first trades pass has not run'; return null; } if(r.status===401){ TR.err='the positions token was not accepted'; return null; } if(!r.ok){ TR.err='trades feed error ('+r.status+')'; return null; } return r.json(); })
+    fetch(cr.url,{headers:{Authorization:'Bearer '+cr.tok}, cache:'no-store', signal:ctl?ctl.signal:undefined}).then(function(r){ TR.status=r.status; if(r.status===503){ TR.err='not built yet — the backend\'s first trades pass has not run'; return null; } if(r.status===401){ TR.err='the positions token was not accepted'; return null; } if(!r.ok){ TR.err='trades feed error ('+r.status+')'; return null; } return r.json(); })
       .then(function(j){ if(j&&j.trades){ TR.data=j; TR.err=null; } else if(j) TR.err='trades feed malformed'; })
       .catch(function(e){ TR.err=(e&&e.name==='AbortError')?'trades feed unreachable (timed out)':'trades feed unreachable'; })
       .then(function(){ clearTimeout(t); TR.busy=false; TR.at=Date.now(); if(S.open) paintPanel('journal'); });
@@ -16347,7 +16355,7 @@ html[data-gl] .glm-world td:last-child{color:rgba(var(--gl-ink-rgb,234,238,245),
   function fmtTs(ts){ var d=ts?new Date(ts):null; return d&&!isNaN(d)?d.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—'; }
   function pnlCls(v){ return fin(v)?(v>0?'up':v<0?'dn':''):''; }
   PAINT.journal=function(W){
-    var tok=!!posTok(), j=journal(), why=whyMap(), html='';
+    var tok=!!tradesCred(), j=journal(), why=whyMap(), html='';
     if(!tok) html+=read('<b>Trading history needs the positions token on this device</b> — Settings › Connected accounts.'+(notesTok()?'':' Your free-text entries below stay in this browser until then.'));
     else if(!TR.data) html+=read(TR.err?'<b>Trades not available:</b> '+esc(TR.err)+'.':'<b>Loading your trades…</b>')+(TR.err?'<button type="button" class="glm-btn glm-more" data-glmtrretry>retry</button>':'');
     else {
@@ -19219,6 +19227,9 @@ function el(tag,cls,html){ var e=D.createElement(tag); if(cls) e.className=cls; 
 /* ---------- tokens ---------- */
 function acctTok(){ try{ var A=W.AIBO_ACCOUNT; return (A&&A.token&&A.token())||null; }catch(_){ return null; } }
 function posTok(){ try{ var P=W.AIBO_POS; if(P&&P.token){ var t=P.token(); if(t) return t; } }catch(_){} return ls('aibo_pos_token_v1')||null; }
+/* 10-21 (backend v4.29): the admin's session reads the owner's trades at /me/trades.json when no device token is present */
+function adminAcct(){ try{ var A=W.AIBO_ACCOUNT; return !!(A&&A.role&&A.role()==='admin'&&acctTok()); }catch(_){ return false; } }
+function tradesCred(){ var d=ls('aibo_pos_token_v1'); if(d) return {url:BASE+'/trades.json', tok:d}; if(adminAcct()) return {url:BASE+'/me/trades.json', tok:acctTok()}; return null; }
 function anyTok(){ return acctTok()||posTok(); }
 
 /* ---------- fetch with a timeout ---------- */
@@ -19287,10 +19298,10 @@ function positions(){
 /* ---- trades (/trades.json, the positions bearer only) ---- */
 var TRC={data:null, at:0, p:null};
 function tradesLoad(force){
-  var tok=posTok(); if(!tok) return Promise.resolve(null);
+  var cr=tradesCred(); if(!cr) return Promise.resolve(null);
   if(!force&&TRC.data&&Date.now()-TRC.at<15*60*1000) return Promise.resolve(TRC.data);
   if(TRC.p) return TRC.p;
-  TRC.p=getJson(BASE+'/trades.json',{Authorization:'Bearer '+tok},15000).then(function(j){ TRC.p=null; if(j&&Array.isArray(j.trades)){ TRC.data=j; TRC.at=Date.now(); } return TRC.data; },
+  TRC.p=getJson(cr.url,{Authorization:'Bearer '+cr.tok},15000).then(function(j){ TRC.p=null; if(j&&Array.isArray(j.trades)){ TRC.data=j; TRC.at=Date.now(); } return TRC.data; },
     function(e){ TRC.p=null; TRC.err=String(e&&e.message||e); return TRC.data; });
   return TRC.p;
 }
@@ -19501,7 +19512,7 @@ var TOOL_LABEL={get_portfolio:'Reading your book', get_trades:'Reading your trad
 var TOOLS={
   get_portfolio:function(){ return Promise.resolve(positions()); },
   get_trades:function(inp){
-    if(!posTok()) return Promise.resolve({available:false, reason:'Executed trades need the positions token on this device (Settings › Connected accounts).'});
+    if(!tradesCred()) return Promise.resolve({available:false, reason:'Executed trades need the positions token on this device (Settings › Connected accounts), or the admin sign-in.'});
     return Promise.all([tradesLoad(false), notesLoad()]).then(function(r){ var j=r[0], why=(r[1]&&r[1].why)||{};
       if(!j) return {available:false, reason:TRC.err?('trades feed: '+TRC.err):'the backend has no trades file yet'};
       var sym=inp&&inp.symbol?up(inp.symbol):null, since=inp&&fin(+inp.days)?Date.now()-(+inp.days)*86400000:null, lim=Math.max(1,Math.min(300,(inp&&+inp.limit)||60));
