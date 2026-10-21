@@ -10849,6 +10849,9 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
   /* §17 the strip's ? is gone (the Grade wheel + Scorecard carry one); with the lens, ? and deck-flip all hidden, .m-right is empty */
   html[data-gl] body.gl-chrome #mStrip [data-mhelp],html[data-gl] body.gl-chrome #mStrip .m-right{display:none;}
   html[data-gl] body.gl-chrome #mStrip .m-hud{flex:0 0 auto;min-width:72px;}   /* the title's flex:1 absorbs the free space (visibility:hidden in landscape, never display:none), so .m-right's auto margin is the strip's ONE — two auto margins would split the space and centre the HUD under the doors */
+  /* 10-21 (the owner: "next to the logo it tries to spell out whatever menu item you're on, and it always gets cut off … get rid of it entirely"):
+     the context title is never shown. The element stays as the strip's flex:1 spacer (visibility, not display) so the HUD and icons keep the right. */
+  html[data-gl] body.gl-chrome #mStrip .gl-title{visibility:hidden;}
   html[data-gl] .gl-title{flex:1;min-width:0;text-align:left;font:600 13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
 
@@ -11548,6 +11551,45 @@ html[data-glacct]:not([data-glrole="admin"]) #posConnect{display:none;}
 /* 10-16 the Admin section */
 #glAccount .gla-admin .gla-head.gla-sub{margin-top:6px;}
 
+/* 10-21 CONNECTED ACCOUNTS as Option A (sandbox/connect): logos, the way-in tag, the search box, hits, the Popular tiles, the value */
+#glAccount .gla-head small{text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted2);margin-left:6px;}
+#glAccount .gla-lg,#glAccount .gla-item>.gla-lg{position:relative;flex:0 0 28px;flex-direction:row;width:28px;height:28px;border-radius:8px;overflow:hidden;background:hsl(var(--h,220) 38% 42%);display:inline-flex;align-items:center;justify-content:center;}
+#glAccount .gla-lg i{font-style:normal;font:800 11px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:-.02em;color:var(--gl-ink,#fff);}
+#glAccount .gla-lg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:var(--gl-ink,#fff);}
+#glAccount .gla-how{font:700 9.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;padding:3px 6px;border-radius:5px;border:1px solid var(--hair);color:var(--muted);font-style:normal;white-space:nowrap;vertical-align:middle;}
+#glAccount .gla-how[data-how="link"]{color:#9fe7d2;border-color:rgba(57,208,127,.35);}
+#glAccount .gla-how[data-how="key"]{color:var(--gl-acci,#c9b8ff);border-color:rgba(var(--gl-acc-rgb,31,198,220),.45);}
+#glAccount .gla-how[data-how="typed"]{color:var(--muted);}
+#glAccount .gla-how[data-how="address"]{color:#7fd9ff;border-color:rgba(31,198,220,.4);}
+#glAccount .gla-how[data-how="file"]{color:#f5c56b;border-color:rgba(245,166,35,.4);}
+#glAccount .gla-conn{align-items:center;gap:10px;}
+#glAccount .gla-conn>span>b{font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+#glAccount .gla-conn .gla-dot{position:static;margin:0;}
+#glAccount .gla-usd{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px;}
+#glAccount .gla-usd b{font:600 13.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);}
+#glAccount .gla-usd em{font-style:normal;font-size:10.5px;color:var(--muted);}
+#glAccount .gla-srch{position:relative;}
+#glAccount .gla-srch .gla-in{padding-left:38px;}
+#glAccount .gla-srch svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--muted);pointer-events:none;}
+#glAccount .gla-srch input[type="search"]::-webkit-search-decoration,#glAccount .gla-srch input[type="search"]::-webkit-search-cancel-button{-webkit-appearance:none;}
+#glAccount .gla-addbox{display:flex;flex-direction:column;gap:8px;}
+#glAccount .gla-hits{display:flex;flex-direction:column;border:1px solid var(--hair);border-radius:10px;overflow:hidden;background:rgba(var(--gl-wh-rgb,255,255,255),.03);}
+#glAccount .gla-hit{appearance:none;border:0;border-bottom:1px solid var(--hair);background:transparent;color:var(--ink);display:flex;align-items:center;gap:10px;padding:9px 10px;text-align:left;font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+#glAccount .gla-hit:last-child{border-bottom:0;}
+#glAccount .gla-hit:hover,#glAccount .gla-hit:focus-visible{background:rgba(var(--gl-acc-rgb,31,198,220),.10);outline:0;}
+#glAccount .gla-hit>span{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;}
+#glAccount .gla-hit>span b{font-size:14px;font-weight:600;}
+#glAccount .gla-hit>span em{font-style:normal;font-size:11.5px;color:var(--muted);}
+#glAccount .gla-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;}
+#glAccount .gla-tile{appearance:none;border:1px solid var(--hair);border-radius:10px;background:rgba(var(--gl-wh-rgb,255,255,255),.03);color:var(--ink);display:flex;align-items:center;gap:9px;padding:8px 9px;min-width:0;text-align:left;font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+#glAccount .gla-tile:hover,#glAccount .gla-tile:focus-visible{border-color:rgba(var(--gl-acc-rgb,31,198,220),.6);background:rgba(var(--gl-acc-rgb,31,198,220),.10);outline:0;}
+#glAccount .gla-tile>span{min-width:0;display:flex;flex-direction:column;gap:4px;align-items:flex-start;}
+#glAccount .gla-tile>span b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+#glAccount .gla-lnk{appearance:none;border:0;background:transparent;color:var(--gl-acc,#1FC6DC);font:inherit;padding:0;cursor:pointer;}
+html[data-gl="light"] #glAccount .gla-how[data-how="link"]{color:#0f7a5c;}
+html[data-gl="light"] #glAccount .gla-how[data-how="address"]{color:#0b6b8a;}
+html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
+
 </style>
 <script id="gl48Acct">
 /* Stage 48 — ACCOUNTS (2026-10-07; the owner: "email and password … what most people are used to", Google as the second door,
@@ -11594,7 +11636,7 @@ html[data-glacct]:not([data-glrole="admin"]) #posConnect{display:none;}
                  'aibo.ai.memory.v1'];   /* 10-07: + the Macro desk card views and What I own — the header promised them, they did not follow. 10-20: + the desk assistant's memory of the trader (BWAI), so a sign-in carries it across devices */
   var BOOK_KEYS=['aibo_saves_v1','aibo_last_v1'];
   var S={tok:null, user:null, cfg:null, mode:'in', busy:false, err:null, note:null, devices:null, pkPlatform:false, card:null, pull:{prefs:null, book:null}, reqs:0, link:null,
-         conns:null, addKind:null, armRm:null, pollT:null};
+         conns:null, addKind:null, armRm:null, pollT:null, q:'', lastLink:null};
 
   function ls(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } }
   function lsSet(k,v){ try{ if(v==null) localStorage.removeItem(k); else localStorage.setItem(k,v); }catch(_){} }
@@ -11615,13 +11657,16 @@ html[data-glacct]:not([data-glrole="admin"]) #posConnect{display:none;}
 
   /* the e-mailed links: #verify=<token> (confirms the address on any device) · #reset=<token> (set a new password here) */
   function readHash(w,name){ try{ var m=new RegExp('[#&]'+name+'=([A-Za-z0-9_\\-]{8,200})').exec(String(w.location.hash||'')); return m?m[1]:null; }catch(_){ return null; } }
-  function stripHash(w,name){ try{ var h=String(w.location.hash||'').replace(new RegExp('([#&])'+name+'=[A-Za-z0-9_\\-]+&?'),'$1').replace(/[#&]$/,''); w.history.replaceState(null,'',w.location.pathname+w.location.search+h); }catch(_){} }
+  function stripHash(w,name){ try{ var h=String(w.location.hash||'').replace(new RegExp('([#&])'+name+'=[A-Za-z0-9_\\-]*&?'),'$1').replace(/[#&]$/,''); w.history.replaceState(null,'',w.location.pathname+w.location.search+h); }catch(_){} }
   (function(){
     var top=null; try{ if(window.top&&window.top!==window) top=window.top; }catch(_){ top=null; }
     ['verify','reset'].forEach(function(name){
       var v=readHash(window,name)||(top&&readHash(top,name));
       if(v){ S.link={kind:name, token:v}; stripHash(window,name); if(top) stripHash(top,name); }
     });
+    /* 10-21: back from SnapTrade's portal — #linked=1 (no token; the server reconciles with the session) */
+    var isLinked=function(w){ try{ return /[#&]linked=1(?:&|$)/.test(String(w.location.hash||'')); }catch(_){ return false; } };
+    if(isLinked(window)||(top&&isLinked(top))){ S.link={kind:'linked'}; stripHash(window,'linked'); if(top) stripHash(top,'linked'); }
   })();
 
   /* ---------- the backend ---------- */
@@ -11861,38 +11906,9 @@ html[data-glacct]:not([data-glrole="admin"]) #posConnect{display:none;}
       +'<div class="gla-links"><button type="button" data-glaact="signout-all">Sign out everywhere</button></div><div class="gla-note">An account is for one person; up to '+esc(dv.max)+' devices stay signed in. Being used from several places at once signs the other devices out.</div>';
     h+='</div>';
     if(u.admin) h+=htmlAdmin();
-    /* 10-08 CONNECTIONS: the person's own exchanges and brokers (backend v4.21 /me/connections); their positions then ride
-       /me/positions.json into the Portfolio exactly as the owner's token flow does */
-    h+='<div class="gla-sec gla-conns"><div class="gla-head">Exchanges &amp; brokers</div>';
-    var C=S.conns;
-    if(!C) h+='<div class="gla-note">Loading…</div>';
-    else {
-      if(C.connections.length) h+='<div class="gla-list">'+C.connections.map(function(x){
-        var st=x.status||'pending', when=x.lastOkAt?('synced '+fmtWhen(x.lastOkAt)):(st==='pending'?'connecting…':'never synced');
-        var shown=Object.keys(x.shown||{}).filter(function(k){ return k!=='holdings'; }).map(function(k){ return esc(x.shown[k]); }).join(' · ');
-        return '<div class="gla-item gla-conn" data-st="'+esc(st)+'"><i class="gla-dot"></i><span><b>'+esc(x.label)+'</b>'+(x.label!==x.name?' <em class="gla-kind">'+esc(x.name)+'</em>':'')
-          +'<em>'+esc(when)+(typeof x.assets==='number'?' · '+x.assets+' asset'+(x.assets===1?'':'s'):'')+(shown?' · '+shown:'')+'</em>'
-          +(x.lastError?'<em class="gla-err">'+esc(x.lastError)+'</em>':'')+'</span>'
-          +'<button type="button" class="gla-x'+(S.armRm===x.id?' arm':'')+'" data-glaact="conn-remove" data-id="'+esc(x.id)+'">'+(S.armRm===x.id?'Sure?':'Remove')+'</button></div>'; }).join('')+'</div>';
-      else h+='<div class="gla-note">Nothing connected yet. Connect a read-only key and your real holdings show in Portfolio, priced live.</div>';
-      if(S.addKind){
-        var k=null; (C.catalog||[]).forEach(function(q){ if(q.id===S.addKind) k=q; });
-        if(k){
-          h+='<div class="gla-addform"><div class="gla-head">'+esc(k.name)+'</div>'+(k.help?'<div class="gla-note">'+esc(k.help)+'</div>':'')
-            +(k.permission?'<div class="gla-perm">'+esc(k.permission)+'</div>':'')
-            +'<input type="text" class="gla-in" data-glaf="label" placeholder="A name for it (optional)" autocomplete="off">';
-          k.fields.forEach(function(f){
-            if(f.id==='holdings') h+='<textarea class="gla-in gla-ta" data-glaf="holdings" rows="4" placeholder="'+esc(f.label)+'" autocomplete="off" autocapitalize="characters" spellcheck="false"></textarea>';
-            else h+='<input type="'+(f.secret?'password':'text')+'" class="gla-in" data-glaf="'+esc(f.id)+'" placeholder="'+esc(f.label)+'" autocomplete="off" autocapitalize="off" spellcheck="false">'; });
-          h+='<div class="gla-row"><button type="button" class="gla-btn primary" data-glaact="conn-save">Save and connect</button><button type="button" class="gla-btn" data-glaact="conn-cancel">Cancel</button></div></div>';
-        }
-      } else if(C.connections.length<C.max){
-        h+='<div class="gla-head gla-sub">Connect</div><div class="gla-kinds">'+(C.catalog||[]).map(function(q){ return '<button type="button" class="gla-kind" data-glaact="conn-kind" data-kind="'+esc(q.id)+'">'+esc(q.name)+'</button>'; }).join('')+'</div>';
-      }
-      if(C.connections.length) h+='<div class="gla-links"><button type="button" data-glaact="conn-sync">'+(C.syncing?'Syncing…':'Sync now')+'</button></div>';
-      h+='<div class="gla-note">Keys are read-only by permission and stored encrypted; a secret is never shown back. Nothing here can trade or withdraw.</div>';
-    }
-    h+='</div>';
+    /* 10-08 CONNECTIONS, redrawn 10-21 as Option A of sandbox/connect (the owner: "I don't think we should have a button for every
+       exchange. Maybe they put in their exchange and there's a generic thing"): htmlConns() — one search box over every way in. */
+    h+=htmlConns();
     /* more */
     h+='<details class="gla-more"><summary>Change password</summary><div class="gla-sec">'
       +(u.hasPassword?'<input type="password" class="gla-in" data-gla="cur" placeholder="Current password" autocomplete="current-password">':'<div class="gla-note">This account signs in with Google and has no password yet.</div>')
@@ -11905,6 +11921,109 @@ html[data-glacct]:not([data-glrole="admin"]) #posConnect{display:none;}
       +'<button type="button" class="gla-btn danger" data-glaact="delete">'+(S.armDel?'Tap again — deletes everything':'Delete my account')+'</button><div class="gla-note">Your lists, journal, alerts, settings and saves go with it. There is no undo.</div></div></details>';
     return h;
   }
+  /* ---------- 10-21 CONNECTED ACCOUNTS — Option A (sandbox/connect/a.html): one box finds every way in ----------
+     The list: one row per account — the broker's own mark (SnapTrade serves it) or a monogram, the name, a WAY-IN tag (Link · API key ·
+     Typed · Address), synced / assets, the dollar value from the person's own positions file, Remove. Adding: a search box over the
+     server's VENUES index (GET /me/connections → venues: SnapTrade's brokers + every key kind, with aliases); a hit is a venue button —
+     a Link venue POSTs {kind:'snaptrade', broker} and goes to the portal URL the server answers (the person signs in on the broker's
+     own site there and lands back on the app with #linked=1 → POST /me/connections/linked → the row); a key venue opens the catalog's
+     form for that kind, exactly as before. With the box empty: the Popular tiles, then the remaining key kinds as pills. An older
+     server without `venues` still works: the catalog is the index (no Link path). */
+  var HOW={link:'Link', key:'API key', typed:'Typed', address:'Address', file:'File'};
+  function logoHtml(v){
+    var name=String(v.name||'?'), words=name.split(/[\s·\-]+/).filter(function(w){ return /^[A-Za-z0-9]/.test(w); }), hue=0;
+    var mono=(words.length>1?words.slice(0,2).map(function(w){ return w.charAt(0); }).join(''):name.replace(/[^A-Za-z0-9]/g,'').slice(0,1)).toUpperCase()||'?';
+    for(var i=0;i<name.length;i++) hue=(hue*31+name.charCodeAt(i))%360;
+    return '<span class="gla-lg" style="--h:'+hue+'"><i>'+esc(mono)+'</i>'+(v.logo?'<img src="'+esc(v.logo)+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'">':'')+'</span>';
+  }
+  function venuesOf(C){
+    if(C.venues&&C.venues.length) return C.venues;
+    return (C.catalog||[]).filter(function(k){ return !k.link; }).map(function(k){ return {id:'kind:'+k.id, kind:k.id, broker:null, name:k.name, alias:'', popular:k.id==='kraken', how:(k.fields[0]&&k.fields[0].id==='holdings')?'typed':'key', logo:null, maintenance:false, known:true}; });
+  }
+  function venueById(id){ var vs=S.conns?venuesOf(S.conns):[]; for(var i=0;i<vs.length;i++) if(vs[i].id===id) return vs[i]; return null; }
+  function venueMatch(v,q){ return ((v.name||'')+' '+(v.alias||'')+' '+(v.broker||'')+' '+(v.kind||'')).toLowerCase().indexOf(q)>=0; }
+  function hitSub(v){
+    if(v.how==='link') return v.maintenance?'Sign in at the broker · under maintenance right now':'Sign in at the broker · read-only · via SnapTrade';
+    if(v.how==='typed') return 'Holdings one per line, priced live';
+    if(v.how==='address') return 'A public address — no key at all';
+    return 'A read-only API key you make on the exchange';
+  }
+  function howTag(how){ return '<em class="gla-how" data-how="'+esc(how)+'">'+esc(HOW[how]||how)+'</em>'; }
+  function hitHtml(v){ return '<button type="button" class="gla-hit" data-glaact="venue" data-venue="'+esc(v.id)+'">'+logoHtml(v)+'<span><b>'+esc(v.name)+'</b><em>'+esc(hitSub(v))+'</em></span>'+howTag(v.how)+'</button>'; }
+  function tileHtml(v){ return '<button type="button" class="gla-tile" data-glaact="venue" data-venue="'+esc(v.id)+'">'+logoHtml(v)+'<span><b>'+esc(v.name)+'</b>'+howTag(v.how)+'</span></button>'; }
+  function htmlHits(){
+    var C=S.conns, vs=venuesOf(C), q=String(S.q||'').trim().toLowerCase(), h='';
+    if(q){
+      var hits=vs.filter(function(v){ return venueMatch(v,q); }).slice(0,8);
+      h+=hits.length?'<div class="gla-hits">'+hits.map(hitHtml).join('')+'</div>'
+        :'<div class="gla-note">Nothing by that name. <button type="button" class="gla-lnk" data-glaact="conn-kind" data-kind="manual">Type the holdings in</button> — one per line, priced live.</div>';
+    } else {
+      var pop=vs.filter(function(v){ return v.popular; }), rest=vs.filter(function(v){ return !v.popular&&v.how!=='link'; });
+      if(pop.length) h+='<div class="gla-tiles">'+pop.map(tileHtml).join('')+'</div>';
+      if(rest.length) h+='<div class="gla-kinds">'+rest.map(function(v){ return '<button type="button" class="gla-kind" data-glaact="venue" data-venue="'+esc(v.id)+'">'+esc(v.name)+'</button>'; }).join('')+'</div>';
+      if(!C.link) h+='<div class="gla-note">Signing in to link a broker (Robinhood, Webull, Fidelity, Schwab…) is not switched on yet — a typed list carries those for now.</div>';
+    }
+    return h;
+  }
+  function htmlConns(){
+    var C=S.conns, h='<div class="gla-sec gla-conns"><div class="gla-head">Exchanges &amp; brokers'+(C&&C.connections.length?' <small>'+C.connections.length+' of '+C.max+'</small>':'')+'</div>';
+    if(!C) return h+'<div class="gla-note">Loading…</div></div>';
+    var pos=null; try{ pos=window.AIBO_POS&&AIBO_POS.viaAccount&&AIBO_POS.viaAccount()?AIBO_POS.state.data:null; }catch(_){ pos=null; }
+    var usdOf={}; if(pos&&pos.accounts) pos.accounts.forEach(function(a){ var t=0, any=false; (a.assets||[]).forEach(function(x){ if(typeof x.usd==='number'){ t+=x.usd; any=true; } }); usdOf[a.id]={usd:any?t:null, partial:(a.gaps||[]).length>0||!!a.stale}; });
+    if(C.connections.length){
+      h+='<div class="gla-list">'+C.connections.map(function(x){
+        var st=x.status||'pending', when=x.lastOkAt?('synced '+fmtWhen(x.lastOkAt)):(st==='pending'?'connecting…':'never synced');
+        var shown=Object.keys(x.shown||{}).filter(function(k){ return k!=='holdings'; }).map(function(k){ return esc(x.shown[k]); }).join(' · ');
+        var v=usdOf[x.id], how=x.how||(x.kind==='manual'||x.kind==='physical'?'typed':'key');
+        return '<div class="gla-item gla-conn" data-st="'+esc(st)+'" data-how="'+esc(how)+'">'+logoHtml({name:x.name||x.label, logo:x.broker&&x.broker.logo})
+          +'<span><b><i class="gla-dot"></i>'+esc(x.label)+(x.label!==x.name?' <em class="gla-kind">'+esc(x.name)+'</em>':'')+' '+howTag(how)+'</b>'
+          +'<em>'+esc(when)+(typeof x.assets==='number'?' · '+x.assets+' asset'+(x.assets===1?'':'s'):'')+(shown?' · '+shown:'')+'</em>'
+          +(x.lastError?'<em class="gla-err">'+esc(x.lastError)+'</em>':'')+'</span>'
+          +(v&&v.usd!=null?'<span class="gla-usd"><b>$'+Math.round(v.usd).toLocaleString('en-US')+'</b>'+(v.partial?'<em>partial</em>':'')+'</span>':'')
+          +'<button type="button" class="gla-x'+(S.armRm===x.id?' arm':'')+'" data-glaact="conn-remove" data-id="'+esc(x.id)+'">'+(S.armRm===x.id?'Sure?':'Remove')+'</button></div>'; }).join('')+'</div>';
+      h+='<div class="gla-links"><button type="button" data-glaact="conn-sync">'+(C.syncing?'Syncing…':'Sync now')+'</button><span>every hour on its own</span></div>';
+    } else h+='<div class="gla-note">Nothing connected yet. '+(C.link?'Link a broker or paste a read-only exchange key':'Connect a read-only key')+' and your real holdings show in Portfolio, priced live.</div>';
+    if(S.addKind){
+      var k=null; (C.catalog||[]).forEach(function(q){ if(q.id===S.addKind) k=q; });
+      if(k){
+        h+='<div class="gla-addform"><div class="gla-head">'+esc(k.name)+'</div>'+(k.help?'<div class="gla-note">'+esc(k.help)+'</div>':'')
+          +(k.permission?'<div class="gla-perm">'+esc(k.permission)+'</div>':'')
+          +'<input type="text" class="gla-in" data-glaf="label" placeholder="A name for it (optional)" autocomplete="off">';
+        k.fields.forEach(function(f){
+          if(f.id==='holdings') h+='<textarea class="gla-in gla-ta" data-glaf="holdings" rows="4" placeholder="'+esc(f.label)+'" autocomplete="off" autocapitalize="characters" spellcheck="false"></textarea>';
+          else h+='<input type="'+(f.secret?'password':'text')+'" class="gla-in" data-glaf="'+esc(f.id)+'" placeholder="'+esc(f.label)+'" autocomplete="off" autocapitalize="off" spellcheck="false">'; });
+        h+='<div class="gla-row"><button type="button" class="gla-btn primary" data-glaact="conn-save">Save and connect</button><button type="button" class="gla-btn" data-glaact="conn-cancel">Cancel</button></div></div>';
+      }
+    } else if(C.connections.length<C.max){
+      h+='<div class="gla-head gla-sub">Add an account</div>'
+        +'<div class="gla-srch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>'
+        +'<input type="search" class="gla-in" data-gla="q" placeholder="Robinhood, Kraken, Fidelity, your 401(k)…" autocomplete="off" autocapitalize="off" spellcheck="false" value="'+esc(S.q||'')+'"></div>'
+        +'<div class="gla-addbox">'+htmlHits()+'</div>';
+    }
+    h+='<div class="gla-note">'+(C.link?'Linking a broker: you sign in on the broker’s own site; the password never comes here. ':'')+'Keys are read-only by permission and stored encrypted; a secret is never shown back. Nothing here can trade or withdraw.</div>';
+    return h+'</div>';
+  }
+  function paintHits(){ var box=S.card&&$('.gla-addbox',S.card); if(box&&S.conns) box.innerHTML=htmlHits(); }
+  function linkBroker(slug){
+    busy(true);
+    api('POST','/me/connections',{kind:'snaptrade', broker:slug||null}).then(function(r){ busy(false);
+      if(r.status===200&&r.body&&r.body.redirect){ S.lastLink=r.body.redirect; toast('Opening the broker’s sign-in…'); nav(r.body.redirect); }
+      else fail(errText(r)); });
+  }
+  function nav(url){ var f=window.AIBO_ACCOUNT&&window.AIBO_ACCOUNT.nav; if(f&&f!==nav) return f(url); try{ (window.top||window).location.href=url; }catch(_){ window.location.href=url; } }
+  /* back from the portal (#linked=1): tell the server, open Settings so the new row is in front of the person */
+  function afterLink(){
+    S.link=null; S.linkedBusy=true;
+    api('POST','/me/connections/linked',{}).then(function(r){
+      S.linkedBusy=false;
+      if(r.status===200&&r.body&&Array.isArray(r.body.connections)){ S.conns=r.body; var n=r.body.connections.filter(function(x){ return x.kind==='snaptrade'; }).length; toast(n?'Linked — fetching your holdings':'Nothing was linked'); }
+      else toast(errText(r,'The link did not finish — tap Sync now'));
+      if(S.card) paint();
+      clearTimeout(S.pollT); S.pollT=setTimeout(loadConns,3000);
+    });
+    var tries=0, t=setInterval(function(){ tries++; var d=document.querySelector('[data-gldoor="settings"]'); if(d){ clearInterval(t); if(!document.body.classList.contains('gl-settings')) d.click(); } else if(tries>40) clearInterval(t); },250);
+  }
+
   /* ---------- 10-16 the Admin section (admin accounts only) ---------- */
   function htmlAdmin(){
     var A=S.adm||{}, inv=A.inv, ov=A.ov, h='<div class="gla-sec gla-admin"><div class="gla-head">Admin</div>';
@@ -11998,7 +12117,12 @@ html[data-glacct]:not([data-glrole="admin"]) #posConnect{display:none;}
     if(a==='email-confirm'){ var ec=val('[data-gla="ecode"]'); if(!ec) return fail('The 6-digit code, please'); busy(true);
       api('POST','/auth/email/confirm',{code:ec}).then(function(r){ busy(false); if(r.status===200){ takeUser(r.body.user); toast('E-mail changed'); paint(); } else fail(errText(r)); }); return; }
     if(a==='email-cancel'){ busy(true); api('POST','/auth/email/cancel',{}).then(function(r){ busy(false); if(r.status===200) takeUser(r.body.user); paint(); }); return; }
-    if(a==='conn-kind'){ S.addKind=b.getAttribute('data-kind'); S.err=S.note=null; paint(); var f=$('.gla-addform .gla-in',S.card); if(f) f.focus(); return; }
+    if(a==='conn-kind'){ S.addKind=b.getAttribute('data-kind'); S.q=''; S.err=S.note=null; paint(); var f=$('.gla-addform .gla-in',S.card); if(f) f.focus(); return; }
+    if(a==='venue'){
+      var v=venueById(b.getAttribute('data-venue')); if(!v) return;
+      if(v.kind==='snaptrade'){ S.err=S.note=null; linkBroker(v.broker); return; }
+      S.addKind=v.kind; S.q=''; S.err=S.note=null; paint(); var f2=$('.gla-addform .gla-in',S.card); if(f2) f2.focus(); return;
+    }
     if(a==='conn-cancel'){ S.addKind=null; paint(); return; }
     if(a==='conn-save'){
       var body={kind:S.addKind}; $$('[data-glaf]',S.card).forEach(function(i){ body[i.getAttribute('data-glaf')]=String(i.value||'').trim(); });
@@ -12023,11 +12147,14 @@ html[data-glacct]:not([data-glrole="admin"]) #posConnect{display:none;}
       return;
     }
   }
+  function onInput(e){ var i=e.target.closest('[data-gla="q"]'); if(!i) return; S.q=String(i.value||''); paintHits(); }
   function onChange(e){
     var b=e.target.closest('[data-glaact="alertmail"]'); if(!b) return;
     api('POST','/auth/prefs',{alertEmails:!!b.checked}).then(function(r){ if(r.status===200) takeUser(r.body.user); });
   }
-  function onKey(e){ if(e.key!=='Enter') return; if(e.target.tagName==='TEXTAREA') return; var f=e.target.closest('.gla-form,.gla-addform'); if(!f) return; var p=$('.gla-btn.primary',f); if(p) p.click(); }
+  function onKey(e){ if(e.key!=='Enter') return; if(e.target.tagName==='TEXTAREA') return;
+    if(e.target.closest('[data-gla="q"]')){ var h1=$('.gla-addbox [data-glaact="venue"]',S.card); if(h1) h1.click(); return; }
+    var f=e.target.closest('.gla-form,.gla-addform'); if(!f) return; var p=$('.gla-btn.primary',f); if(p) p.click(); }
 
   /* ---------- Settings: the card at the top of the page ---------- */
   function inject(){
@@ -12036,7 +12163,7 @@ html[data-glacct]:not([data-glrole="admin"]) #posConnect{display:none;}
     var cap=el('div','st8-cap gla-cap','Account'), card=el('div','dk-group st8-card gla-card'), foot=el('div','st8-foot gl-foot gla-foot');
     card.id='glAccount'; S.card=card;
     main.insertBefore(foot,main.firstChild); main.insertBefore(card,foot); main.insertBefore(cap,card);
-    card.addEventListener('click',onAct); card.addEventListener('change',onChange); card.addEventListener('keydown',onKey);
+    card.addEventListener('click',onAct); card.addEventListener('change',onChange); card.addEventListener('keydown',onKey); card.addEventListener('input',onInput);
     if(S.link&&S.link.kind==='reset'&&!signedIn()) S.mode='reset';
     paint();
     if(pkAvailable()&&window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable)
@@ -12058,7 +12185,9 @@ html[data-glacct]:not([data-glrole="admin"]) #posConnect{display:none;}
   window.AIBO_ACCOUNT={
     token:function(){ return S.tok; }, signedIn:signedIn, user:function(){ return S.user; }, signOut:function(){ forget(); }, expired:function(){ expired(); }, role:role,
     state:function(){ return {signedIn:signedIn(), user:S.user, cfg:S.cfg, mode:S.mode, card:!!S.card, devices:S.devices?S.devices.devices.length:null, reqs:S.reqs, link:S.link, err:S.err, note:S.note,
-                              conns:S.conns?S.conns.connections.map(function(x){ return {id:x.id, kind:x.kind, status:x.status, shown:x.shown}; }):null, addKind:S.addKind, sync:{prefs:mem(LS_PREF).failed||null, book:mem(LS_BOOK).failed||null}}; },
+                              conns:S.conns?S.conns.connections.map(function(x){ return {id:x.id, kind:x.kind, status:x.status, shown:x.shown, how:x.how}; }):null, addKind:S.addKind, q:S.q, lastLink:S.lastLink,
+                              venues:S.conns?venuesOf(S.conns).length:null, linkOn:!!(S.conns&&S.conns.link), sync:{prefs:mem(LS_PREF).failed||null, book:mem(LS_BOOK).failed||null}}; },
+    nav:null,   /* 10-21: where a broker link goes (the top window); the QA suite swaps it for a recorder */
     pull:function(){ return Promise.all([pull('prefs'),pull('book')]); }, push:function(){ return Promise.all([push('prefs'),push('book')]); }
   };
   roleReady=true; announceRole();
@@ -12066,6 +12195,7 @@ html[data-glacct]:not([data-glrole="admin"]) #posConnect{display:none;}
     api('POST','/auth/verify',{token:S.link.token},!signedIn()).then(function(r){
       if(r.status===200){ if(signedIn()) takeUser(r.body.user); toast('E-mail confirmed'); } else toast(errText(r,'That link has expired')); S.link=null; if(S.card) paint(); });
   }
+  if(S.link&&S.link.kind==='linked'){ if(signedIn()) afterLink(); else { S.link=null; toast('Sign in to finish linking the broker'); } }
   if(S.link&&S.link.kind==='reset'&&!signedIn()){
     /* open Settings so the new-password form is in front of the person */
     var tries=0, t=setInterval(function(){ tries++; var d=document.querySelector('[data-gldoor="settings"]'); if(d){ clearInterval(t); d.click(); } else if(tries>40) clearInterval(t); },250);
@@ -14011,8 +14141,11 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
        unrealistic … I still want to see where the RSI is at all times, but it doesn't have to be in the middle"): the window is the
        40–60 band plus whatever the RSI and its average actually travelled in view (±2, snapped outward to the 5s), nothing more —
        no centring, no minimum beyond the band itself, and the top only reaches 100 when the RSI itself went there. */
-    var mv=mm.filter(function(v){ return v!=null; }), all=vals.concat(mv), dlo=Math.min.apply(null,all)-2, dhi=Math.max.apply(null,all)+2;
-    var lo=Math.max(0,Math.min(40,Math.floor(dlo/5)*5)), hi=Math.min(100,Math.max(60,Math.ceil(dhi/5)*5));
+    /* 10-21 (the owner: "the lowest the RSI band goes is 20, unless RSI is actually below 20, then track it down tick by tick … a soft minimum and
+       maximum at 20 and 80 … that keeps the red and green bands within view all the time"): the window is ALWAYS 20–80, and only the RSI's
+       own travel beyond them stretches it — to the integer it reached, no padding, so there is never empty space past the curve. */
+    var mv=mm.filter(function(v){ return v!=null; }), all=vals.concat(mv), dlo=Math.min.apply(null,all), dhi=Math.max.apply(null,all);
+    var lo=Math.max(0,Math.min(20,Math.floor(dlo))), hi=Math.min(100,Math.max(80,Math.ceil(dhi)));
     var gut=w>=140?19:w>=90?15:0, levels=[], lv; for(lv=Math.ceil(lo/10)*10;lv<=hi;lv+=10) levels.push(lv);
     var perLv=(h-4)/Math.max(1,(hi-lo)/10), labels=h<40?[]:perLv>=11?levels:levels.filter(function(v){ return v%20===0; });
     function X(i){ return p+i*(w-2*p-gut)/(n-1); } function Y(v){ return (h-p)-((v-lo)/(hi-lo))*(h-2*p); }
@@ -14022,7 +14155,9 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     function band(a,b,col){ var t=Math.min(hi,b), m=Math.max(lo,a); if(t<=m) return ''; return '<rect x="'+p+'" y="'+Y(t).toFixed(1)+'" width="'+(xr-p).toFixed(1)+'" height="'+Math.max(0,Y(m)-Y(t)).toFixed(1)+'" fill="'+col+'" opacity=".09"/>'; }
     s+=band(60,70,C_UP)+band(30,40,C_DN);
     function hl(v,col,op,dash,sw){ if(v<lo||v>hi) return ''; var y=Y(v).toFixed(1); return '<line x1="'+p+'" x2="'+xr.toFixed(1)+'" y1="'+y+'" y2="'+y+'" stroke="'+col+'" stroke-width="'+(sw||.7)+'" stroke-dasharray="'+dash+'" opacity="'+op+'"/>'; }
-    s+=hl(80,C_FL,.22,'4 3')+hl(20,C_FL,.22,'4 3')+hl(60,C_FL,.3,'1 3')+hl(40,C_FL,.3,'1 3')+hl(50,C_FL,.38,'4 3')+hl(70,C_DN,.6,'3 2.5')+hl(30,C_UP,.6,'3 2.5');
+    /* 10-21 (the owner: "when RSI is below that 30 threshold, it's still green — let's have it be coherent with red, like the band above it"):
+       everything under 30 is the down colour and everything over 70 the up colour — the 30/70 lines, the shaded stretches, the last dot. */
+    s+=hl(80,C_FL,.22,'4 3')+hl(20,C_FL,.22,'4 3')+hl(60,C_FL,.3,'1 3')+hl(40,C_FL,.3,'1 3')+hl(50,C_FL,.38,'4 3')+hl(70,C_UP,.6,'3 2.5')+hl(30,C_DN,.6,'3 2.5');
     /* the stretches beyond a band, shaded between the curve and the line */
     function zone(test,yl,col){ var d='', open=false, x0=0;
       for(var k=0;k<n;k++){ var v=rr[k], inz=(v!=null&&test(v));
@@ -14030,11 +14165,11 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
         if(inz) d+=' L'+X(k).toFixed(1)+','+Y(v).toFixed(1);
         if(open&&(!inz||k===n-1)){ d+=' L'+X(inz?k:k-1).toFixed(1)+','+yl.toFixed(1)+' Z '; open=false; } }
       return d?'<path d="'+d+'" fill="'+col+'" opacity=".26"/>':''; }
-    s+=zone(function(v){ return v>70; },Y(70),C_DN)+zone(function(v){ return v<30; },Y(30),C_UP);
+    s+=zone(function(v){ return v>70; },Y(70),C_UP)+zone(function(v){ return v<30; },Y(30),C_DN);
     /* the average first (under the RSI), then the RSI */
     s+=polyline(X,Y,mm,C_MA,'1.3','.95');
     s+=polyline(X,Y,rr,C_CY,'1.5','1');
-    var lastV=rr[n-1]; if(lastV!=null) s+='<circle cx="'+X(n-1).toFixed(1)+'" cy="'+Y(lastV).toFixed(1)+'" r="1.9" fill="'+(lastV>70?C_DN:lastV<30?C_UP:C_CY)+'"/>';
+    var lastV=rr[n-1]; if(lastV!=null) s+='<circle cx="'+X(n-1).toFixed(1)+'" cy="'+Y(lastV).toFixed(1)+'" r="1.9" fill="'+(lastV>70?C_UP:lastV<30?C_DN:C_CY)+'"/>';
     /* the levels, in the right gutter */
     if(gut) labels.forEach(function(v){ if(v<lo||v>hi) return; var ty=Math.min(h-2,Math.max(8,Y(v)+2.6)); s+='<text x="'+(xr+3).toFixed(1)+'" y="'+ty.toFixed(1)+'" font-size="7.5" font-family="ui-monospace,Menlo,monospace" fill="rgba(234,238,245,.55)">'+v+'</text>'; });   /* the top / bottom label stays inside the plot */
     return window.tfSvg(w,h)+s+'</svg>';
