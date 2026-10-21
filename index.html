@@ -2567,7 +2567,7 @@ function tfTboSVG(bars,w,h,tailN){
   var e=tfExt(c.concat(s8,s13,s21,s40));
   if(!e) return '';
   var rg=e[1]-e[0]||1,p=2,n=tail;
-  function X(i){ return p+i*(w-2*p)/(n-1); }
+  function X(i){ return 1+(i+.5)*(w-2)/n; }   /* 10-21: bar CENTRES, the candle row's own slots — one time axis for every row (the owner: "super important") */
   function Y(v){ return (h-p)-(v-e[0])*(h-2*p)/rg; }
   var s=tfCloudQuads(X,Y,s21,s40,'.30','.26')+tfCloudQuads(X,Y,s13,s21,'.18','.15');
   var fp='';
@@ -2652,7 +2652,7 @@ function tfDivSVG(bars,w,h,tailN){
   var e=tfExt(c);
   if(!e) return '';
   var rg=e[1]-e[0]||1;
-  function X(i){ return p+i*(w-2*p)/(n-1); }
+  function X(i){ return 1+(i+.5)*(w-2)/n; }   /* 10-21: bar CENTRES, the candle row's own slots — one time axis for every row (the owner: "super important") */
   function Y(v){ return (ph-p)-(v-e[0])*(ph-2*p)/rg; }
   var live=[];
   for(var q=0;q<evs.length;q++){ if(evs[q].i1>=off)live.push(evs[q]); }
@@ -2722,7 +2722,7 @@ function tfBbSVG(bars,w,h,tailN){
   var e=tfExt(c.concat(up,dn));
   if(!e) return '';
   var rg=e[1]-e[0]||1;
-  function X(i){ return p+i*(w-2*p)/(n-1); }
+  function X(i){ return 1+(i+.5)*(w-2)/n; }   /* 10-21: bar CENTRES, the candle row's own slots — one time axis for every row (the owner: "super important") */
   function Y(v){ return (h-p)-(v-e[0])*(h-2*p)/rg; }
   var band='';
   for(var k=0;k<n;k++){ if(up[k]==null)continue; band+=(band?' L':'M')+X(k).toFixed(1)+','+Y(up[k]).toFixed(1); }
@@ -8122,6 +8122,17 @@ window.MktView = (function(){
     return {stale:false,label:''};
   }
 
+  /* 10-21 (the owner: "on the 500, US stocks, why do we not have a 1 hour percent move?"): a US 500 row's 1H rides /market.json
+     (backend v4.32 jobs/market._apply_1h — the price vs the previous hourly quote pass, zero calls; chg1hAsOf = when it was
+     taken; null at the first pass of a session or after a missed pass). The same AFTER HRS / NO NEW BARS read as the H frame,
+     from the stamp: a carried evening row keeps the session's last hour, dimmed and labelled. */
+  function h1FreshInfo(iso){
+    if(!iso) return {stale:false,label:''};
+    var age=(Date.now()-Date.parse(iso))/60000;
+    if(!isFinite(age)||age<=135) return {stale:false,label:''};
+    return {stale:true,label:((typeof tfUsSessionMin==='function'&&tfUsSessionMin()>=135)?'NO NEW BARS':'AFTER HRS')+' — 1H move from '+Math.round(age/60)+'h ago'};
+  }
+
   /* ---------- assembly (rosters = the app's own; live = .live hydration) --- */
   var ROWS=[], lastAt=null;
   function assemble(){
@@ -8276,12 +8287,12 @@ window.MktView = (function(){
       var g=gEq[sym]||null;
       if(!g&&Object.prototype.hasOwnProperty.call(MK_EQ_ALIAS,sym)){ var al=MK_EQ_ALIAS[sym]; if(gEq[al]&&!eqSyms[al]) g=gEq[al]; }
       if(g){ out.push(mkGradedClone(g,'mk',x,sym)); return; }
-      var tf=mkCdTf('mk',sym);
+      var tf=mkCdTf('mk',sym), h1=h1FreshInfo(x.chg1hAsOf);   /* 10-21: the 1H move rides /market.json (backend v4.32) */
       out.push({
         kind:'mk', key:sym, sym:sym, name:String(x.name||sym), cat:null, tint:null,
         choke:false, us:false, gExp:null, gRec:null, grade:null, tok:null,
         px:mkNum(x.px), pxStale:st, pxTitle:x.listed?'price from when this was added to a list — live prices follow at the next market pass':(st?'carried from an earlier pull — this quote did not refresh':null),
-        chg1h:null, hStale:false, hLabel:'', chg24:mkNum(x.chg1d), chg24Note:null, chg7:mkNum(x.chg7d),
+        chg1h:mkNum(x.chg1h), hStale:h1.stale, hLabel:h1.label, chg24:mkNum(x.chg1d), chg24Note:null, chg7:mkNum(x.chg7d),
         mcap:mkNum(x.mcap), mcapSub:ex||null, mcapTitle:'market cap from the quote feed'+(ex?' · '+ex:''),
         vol:null, vol20:null, tech:null, sentO:null, range:tf?rangePos(tfParse(tf),mkNum(x.px)):null, tf:tf,
         auto:mkAgOf(sym)   /* §41: the auto grade (US 500 only), or null */
@@ -9565,12 +9576,9 @@ window.MktView = (function(){
      graded clones always do); the honest dash remains for names without candles */
   /* wide only — the <=900 block keeps 610px and the phone block's min-width:0 must win (specificity trap) */
   +'@media(min-width:901px){#mktView .twrap.mk-market table.mkt{min-width:760px}}'
-  /* <=900 under Market: the 1H column can never carry a value there (no intraday frames) — it leaves too, so a
-     sideways phone fits more of the table; the phone rest row already swaps it for the cap line */
-  +'@media(max-width:900px){#mktView .twrap.mk-market th.c-1h,#mktView .twrap.mk-market tr.mk-row td.c-1h{display:none}}'
-  /* round 7 §31: a graded clone inside US 500 / Coins 500 DOES carry 1H — the phone grid (<=480) keeps its line; the 481–900
-     TABLE still drops the whole column (every row must hide the same cells or the columns misalign) */
-  +'@media(min-width:481px) and (max-width:900px){#mktView .twrap.mk-market td.c-1h{display:none}}'
+  /* <=900 under Market: the 1H column used to leave (a Market row could never carry a value — no intraday frames). 10-21
+     (the owner: "why do we not have a 1 hour percent move?"): every US 500 row carries 1H now (backend v4.32), so the column
+     stays at every width like 1D and 7D — the two hiders are gone. */
   /* round 9b §56: Coins 500 with served frames (twrap.mk-cfr) — the Tech column returns on wide (the gauge reads the served tech) */
   +'@media(min-width:901px){#mktView .twrap.mk-market.mk-cfr th.c-tech,#mktView .twrap.mk-market.mk-cfr td.c-tech{display:table-cell}}'
   /* round 13 §78 (the owner 09-26: "with US 500 on, if I turn my iPhone sideways it collapses everything and we lose a bunch
@@ -9811,12 +9819,12 @@ window.MktView = (function(){
   +'#mktView .mkt tbody tr.mx-open td.c-mcap{display:flex;flex-direction:column;align-items:center;justify-content:center;grid-area:1/2/5/3;align-self:stretch;text-align:center;font-size:13px;font-weight:700;line-height:1.15;color:var(--ink);padding:0}'
   +'#mktView .mkt tbody tr.mx-open td.c-mcap::before{content:"Market cap";display:block;font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);opacity:.85;margin:0 0 2px}'
   +'#mktView .mkt tbody tr.mx-open td.c-mcap .mk-sub{display:block;margin:2px 0 0;font-size:10px;font-weight:500}'
-  /* §19/§21 Market-family rows on the phone: the always-empty 1H line yields to 1D + 7D
-     shifting up, and the cap fills the freed fourth line (price / 1D / 7D / CAP) */
-  +'#mktView .mkt tbody tr.mk-row td.c-1h{display:none}'
-  +'#mktView .mkt tbody tr.mk-row td.c-24h{grid-area:2/3;padding-top:1px}'
-  +'#mktView .mkt tbody tr.mk-row td.c-7d{grid-area:3/3}'
-  +'#mktView .mkt tbody tr.mk-row td.c-mcap{display:block;grid-area:4/3;font-size:10px;line-height:1.15;align-self:start;text-align:right;color:var(--muted);padding:0}'
+  /* §19/§21 Market-family rows on the phone: the stack is price / 1H / 1D / 7D / CAP — 10-21 the 1H line is back (every US 500
+     row carries it now), so the cap takes a FIFTH line and the name / grade / chart / bullet cells span five rows */
+  +'#mktView .mkt tbody tr.mk-row:not(.mx-open) td.c-grade{grid-area:3/1/6/2}'
+  +'#mktView .mkt tbody tr.mk-row:not(.mx-open) td.c-chart{grid-area:1/2/6/3}'
+  +'#mktView .mkt tbody tr.mk-row:not(.mx-open) td.c-bullet{grid-area:1/4/6/5}'   /* the REST row only — opened, the cap takes the hero and the row is the graded four-row layout */
+  +'#mktView .mkt tbody tr.mk-row td.c-mcap{display:block;grid-area:5/3;font-size:10px;line-height:1.15;align-self:start;text-align:right;color:var(--muted);padding:0}'
   +'#mktView .mkt tbody tr.mk-row td.c-mcap::before{content:"CAP ";font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);opacity:.85;margin-right:2px}'
   +'#mktView .mkt tbody tr.mk-row td.c-mcap .mk-sub{display:none}'
   /* §31/§33: a Market row breathed open (it has a daily candle): its D frame drops to the frames line and the
@@ -13813,7 +13821,7 @@ html[data-gl] .glt-x{order:4;appearance:none;flex:none;width:30px;height:30px;bo
   font:400 20px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .34s cubic-bezier(.3,1.9,.45,1),background-color .2s;}
 html[data-gl] .glt-x:active{transform:scale(.9);background:rgba(var(--gl-wh-rgb,255,255,255),.14);transition-duration:.05s;}
 /* the search: a glyph; tapped, it becomes a field and the list drops under the head only while the field has focus */
-html[data-gl] .glt-find{position:static;display:flex;align-items:center;flex:0 1 auto;min-width:0;}
+html[data-gl] .glt-find{position:static;display:flex;align-items:center;flex:none;min-width:0;}   /* 10-22: never shrinks below its glyph (the field state below sets its own flex) */
 html[data-gl] .glt-fbtn{appearance:none;flex:none;width:30px;height:30px;border-radius:50%;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.12);background:rgba(var(--gl-wh-rgb,255,255,255),.06);color:rgba(var(--gl-ink-rgb,234,238,245),.75);display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent;
   transition:transform .34s cubic-bezier(.3,1.9,.45,1),background-color .2s;}
 html[data-gl] .glt-fbtn svg{width:15px;height:15px;}
@@ -13913,9 +13921,11 @@ html[data-gl] :is(.aibo-box,.sh-grades,.glf) .glt-row:active{transform:scale(.98
 }
 
 /* ---- widths / heights ---- */
-@media (max-width:599px) and (min-height:481px){
-  /* portrait phone: two head rows — who · price · × above, [Wall|Stack] · search below */
-  html[data-gl] .glt-x{order:3;}
+@media (max-width:599px) and (min-height:481px), (min-width:600px) and (max-width:899px) and (min-height:600px){
+  /* portrait phone — and since 10-22 a portrait TABLET too (the owner: "on vertical iPad … the magnifying glass circle and the X circle
+     on the far right upper corner overlap each other": one row at 768 squeezed .glt-find to 27px and its 34px glyph ran under
+     the ×): two head rows — who · walk · price · × above, [Wall|Stack] · indicators · search below */
+  html[data-gl] .glt-x{order:3;margin-left:auto;}   /* 10-22: the × keeps the far right of its row (a tablet's first row has room to spare) */
   html[data-gl] .glt-ctl{order:4;flex:1 1 100%;margin-left:0;justify-content:space-between;}
   html[data-gl] .glt-dial{flex:1 1 auto;max-width:none;}
   html[data-gl] .glt-head.finding .glt-dial{display:none;}
@@ -14228,13 +14238,16 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     var lo=Math.max(0,Math.min(30,Math.floor(dlo))), hi=Math.min(100,Math.max(70,Math.ceil(dhi)));
     var gut=w>=140?19:w>=90?15:0, levels=[], lv; for(lv=Math.ceil(lo/10)*10;lv<=hi;lv+=10) levels.push(lv);
     var perLv=(h-4)/Math.max(1,(hi-lo)/10), labels=h<40?[]:perLv>=11?levels:levels.filter(function(v){ return v%20===0; });
-    function X(i){ return p+i*(w-2*p-gut)/(n-1); } function Y(v){ return (h-p)-((v-lo)/(hi-lo))*(h-2*p); }
-    var xr=w-p-gut, s='';
+    /* 10-21 (the owner: "the RSI does not sync on the same X time axis as the rest of the indicators — super important"): the pane used to keep a
+       right-hand gutter for its level labels, so its last bar sat 15–19px left of every other row's. The X map is now the same as the other
+       panes' (p … w−p); the level labels sit INSIDE the plot at the right edge, over a faint backdrop. */
+    function X(i){ return 1+(i+.5)*(w-2)/n; }   /* 10-21: bar CENTRES in the candle rows' own slots (their side pad is 1px) — one time axis for every row */ function Y(v){ return (h-p)-((v-lo)/(hi-lo))*(h-2*p); }
+    var xr=w-1, s='';
     /* the approach bands, tinted (10-19, the owner: "the upper will go from 60 to 70 and the lower from 40 to 30") — clipped to the window.
        10-20 (the owner: "the shaded area from 30 to 40 can you make that red and the 60 to 70 green"): the 60–70 band takes the scheme's up colour, the 30–40 band its down colour. */
-    function band(a,b,col){ var t=Math.min(hi,b), m=Math.max(lo,a); if(t<=m) return ''; return '<rect x="'+p+'" y="'+Y(t).toFixed(1)+'" width="'+(xr-p).toFixed(1)+'" height="'+Math.max(0,Y(m)-Y(t)).toFixed(1)+'" fill="'+col+'" opacity=".09"/>'; }
+    function band(a,b,col){ var t=Math.min(hi,b), m=Math.max(lo,a); if(t<=m) return ''; return '<rect x="1" y="'+Y(t).toFixed(1)+'" width="'+(xr-1).toFixed(1)+'" height="'+Math.max(0,Y(m)-Y(t)).toFixed(1)+'" fill="'+col+'" opacity=".09"/>'; }
     s+=band(60,70,C_UP)+band(30,40,C_DN);
-    function hl(v,col,op,dash,sw){ if(v<lo||v>hi) return ''; var y=Y(v).toFixed(1); return '<line x1="'+p+'" x2="'+xr.toFixed(1)+'" y1="'+y+'" y2="'+y+'" stroke="'+col+'" stroke-width="'+(sw||.7)+'" stroke-dasharray="'+dash+'" opacity="'+op+'"/>'; }
+    function hl(v,col,op,dash,sw){ if(v<lo||v>hi) return ''; var y=Y(v).toFixed(1); return '<line x1="1" x2="'+xr.toFixed(1)+'" y1="'+y+'" y2="'+y+'" stroke="'+col+'" stroke-width="'+(sw||.7)+'" stroke-dasharray="'+dash+'" opacity="'+op+'"/>'; }
     /* 10-21 (the owner: "when RSI is below that 30 threshold, it's still green — let's have it be coherent with red, like the band above it"):
        everything under 30 is the down colour and everything over 70 the up colour — the 30/70 lines, the shaded stretches, the last dot. */
     /* 10-21 (the owner: "anything under 40 colour is red and anything above 60 colour is green"): the 40 and 60 dotted lines take the bands' hues too, faintly. */
@@ -14252,7 +14265,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     s+=polyline(X,Y,rr,C_CY,'1.5','1');
     var lastV=rr[n-1]; if(lastV!=null) s+='<circle cx="'+X(n-1).toFixed(1)+'" cy="'+Y(lastV).toFixed(1)+'" r="1.9" fill="'+(lastV>70?C_UP:lastV<30?C_DN:C_CY)+'"/>';
     /* the levels, in the right gutter */
-    if(gut) labels.forEach(function(v){ if(v<lo||v>hi) return; var ty=Math.min(h-2,Math.max(8,Y(v)+2.6)); s+='<text x="'+(xr+3).toFixed(1)+'" y="'+ty.toFixed(1)+'" font-size="7.5" font-family="ui-monospace,Menlo,monospace" fill="rgba(234,238,245,.55)">'+v+'</text>'; });   /* the top / bottom label stays inside the plot */
+    if(gut) labels.forEach(function(v){ if(v<lo||v>hi) return; var ty=Math.min(h-2,Math.max(8,Y(v)+2.6)), tx=(xr-2).toFixed(1); s+='<rect x="'+(xr-gut+2).toFixed(1)+'" y="'+(ty-7).toFixed(1)+'" width="'+(gut-3).toFixed(1)+'" height="9" rx="2" fill="rgba(13,19,32,.55)"/><text x="'+tx+'" y="'+ty.toFixed(1)+'" text-anchor="end" font-size="7.5" font-family="ui-monospace,Menlo,monospace" fill="rgba(234,238,245,.6)">'+v+'</text>'; });
     return window.tfSvg(w,h)+s+'</svg>';
   };
   function macdOf(cl){ var e12=window.tfEma(cl,12), e26=window.tfEma(cl,26), m=[], i, ms=[], idx=[];
@@ -14265,7 +14278,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     for(i=0;i<n;i++) hs.push((m[i]==null||sg[i]==null)?null:m[i]-sg[i]);
     var all=m.concat(sg,hs).filter(function(v){ return v!=null; }); if(!all.length) return '';
     var mx=Math.max.apply(null,all.map(Math.abs))||1;
-    function X(i){ return p+i*(w-2*p)/(n-1); }
+    function X(i){ return 1+(i+.5)*(w-2)/n; }   /* 10-21: bar CENTRES in the candle rows' own slots (their side pad is 1px) — one time axis for every row */
     function Y(v){ return h/2-(v/mx)*(h/2-p); }
     var s='<line x1="'+p+'" x2="'+(w-p)+'" y1="'+(h/2).toFixed(1)+'" y2="'+(h/2).toFixed(1)+'" stroke="'+C_FL+'" stroke-width=".6" opacity=".3"/>';
     var bw=Math.max(.8,(w-2*p)/n*.62);
@@ -14295,7 +14308,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     if(!bars||bars.length<8||!hasVol(bars)) return '';
     var vol=bars.map(function(b){ return typeof b.v==='number'?b.v:null; }), avg=smaOf(vol,20), n=Math.min(tailN||60,bars.length), V=vol.slice(-n), A=avg.slice(-n), B=bars.slice(-n), p=2;
     var mx=0; for(var i=0;i<n;i++){ if(V[i]!=null&&V[i]>mx) mx=V[i]; if(A[i]!=null&&A[i]>mx) mx=A[i]; } if(!(mx>0)) return '';
-    function X(i){ return p+i*(w-2*p)/(n-1); } function Y(v){ return (h-p)-(v/(mx*1.06))*(h-2*p); }
+    function X(i){ return 1+(i+.5)*(w-2)/n; }   /* 10-21: bar CENTRES in the candle rows' own slots (their side pad is 1px) — one time axis for every row */ function Y(v){ return (h-p)-(v/(mx*1.06))*(h-2*p); }
     var s='', bw=Math.max(1,(w-2*p)/n*.66);
     for(i=0;i<n;i++){ if(V[i]==null) continue; var up=B[i].o==null?(i?B[i].c>=B[i-1].c:true):B[i].c>=B[i].o;
       s+='<rect x="'+(X(i)-bw/2).toFixed(1)+'" y="'+Y(V[i]).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(.5,(h-p)-Y(V[i])).toFixed(1)+'" fill="'+(up?C_UP:C_DN)+'" opacity=".55"/>'; }
@@ -14308,7 +14321,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     if(!bars||bars.length<16) return '';
     var tr=trueRanges(bars), at=rma(tr,14), cl=window.tfCloses(bars), pc=at.map(function(v,i){ return v==null?null:v/cl[i]*100; }), n=Math.min(tailN||60,bars.length), A=pc.slice(-n), p=2;
     var vals=A.filter(function(v){ return v!=null; }); if(!vals.length) return ''; var mx=Math.max.apply(null,vals)*1.15||1, med=medianOf(A);
-    function X(i){ return p+i*(w-2*p)/(n-1); } function Y(v){ return (h-p)-(v/mx)*(h-2*p); }
+    function X(i){ return 1+(i+.5)*(w-2)/n; }   /* 10-21: bar CENTRES in the candle rows' own slots (their side pad is 1px) — one time axis for every row */ function Y(v){ return (h-p)-(v/mx)*(h-2*p); }
     var s='', d='', pen=false, i0=-1, i1=-1;
     for(var i=0;i<n;i++){ if(A[i]==null){ pen=false; continue; } d+=(pen?'L':'M')+X(i).toFixed(1)+','+Y(A[i]).toFixed(1); pen=true; if(i0<0) i0=i; i1=i; }
     if(!d) return '';
@@ -14333,7 +14346,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     var base=null; for(i=0;i<n;i++) if(r[i]!=null){ base=r[i]; break; } if(!base) return '';
     var rr=r.map(function(v){ return v==null?null:v/base*100; }), av=smaOf(rr,20);
     var vals=rr.concat(av).filter(function(v){ return v!=null; }), lo=Math.min.apply(null,vals), hi=Math.max.apply(null,vals); if(lo>99) lo=99; if(hi<101) hi=101; var pad=(hi-lo)*.08; lo-=pad; hi+=pad;
-    function X(i){ return p+i*(w-2*p)/(n-1); } function Y(v){ return (h-p)-((v-lo)/(hi-lo))*(h-2*p); }
+    function X(i){ return 1+(i+.5)*(w-2)/n; }   /* 10-21: bar CENTRES in the candle rows' own slots (their side pad is 1px) — one time axis for every row */ function Y(v){ return (h-p)-((v-lo)/(hi-lo))*(h-2*p); }
     var s='', y100=Y(100), d='', pen=false, i0=-1, i1=-1;
     for(i=0;i<n;i++){ if(rr[i]==null){ pen=false; continue; } d+=(pen?'L':'M')+X(i).toFixed(1)+','+Y(rr[i]).toFixed(1); pen=true; if(i0<0) i0=i; i1=i; }
     if(!d) return '';
@@ -14355,7 +14368,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     var M=adxOf(bars), n=Math.min(tailN||60,bars.length), A=M.adx.slice(-n), P=M.pdi.slice(-n), N=M.mdi.slice(-n), p=2;
     if(!A.some(function(v){ return v!=null; })) return '';
     var mx=60; [A,P,N].forEach(function(arr){ arr.forEach(function(v){ if(v!=null&&v>mx) mx=v; }); });
-    function X(i){ return p+i*(w-2*p)/(n-1); } function Y(v){ return (h-p)-(v/mx)*(h-2*p); }
+    function X(i){ return 1+(i+.5)*(w-2)/n; }   /* 10-21: bar CENTRES in the candle rows' own slots (their side pad is 1px) — one time axis for every row */ function Y(v){ return (h-p)-(v/mx)*(h-2*p); }
     var s='<line x1="'+p+'" x2="'+(w-p)+'" y1="'+Y(25).toFixed(1)+'" y2="'+Y(25).toFixed(1)+'" stroke="'+C_FL+'" stroke-width=".7" stroke-dasharray="3 2.5" opacity=".5"/>'
       +'<line x1="'+p+'" x2="'+(w-p)+'" y1="'+Y(20).toFixed(1)+'" y2="'+Y(20).toFixed(1)+'" stroke="'+C_FL+'" stroke-width=".6" stroke-dasharray="1 4" opacity=".3"/>';
     s+=polyline(X,Y,P,C_UP,'1.1','.8')+polyline(X,Y,N,C_DN,'1.1','.8')+polyline(X,Y,A,C_WH,'1.6','1');
@@ -14368,7 +14381,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     if(!bars||bars.length<20) return '';
     var M=stochOf(bars), n=Math.min(tailN||60,bars.length), K=M.k.slice(-n), Dd=M.d.slice(-n), p=2;
     if(!K.some(function(v){ return v!=null; })) return '';
-    function X(i){ return p+i*(w-2*p)/(n-1); } function Y(v){ return (h-p)-(v/100)*(h-2*p); }
+    function X(i){ return 1+(i+.5)*(w-2)/n; }   /* 10-21: bar CENTRES in the candle rows' own slots (their side pad is 1px) — one time axis for every row */ function Y(v){ return (h-p)-(v/100)*(h-2*p); }
     var s='<rect x="'+p+'" y="'+Y(100).toFixed(1)+'" width="'+(w-2*p)+'" height="'+(Y(80)-Y(100)).toFixed(1)+'" fill="'+C_DN+'" opacity=".09"/><rect x="'+p+'" y="'+Y(20).toFixed(1)+'" width="'+(w-2*p)+'" height="'+(Y(0)-Y(20)).toFixed(1)+'" fill="'+C_UP+'" opacity=".09"/>'
       +'<line x1="'+p+'" x2="'+(w-p)+'" y1="'+Y(80).toFixed(1)+'" y2="'+Y(80).toFixed(1)+'" stroke="'+C_DN+'" stroke-width=".7" stroke-dasharray="3 2.5" opacity=".5"/>'
       +'<line x1="'+p+'" x2="'+(w-p)+'" y1="'+Y(20).toFixed(1)+'" y2="'+Y(20).toFixed(1)+'" stroke="'+C_UP+'" stroke-width=".7" stroke-dasharray="3 2.5" opacity=".5"/>';
@@ -14614,7 +14627,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
   }
   function fit(){
     if(!S.open||!S.cur) return;
-    if(S.look==='wall') sizeWall(); else sizeStack();
+    if(S.look==='wall'){ sizeWall(); keepWall(); } else sizeStack();   /* 10-21: restore the column once the wall has its real width */
     var P=frames(S.cur)||{}, st=stamp();
     [].forEach.call(root.querySelectorAll('.glt-plot'),function(el){
       var I=byId(el.getAttribute('data-ind')), tf=el.getAttribute('data-tf'), mode=el.getAttribute('data-mode'), bars=P[tf]||null;
@@ -14805,12 +14818,20 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
       +'<span class="'+cc+'">'+(chg==null?'—':arr+' '+Math.abs(chg).toFixed(2)+'%')+'<i>'+lab+'</i></span>';
   }
   function paintDial(){ [].forEach.call(root.querySelectorAll('[data-techdial]'),function(b){ var on=b.getAttribute('data-techdial')===S.look; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); }); }
+  /* 10-21 (the owner: "if you're looking at the one hour chart you scrub over to the next asset it goes back to the one month and that
+     is not good"): the Wall is rebuilt on every repaint — a step to the next name, a Market name's frames landing a moment later,
+     an indicator toggle — and a rebuilt wall starts at scrollLeft 0 = Monthly. S.wallLeft remembers the column the PERSON scrolled
+     to (the wall's own scroll events, ignored while the wall is unsized or right after a restore) and keepWall() puts every new wall
+     back there once sizeWall has given it its real width. Same columns, same widths for every name, so the offset IS the frame. */
+  function keepWall(){ var w=root.querySelector('.glt-wall'); if(!w||S.wallLeft==null) return; if(w.scrollWidth-w.clientWidth<4) return; S.wallSetAt=Date.now(); if(Math.abs(w.scrollLeft-S.wallLeft)>1) w.scrollLeft=S.wallLeft; }
+  root.addEventListener('scroll',function(e){ var w=e.target; if(!w||!w.classList||!w.classList.contains('glt-wall')) return; if(w.scrollWidth-w.clientWidth<4) return; if(Date.now()-(S.wallSetAt||0)<400) return; S.wallLeft=w.scrollLeft; },true);
   function paintLook(anim){
     var body=root.querySelector('[data-techlook]'); if(!body||!S.cur) return;
     var P=frames(S.cur); S.stamp=stamp();
     body.setAttribute('data-look',S.look);
     if(!P){ body.innerHTML='<div class="glt-none">No technical frames for '+esc(chipKey(S.cur))+' yet — '+(S.cur.mk?'the '+esc(famLabel(S.cur))+' frames have not arrived.':'the live feed has not arrived.')+'</div>'; return; }
     body.innerHTML=S.look==='wall'?wallHTML():stackHTML();
+    keepWall();                                            /* 10-21: the column the person was on survives every repaint (see keepWall) */
     if(anim){ body.classList.remove('in'); void body.offsetWidth; body.classList.add('in'); }
     schedule();
   }
@@ -17971,11 +17992,19 @@ html[data-gl="light"] #gllImp .gll-tag.gll-OTC,html[data-gl="light"] #gllImp .gl
     parse:function(t,opt){ return parseWith(t,liveCtx(),opt); }, parseWith:parseWith, importOpen:impOpen, importState:function(){ return {open:IMP.open, busy:IMP.busy, name:IMP.name, mode:IMP.mode, left:IMP.left.slice(), plan:impPlan(), counts:IMP.res?IMP.res.counts:null}; },
     exportText:function(id){ var l=listOf(id); return l?exportText(l):null; }
   };
-  if(!haveAuth()) return;
-  load();
-  try{ var a0=api(); if(a0&&a0.built()) mount(); }catch(_){}
+  /* 10-21 (the owner: "did we lose the function of having multiple watch lists?" — no: since 10-16 a list needs a sign-in on the
+     device, the shared key is retired). The timers used to be skipped entirely on a device with no auth at load, and a dead
+     session (401) stayed dead until a reload: now the timers always run (load() is a no-op without auth), and the account's
+     'aiborole' announcement re-arms the module — a sign-in mounts the menu, a sign-out drops the lists. */
+  function arm(){ if(!haveAuth()) return; load(); try{ var a0=api(); if(a0&&a0.built()) mount(); }catch(_){} }
   document.addEventListener('visibilitychange',function(){ if(!document.hidden&&Date.now()-S.at>5000) load(); });
   setInterval(function(){ if(!document.hidden) load(); },REFRESH);
+  window.addEventListener('aiborole',function(){
+    S.acctDead=false;
+    if(haveAuth()){ arm(); return; }
+    if(S.doc){ S.doc=null; S.err=null; leave(true); paintMenu(); paintRes(); }
+  });
+  arm();
 })();
 
 </script>
