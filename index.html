@@ -19609,11 +19609,15 @@ function tradesLoad(force){
 }
 function tTime(t){ var v=t&&(t.ts||t.time||t.at||t.date); if(fin(v)) return v<1e12?v*1000:v; var d=v?Date.parse(v):NaN; return isNaN(d)?null:d; }
 function tSide(t){ var s=String(t.side||t.action||'').toLowerCase(); return /sell|short/.test(s)?'sell':(/buy|long/.test(s)?'buy':s||'?'); }
+/* 10-21 (ported from bullwhistle-chat): `+null` is 0, so a buy with realizedPnl null used to count as a CLOSED trade with 0 P&L in
+   get_trade_stats and drag every ratio. null stays null; only a real number is a number. */
+function numv(v){ return (v==null||v==='')?null:(fin(+v)?+v:null); }
+function numOr(v,d){ var n=numv(v); return n==null?d:r2(n); }
 function normTrade(t,why){
-  var ms=tTime(t), qty=fin(+t.qty)?+t.qty:null, px=fin(+t.price)?+t.price:null;
+  var ms=tTime(t), qty=numv(t.qty), px=numv(t.price);
   return {id:t.id||null, at:ms?new Date(ms).toISOString():null, sym:up(t.sym||t.symbol), side:tSide(t), qty:qty, price:px,
-    notional:(qty!=null&&px!=null)?r2(Math.abs(qty)*px):null, fees:fin(+t.fees)?+t.fees:null,
-    realized_pnl:fin(+t.realizedPnl)?r2(+t.realizedPnl):(fin(+t.realized)?r2(+t.realized):null), broker_pnl:fin(+t.brokerPnl)?r2(+t.brokerPnl):null,
+    notional:(qty!=null&&px!=null)?r2(Math.abs(qty)*px):null, fees:numv(t.fees)!=null?numv(t.fees):numv(t.fee),
+    realized_pnl:numOr(t.realizedPnl, numOr(t.realized,null)), broker_pnl:numOr(t.brokerPnl,null),
     venue:t.venue||null, note:t.note||null, why:(why&&t.id&&why[t.id])||null, _ms:ms};
 }
 
