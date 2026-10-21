@@ -6,7 +6,7 @@
 <title>Bull Whistle — the intelligent investment terminal</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><!-- 10-21 (the owner): the status bar wears the app's own colour; the strip reserves its height below -->
 <meta name="apple-mobile-web-app-title" content="Bull Whistle">
 <meta name="theme-color" content="#0D1320">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
@@ -1354,9 +1354,10 @@ border-radius:9px;padding:9px 12px;margin-bottom:7px;color:inherit}
 @media (max-width:740px), (pointer:coarse){
   .appbar{display:none;}
   /* Stage 34: strip 46→40, dock ~61→~44 (the owner: dock no taller than the top bar) */
-  body{padding-top:41px;padding-bottom:calc(46px + env(safe-area-inset-bottom));}
+  body{padding-top:calc(41px + env(safe-area-inset-top,0px));padding-bottom:calc(46px + env(safe-area-inset-bottom));}
   #mStrip{display:flex;position:fixed;top:0;left:0;right:0;z-index:55;height:40px;align-items:center;gap:6px;
     padding:0 8px;background:var(--panel);border-bottom:1px solid var(--hair);transition:transform .18s ease;}
+  #mStrip{padding-top:env(safe-area-inset-top,0px);height:calc(40px + env(safe-area-inset-top,0px));}   /* 10-21: under a translucent status bar the strip starts at the screen's top and keeps its 40px below the inset */
   #mStrip.m-hide{transform:translateY(-100%);}
   .m-glyph{flex:0 0 auto;width:20px;height:20px;border-radius:6px;background:transparent;color:var(--gl-d08,#0D1320);
     display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;}
@@ -10806,6 +10807,11 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
 
 @media (max-width:740px), (pointer:coarse){
   /* top strip -> frosted bar */
+  /* 10-21 (the owner: "the part of the OS that has the time, connectivity, battery doesn't have the same colour"): the home-screen app's status bar is
+     translucent (Stage 43 meta), the strip's glass shows through it, and everything under the strip moves down by the MEASURED top inset
+     (--gl-safe-t from shim.js; 0 in Safari and in every emulation, so the suites see no change). */
+  html[data-gl] #mStrip{padding-top:var(--gl-safe-t,0px);height:calc(40px + var(--gl-safe-t,0px));}
+  html[data-gl] body.gl-chrome{padding-top:calc(41px + var(--gl-safe-t,0px));}
   html[data-gl] #mStrip{background:rgba(var(--gl-bg-rgb),.72);-webkit-backdrop-filter:blur(26px) saturate(1.5);backdrop-filter:blur(26px) saturate(1.5);
     border-bottom:1px solid rgba(var(--gl-wh-rgb,255,255,255),.09);padding-top:0;}
   html[data-gl] .m-seg,html[data-gl] .m-icobtn{background:rgba(var(--gl-wh-rgb,255,255,255),.07);border-color:rgba(var(--gl-wh-rgb,255,255,255),.10);}
@@ -10846,7 +10852,7 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
   html[data-gl] .gl-tab.on{color:var(--gl-acc);background:rgba(var(--gl-acc-rgb),.14);}
   @media (max-width:374px){html[data-gl] .gl-tab{font-size:8.5px;}}
   /* the Yields iframe sized itself for the stock 45px dock */
-  html[data-gl] body.gl-chrome #ydView iframe{height:calc(100dvh - 41px - var(--gl-dock-h) - var(--gl-safe-b,0px));}
+  html[data-gl] body.gl-chrome #ydView iframe{height:calc(100dvh - 41px - var(--gl-safe-t,0px) - var(--gl-dock-h) - var(--gl-safe-b,0px));}
 
   /* ---- the strip, cleaned (the owner 09-23: "I don't think we need the equities or crypto toggle in the top bar or the
      expansion or recession toggle… please do it very clean"). Universe + Grades live in the Atlas sheet now; the
@@ -10919,10 +10925,10 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
   html[data-gl] body.deck-studio .gl-gface-row,html[data-gl] body:is(.gl-cal,.gl-fin,.gl-tech,.gl-settings) .gl-gface-row{display:none;}
 
   /* Studio's four panes: a segmented control under the strip (they used to BE the dock) */
-  html[data-gl] body.gl-chrome.deck-studio:not(.gl-settings) #glSub:not([hidden]){display:block;position:fixed;top:40px;left:0;right:0;z-index:54;
+  html[data-gl] body.gl-chrome.deck-studio:not(.gl-settings) #glSub:not([hidden]){display:block;position:fixed;top:calc(40px + var(--gl-safe-t,0px));left:0;right:0;z-index:54;
     padding:7px 10px 8px;background:rgba(var(--gl-bg-rgb),.72);-webkit-backdrop-filter:blur(26px) saturate(1.5);backdrop-filter:blur(26px) saturate(1.5);
     border-bottom:1px solid rgba(var(--gl-wh-rgb,255,255,255),.08);transition:transform .18s ease;}
-  html[data-gl] #mStrip.m-hide ~ #glSub{transform:translateY(-40px);}
+  html[data-gl] #mStrip.m-hide ~ #glSub{transform:translateY(calc(-40px - var(--gl-safe-t,0px)));}
   /* the Calendar / Financials / Grid are fixed layers under the strip: entered from the Studio deck, the pane seg must not float over them */
   html[data-gl] body:is(.gl-cal,.gl-fin) #glSub{display:none!important;}
   html[data-gl] body:is(.gl-cal,.gl-fin,.gl-tech,.gl-rot,.gl-macro,.gl-settings) #glMk{display:none!important;}   /* 10-11: a page over the views takes the Markets seg with it, click or no click */
@@ -10931,17 +10937,17 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
   @media (max-width:420px){ html[data-gl] #glSub .gl-seg button{font-size:11px;padding:7px 2px;flex:1 1 auto;} }   /* 10-12: seven labels — each cell sized to its word, so Exposure and Holdings keep their gap at 390 */
   /* 10-11 THE MARKETS SEG — Tape | Map | Grades — the Studio seg's twin, under the strip while a Markets view is up (body.gl-mk, shim.js sync()).
      The views beneath start 48px lower (the seg is fixed); the Tape's table top is measured (--gl-tw-top), so its height follows. */
-  html[data-gl] body.gl-chrome.gl-mk:not(.gl-settings) #glMk:not([hidden]){display:block;position:fixed;top:40px;left:0;right:0;z-index:54;
+  html[data-gl] body.gl-chrome.gl-mk:not(.gl-settings) #glMk:not([hidden]){display:block;position:fixed;top:calc(40px + var(--gl-safe-t,0px));left:0;right:0;z-index:54;
     padding:7px 10px 8px;background:rgba(var(--gl-bg-rgb),.72);-webkit-backdrop-filter:blur(26px) saturate(1.5);backdrop-filter:blur(26px) saturate(1.5);
     border-bottom:1px solid rgba(var(--gl-wh-rgb,255,255,255),.08);transition:transform .18s ease;}
   html[data-gl] #glMk .gl-seg{max-width:360px;}
-  html[data-gl] #mStrip.m-hide ~ #glMk{transform:translateY(-40px);}
+  html[data-gl] #mStrip.m-hide ~ #glMk{transform:translateY(calc(-40px - var(--gl-safe-t,0px)));}
   html[data-gl] body.gl-chrome.gl-mk :is(#mktView,#flowView,#donutView,#scView){padding-top:48px;}
   html[data-gl] body.gl-chrome.gl-mk #mktView{padding-top:46px;}   /* the table starts right under the seg (the §18 rule's 2px, kept) */
 
   /* Settings is a DOOR now, so it is a page — not a sheet floating over a Studio you never asked for */
   html[data-gl] body.gl-settings #studioView .dk-scrim{display:none!important;}
-  html[data-gl] body.gl-settings #studioView .dk-sheet{left:0;right:0;top:40px;bottom:0;max-height:none;height:auto;width:auto;transform:none;
+  html[data-gl] body.gl-settings #studioView .dk-sheet{left:0;right:0;top:calc(40px + var(--gl-safe-t,0px));bottom:0;max-height:none;height:auto;width:auto;transform:none;
     border-radius:0;border:0;background:rgb(var(--gl-bg-rgb));padding-bottom:calc(var(--gl-dock-h) + var(--gl-safe-b,env(safe-area-inset-bottom,0px)) + 16px);animation:glIn .26s ease both;z-index:53;}
   html[data-gl] body.gl-settings #studioView > .wrap{visibility:hidden;}
   html[data-gl] body.gl-settings{overflow:hidden;}
@@ -10954,7 +10960,7 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
      Financials caption is gone; ONE caption "Grading & financials" holds Company financials, Grade wheel, Scorecard, in that order. */
   html[data-gl] .m-atlas{background:rgba(var(--gl-d12-rgb),.86);-webkit-backdrop-filter:blur(34px) saturate(1.5);backdrop-filter:blur(34px) saturate(1.5);
     border-top-left-radius:22px;border-top-right-radius:22px;padding-bottom:calc(var(--gl-dock-h) + var(--gl-safe-b,env(safe-area-inset-bottom,0px)) + 16px);
-    max-height:calc(100dvh - 40px);overflow:auto;-webkit-overflow-scrolling:touch;}
+    max-height:calc(100dvh - 40px - var(--gl-safe-t,0px));overflow:auto;-webkit-overflow-scrolling:touch;}
   html[data-gl] body.m-atlas-open .m-atlas{display:flex;flex-direction:column;}
   html[data-gl] .m-atlas .ma-head{order:0;flex:none;align-items:center;}
   html[data-gl] .m-atlas .ma-head .gl-seg{margin:0 8px 0 auto;max-width:none;flex:none;}
@@ -11025,8 +11031,8 @@ html[data-gl] body.gl-chrome #mktView .twrap{max-height:calc(100dvh - var(--gl-t
   html[data-gl]:is([data-land="rail"],[data-land="top"],[data-land="orb"]) :is(.m-atlas,.gl-rs){padding-bottom:calc(14px + var(--gl-safe-b,0px));max-height:92vh;overflow:auto;}   /* §74: the Research + prose sheets work sideways the same way */
   html[data-gl]:is([data-land="rail"],[data-land="top"],[data-land="orb"]) body.gl-settings #studioView .dk-sheet{padding-bottom:calc(18px + var(--gl-safe-b,0px));}
   /* the Yields iframe sized itself for a bottom bar; sideways there is none (rail/top), or only the orb's corner button */
-  html[data-gl]:is([data-land="rail"],[data-land="top"]) body.gl-chrome #ydView iframe{height:calc(100dvh - 41px - var(--gl-safe-b,0px));}
-  html[data-gl][data-land="orb"] body.gl-chrome #ydView iframe{height:calc(100dvh - 41px - 58px - var(--gl-safe-b,0px));}
+  html[data-gl]:is([data-land="rail"],[data-land="top"]) body.gl-chrome #ydView iframe{height:calc(100dvh - 41px - var(--gl-safe-t,0px) - var(--gl-safe-b,0px));}
+  html[data-gl][data-land="orb"] body.gl-chrome #ydView iframe{height:calc(100dvh - 41px - var(--gl-safe-t,0px) - 58px - var(--gl-safe-b,0px));}
   html[data-gl]:is([data-land="rail"],[data-land="top"],[data-land="orb"]) .gl-tab span{display:none;}
   html[data-gl] .gl-ibtn{width:28px;height:28px;}   /* 10-11 the strip icons pack sideways like the doors */
   /* §82 sideways (§20/§70 spirit: one head line): the Grading face seg rides the LEFT of the lens row — the row keeps no height of its own,
@@ -11172,7 +11178,7 @@ html[data-gl] .gl-rs{display:none;position:fixed;left:0;right:0;bottom:0;z-index
   background:rgba(var(--gl-d12-rgb),.86);-webkit-backdrop-filter:blur(34px) saturate(1.5);backdrop-filter:blur(34px) saturate(1.5);
   border-top:1px solid var(--line);border-top-left-radius:22px;border-top-right-radius:22px;
   padding:10px 14px calc(var(--gl-dock-h) + var(--gl-safe-b,env(safe-area-inset-bottom,0px)) + 16px);
-  max-height:calc(100dvh - 40px);overflow:auto;-webkit-overflow-scrolling:touch;}
+  max-height:calc(100dvh - 40px - var(--gl-safe-t,0px));overflow:auto;-webkit-overflow-scrolling:touch;}
 html[data-gl] body.gl-learn-open #glLearn,html[data-gl] body.gl-prose-open #glProse,html[data-gl] body.gl-search-open #glSearch{display:flex;}
 html[data-gl] body.gl-learn-open #glLearnScrim,html[data-gl] body.gl-prose-open #glProseScrim,html[data-gl] body.gl-search-open #glSearchScrim{display:block;}
 /* 10-12 the search sheet: a 16px field (iOS never zooms it), results as rows — ticker · name · kind */
@@ -12292,7 +12298,7 @@ html[data-gl] body.gl-cal #deckSeg button.on{background:transparent;color:var(--
 html[data-gl] #glCalBtn{margin-left:2px;}
 html[data-gl] body.gl-cal #glCalBtn button{background:var(--sel-bg);color:var(--sel-ink);}
 @media (max-width:740px), (pointer:coarse){
-  html[data-gl] body.gl-cal #glCal{top:40px;}
+  html[data-gl] body.gl-cal #glCal{top:calc(40px + var(--gl-safe-t,0px));}
   html[data-gl] #glCalBtn{display:none;}
   html[data-gl] body.gl-cal #mStrip .atlas-only,html[data-gl] body.gl-cal #mStrip #mLens{visibility:hidden;}   /* universe + lens mean nothing here */
 }
@@ -13777,7 +13783,7 @@ html[data-gl] body.gl-tech #glTech{display:block;position:fixed;left:0;right:0;t
 html[data-gl] body.gl-tech{overflow:hidden;}
 html[data-gl] body.gl-tech #aibo-live-chip{display:none!important;}      /* it reports PRICE freshness; the head has the price */
 @media (max-width:740px), (pointer:coarse){
-  html[data-gl] body.gl-tech #glTech{top:40px;}
+  html[data-gl] body.gl-tech #glTech{top:calc(40px + var(--gl-safe-t,0px));}
   html[data-gl] body.gl-tech #mStrip.m-hide ~ #glTech{top:0;}            /* the strip tucked away (landscape idle): the page takes its row */
   html[data-gl] body.gl-tech #mStrip .atlas-only,html[data-gl] body.gl-tech #mStrip #mLens{visibility:hidden;}   /* universe + lens mean nothing here */
 }
@@ -13991,7 +13997,7 @@ html[data-gl] .glt-ibtn:active{transform:scale(.94);}
 html[data-gl] .glt-head.finding .glt-ibtn{display:none;}
 html[data-gl] .glt-info{position:fixed;left:0;right:0;bottom:0;top:47px;z-index:60;background:rgba(4,6,12,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;justify-content:center;align-items:flex-start;padding:10px;box-sizing:border-box;}
 html[data-gl] .glt-info[hidden]{display:none;}
-@media (max-width:740px), (pointer:coarse){ html[data-gl] .glt-info{top:40px;} }   /* 10-07: the sheet starts where #glTech does (47 under the classic desktop appbar, 40 on touch) — a flat 40 dimmed 7px of the appbar */
+@media (max-width:740px), (pointer:coarse){ html[data-gl] .glt-info{top:calc(40px + var(--gl-safe-t,0px));} }   /* 10-07: the sheet starts where #glTech does (47 under the classic desktop appbar, 40 on touch) — a flat 40 dimmed 7px of the appbar */
 html[data-gl] .glt-icard{width:min(720px,100%);max-height:100%;display:flex;flex-direction:column;border-radius:16px;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.12);background:rgb(var(--gl-bg-rgb));box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;}
 html[data-gl] .glt-ihead{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"t x" "s x";align-items:center;gap:1px 10px;padding:12px 12px 10px 16px;border-bottom:1px solid rgba(var(--gl-wh-rgb,255,255,255),.08);}
 html[data-gl] .glt-ihead b{grid-area:t;font:800 15px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--gl-ink,#eaeef5);}
@@ -18446,13 +18452,14 @@ html[data-gl="light"] .glr-tag{background:#f3f4f7;border-color:#e4e7ec;color:#1c
     try{ if(!doc||!doc.body) return 0;
       var d=doc.createElement('div');
       /* 10-21: the SIDES too (the owner: "in horizontal iPhone the curves cut off the bull on the left and the You button on the right") — --gl-safe-l / -r */
-      d.style.cssText='position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:0 env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
-      doc.body.appendChild(d); var cs=doc.defaultView.getComputedStyle(d), v={b:parseFloat(cs.paddingBottom)||0, l:parseFloat(cs.paddingLeft)||0, r:parseFloat(cs.paddingRight)||0}; doc.body.removeChild(d);
-      return {b:v.b>0?v.b:0, l:v.l>0?v.l:0, r:v.r>0?v.r:0};
-    }catch(_){ return {b:0,l:0,r:0}; }
+      d.style.cssText='position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
+      doc.body.appendChild(d); var cs=doc.defaultView.getComputedStyle(d), v={b:parseFloat(cs.paddingBottom)||0, l:parseFloat(cs.paddingLeft)||0, r:parseFloat(cs.paddingRight)||0, t:parseFloat(cs.paddingTop)||0}; doc.body.removeChild(d);
+      return {b:v.b>0?v.b:0, l:v.l>0?v.l:0, r:v.r>0?v.r:0, t:v.t>0?v.t:0};
+    }catch(_){ return {b:0,l:0,r:0,t:0}; }
   }
   function measureSafe(){
-    var a=probeSafe(document), b={b:0,l:0,r:0}; try{ if(window.top&&window.top!==window) b=probeSafe(window.top.document); }catch(_){ b={b:0,l:0,r:0}; }
+    var a=probeSafe(document), b={b:0,l:0,r:0,t:0}; try{ if(window.top&&window.top!==window) b=probeSafe(window.top.document); }catch(_){ b={b:0,l:0,r:0,t:0}; }
+    H.style.setProperty('--gl-safe-t',Math.round(Math.max(a.t,b.t))+'px');   /* 10-21: the status bar's height under black-translucent (0 in Safari) */
     H.style.setProperty('--gl-safe-b',Math.round(Math.max(a.b,b.b))+'px');
     H.style.setProperty('--gl-safe-l',Math.round(Math.max(a.l,b.l))+'px'); H.style.setProperty('--gl-safe-r',Math.round(Math.max(a.r,b.r))+'px');
   }
