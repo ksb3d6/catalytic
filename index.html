@@ -10615,6 +10615,12 @@ window.MktView = (function(){
                      reloadFrames: function(f){ if(state.uni==='mkc') mkFrReload(f!==false); }, framesState: MK_FR,
                      /* §56 THE CONTRACT for the technicals page (see mkFramesOf / mkRowOf): frames(fam, sym) -> tf object or null; rowOf(fam, sym) -> {sym,name,px,kind} or null */
                      frames: mkFramesOf, rowOf: mkRowOf,
+                     /* 10-21 (the owner: "scroll from side to side while remaining in the technicals window … through however the tape menu is categorized"):
+                        order() = the Tape's CURRENT order — its Market rows exactly as shown (the sort and every filter applied), for the Technicals page to walk */
+                     order: function(){ var out=[], tb=document.getElementById('mkBody'); if(!tb) return out; var trs=tb.children, i, j;
+                       for(i=0;i<trs.length;i++){ var tr=trs[i]; if(tr.tagName!=='TR'||tr.classList.contains('mk-empty')||tr.style.display==='none') continue; var r=null; for(j=0;j<ROWS.length;j++){ if(ROWS[j].tr===tr){ r=ROWS[j]; break; } }
+                         if(r) out.push({sym:r.sym, key:r.key, kind:r.kind, name:r.name, px:r.px, chg:r.chg24}); }   /* kind: eq / cr = graded rows (key = the app's key), mk / mkc = the Market rows */
+                       return out; },
                      /* 10-05: open the US 500 card by symbol from outside the Tape (the Flow chart's outside worlds). false = not in the roster */
                      openCard: function(sym){ sym=String(sym==null?'':sym).toUpperCase(); var r=null, i;
                        /* 10-07: a graded name opens its deep-dive like the Tape does — not the "no auto grade yet" US 500 card */
@@ -11048,6 +11054,10 @@ html[data-gl] body.gl-chrome #mktView .twrap{max-height:calc(100dvh - var(--gl-t
   html[data-gl][data-land="rail"] body.gl-fin #glFin,
   html[data-gl][data-land="rail"] body.gl-settings #studioView .dk-sheet{left:calc(64px + env(safe-area-inset-left));}
 
+  /* 10-21 (the owner: "in horizontal iPhone the curves cut off a fair amount of the pixels in the top corners … move the most left side in a little bit
+     and the most right side in"): sideways, the strip's ends step in by the device's own safe area (measured by shim.js, env() as the fallback),
+     never less than 16px — the bull and the You button sit clear of the rounded corners and the sensor housing. */
+  html[data-gl] body.gl-chrome #mStrip{padding-left:max(16px, var(--gl-safe-l,0px), env(safe-area-inset-left,0px));padding-right:max(16px, var(--gl-safe-r,0px), env(safe-area-inset-right,0px));}
   /* top: the doors live IN the strip — its middle is empty in landscape */
   html[data-gl][data-land="top"] #glDock:not([hidden]){top:2px;bottom:auto;left:50%;right:auto;transform:translateX(-50%);padding:0;gap:2px;background:transparent;border:0;
     box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;border-radius:0;transition:transform .18s ease;}
@@ -13721,6 +13731,10 @@ html[data-gl] .glt-who{display:flex;align-items:center;gap:7px;flex:0 1 auto;min
 html[data-gl] .glt-who .t{font:800 17px/1 ui-monospace,"SF Mono",Menlo,monospace;color:var(--gl-ink,#fff);letter-spacing:.01em;flex:none;}
 html[data-gl] .glt-who .kd{flex:none;font:700 8px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(var(--gl-ink-rgb,234,238,245),.45);font-style:normal;padding:3px 5px;border-radius:5px;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.12);}
 html[data-gl] .glt-who .n{font-size:12.5px;font-weight:500;color:rgba(var(--gl-ink-rgb,234,238,245),.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto;}
+html[data-gl] .glt-walk{order:1;display:flex;align-items:center;gap:2px;flex:none;margin-left:2px;}
+html[data-gl] .glt-walk button{appearance:none;width:26px;height:26px;padding:0;border-radius:8px;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.14);background:transparent;color:var(--gl-ink,#fff);font:800 17px/1 ui-monospace,"SF Mono",Menlo,monospace;cursor:pointer;}
+html[data-gl] .glt-walk button:disabled{opacity:.28;cursor:default;}
+html[data-gl] .glt-walk span{font:600 10px/1 ui-monospace,"SF Mono",Menlo,monospace;color:rgba(var(--gl-ink-rgb,234,238,245),.5);min-width:46px;text-align:center;white-space:nowrap;}
 html[data-gl] .glt-px{order:2;flex:none;display:flex;align-items:baseline;gap:6px;font:600 10.5px/1 ui-monospace,"SF Mono",Menlo,monospace;color:rgba(var(--gl-ink-rgb,234,238,245),.6);margin-left:2px;}
 html[data-gl] .glt-px u{text-decoration:none;font:800 15px/1 ui-monospace,"SF Mono",Menlo,monospace;color:var(--gl-ink,#fff);white-space:nowrap;}
 html[data-gl] .glt-px span{white-space:nowrap;}
@@ -14141,11 +14155,11 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
        unrealistic … I still want to see where the RSI is at all times, but it doesn't have to be in the middle"): the window is the
        40–60 band plus whatever the RSI and its average actually travelled in view (±2, snapped outward to the 5s), nothing more —
        no centring, no minimum beyond the band itself, and the top only reaches 100 when the RSI itself went there. */
-    /* 10-21 (the owner: "the lowest the RSI band goes is 20, unless RSI is actually below 20, then track it down tick by tick … a soft minimum and
-       maximum at 20 and 80 … that keeps the red and green bands within view all the time"): the window is ALWAYS 20–80, and only the RSI's
-       own travel beyond them stretches it — to the integer it reached, no padding, so there is never empty space past the curve. */
+    /* 10-21 (the owner: "track it down tick by tick … always have at least 30 to 70 showing … if we go above 80 or below 20 we don't need to show
+       20 or 80 on the opposite side unless price has gotten there"): the window is ALWAYS 30–70, and each side on its own stretches only as
+       far as the RSI (or its average) actually travelled in view — to the integer reached, no padding, no symmetry, no empty space past the curve. */
     var mv=mm.filter(function(v){ return v!=null; }), all=vals.concat(mv), dlo=Math.min.apply(null,all), dhi=Math.max.apply(null,all);
-    var lo=Math.max(0,Math.min(20,Math.floor(dlo))), hi=Math.min(100,Math.max(80,Math.ceil(dhi)));
+    var lo=Math.max(0,Math.min(30,Math.floor(dlo))), hi=Math.min(100,Math.max(70,Math.ceil(dhi)));
     var gut=w>=140?19:w>=90?15:0, levels=[], lv; for(lv=Math.ceil(lo/10)*10;lv<=hi;lv+=10) levels.push(lv);
     var perLv=(h-4)/Math.max(1,(hi-lo)/10), labels=h<40?[]:perLv>=11?levels:levels.filter(function(v){ return v%20===0; });
     function X(i){ return p+i*(w-2*p-gut)/(n-1); } function Y(v){ return (h-p)-((v-lo)/(hi-lo))*(h-2*p); }
@@ -14157,7 +14171,8 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     function hl(v,col,op,dash,sw){ if(v<lo||v>hi) return ''; var y=Y(v).toFixed(1); return '<line x1="'+p+'" x2="'+xr.toFixed(1)+'" y1="'+y+'" y2="'+y+'" stroke="'+col+'" stroke-width="'+(sw||.7)+'" stroke-dasharray="'+dash+'" opacity="'+op+'"/>'; }
     /* 10-21 (the owner: "when RSI is below that 30 threshold, it's still green — let's have it be coherent with red, like the band above it"):
        everything under 30 is the down colour and everything over 70 the up colour — the 30/70 lines, the shaded stretches, the last dot. */
-    s+=hl(80,C_FL,.22,'4 3')+hl(20,C_FL,.22,'4 3')+hl(60,C_FL,.3,'1 3')+hl(40,C_FL,.3,'1 3')+hl(50,C_FL,.38,'4 3')+hl(70,C_UP,.6,'3 2.5')+hl(30,C_DN,.6,'3 2.5');
+    /* 10-21 (the owner: "anything under 40 colour is red and anything above 60 colour is green"): the 40 and 60 dotted lines take the bands' hues too, faintly. */
+    s+=hl(80,C_FL,.22,'4 3')+hl(20,C_FL,.22,'4 3')+hl(60,C_UP,.34,'1 3')+hl(40,C_DN,.34,'1 3')+hl(50,C_FL,.38,'4 3')+hl(70,C_UP,.6,'3 2.5')+hl(30,C_DN,.6,'3 2.5');
     /* the stretches beyond a band, shaded between the curve and the line */
     function zone(test,yl,col){ var d='', open=false, x0=0;
       for(var k=0;k<n;k++){ var v=rr[k], inz=(v!=null&&test(v));
@@ -14564,7 +14579,12 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     if(S.built) return; S.built=true;
     root.innerHTML='<div class="glt-head">'
       +'<div class="gl-seg glt-face" role="tablist" aria-label="Company view" data-techfaces><button type="button" role="tab" data-techface="fin" aria-selected="false">Financials</button><button type="button" role="tab" data-techface="tech" class="on" aria-selected="true">Technicals</button></div>'
-      +'<div class="glt-who" data-techwho></div><div class="glt-px" data-techpx></div>'
+      +'<div class="glt-who" data-techwho></div>'
+      /* 10-21 THE WALK (the owner: "scroll from side to side while remaining in the technicals window and have it scroll through however the tape
+         menu is categorized"): a Market name opened from the Tape carries ‹ n / N › — the Tape's rows in their CURRENT order (sort + filters,
+         MktView.market.order()); ‹ › tap, a sideways swipe on the head (the Wall's own snap-scroll is below it), ← → on a keyboard. */
+      +'<div class="glt-walk" data-techwalk hidden><button type="button" data-techstep="-1" aria-label="Previous name in the Tape">‹</button><span data-techpos></span><button type="button" data-techstep="1" aria-label="Next name in the Tape">›</button></div>'
+      +'<div class="glt-px" data-techpx></div>'
       +'<div class="glt-ctl">'+seg('glt-dial','data-techdial',LOOKS.map(function(l){ return [l,LOOKL[l]]; }),S.look)
       +'<button type="button" class="glt-ibtn" data-techinfo aria-label="Indicators: choose them and read what each one shows"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span>Indicators</span></button>'
       +'<div class="glt-find"><button type="button" class="glt-fbtn" data-techfind aria-label="Find a name">'+SEARCH+'</button>'
@@ -14598,7 +14618,11 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     root.addEventListener('wheel',function(){ if(!stripHidden()) armIdle(); },{passive:true,capture:true});
     if(window.ResizeObserver){ S.ro=new ResizeObserver(function(){ if(S.open) schedule(); }); S.ro.observe(root); }
   }
-  document.addEventListener('keydown',function(e){ if(e.key!=='Escape'||!S.open) return; var t=e.target; if(t&&t.matches&&t.matches('[data-techq]')) return; if(closeInfo()) return; hide(); });   /* the layer never holds focus on a desktop: listen on the document */
+  root.addEventListener('click',function(e){ var b=e.target&&e.target.closest&&e.target.closest('[data-techstep]'); if(!b||b.disabled) return; e.preventDefault(); e.stopPropagation(); step(+b.getAttribute('data-techstep')); });
+  (function(){ var sx=null, sy=null; root.addEventListener('touchstart',function(e){ var h=e.target&&e.target.closest&&e.target.closest('.glt-head'); if(!h||(e.target.closest&&e.target.closest('.glt-find'))||!e.touches||e.touches.length!==1){ sx=null; return; } sx=e.touches[0].clientX; sy=e.touches[0].clientY; },{passive:true});
+    root.addEventListener('touchend',function(e){ if(sx==null||!e.changedTouches||!e.changedTouches.length) return; var dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy; sx=null; if(Math.abs(dx)<56||Math.abs(dy)>40) return; step(dx<0?1:-1); },{passive:true}); })();
+  document.addEventListener('keydown',function(e){ if(S.open&&!S.finding&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){ var t=e.target; if(t&&t.matches&&t.matches('input,textarea,select,[contenteditable]')) return; if(!walk()) return; e.preventDefault(); step(e.key==='ArrowRight'?1:-1); return; }
+    if(e.key!=='Escape'||!S.open) return; var t=e.target; if(t&&t.matches&&t.matches('[data-techq]')) return; if(closeInfo()) return; hide(); });   /* the layer never holds focus on a desktop: listen on the document */
 
   /* ---- 10-05 the Indicators sheet: every indicator, a switch, and what it shows in plain words. At least one stays on. ---- */
   function infoRow(i,onPage,k,n){
@@ -14681,6 +14705,16 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
       h+='<button type="button" class="glt-dr'+(same(c,S.cur)?' on':'')+'" data-techco="'+esc(chipKey(c))+'" data-kind="'+c.kind+'"><b>'+esc(chipKey(c))+'</b>'+(c.name?'<span>'+esc(c.name)+'</span>':'')+(c.intra?'<i>intraday</i>':'')+'</button>'; });
     box.innerHTML=n?h:'<i class="glt-grp none">no name matches</i>';
   }
+  /* the walk: the Tape's current order, read live on every step so it follows whatever the Tape is sorted and filtered by right now */
+  function walk(){ var c=S.cur; if(!c||!S.walkOn) return null; var M=window.MktView, mk=M&&M.market; if(!mk||typeof mk.order!=='function') return null;
+    var o=[]; try{ o=mk.order()||[]; }catch(_){ o=[]; } if(!o.length) return null; var i=-1, k, ck=String(c.key).toUpperCase();
+    for(k=0;k<o.length;k++){ var r=o[k]; if(c.mk?(r.kind===c.fam&&String(r.sym).toUpperCase()===ck):(r.kind===c.kind&&String(r.key).toUpperCase()===ck)){ i=k; break; } }
+    return i<0?null:{list:o, i:i}; }
+  function step(d){ var w=walk(); if(!w) return; var n=w.list[w.i+d]; if(!n) return;
+    if(n.kind==='mk'||n.kind==='mkc') show(n.sym,{name:n.name, kind:n.kind==='mkc'?'cr':'eq', fam:n.kind, px:n.px, chg:n.chg}); else show(n.key); }
+  function paintWalk(){ var el=root.querySelector('[data-techwalk]'); if(!el) return; var w=walk(); if(!w){ el.hidden=true; return; } el.hidden=false;
+    var pos=el.querySelector('[data-techpos]'); if(pos) pos.textContent=(w.i+1)+' / '+w.list.length;
+    var pv=el.querySelector('[data-techstep="-1"]'), nx=el.querySelector('[data-techstep="1"]'); if(pv) pv.disabled=w.i<=0; if(nx) nx.disabled=w.i>=w.list.length-1; }
   function paintWho(){
     var c=S.cur, r=rec(c), who=root.querySelector('[data-techwho]'), px=root.querySelector('[data-techpx]'); if(!who||!c) return;
     var L=window.AIBO_LIVE||{}, num=L.num||function(x,d){ return (x==null||isNaN(x))?'—':Number(x).toFixed(d==null?2:d); };
@@ -14742,6 +14776,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     c=c||resolve(last())||resolve(DEF); if(!c){ var Dd=D(); for(var k in Dd){ if(Object.prototype.hasOwnProperty.call(Dd,k)){ c={key:k,kind:'eq'}; break; } } } if(!c) return;
     build();
     var was=S.open, isSame=same(c,S.cur); S.open=true;
+    if(!was){ var mkt=document.querySelector('[data-glmk="mkt"]'); S.walkOn=!!(mkt&&mkt.classList.contains('on')); }   /* the Tape itself (Markets › Tape), not the Map or Grades */   /* 10-21: the walk exists when the page was opened OVER the Tape (leaveOthers() takes the class away, so it is remembered here) */
     S.door=(opt&&opt.door==='fin'&&B.classList.contains('gl-fin'))?'fin':null;   /* the face only exists over an open Financials page */
     closeCard(); leaveOthers(S.door==='fin'); paintFace();
     B.classList.add('gl-tech');
@@ -14751,14 +14786,14 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     if(opt&&opt.look&&LOOKS.indexOf(opt.look)>=0){ S.look=opt.look; saveLook(); }
     if(opt&&opt.ind&&byId(opt.ind).id===opt.ind) S.ind=opt.ind;
     if(S.finding) closeFind();
-    paintWho(); paintDial(); paintLook(true); title();
+    paintWho(); paintWalk(); paintDial(); paintLook(true); title();
     if(ORDER.indexOf('rs')>=0) loadBench(false);           /* 10-07: the relative-strength row's SPY / BTC frames */
     if(!isSame||!was) root.scrollTop=0;
     armIdle();
     if(window.GL48&&typeof window.GL48.resetZoom==='function'){ try{ window.GL48.resetZoom(); }catch(_){} }
   }
   function hide(){
-    S.open=false; S.door=null; if(S.finding) closeFind(); restoreStrip(); paintFace();
+    S.open=false; S.door=null; S.walkOn=false; if(S.finding) closeFind(); restoreStrip(); paintFace();
     if(!B.classList.contains('gl-tech')) return; B.classList.remove('gl-tech');
     if(window.GL48&&typeof window.GL48.sync==='function'){ try{ window.GL48.sync(); }catch(_){} }
   }
@@ -18341,13 +18376,16 @@ html[data-gl="light"] .glr-tag{background:#f3f4f7;border-color:#e4e7ec;color:#1c
   function probeSafe(doc){
     try{ if(!doc||!doc.body) return 0;
       var d=doc.createElement('div');
-      d.style.cssText='position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding-bottom:env(safe-area-inset-bottom,0px)';
-      doc.body.appendChild(d); var v=parseFloat(doc.defaultView.getComputedStyle(d).paddingBottom)||0; doc.body.removeChild(d); return v>0?v:0;
-    }catch(_){ return 0; }
+      /* 10-21: the SIDES too (the owner: "in horizontal iPhone the curves cut off the bull on the left and the You button on the right") — --gl-safe-l / -r */
+      d.style.cssText='position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:0 env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
+      doc.body.appendChild(d); var cs=doc.defaultView.getComputedStyle(d), v={b:parseFloat(cs.paddingBottom)||0, l:parseFloat(cs.paddingLeft)||0, r:parseFloat(cs.paddingRight)||0}; doc.body.removeChild(d);
+      return {b:v.b>0?v.b:0, l:v.l>0?v.l:0, r:v.r>0?v.r:0};
+    }catch(_){ return {b:0,l:0,r:0}; }
   }
   function measureSafe(){
-    var a=probeSafe(document), b=0; try{ if(window.top&&window.top!==window) b=probeSafe(window.top.document); }catch(_){ b=0; }
-    H.style.setProperty('--gl-safe-b',Math.round(Math.max(a,b))+'px');
+    var a=probeSafe(document), b={b:0,l:0,r:0}; try{ if(window.top&&window.top!==window) b=probeSafe(window.top.document); }catch(_){ b={b:0,l:0,r:0}; }
+    H.style.setProperty('--gl-safe-b',Math.round(Math.max(a.b,b.b))+'px');
+    H.style.setProperty('--gl-safe-l',Math.round(Math.max(a.l,b.l))+'px'); H.style.setProperty('--gl-safe-r',Math.round(Math.max(a.r,b.r))+'px');
   }
   var safeT=null; function measureSafeSoon(){ clearTimeout(safeT); safeT=setTimeout(measureSafe,120); }
   measureSafe();
@@ -19743,81 +19781,23 @@ function runTool(name,input){
 }
 
 
-/* =============================== YOUR COMPUTER FIRST (10-20, the owner: "tries to use my computer before it ever uses the Anthropic API") ===============================
-   A model served by Ollama on the person's own machine answers first; the cloud (main.py → Anthropic) only when the computer cannot be reached
-   or fails before it has said anything. The page probes {url}/api/tags (1.5 s), picks a tool-capable model, converts the same history and the
-   same tool definitions (fetched once from /ai/spec) to Ollama's chat shape, and hands the reply back in the cloud's shape so the loop above
-   does not care who answered. A phone that cannot see the computer simply uses the cloud. Setup lives in the sheet's Memory view. */
-var LOCAL_KEY='aibo.ai.local.v1', LOCAL_PREF=['gpt-oss','qwen3','qwen2.5','llama3.3','llama3.2','llama3.1','mistral-nemo','mistral-small','mistral','gemma3','phi4','command-r'];
-function localLoad(){ try{ var c=JSON.parse(ls(LOCAL_KEY)||'null'); if(c&&typeof c==='object') return {on:c.on!==false, url:String(c.url||'http://localhost:11434').replace(/\/+$/,''), model:String(c.model||'')}; }catch(_){} return {on:true, url:'http://localhost:11434', model:''}; }
-var L={cfg:localLoad(), ok:null, at:0, model:null, models:[], err:null, spec:null, specP:null};
-function localSave(){ lsSet(LOCAL_KEY,JSON.stringify(L.cfg)); L.at=0; L.ok=null; }
-function pickModel(names){ if(L.cfg.model&&names.indexOf(L.cfg.model)>=0) return L.cfg.model; for(var i=0;i<LOCAL_PREF.length;i++){ for(var j=0;j<names.length;j++) if(names[j].indexOf(LOCAL_PREF[i])===0) return names[j]; } return names[0]||null; }
-function localErr(e){
-  var m=String(e&&e.message||e||''); var safari=/Safari/.test(navigator.userAgent)&&!/Chrome|CriOS|Chromium|Edg/.test(navigator.userAgent);
-  if((e&&e.name==='AbortError')||/abort/i.test(m)) return 'no answer from '+L.cfg.url+' — is Ollama running on this computer?';
-  if(/Failed to fetch|NetworkError|Load failed|network/i.test(m)) return 'this page could not reach '+L.cfg.url+'. Either Ollama is not running, or it is not allowing this site — start it with OLLAMA_ORIGINS="'+location.origin+'"'
-    +(location.protocol==='https:'&&/^http:/.test(L.cfg.url)&&!/^http:\/\/(localhost|127\.0\.0\.1)/.test(L.cfg.url)?'. A plain-http address other than localhost is blocked from an https page':'')
-    +(safari&&location.protocol==='https:'?'. Safari also blocks plain-http localhost from an https page — use Chrome on this computer':'');
-  return m;
+/* =============================== WHO ANSWERS (10-21) ==============================
+   The cloud answers: main.py -> the Anthropic API with the key the server holds. 10-21 (the owner): members will bring their OWN key (that build
+   follows; never the owner's key or subscription for a member). The "your computer first" Ollama path left this day: a local model answered
+   worse than Claude, and it was one more thing to explain. THE STATUS DOT (the owner: "in the top bar, a little icon to say … using the API"):
+   the sparkle carries a dot — accent = the cloud is set up, dim = not set up yet. The sheet's status line says the same words. */
+var CLOUD={ok:null, at:0};
+function cloudProbe(force){
+  /* a dev / QA build (the *_GLASS.html file on the local server) has no /ai routes — asking would only log a refused request (the worlds suite counts those) */
+  if(!W.AIBO_AI_URL&&/_GLASS\.html$/i.test(location.pathname)){ CLOUD.ok=false; CLOUD.at=Date.now(); paintDot(); return Promise.resolve(false); }
+  if(!force&&CLOUD.at&&Date.now()-CLOUD.at<300000) return Promise.resolve(!!CLOUD.ok);
+  return fetch((W.AIBO_AI_URL||'/ai/chat').replace(/\/ai\/chat$/,'/ai/health'),{cache:'no-store'}).then(function(r){ return r.ok?r.json():null; }).then(function(j){ CLOUD.ok=!!(j&&j.configured); CLOUD.at=Date.now(); paintDot(); return CLOUD.ok; },
+    function(){ CLOUD.ok=false; CLOUD.at=Date.now(); paintDot(); return false; });
 }
-function localProbe(force){
-  if(!L.cfg.on) return Promise.resolve(false);
-  if(!force&&L.at&&Date.now()-L.at<60000) return Promise.resolve(!!L.ok);
-  var ctl=('AbortController' in W)?new AbortController():null, t=setTimeout(function(){ if(ctl) ctl.abort(); },force?5000:1500);
-  return fetch(L.cfg.url+'/api/tags',{signal:ctl?ctl.signal:undefined, cache:'no-store'}).then(function(r){ clearTimeout(t); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .then(function(j){ var names=((j&&j.models)||[]).map(function(m){ return m.name||m.model; }).filter(Boolean); L.models=names; L.model=pickModel(names); L.ok=!!L.model; L.err=L.ok?null:'Ollama answered but has no models — run: ollama pull llama3.1'; L.at=Date.now(); paintStatus(); return L.ok; },
-      function(e){ clearTimeout(t); L.ok=false; L.models=[]; L.at=Date.now(); L.err=localErr(e); paintStatus(); return false; });
-}
-function specLoad(){ if(L.spec) return Promise.resolve(L.spec); if(L.specP) return L.specP; L.specP=getJson(AI_URL.replace(/\/chat(\?.*)?$/,'/spec'),{},8000).then(function(j){ L.specP=null; if(j&&j.system&&Array.isArray(j.tools)) L.spec=j; return L.spec; },function(){ L.specP=null; return null; }); return L.specP; }
-function textOf(c){ if(typeof c==='string') return c; return (c||[]).filter(function(b){ return b&&b.type==='text'; }).map(function(b){ return b.text; }).join('\n'); }
-function toOllama(msgs,system){
-  var out=[{role:'system', content:system}], names={};
-  msgs.forEach(function(m){
-    if(m.role==='user'){
-      if(Array.isArray(m.content)&&m.content.length&&m.content[0]&&m.content[0].type==='tool_result'){ m.content.forEach(function(b){ var o={role:'tool', content:String(b.content||'').slice(0,12000)}; if(names[b.tool_use_id]) o.tool_name=names[b.tool_use_id]; out.push(o); }); }
-      else out.push({role:'user', content:textOf(m.content)});
-      return; }
-    var calls=(Array.isArray(m.content)?m.content:[]).filter(function(b){ return b&&b.type==='tool_use'; }), o={role:'assistant', content:textOf(m.content)};
-    if(calls.length) o.tool_calls=calls.map(function(c){ names[c.id]=c.name; return {function:{name:c.name, arguments:c.input||{}}}; });
-    out.push(o);
-  });
-  return out;
-}
-function callLocal(body){
-  var ctl=('AbortController' in W)?new AbortController():null; S.abort=ctl;
-  return specLoad().then(function(spec){
-    if(!spec) throw new Error('the assistant\'s instructions could not be fetched from the server');
-    var system=(body.mode==='reflect')?spec.reflect:(spec.system+(body.memory?'\n\nWhat you remember about this trader (keep using it; update it with the remember tool when you learn something durable):\n\n'+body.memory:''));
-    var tools=(body.mode==='reflect'?spec.reflect_tools:spec.tools).map(function(t){ return {type:'function', function:{name:t.name, description:t.description, parameters:t.input_schema}}; });
-    var req={model:L.model, messages:toOllama(body.messages,system), tools:tools, stream:true, options:{num_ctx:16384, num_predict:2048}};
-    return fetch(L.cfg.url+'/api/chat',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(req), signal:ctl?ctl.signal:undefined}).then(function(r){
-      if(!r.ok) return r.text().then(function(t){ throw new Error('your computer\'s model answered HTTP '+r.status+' '+t.slice(0,160)); });
-      var reader=r.body.getReader(), dec=new TextDecoder(), buf='', text='', calls=[], n=0;
-      function line(l){ l=l.trim(); if(!l) return; var j; try{ j=JSON.parse(l); }catch(_){ return; } if(j.error) throw new Error('your computer\'s model: '+j.error); var m=j.message||{};
-        if(m.content){ text+=m.content; if(body.onDelta) body.onDelta(m.content); }
-        (m.tool_calls||[]).forEach(function(c){ var f=c.function||{}, args=f.arguments; if(typeof args==='string'){ try{ args=JSON.parse(args); }catch(_){ args={}; } }
-          calls.push({type:'tool_use', id:'local_'+Date.now().toString(36)+'_'+(n++), name:f.name, input:(args&&typeof args==='object')?args:{}}); if(body.onTool) body.onTool(f.name); }); }
-      function pump(){ return reader.read().then(function(x){ if(x.done){ buf.split('\n').forEach(line); return; } buf+=dec.decode(x.value,{stream:true}); var parts=buf.split('\n'); buf=parts.pop(); parts.forEach(line); return pump(); }); }
-      return pump().then(function(){ var content=[]; if(text) content.push({type:'text', text:text}); content=content.concat(calls); if(!content.length) content.push({type:'text', text:'(no reply)'});
-        return {role:'assistant', content:content, stop_reason:calls.length?'tool_use':'end_turn', model:L.model, via:'local'}; });
-    });
-  });
-}
-function callAny(body){
-  return localProbe(false).then(function(ok){
-    if(!ok) return callModel(body).then(function(m){ m.via='cloud'; return m; });
-    var streamed=false, od=body.onDelta; body.onDelta=function(t){ streamed=true; if(od) od(t); };
-    return callLocal(body).catch(function(e){
-      if(e&&e.name==='AbortError') throw e;
-      L.ok=false; L.at=Date.now(); L.err=localErr(e); paintStatus();
-      if(streamed) throw e;
-      if(!anyTok()) throw new Error('Your computer did not answer ('+L.err+'), and the cloud needs your sign-in or the positions token.');
-      if(body.mode!=='reflect') note('Your computer did not answer — using the cloud. '+L.err);
-      body.onDelta=od; return callModel(body).then(function(m){ m.via='cloud'; return m; });
-    });
-  });
-}
+function aiState(){ return CLOUD.ok?'cloud':'off'; }
+function paintDot(){ var st=aiState(), lab=st==='cloud'?'Ask · the cloud answers':'Ask · not set up yet (the server has no key)';
+  var bs=D.querySelectorAll('[data-bwai],.bwai-abtn'); for(var i=0;i<bs.length;i++){ bs[i].setAttribute('data-ai',st); bs[i].title=lab; } }
+function callAny(body){ return callModel(body).then(function(m){ m.via='cloud'; return m; }); }
 
 /* =============================== THE CONVERSATION =============================== */
 var S={open:false, busy:false, msgs:[], ui:[], mem:memLoad(), reflected:true, lastAt:0, view:'chat', err:null, abort:null, tools:[]};
@@ -19857,8 +19837,8 @@ function parseSse(t,onDelta,onTool){ var final=null, err=null; t.split('\n\n').f
 
 function ask(text,voice){
   text=String(text||'').trim(); if(!text||S.busy) return;
-  if(!anyTok()&&!L.ok){ if(L.cfg.on&&!L.at){ localProbe(true).then(function(){ ask(text,voice); }); return; }
-    addUi('note',L.cfg.on?'Neither your computer nor the cloud is available: '+(L.err||'Ollama was not found')+'. The cloud needs your sign-in or the positions token (Settings › Connected accounts).':'The assistant needs your sign-in or the positions token on this device — Settings › Connected accounts.'); return; }
+  if(!anyTok()){
+    addUi('note','The assistant needs your sign-in or the positions token on this device — Settings › Connected accounts.'); return; }
   S.busy=true; S.err=null; S.reflected=false; S.lastAt=Date.now();
   S.msgs.push({role:'user', content:userContent(text,voice)}); addUi('user',text);
   var a=addUi('assistant',''), acc='', rounds=0, used=[];
@@ -20019,7 +19999,9 @@ body.bwai-open #aibo-live-chip{opacity:0!important;pointer-events:none!important
 html[data-gl="light"] .bwai{box-shadow:0 -18px 60px rgba(0,0,0,.18);} html[data-gl="light"] .bwai-scrim{background:rgba(20,26,36,.25);}\
 html[data-gl="light"] .bwai-m.user .bwai-t{background:rgba(37,99,235,.10);border-color:rgba(37,99,235,.3);}\
 .bwai-btn-strip{} .appbar .bwai-abtn{appearance:none;height:30px;padding:0 10px;border-radius:9px;border:1px solid var(--hair);background:var(--gl-d12,#101b2b);color:var(--ink);font-family:inherit;font-weight:700;font-size:12px;line-height:1;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px;}\
-.appbar .bwai-abtn svg{width:14px;height:14px;}';
+.appbar .bwai-abtn svg{width:14px;height:14px;}\
+.appbar .bwai-abtn{position:relative;} .gl-ibtn[data-bwai]::after,.bwai-abtn::after{content:"";position:absolute;right:3px;top:3px;width:6px;height:6px;border-radius:50%;background:rgba(234,238,245,.28);box-shadow:0 0 0 1.5px rgba(var(--gl-bg-rgb,13,19,32),.9);}\
+[data-ai="computer"]::after{background:var(--gl-up,#39d07f)!important;} [data-ai="cloud"]::after{background:var(--gl-acc,#a78bfa)!important;}';
 var SVG_SPARK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>';
 var SVG_MIC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>';
 var SVG_SEND='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg>';
@@ -20048,15 +20030,13 @@ function build(){
   root.addEventListener('click',function(e){ var b=e.target.closest('[data-act]'); if(!b) return; e.stopPropagation(); var k=b.getAttribute('data-act');
     if(k==='close') close(); else if(k==='new') newChat(); else if(k==='mem') toggleMem(); else if(k==='send'){ if(S.busy) stop(); else submit(); } else if(k==='mic') toggleMic(); else if(k==='conv') toggleConv(); else if(k==='speak') toggleSpeak();
     else if(k==='quick'){ var i=$in(); i.value=b.getAttribute('data-q')||''; submit(); } else if(k==='mem-save') memEditSave(); else if(k==='mem-forget'){ if(confirm('Forget everything the assistant has learned about you on this device?')){ memSave({v:1, profile:'', insights:[], convos:[], n:0}); paintMem(); } }
-    else if(k==='local-test') localTest();
     else if(k==='ins-del'){ var at=b.getAttribute('data-at'); S.mem.insights=S.mem.insights.filter(function(x){ return x.at!==at; }); memSave(S.mem); paintMem(); } });
-  root.addEventListener('change',function(e){ if(e.target.closest('[data-lon],[data-lurl],[data-lmodel]')) localCfgChange(); });
   var inp=$in(); inp.addEventListener('input',function(){ inp.style.height='auto'; inp.style.height=Math.min(140,inp.scrollHeight)+'px'; });
   inp.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey&&!(W.matchMedia&&W.matchMedia('(pointer:coarse)').matches)){ e.preventDefault(); submit(); } if(e.key==='Escape') close(); });
   paintLog(); paintStatus();
 }
 function submit(){ var i=$in(), t=i.value.trim(); if(!t) return; i.value=''; i.style.height='auto'; ask(t,false); }
-function open(){ build(); S.open=true; B.classList.add('bwai-open'); clearTimeout(reflT); localProbe(false); paintLog(); paintStatus(); setTimeout(function(){ if(!(W.matchMedia&&W.matchMedia('(pointer:coarse)').matches)){ var i=$in(); if(i) i.focus(); } },80); }
+function open(){ build(); S.open=true; B.classList.add('bwai-open'); clearTimeout(reflT); paintLog(); paintStatus(); setTimeout(function(){ if(!(W.matchMedia&&W.matchMedia('(pointer:coarse)').matches)){ var i=$in(); if(i) i.focus(); } },80); }
 function close(){ S.open=false; B.classList.remove('bwai-open'); if(V.on){ V.on=false; stopListen(); } speakCancel(); scheduleReflectSoon(); }
 function scheduleReflectSoon(){ clearTimeout(reflT); reflT=setTimeout(function(){ if(!S.busy&&!S.open) reflect(); },20*1000); }
 function toggle(){ if(S.open) close(); else open(); }
@@ -20070,7 +20050,7 @@ function msgHtml(u){
   var h='<div class="bwai-t" data-t>'+md(u.text||'')+'</div>';
   if(u.tools&&u.tools.length&&!u.done) h+='<div class="bwai-act"><i></i>'+esc(TOOL_LABEL[u.tools[u.tools.length-1]]||u.tools[u.tools.length-1])+'…</div>';
   else if(!u.done&&!u.text) h+='<div class="bwai-act"><i></i>Thinking…</div>';
-  if(u.done&&(u.via||(u.used&&u.used.length))) h+='<div class="bwai-used">'+(u.via==='local'?'on your computer':u.via==='cloud'?'cloud':'')+((u.used&&u.used.length)?(u.via?' · ':'')+'used: '+esc(u.used.map(function(n){ return n.replace(/^get_/,'').replace(/_/g,' '); }).join(' · ')):'')+'</div>';
+  if(u.done&&(u.via||(u.used&&u.used.length))) h+='<div class="bwai-used">'+(u.via==='cloud'?'cloud':'')+((u.used&&u.used.length)?(u.via?' · ':'')+'used: '+esc(u.used.map(function(n){ return n.replace(/^get_/,'').replace(/_/g,' '); }).join(' · ')):'')+'</div>';
   return h;
 }
 function paintMsg(u){ var m=root&&D.getElementById(u.id); if(m){ m.className='bwai-m '+u.kind+(u.err?' err':''); m.innerHTML=msgHtml(u); scrollLog(); } }
@@ -20082,7 +20062,8 @@ function paintLive(t){ var l=$('[data-live]'); if(!l) return; if(t==null){ l.hid
 function paintStatus(){
   if(!root) return; var st=$('[data-st]'), m=S.mem, parts=[];
   if(V.listening) parts.push('listening'); else if(V.speaking) parts.push('speaking'); else if(S.busy) parts.push('working');
-  parts.push(L.cfg.on&&L.ok?'on your computer':(L.cfg.on&&L.ok===false?'cloud · computer not found':'cloud'));
+  parts.push(CLOUD.ok?'cloud':'not set up yet');
+  paintDot();
   parts.push(m.profile?('knows you · '+(m.insights||[]).length+' notes'):'getting to know you');
   st.textContent=parts.join(' · ');
   var mic=$('[data-act="mic"]'); if(mic){ mic.classList.toggle('live',V.listening); mic.innerHTML=SVG_MIC; }
@@ -20094,23 +20075,11 @@ function toggleMem(){ S.view=S.view==='mem'?'chat':'mem'; var mem=$('[data-mem]'
 function paintMem(){
   var m=S.mem, box=$('[data-mem]'); if(!box) return;
   box.innerHTML='<div style="font-size:12px;color:var(--gl-fl,#8A93A5)">What the assistant has learned about you. It rewrites this after conversations and adds notes as it goes. Edit anything; it is yours.'+(acctTok()?' Synced to your account.':' Kept on this device.')+'</div>'
-    +localSetupHtml()+'<h4>Profile</h4><textarea data-memtxt placeholder="Nothing yet — talk to it about your trading and it will start building this.">'+esc(m.profile||'')+'</textarea>'
+    +'<h4>Profile</h4><textarea data-memtxt placeholder="Nothing yet — talk to it about your trading and it will start building this.">'+esc(m.profile||'')+'</textarea>'
     +'<div class="acts"><button type="button" class="bwai-hb" data-act="mem-save">Save profile</button><button type="button" class="bwai-hb" data-act="mem-forget">Forget everything</button></div>'
     +'<h4>Notes ('+(m.insights||[]).length+')</h4>'+((m.insights||[]).length?m.insights.slice().reverse().map(function(i){ return '<div class="ins"><span>'+esc(i.text)+'</span><em>'+esc(i.kind)+' · '+esc(String(i.at||'').slice(0,10))+'</em><button type="button" data-act="ins-del" data-at="'+esc(i.at)+'" aria-label="Delete">&#215;</button></div>'; }).join(''):'<div style="color:var(--gl-fl,#8A93A5)">none yet</div>')
     +'<h4>Recent conversations</h4>'+((m.convos||[]).length?m.convos.slice().reverse().map(function(c){ return '<div class="ins"><span>'+esc(c.summary)+'</span><em>'+esc(String(c.at||'').slice(0,10))+'</em></div>'; }).join(''):'<div style="color:var(--gl-fl,#8A93A5)">none yet</div>');
 }
-function localSetupHtml(){
-  var c=L.cfg, st=!c.on?'off — the cloud answers':(L.ok?'ready: '+esc(L.model)+' on this computer':(L.ok===false?'not reachable — '+esc(L.err||''):'not checked yet'));
-  var opts=(L.models.length?L.models:(c.model?[c.model]:[])).map(function(n){ return '<option value="'+esc(n)+'"'+(n===(L.model||c.model)?' selected':'')+'>'+esc(n)+'</option>'; }).join('');
-  return '<h4>Your computer first</h4>'
-    +'<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" data-lon'+(c.on?' checked':'')+'> Try a model on this computer (Ollama) before the Anthropic API</label>'
-    +'<div class="acts" style="margin:8px 0"><input class="bwai-lin" data-lurl value="'+esc(c.url)+'" placeholder="http://localhost:11434" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Ollama address">'
-    +'<select class="bwai-lin" data-lmodel aria-label="Model"><option value="">auto (best installed)</option>'+opts+'</select><button type="button" class="bwai-hb" data-act="local-test">Test</button></div>'
-    +'<div data-lstat style="font-size:12px;color:var(--gl-ink,#eaeef5)">'+st+'</div>'
-    +'<div style="font-size:11.5px;color:var(--gl-fl,#8A93A5);margin-top:6px;line-height:1.5">On the Mac: install Ollama, pull a model that can use tools (<code>ollama pull llama3.1</code> or <code>qwen2.5</code>), and let this site talk to it: <code>OLLAMA_ORIGINS="'+esc(location.origin)+'" ollama serve</code> (or <code>launchctl setenv OLLAMA_ORIGINS "'+esc(location.origin)+'"</code> and restart the Ollama app). Chrome reaches it from this page; Safari does not. A phone uses the cloud unless it can reach the computer.</div>';
-}
-function localTest(){ var st=$('[data-lstat]'); if(st) st.textContent='checking…'; localProbe(true).then(function(){ paintMem(); }); }
-function localCfgChange(){ var on=$('[data-lon]'), u=$('[data-lurl]'), m=$('[data-lmodel]'); if(on) L.cfg.on=!!on.checked; if(u) L.cfg.url=String(u.value||'http://localhost:11434').trim().replace(/\/+$/,'')||'http://localhost:11434'; if(m) L.cfg.model=m.value||''; localSave(); paintStatus(); }
 function memEditSave(){ var t=$('[data-memtxt]'); if(!t) return; S.mem.profile=t.value.trim().slice(0,6000); memSave(S.mem); note('Profile saved.'); }
 
 /* a small markdown: paragraphs, bullets, numbered lists, bold, code, tables as monospace */
@@ -20144,11 +20113,12 @@ function mountButtons(){
   if(bar&&!bar.querySelector('.bwai-abtn')){ var a=el('button','bwai-abtn',SVG_SPARK+'Ask'); a.type='button'; a.title='Ask Bull Whistle'; var pop=D.getElementById('aPop'); bar.insertBefore(a,pop?pop.nextSibling:null); a.addEventListener('click',function(e){ e.stopPropagation(); toggle(); }); }
 }
 mountButtons(); var mt=0, mtries=0; mt=setInterval(function(){ mountButtons(); if(++mtries>20||D.querySelector('[data-bwai]')) clearInterval(mt); },500);
+setTimeout(function(){ cloudProbe(false); paintDot(); },1500);   /* the dot is right before the first open */
 try{ W.addEventListener('aibolive',function(){ S.liveAt=new Date().toLocaleTimeString(); }); }catch(_){}
 D.addEventListener('visibilitychange',function(){ if(D.hidden&&V.on){ V.on=false; stopListen(); speakCancel(); } });
 
 W.AIBO_AI={open:open, close:close, toggle:toggle, ask:function(t){ open(); ask(t,false); }, memory:function(){ return S.mem; }, reflect:reflect, state:function(){ return {open:S.open, busy:S.busy, turns:S.ui.length, voice:{on:V.on, listening:V.listening, speaking:V.speaking, speak:V.speak}}; },
-  _t:{toOllama:toOllama, local:L, localProbe:localProbe, positions:positions, tradeStats:tradeStats, normTrade:normTrade, readsOf:readsOf, seriesOf:seriesOf, evalCond:evalCond, metricKey:metricKey, runScreen:runScreen, rowsToBars:rowsToBars, normTf:normTf, md:md, plain:plain, snapshot:snapshot, TOOLS:TOOLS, memText:memText}};
+  _t:{positions:positions, tradeStats:tradeStats, normTrade:normTrade, readsOf:readsOf, seriesOf:seriesOf, evalCond:evalCond, metricKey:metricKey, runScreen:runScreen, rowsToBars:rowsToBars, normTf:normTf, md:md, plain:plain, snapshot:snapshot, TOOLS:TOOLS, memText:memText}};
 })();
 
 
