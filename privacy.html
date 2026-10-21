@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bull Whistle — Privacy Policy</title>
+<meta name="description" content="What Bull Whistle collects, why, where it goes, and how to get it deleted.">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="stylesheet" href="legal.css">
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <a class="brand" href="./">Bull Whistle <span>· the intelligent investment terminal</span></a>
+  <nav><a href="privacy.html" aria-current="page">Privacy</a><a href="terms.html">Terms</a><a href="contact.html">Contact</a></nav>
+</header>
+
+<h1>Privacy Policy</h1>
+<p class="meta">Version 1.0 · effective 21 October 2026 · operator: Carl Luise, Nevada, United States (a Nevada LLC is being formed and will take over this policy when it exists)</p>
+
+<div class="note">
+<b>The short version.</b> Bull Whistle is an invite-only investing terminal. It keeps the minimum it needs to run your account:
+your e-mail address, a password hash, your watchlists, journal, alerts, settings and portfolio book, and, only if you choose to connect
+them, read-only links to your brokerage and exchange accounts. Everything personal is stored encrypted. We do not run advertising, we do
+not use tracking or analytics, and we never sell or rent your data. You can delete your account, and everything in it, from inside the app.
+</div>
+
+<div class="toc"><b>Contents</b>
+<ol>
+<li><a href="#who">Who we are</a></li>
+<li><a href="#collect">What we collect</a></li>
+<li><a href="#brokers">Broker and exchange connections</a></li>
+<li><a href="#assistant">The assistant and your API key</a></li>
+<li><a href="#market">Market data and its sources</a></li>
+<li><a href="#processors">Who processes data for us</a></li>
+<li><a href="#storage">How data is protected</a></li>
+<li><a href="#retention">How long we keep things</a></li>
+<li><a href="#rights">Your choices and rights</a></li>
+<li><a href="#device">On your device</a></li>
+<li><a href="#age">Age</a></li>
+<li><a href="#international">Where data lives</a></li>
+<li><a href="#changes">Changes</a></li>
+<li><a href="#contact">Contact</a></li>
+</ol></div>
+
+<h2 id="who">1. Who we are</h2>
+<p>Bull Whistle (<a href="https://bullwhistle.com">bullwhistle.com</a>) is operated by Carl Luise, an individual based in Nevada, United
+States. A Nevada limited liability company is being formed to operate the service; when it is registered this policy will name it as the
+operator, and your data will be handled by it under the same terms. Questions about this policy go to
+<a href="mailto:hello@bullwhistle.com">hello@bullwhistle.com</a>.</p>
+
+<h2 id="collect">2. What we collect</h2>
+<p>Bull Whistle is invite-only during its beta. You can only create an account with an address an administrator has invited.</p>
+
+<h3>Your account</h3>
+<ul>
+<li><b>E-mail address and the name you give us.</b> Used to sign you in, to send you the one-time codes and security notices described
+below, and to send price-alert e-mails if you turn them on.</li>
+<li><b>Your password, never stored as such.</b> We keep a salted hash (PBKDF2-HMAC-SHA256, 600,000 rounds, plus a server-side secret).
+When you choose or change a password, the first five characters of a one-way hash of it are checked against the Have I Been Pwned breach
+list so we can refuse passwords that are already public. The password itself never leaves our server.</li>
+<li><b>Passkeys (Face ID / Touch ID / security keys)</b> if you set one up. We store the public key only; the private key stays on your
+device and we never see your biometrics.</li>
+<li><b>Google sign-in</b>, if offered and you use it: we receive your Google account's e-mail address and name from Google's sign-in
+token, nothing else, and we do not post to or read your Google account.</li>
+</ul>
+
+<h3>Sessions and security</h3>
+<ul>
+<li><b>Sign-in sessions.</b> Each device you sign in on gets a session token. We store a one-way hash of it, a short device label taken
+from your browser's user-agent string (for example "iPhone · Safari"), the time, and the network your request came from, reduced to a
+network prefix (the first three groups of an IPv4 address, or the first 48 bits of an IPv6 address). Sessions last 30 days from last use
+and at most 90 days, and an account can hold at most five at once.</li>
+<li><b>Why the network prefix.</b> It drives three protections: rate limits on sign-in attempts, the "new device" e-mail you get when
+your account is used from a device we have not seen, and the account-sharing rule, which signs other devices out if one account is active
+from three or more networks and two or more kinds of device inside ten minutes. We do not use it for anything else.</li>
+<li><b>Security notices by e-mail.</b> New-device sign-ins, password changes, e-mail changes, and the account-sharing notice.</li>
+<li><b>An audit trail</b> of account events (sign-ups, sign-ins, password changes, invites, deletions) with the same device label and
+network prefix, kept inside the encrypted account store and visible to the administrator for abuse handling.</li>
+</ul>
+
+<h3>What you make in the app</h3>
+<ul>
+<li>Your <b>watchlists</b>, the <b>journal</b> entries you write, your <b>price alerts</b> and which fired alerts you have seen, your
+<b>settings</b> (theme, indicator choices, layout), and your <b>portfolio book</b> (the sleeves and weights you build, and your saved
+setups). These sync across your signed-in devices through our server and are stored encrypted, per person.</li>
+</ul>
+
+<h3>What we do not collect</h3>
+<ul>
+<li>No advertising identifiers, no third-party analytics, no tracking pixels, no social plugins.</li>
+<li>No precise location. The optional city label on your devices list exists only if the operator enables an IP-to-city lookup; it is
+off today.</li>
+<li>No payment details. Bull Whistle has no paid tier during the beta.</li>
+</ul>
+
+<h2 id="brokers">3. Broker and exchange connections</h2>
+<p>Connecting an account is optional. Without a connection, Bull Whistle shows only the holdings you type in yourself.</p>
+
+<h3>Linked brokerages through SnapTrade</h3>
+<ul>
+<li>For brokerages such as Robinhood, Webull, Fidelity, Schwab, Vanguard, E*TRADE, Interactive Brokers and Coinbase, Bull Whistle uses
+<a href="https://snaptrade.com">SnapTrade</a>, a third-party connection service. You sign in on your broker's own site inside
+SnapTrade's connection portal. <b>Your broker username and password never pass through Bull Whistle.</b></li>
+<li>SnapTrade gives us a per-user identifier and a per-user secret so we can ask it for your holdings. We store both in your encrypted
+account record. The connections are <b>read-only by construction</b>: Bull Whistle never requests, and the connection does not grant,
+the ability to place orders, move money or change your broker account.</li>
+<li>What we receive: the accounts under the link, their holdings (symbol, quantity, value) and cash balances. We store the latest snapshot
+per account, encrypted, so the app can show it without asking the broker every time.</li>
+<li>When you remove a connection in Settings, we ask SnapTrade to revoke the link and delete our copy of the snapshot. You can also
+revoke any connection from the broker's own security settings at any time.</li>
+<li>SnapTrade's own handling of your data is governed by <a href="https://snaptrade.com/privacy">SnapTrade's privacy policy</a>.</li>
+</ul>
+
+<h3>Exchange and broker API keys</h3>
+<ul>
+<li>For Kraken, Bitget, BitUnix and Interactive Brokers Flex reports, you can paste an API key you create at the exchange. The add form
+tells you exactly which read-only permission to grant. <b>Create read-only keys only.</b> Bull Whistle never calls a trading or withdrawal
+endpoint, but a key with those rights would be a risk to you if it were ever exposed elsewhere.</li>
+<li>Keys are sealed inside your encrypted account record (AES-256-GCM, with a key that exists only in the server's environment). The
+app shows you a key's last four characters; a secret, passphrase or token is never shown back and never written to a log.</li>
+<li>What we fetch with them: balances and holdings, and, where the key allows it, your executed trades, so the app can show your
+position history and realised gains. We store the latest snapshot, encrypted.</li>
+</ul>
+
+<h3>Manual holdings</h3>
+<p>You can also type holdings in (ticker and quantity, or ounces of metal). They are stored with your account like any other setting.</p>
+
+<h2 id="assistant">4. The assistant and your API key</h2>
+<ul>
+<li>Bull Whistle includes an optional assistant that answers questions about your watchlist, portfolio and the market. It runs on
+Anthropic's Claude models. <b>It only works with an Anthropic API key you create and paste yourself</b> in Settings › Ask Bull
+Whistle. Your key is sealed in your account record; the app shows its last four characters and never echoes it.</li>
+<li>When you ask the assistant something, your question, the recent turns of that conversation, and the portfolio, watchlist and market
+figures the assistant needs to answer are sent to Anthropic's API under <b>your</b> key. Usage is billed to your Anthropic account.
+Anthropic's handling of API traffic is governed by <a href="https://www.anthropic.com/legal/privacy">Anthropic's privacy policy</a> and
+<a href="https://www.anthropic.com/legal/commercial-terms">commercial terms</a>; API inputs are not used to train Anthropic's models under
+those terms.</li>
+<li>Short notes the assistant keeps about your preferences ("remembers") are stored in your browser on that device, not on our server.</li>
+<li>Remove your key in Settings at any time; the assistant stops at once.</li>
+</ul>
+
+<h2 id="market">5. Market data and its sources</h2>
+<p>The prices, charts, company financials and calendar dates in Bull Whistle come from third-party sources. They are fetched by our
+server, not by your device, so those providers never see who you are or what you looked at.</p>
+<ul>
+<li>Stock, fund and economic data by <a href="https://financialmodelingprep.com">Financial Modeling Prep</a>.</li>
+<li>Crypto prices and charts: market data by <a href="https://www.kraken.com">Kraken</a>, from its public market-data API.</li>
+<li>Treasury yields from the U.S. Treasury; macro series from FRED, Federal Reserve Bank of St. Louis; other sources are credited on the
+card that uses them.</li>
+</ul>
+<p>Quotes are delayed and refreshed on a schedule, not streamed. See the <a href="terms.html#data">Terms of Service</a> for what that
+means for relying on them.</p>
+
+<h2 id="processors">6. Who processes data for us</h2>
+<table>
+<tr><th>Provider</th><th>What for</th><th>What they can see</th></tr>
+<tr><td>Railway (hosting)</td><td>Runs the app and the server, United States</td><td>The encrypted stores at rest and the server's memory while it runs</td></tr>
+<tr><td>Cloudflare</td><td>DNS and edge network for bullwhistle.com</td><td>Request metadata in transit (addresses, URLs), not your stored data</td></tr>
+<tr><td>Resend</td><td>Sends sign-in codes, security notices and alert e-mails</td><td>Your e-mail address and the text of those e-mails</td></tr>
+<tr><td>SnapTrade</td><td>Brokerage connections (only if you link one)</td><td>Your broker login session (on the broker's site), the accounts and holdings it returns to us</td></tr>
+<tr><td>Anthropic</td><td>The assistant (only if you add your own key)</td><td>Your questions and the portfolio and market context sent with them, under your key</td></tr>
+<tr><td>Have I Been Pwned</td><td>Breached-password check at sign-up and password change</td><td>Five characters of a one-way hash, which cannot identify you or your password</td></tr>
+<tr><td>Proton</td><td>Our support mailbox, hello@bullwhistle.com</td><td>Whatever you write to us</td></tr>
+</table>
+<p>We do not share your data with anyone else, and we do not sell it. We would disclose data if required by law, and we would tell you
+unless we are legally prevented from doing so.</p>
+
+<h2 id="storage">7. How data is protected</h2>
+<ul>
+<li>Everything personal is stored in encrypted files (AES-256-GCM). The encryption key exists only in the server's environment, never
+on disk next to the data. A copy of the data without the key is unreadable.</li>
+<li>Passwords are hashed as described above and never stored. Session tokens are stored only as hashes, so a copy of the store cannot be
+used to sign in.</li>
+<li>All traffic uses HTTPS. Session tokens travel in a request header, never in a cookie or a URL.</li>
+<li>Exchange keys and secrets are never logged. Error messages carry codes and class names, not values.</li>
+<li>Security problems can be reported to <a href="mailto:hello@bullwhistle.com">hello@bullwhistle.com</a>; we will reply and fix in good faith.</li>
+</ul>
+
+<h2 id="retention">8. How long we keep things</h2>
+<ul>
+<li><b>Your account and what you made in it:</b> until you delete the account. Deleting it (Settings › Account › Delete) removes your
+record, your watchlists, journal, alerts, settings, book, broker snapshots and keys, and asks SnapTrade to revoke any links. This is not
+reversible.</li>
+<li><b>Sessions:</b> 30 days from last use, 90 days at most, or until you sign that device out.</li>
+<li><b>One-time codes</b> (sign-up, reset, e-mail change): 30 minutes.</li>
+<li><b>Audit events:</b> kept with the account and deleted with it.</li>
+<li><b>Backups:</b> the operator keeps encrypted backups of the server's stores for disaster recovery; deleted data leaves those backups
+as they rotate.</li>
+<li><b>Server logs:</b> request logs hold URLs and timestamps, never tokens, keys or message bodies, and rotate with the host.</li>
+</ul>
+
+<h2 id="rights">9. Your choices and rights</h2>
+<ul>
+<li><b>See your data:</b> everything we hold about you is visible in the app, under Settings › Account, your lists, your journal and your
+Portfolio. Your saved setups can be exported as a backup code or file from Portfolio › Presets.</li>
+<li><b>Correct it:</b> change your e-mail, name and password in Settings › Account.</li>
+<li><b>Delete it:</b> Settings › Account › Delete account, or e-mail us from your account address.</li>
+<li><b>Devices:</b> Settings › Account › Devices lists every signed-in device; sign any out, or sign out everywhere.</li>
+<li><b>E-mails:</b> alert e-mails can be switched off in Settings. Security notices (new device, password change) cannot, because they
+exist to protect the account.</li>
+<li><b>Ask us anything</b> about your data at <a href="mailto:hello@bullwhistle.com">hello@bullwhistle.com</a>. If you are in a place
+with data-protection rights (for example the EU, UK or California), you can use that address to exercise them, and we will answer within
+30 days.</li>
+</ul>
+
+<h2 id="device">10. On your device</h2>
+<p>Bull Whistle sets no cookies. It uses your browser's local storage to keep you signed in, remember your settings, cache market data
+for offline use, and hold the assistant's notes. A copy of your settings and book also lives on each device so the app opens instantly.
+Clearing site data in your browser removes all of it from that device; nothing on the server changes.</p>
+
+<h2 id="age">11. Age</h2>
+<p>Bull Whistle is for adults. You must be 18 or older (or the age of majority where you live) to hold an account. We do not knowingly
+collect data from anyone younger; if you believe we have, tell us and we will delete it.</p>
+
+<h2 id="international">12. Where data lives</h2>
+<p>Our servers are in the United States. If you use Bull Whistle from elsewhere, your data is transferred to and processed in the
+United States under this policy.</p>
+
+<h2 id="changes">13. Changes</h2>
+<p>When this policy changes we update the version and date at the top, and for anything material we tell account holders by e-mail
+before it takes effect. Earlier versions are available on request.</p>
+
+<h2 id="contact">14. Contact</h2>
+<p>Carl Luise · Bull Whistle · Nevada, United States · <a href="mailto:hello@bullwhistle.com">hello@bullwhistle.com</a></p>
+
+<footer class="foot">
+<span>© 2026 Bull Whistle</span>
+<a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="contact.html">Contact</a><a href="./">Open the app</a>
+</footer>
+</div>
+</body>
+</html>

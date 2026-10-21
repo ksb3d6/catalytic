@@ -1,0 +1,38 @@
+/* Bull Whistle — the public pages (privacy, terms, contact). Dark newspaper, one column, phone first. */
+:root{
+  --bg:#0D1320; --panel:#121A29; --ink:#EAEEF5; --muted:#8A93A5; --hair:#2A3647; --acc:#1FC6DC; --warn:#FFB74D;
+  --maxw:720px;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){ --bg:#F6F7F9; --panel:#FFFFFF; --ink:#101A28; --muted:#5A6678; --hair:#D9DEE6; --acc:#0E8EA0; --warn:#9A5B00; }
+}
+html{ background:var(--bg); -webkit-text-size-adjust:100%; }
+body{ margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+.wrap{ max-width:var(--maxw); margin:0 auto; padding:0 16px 64px; }
+header.top{ display:flex; align-items:center; gap:10px; padding:18px 0 6px; border-bottom:1px solid var(--hair); }
+header.top a.brand{ color:var(--ink); text-decoration:none; font-weight:800; letter-spacing:.2px; }
+header.top a.brand span{ color:var(--muted); font-weight:500; }
+header.top nav{ margin-left:auto; display:flex; gap:14px; font-size:13px; }
+header.top nav a{ color:var(--muted); text-decoration:none; }
+header.top nav a[aria-current]{ color:var(--acc); }
+h1{ font-size:28px; line-height:1.2; margin:26px 0 4px; letter-spacing:-.2px; }
+.meta{ color:var(--muted); font-size:13px; margin:0 0 18px; }
+h2{ font-size:19px; margin:30px 0 8px; }
+h3{ font-size:16px; margin:20px 0 6px; }
+p,li{ max-width:68ch; }
+ul{ padding-left:20px; }
+li{ margin:4px 0; }
+a{ color:var(--acc); }
+code{ font:14px ui-monospace,SFMono-Regular,Menlo,monospace; background:var(--panel); border:1px solid var(--hair); border-radius:5px; padding:1px 5px; }
+.note{ background:var(--panel); border:1px solid var(--hair); border-left:3px solid var(--acc); border-radius:10px; padding:12px 14px; margin:16px 0; }
+.note.warn{ border-left-color:var(--warn); }
+table{ border-collapse:collapse; width:100%; font-size:14px; margin:10px 0 16px; }
+th,td{ text-align:left; vertical-align:top; padding:8px 8px; border-bottom:1px solid var(--hair); }
+th{ color:var(--muted); font-weight:600; font-size:12.5px; letter-spacing:.3px; text-transform:uppercase; }
+.toc{ background:var(--panel); border:1px solid var(--hair); border-radius:10px; padding:12px 16px; margin:14px 0 24px; font-size:14px; }
+.toc ol{ margin:6px 0 0; padding-left:20px; columns:2; column-gap:24px; }
+.toc li{ break-inside:avoid; }
+footer.foot{ margin-top:48px; padding-top:14px; border-top:1px solid var(--hair); color:var(--muted); font-size:13px; display:flex; flex-wrap:wrap; gap:8px 18px; }
+footer.foot a{ color:var(--muted); }
+@media (max-width:600px){ header.top a.brand span{ display:none; } }
+@media (max-width:480px){ .toc ol{ columns:1; } h1{ font-size:24px; } header.top nav{ gap:10px; } }
