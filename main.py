@@ -18,23 +18,10 @@ browser cannot be: the holder of the Anthropic key. It owns the system prompt an
 definitions (one place to tune), streams Claude's reply to the page as server-sent events,
 and lets the page run each tool call and continue the turn.
 
-    POST /ai/chat      {messages, memory, snapshot, mode:'chat'|'reflect', voice, mac}
-                       -> text/event-stream: delta {text} · tool {name} · wait {where,state,elapsed} · final {message} · error {message}
-    GET  /ai/health    {ok, configured, model, gated, mac:{configured, polling, seen_ago}}
+    POST /ai/chat      {messages, memory, snapshot, mode:'chat'|'reflect', voice}
+                       -> text/event-stream: delta {text} · final {message} · error {message}
+    GET  /ai/health    {ok, configured, model, gated}
     GET  /ai/spec      {system, reflect, tools, reflect_tools} — for the page's "your computer first" path
-    GET  /ai/relay/pull?wait=20   the Mac relay claims the next job (Bearer = AIBO_MAC_RELAY_SECRET; 204 when none)
-    POST /ai/relay/push?id=<job>  the Mac relay answers: {message} | {error} | {skip:true}
-
-THE MAC RELAY (10-21 — the owner: "why can't my Claude session answer like the debrief's Mac poller does?"): a third
-brain between the person's own computer and the cloud. When a chat arrives from someone the relay is switched on
-for (the admin's account session or the owner's positions token, and the person's own `mac` flag), the server
-parks the job in an in-memory queue and streams `wait` events while a poller on the owner's Mac (mac_relay/
-aibo_mac_relay.py under launchd) claims it, runs `claude -p` on the Claude Code subscription — no API key spent —
-and posts the model's turn back: either the answer text or the tool calls it wants (the browser runs them exactly as
-it does for the cloud, same final-message shape, via:'mac', and continues the loop). Order of answering, as the page
-sees it: Ollama on the same computer → the Mac relay → the cloud. A job nobody claims inside AIBO_MAC_RELAY_TTL
-seconds (60) expires: the cloud answers when the key is set, otherwise the request fails with the honest sentence.
-Nothing of the queue is readable without the relay secret (a wrong or missing one is a 404, same as no route).
 
 "Your computer first": the page tries a model served by Ollama on the person's own machine before it
 calls this endpoint at all (BWAI in index.html); the cloud answers only when the computer cannot.
@@ -50,22 +37,16 @@ Environment (Railway → Variables):
     AIBO_AI_EFFORT      low | medium | high — default medium (voice turns run at low)
     AIBO_BACKEND        default https://api.bullwhistle.com (where the tokens are checked)
     AIBO_AI_OPEN        "1" skips the token gate (local development only)
-    AIBO_MAC_RELAY_SECRET   switches the Mac relay on; the same string sits in ~/.aibo_relay_secret on the Mac
-    AIBO_MAC_RELAY_TTL      seconds an unclaimed job lives (default 60); a claimed job may take up to 4× that to answer
 """
 import hashlib
-import hmac
 import http.server
 import json
 import os
-import secrets
-import socket
 import socketserver
 import sys
 import threading
 import time
 import urllib.error
-import urllib.parse
 import urllib.request
 
 PORT = int(os.environ.get("PORT", 8080))
@@ -77,10 +58,6 @@ BACKEND = os.environ.get("AIBO_BACKEND", "https://api.bullwhistle.com").rstrip("
 AI_OPEN = os.environ.get("AIBO_AI_OPEN", "") == "1"
 MAX_BODY = 3 * 1024 * 1024
 MAX_MESSAGES = 120
-MAC_SECRET = os.environ.get("AIBO_MAC_RELAY_SECRET", "").strip()
-RELAY_TTL = max(5.0, float(os.environ.get("AIBO_MAC_RELAY_TTL", "60") or 60))
-RELAY_ANSWER_WAIT = RELAY_TTL * 4          # a claimed job: the CLI's own run time
-RELAY_FRESH = 45.0                         # the poller pulled within this → "polling"
 
 # ---------------------------------------------------------------------------
 # The assistant's voice. Stable text first (cached), the person's memory after it.
@@ -203,58 +180,46 @@ GATE_TTL = 15 * 60
 
 
 def _probe(path, token):
-    """(status, body-dict-or-None): the backend's answer for this token."""
     req = urllib.request.Request(BACKEND + path, headers={"Authorization": "Bearer " + token, "User-Agent": "bullwhistle-ai/1"})
     try:
         with urllib.request.urlopen(req, timeout=8) as r:
-            raw = r.read(65536)
-            try:
-                body = json.loads(raw.decode("utf-8"))
-            except Exception:
-                body = None
-            return r.status, body
+            return r.status
     except urllib.error.HTTPError as e:
-        return e.code, None
+        return e.code
     except Exception:
-        return None, None
+        return None
 
 
-def gate(token):
-    """(ok, admin): ok = the backend accepts the token as an account session or the positions token; admin = the
-    owner (an admin account per /auth/me, or the positions token itself). None when the backend could not be reached."""
+def token_ok(token):
+    """True when the backend accepts the token as an account session or the positions token."""
     if AI_OPEN:
-        return True, True
+        return True
     if not token or len(token) > 4096:
-        return False, False
+        return False
     key = hashlib.sha256(token.encode("utf-8")).hexdigest()
     now = time.time()
     with _gate_lock:
         hit = _gate.get(key)
-        if hit and hit[2] > now:
-            return hit[0], hit[1]
-    ok, admin = None, False
-    s, me = _probe("/auth/me", token)
+        if hit and hit[1] > now:
+            return hit[0]
+    ok = None
+    s = _probe("/auth/me", token)
     if s == 200:
         ok = True
-        admin = bool(isinstance(me, dict) and me.get("admin"))
     elif s in (401, 403, 404, 410):
-        s2, _ = _probe("/positions.json", token)
+        s2 = _probe("/positions.json", token)
         if s2 == 200:
-            ok, admin = True, True
+            ok = True
         elif s2 in (401, 403, 404, 410):
             ok = False
     if ok is None:
-        return None, False  # the backend could not be reached: say so, do not spend the key
+        return None  # the backend could not be reached: say so, do not spend the key
     with _gate_lock:
-        _gate[key] = (ok, admin, now + GATE_TTL)
+        _gate[key] = (ok, now + GATE_TTL)
         if len(_gate) > 2000:
-            for k in [k for k, v in _gate.items() if v[2] <= now]:
+            for k in [k for k, v in _gate.items() if v[1] <= now]:
                 _gate.pop(k, None)
-    return ok, admin
-
-
-def token_ok(token):
-    return gate(token)[0]
+    return ok
 
 
 # a soft rate limit per token: 40 model calls per 10 minutes
@@ -312,142 +277,6 @@ def message_to_dict(msg):
         return json.loads(msg.model_dump_json())
 
 
-def system_text(mode, memory):
-    """The same system prompt as a single string, for a model that takes no content blocks (the Mac relay)."""
-    return "\n\n".join(b["text"] for b in build_system(mode, memory))
-
-
-# ---------------------------------------------------------------------------
-# The Mac relay queue (10-21). In memory, one process: Railway runs one instance of this kit.
-# ---------------------------------------------------------------------------
-class Relay(object):
-    def __init__(self):
-        self.jobs = {}
-        self.cv = threading.Condition()
-        self.seen = 0.0            # the poller's last pull
-        self.seen_at_least_once = False
-
-    def configured(self):
-        return bool(MAC_SECRET)
-
-    def authorized(self, bearer):
-        return bool(MAC_SECRET) and bool(bearer) and hmac.compare_digest(bearer, MAC_SECRET)
-
-    def polling(self):
-        return self.configured() and (time.time() - self.seen) < RELAY_FRESH
-
-    def seen_ago(self):
-        return round(time.time() - self.seen, 1) if self.seen else None
-
-    def _reap(self, now):
-        for jid in [j for j, job in self.jobs.items() if job["state"] in ("done", "gone") and now - job["created"] > RELAY_ANSWER_WAIT + 60]:
-            self.jobs.pop(jid, None)
-
-    def enqueue(self, payload):
-        jid = secrets.token_hex(16)
-        with self.cv:
-            self.jobs[jid] = {"id": jid, "created": time.time(), "state": "queued", "payload": payload, "result": None, "claimed": None}
-            self._reap(time.time())
-            self.cv.notify_all()
-        return jid
-
-    def pull(self, wait, alive=None):
-        """The poller's long poll: the oldest queued, unexpired job, or None after `wait` seconds. `alive()` says whether
-        the poller is still on the line — a poller killed mid-poll leaves this thread behind for up to `wait` seconds,
-        and it must not claim a job nobody will answer (the harness caught exactly that)."""
-        deadline = time.time() + max(0.0, min(float(wait or 0), 25.0))
-        with self.cv:
-            self.seen = time.time()
-            self.seen_at_least_once = True
-            while True:
-                now = time.time()
-                if alive and not alive():
-                    return None
-                for job in sorted(self.jobs.values(), key=lambda j: j["created"]):
-                    if job["state"] == "queued":
-                        if now - job["created"] > RELAY_TTL:
-                            job["state"] = "gone"
-                            continue
-                        job["state"] = "claimed"
-                        job["claimed"] = now
-                        self.seen = now
-                        self.cv.notify_all()
-                        return dict(job["payload"], id=job["id"], created=job["created"])
-                left = deadline - now
-                if left <= 0:
-                    self.seen = time.time()
-                    return None
-                self.cv.wait(min(left, 5.0))
-
-    def push(self, jid, result):
-        with self.cv:
-            job = self.jobs.get(jid)
-            if not job or job["state"] not in ("queued", "claimed"):
-                return False
-            job["result"] = result
-            job["state"] = "done"
-            self.seen = time.time()
-            self.cv.notify_all()
-            return True
-
-    def withdraw(self, jid):
-        with self.cv:
-            job = self.jobs.get(jid)
-            if job and job["state"] in ("queued", "claimed"):
-                job["state"] = "gone"
-            self.cv.notify_all()
-
-    def wait_result(self, jid, tick):
-        """Block until the job is answered or expired. `tick(state, elapsed)` runs about every 2 s so the chat
-        handler can stream a `wait` event (and notice a dropped browser). Returns (state, result)."""
-        with self.cv:
-            while True:
-                job = self.jobs.get(jid)
-                if not job:
-                    return "gone", None
-                now = time.time()
-                elapsed = now - job["created"]
-                if job["state"] == "done":
-                    return "done", job["result"]
-                if job["state"] == "gone":
-                    return "gone", None
-                if job["state"] == "queued" and elapsed > RELAY_TTL:
-                    job["state"] = "gone"
-                    return "unclaimed", None
-                if job["state"] == "claimed" and now - job["claimed"] > RELAY_ANSWER_WAIT:
-                    job["state"] = "gone"
-                    return "timeout", None
-                self.cv.release()
-                try:
-                    tick(job["state"], elapsed)
-                finally:
-                    self.cv.acquire()
-                self.cv.wait(2.0)
-
-
-relay = Relay()
-
-
-def relay_message_ok(m):
-    """The poller's answer in the cloud's final-message shape: text and tool_use blocks only, a known stop reason."""
-    if not isinstance(m, dict) or not isinstance(m.get("content"), list) or not m["content"]:
-        return False
-    if m.get("stop_reason") not in ("end_turn", "tool_use", "max_tokens"):
-        return False
-    for b in m["content"]:
-        if not isinstance(b, dict):
-            return False
-        if b.get("type") == "text":
-            if not isinstance(b.get("text"), str):
-                return False
-        elif b.get("type") == "tool_use":
-            if not (isinstance(b.get("id"), str) and isinstance(b.get("name"), str) and isinstance(b.get("input"), dict)):
-                return False
-        else:
-            return False
-    return True
-
-
 # ---------------------------------------------------------------------------
 # HTTP
 # ---------------------------------------------------------------------------
@@ -472,20 +301,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _peer_alive(self):
-        """False once the client has closed its side (a FIN shows as a zero-byte read); True while it is only quiet."""
-        try:
-            self.connection.setblocking(False)
-            try:
-                data = self.connection.recv(1, socket.MSG_PEEK)
-            finally:
-                self.connection.setblocking(True)
-            return data != b""
-        except (BlockingIOError, InterruptedError):
-            return True
-        except Exception:
-            return False
-
     def _bearer(self):
         a = self.headers.get("Authorization", "")
         return a[7:].strip() if a.lower().startswith("bearer ") else ""
@@ -495,80 +310,38 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.wfile.flush()
 
     # ---- routes ----
-    def _query(self):
-        q = {}
-        if "?" in self.path:
-            for part in self.path.split("?", 1)[1].split("&"):
-                if "=" in part:
-                    k, v = part.split("=", 1)
-                    q[k] = urllib.parse.unquote(v)
-        return q
-
     def do_GET(self):
-        path = self.path.split("?")[0]
-        if path == "/ai/health":
-            return self._json(200, {"ok": True, "configured": ai_configured(), "model": AI_MODEL, "gated": not AI_OPEN,
-                                    "mac": {"configured": relay.configured(), "polling": relay.polling(), "seen_ago": relay.seen_ago()}})
-        if path == "/ai/relay/pull":
-            # the Mac's long poll. No secret on the server, or the wrong one: 404, as if the route did not exist.
-            if not relay.authorized(self._bearer()):
-                return self._json(404, {"error": "not found"})
-            try:
-                wait = float(self._query().get("wait", "20"))
-            except ValueError:
-                wait = 20.0
-            job = relay.pull(wait, self._peer_alive)
-            if job is None:
-                self.send_response(204)
-                self.send_header("Content-Length", "0")
-                self.end_headers()
-                return
-            return self._json(200, {"job": job})
+        if self.path.split("?")[0] == "/ai/health":
+            return self._json(200, {"ok": True, "configured": ai_configured(), "model": AI_MODEL, "gated": not AI_OPEN})
         if self.path.split("?")[0] == "/ai/spec":
             # the prompt and the tool definitions, for the page's "your computer first" path (a model on the person's own machine
             # runs the same instructions and the same tools; nothing here is secret)
             return self._json(200, {"system": SYSTEM_CHAT, "reflect": SYSTEM_REFLECT, "tools": TOOLS_CHAT, "reflect_tools": TOOLS_REFLECT})
         return super().do_GET()
 
-    def _read_json(self):
+    def do_POST(self):
+        path = self.path.split("?")[0]
+        if path != "/ai/chat":
+            return self._json(404, {"error": "not found"})
+        if not ai_configured():
+            return self._json(503, {"error": "The assistant is not configured on this server (ANTHROPIC_API_KEY is not set)."})
         try:
             n = int(self.headers.get("Content-Length") or 0)
         except ValueError:
             n = 0
         if n <= 0 or n > MAX_BODY:
-            self._json(413 if n > MAX_BODY else 400, {"error": "bad body"})
-            return None
+            return self._json(413 if n > MAX_BODY else 400, {"error": "bad body"})
         try:
-            return json.loads(self.rfile.read(n).decode("utf-8"))
+            req = json.loads(self.rfile.read(n).decode("utf-8"))
         except Exception:
-            self._json(400, {"error": "bad json"})
-            return None
-
-    def do_POST(self):
-        path = self.path.split("?")[0]
-        if path == "/ai/relay/push":
-            return self.relay_push()
-        if path != "/ai/chat":
-            return self._json(404, {"error": "not found"})
-        req = self._read_json()
-        if req is None:
-            return
+            return self._json(400, {"error": "bad json"})
 
         token = self._bearer()
-        ok, admin = gate(token)
+        ok = token_ok(token)
         if ok is None:
             return self._json(503, {"error": "Could not verify your sign-in with the backend just now. Try again in a moment."})
         if not ok:
             return self._json(401, {"error": "The assistant needs your sign-in or the positions token on this device (Settings › Connected accounts)."})
-
-        # who answers: the Mac relay for the owner when it is switched on and polling, else the cloud, else the honest 503
-        mac_wanted = relay.configured() and admin and req.get("mac", True) is not False
-        route = "mac" if (mac_wanted and relay.polling()) else ("cloud" if ai_configured() else None)
-        if route is None:
-            if mac_wanted:
-                ago = relay.seen_ago()
-                return self._json(503, {"error": "Your Mac is not answering right now (the relay last polled " + (str(int(ago)) + " s ago" if ago is not None else "never") + ") and this server has no Anthropic key."})
-            return self._json(503, {"error": "The assistant is not configured on this server (ANTHROPIC_API_KEY is not set)."})
         if not rate_ok(token):
             return self._json(429, {"error": "Slow down a little — the assistant takes a short breather after 40 questions in ten minutes."})
 
@@ -586,23 +359,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header("X-Accel-Buffering", "no")
         self.send_header("Connection", "close")
         self.end_headers()
-        if route == "mac":
-            state = self.chat_via_mac(req, mode, messages, voice, effort, tools)
-            if state == "done":
-                return
-            # unclaimed / timed out / the Mac declined: the cloud when there is a key, else say so
-            if not ai_configured():
-                try:
-                    self._sse("error", {"message": {"unclaimed": "Your Mac did not pick the question up in time, and this server has no Anthropic key.",
-                                                    "timeout": "Your Mac took too long to answer, and this server has no Anthropic key.",
-                                                    "skip": "Your Mac declined this one, and this server has no Anthropic key."}.get(state, "Your Mac did not answer.")})
-                except Exception:
-                    pass
-                return
-            try:
-                self._sse("wait", {"where": "cloud", "state": state, "elapsed": 0})
-            except Exception:
-                return
         try:
             client = anthropic_client()
             with client.beta.messages.stream(
@@ -624,7 +380,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 final = stream.get_final_message()
             d = message_to_dict(final)
             self._sse("final", {"message": {"role": "assistant", "content": d.get("content", []), "stop_reason": d.get("stop_reason"),
-                                            "stop_details": d.get("stop_details"), "model": d.get("model"), "usage": d.get("usage"), "via": "cloud"}})
+                                            "stop_details": d.get("stop_details"), "model": d.get("model"), "usage": d.get("usage")}})
         except Exception as e:  # the page shows the sentence; the socket is already committed to SSE
             msg = ai_error_text(e)
             try:
@@ -632,69 +388,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception:
                 pass
             print("ai/chat failed:", repr(e), file=sys.stderr)
-
-    # ---- the Mac relay ----
-    def chat_via_mac(self, req, mode, messages, voice, effort, tools):
-        """Park the turn for the Mac, stream `wait` while it works, relay its answer as `final`. Returns the job's end
-        state: done | unclaimed | timeout | skip | error (the caller falls back to the cloud for everything but done)."""
-        memory = (req.get("memory") or "") if mode == "chat" else ""
-        jid = relay.enqueue({"mode": mode, "voice": voice, "effort": effort, "system": system_text(mode, memory),
-                             "messages": messages, "tools": tools})
-        dropped = []
-
-        def tick(state, elapsed):
-            try:
-                self._sse("wait", {"where": "mac", "state": state, "elapsed": int(elapsed)})
-            except Exception:
-                dropped.append(1)
-                relay.withdraw(jid)
-
-        state, result = relay.wait_result(jid, tick)
-        if dropped:
-            return "done"
-        if state != "done":
-            return state
-        if not isinstance(result, dict):
-            return "error"
-        if result.get("skip"):
-            return "skip"
-        if result.get("error"):
-            try:
-                self._sse("error", {"message": "Your Mac answered with an error: " + str(result["error"])[:300]})
-            except Exception:
-                pass
-            return "done"
-        m = result.get("message")
-        if not relay_message_ok(m):
-            try:
-                self._sse("error", {"message": "Your Mac sent an answer this server could not read."})
-            except Exception:
-                pass
-            return "done"
-        try:
-            self._sse("final", {"message": {"role": "assistant", "content": m["content"], "stop_reason": m["stop_reason"], "stop_details": None,
-                                            "model": str(result.get("model") or "claude-code")[:80], "usage": result.get("usage") if isinstance(result.get("usage"), dict) else None,
-                                            "via": "mac"}})
-        except Exception:
-            pass
-        return "done"
-
-    def relay_push(self):
-        if not relay.authorized(self._bearer()):
-            return self._json(404, {"error": "not found"})
-        jid = self._query().get("id", "")
-        if not (len(jid) == 32 and all(c in "0123456789abcdef" for c in jid)):
-            return self._json(400, {"error": "bad id"})
-        body = self._read_json()
-        if body is None:
-            return
-        if not isinstance(body, dict) or not (body.get("skip") or body.get("error") or "message" in body):
-            return self._json(400, {"error": "expected {message} | {error} | {skip:true}"})
-        if "message" in body and not body.get("skip") and not body.get("error") and not relay_message_ok(body.get("message")):
-            return self._json(400, {"error": "bad message shape: content = text | tool_use blocks, stop_reason = end_turn | tool_use | max_tokens"})
-        if not relay.push(jid, body):
-            return self._json(410, {"error": "that job is gone (expired, withdrawn or already answered)"})
-        return self._json(200, {"ok": True})
 
 
 def ai_error_text(e):
@@ -718,5 +411,5 @@ socketserver.ThreadingTCPServer.daemon_threads = True
 
 if __name__ == "__main__":
     with socketserver.ThreadingTCPServer(("", PORT), Handler) as httpd:
-        print("serving Hosting_Kit on :%d (assistant %s; Mac relay %s)" % (PORT, "on" if ai_configured() else "off: no ANTHROPIC_API_KEY", "on" if relay.configured() else "off: no AIBO_MAC_RELAY_SECRET"))
+        print("serving Hosting_Kit on :%d (assistant %s)" % (PORT, "on" if ai_configured() else "off: no ANTHROPIC_API_KEY"))
         httpd.serve_forever()
