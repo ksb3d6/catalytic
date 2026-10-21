@@ -19,24 +19,34 @@ definitions (one place to tune), streams Claude's reply to the page as server-se
 and lets the page run each tool call and continue the turn.
 
     POST /ai/chat      {messages, memory, snapshot, mode:'chat'|'reflect', voice}
-                       -> text/event-stream: delta {text} · final {message} · error {message}
-    GET  /ai/health    {ok, configured, model, gated}
-    GET  /ai/spec      {system, reflect, tools, reflect_tools} — for the page's "your computer first" path
+                       -> text/event-stream: delta {text} · tool {name} · final {message} · error {message}
+                       409 {error} when the signed-in member has no Anthropic key of their own (the sentence points at Settings)
+    GET  /ai/health    with a Bearer: {ok, configured, how:'key'|'admin'|'none', model, gated} for THAT caller
+                       without one: {ok, configured:false (true only with the env key AND no gate), model, gated}
+    GET  /ai/spec      {system, reflect, tools, reflect_tools} — the prompt and tool definitions (nothing secret)
 
-"Your computer first": the page tries a model served by Ollama on the person's own machine before it
-calls this endpoint at all (BWAI in index.html); the cloud answers only when the computer cannot.
+WHOSE KEY (10-21, Carl's ruling — do not reopen): every member's questions are answered with THEIR OWN Anthropic API key,
+pasted once in Settings › Ask Bull Whistle and sealed in their account on the backend; never the owner's key, never a
+subscription. This server fetches it per question from GET {AIBO_BACKEND}/ai/key with the member's own Bearer plus
+X-AIBO-Server: AIBO_AI_LOOKUP_SECRET (the same string on both services), keeps it in memory only, per token hash, for 15
+minutes (so a key removed in Settings can answer for up to 15 more minutes on a device that was already asking), and
+makes one Anthropic client per distinct key. The server-wide ANTHROPIC_API_KEY is the ADMIN's fallback alone: the
+owner's positions token (the legacy admin path) and an admin ACCOUNT without a key of its own use it; a member without a
+key gets 409 and the env key is never spent for them. No lookup secret on this server = members are told the server
+cannot read their keys yet (503), the admin fallback still works.
 
 Access is GATED on the app's own credentials: the request carries the person's positions
 token or account session as a Bearer, and this server checks it against the backend once
 per 15 minutes (GET /auth/me for a session, GET /positions.json for the owner's token).
-No valid token, no model call — the key is never spent by a stranger who found the URL.
+No valid token, no model call — no key is ever spent by a stranger who found the URL.
 
 Environment (Railway → Variables):
-    ANTHROPIC_API_KEY   required for the assistant (the static site works without it)
-    AIBO_AI_MODEL       default claude-opus-5-5
-    AIBO_AI_EFFORT      low | medium | high — default medium (voice turns run at low)
-    AIBO_BACKEND        default https://api.bullwhistle.com (where the tokens are checked)
-    AIBO_AI_OPEN        "1" skips the token gate (local development only)
+    ANTHROPIC_API_KEY       the ADMIN's own fallback key (the static site works without it; members never use it)
+    AIBO_AI_LOOKUP_SECRET   the shared secret for GET {backend}/ai/key — the SAME value on the asset-grading service
+    AIBO_AI_MODEL           default claude-opus-5-5
+    AIBO_AI_EFFORT          low | medium | high — default medium (voice turns run at low)
+    AIBO_BACKEND            default https://api.bullwhistle.com (where the tokens are checked and the keys live)
+    AIBO_AI_OPEN            "1" skips the token gate and answers with the env key (local development only)
 """
 import hashlib
 import http.server
@@ -58,6 +68,9 @@ BACKEND = os.environ.get("AIBO_BACKEND", "https://api.bullwhistle.com").rstrip("
 AI_OPEN = os.environ.get("AIBO_AI_OPEN", "") == "1"
 MAX_BODY = 3 * 1024 * 1024
 MAX_MESSAGES = 120
+LOOKUP_SECRET = os.environ.get("AIBO_AI_LOOKUP_SECRET", "").strip()
+NO_KEY_SENTENCE = "Add your Anthropic key in Settings › Ask Bull Whistle to use the assistant."
+NO_LOOKUP_SENTENCE = "This server cannot read members' keys yet (AIBO_AI_LOOKUP_SECRET is not set on it or on the backend)."
 
 # ---------------------------------------------------------------------------
 # The assistant's voice. Stable text first (cached), the person's memory after it.
@@ -154,20 +167,26 @@ TOOLS_REFLECT = [
 # ---------------------------------------------------------------------------
 # Anthropic client (lazy, so the static site serves even without the SDK or a key)
 # ---------------------------------------------------------------------------
-_client = None
+_clients = {}          # sha256(key) -> Anthropic client; "env" for the admin's env key. In memory only, never the key itself.
 _client_lock = threading.Lock()
 
 
-def anthropic_client():
-    global _client
+def anthropic_client(key=None):
+    """The client for one key; None = the environment's (the admin's fallback)."""
+    tag = "env" if not key else hashlib.sha256(key.encode("utf-8")).hexdigest()
     with _client_lock:
-        if _client is None:
+        c = _clients.get(tag)
+        if c is None:
             import anthropic  # noqa: WPS433 (lazy on purpose)
-            _client = anthropic.Anthropic()
-        return _client
+            c = anthropic.Anthropic(api_key=key) if key else anthropic.Anthropic()
+            if len(_clients) > 500:
+                _clients.clear()
+            _clients[tag] = c
+        return c
 
 
 def ai_configured():
+    """The ADMIN's fallback key exists on this server (members never use it)."""
     return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
 
 
@@ -179,47 +198,125 @@ _gate_lock = threading.Lock()
 GATE_TTL = 15 * 60
 
 
-def _probe(path, token):
-    req = urllib.request.Request(BACKEND + path, headers={"Authorization": "Bearer " + token, "User-Agent": "bullwhistle-ai/1"})
+def _probe(path, token, headers=None):
+    """(status, body) — the backend's answer for this token; (None, None) when it could not be reached."""
+    h = {"Authorization": "Bearer " + token, "User-Agent": "bullwhistle-ai/1"}
+    h.update(headers or {})
+    req = urllib.request.Request(BACKEND + path, headers=h)
     try:
         with urllib.request.urlopen(req, timeout=8) as r:
-            return r.status
+            raw = r.read(65536)
+            try:
+                body = json.loads(raw.decode("utf-8"))
+            except Exception:
+                body = None
+            return r.status, body
     except urllib.error.HTTPError as e:
-        return e.code
+        return e.code, None
     except Exception:
-        return None
+        return None, None
 
 
-def token_ok(token):
-    """True when the backend accepts the token as an account session or the positions token."""
+def gate(token):
+    """(ok, via): ok = the backend accepts the token; via = 'session' (an account) | 'token' (the owner's positions token) |
+    'open' (AIBO_AI_OPEN, development). ok is None when the backend could not be reached — say so, spend nothing."""
     if AI_OPEN:
-        return True
+        return True, "open"
     if not token or len(token) > 4096:
-        return False
+        return False, None
     key = hashlib.sha256(token.encode("utf-8")).hexdigest()
     now = time.time()
     with _gate_lock:
         hit = _gate.get(key)
         if hit and hit[1] > now:
-            return hit[0]
-    ok = None
-    s = _probe("/auth/me", token)
+            return hit[0], hit[2]
+    ok, via = None, None
+    s, _ = _probe("/auth/me", token)
     if s == 200:
-        ok = True
+        ok, via = True, "session"
     elif s in (401, 403, 404, 410):
-        s2 = _probe("/positions.json", token)
+        s2, _ = _probe("/positions.json", token)
         if s2 == 200:
-            ok = True
+            ok, via = True, "token"
         elif s2 in (401, 403, 404, 410):
             ok = False
     if ok is None:
-        return None  # the backend could not be reached: say so, do not spend the key
+        return None, None
     with _gate_lock:
-        _gate[key] = (ok, now + GATE_TTL)
+        _gate[key] = (ok, now + GATE_TTL, via)
         if len(_gate) > 2000:
             for k in [k for k, v in _gate.items() if v[1] <= now]:
                 _gate.pop(k, None)
-    return ok
+    return ok, via
+
+
+def token_ok(token):
+    """True when the backend accepts the token as an account session or the positions token."""
+    return gate(token)[0]
+
+
+# ---------------------------------------------------------------------------
+# Whose key answers: the member's own (fetched from the backend behind the lookup secret, cached 15 min per token hash,
+# in memory only), the env key for the admin alone, or nobody's
+# ---------------------------------------------------------------------------
+_keys = {}
+_keys_lock = threading.Lock()
+KEY_TTL = 15 * 60
+
+
+def member_key(token):
+    """(state, key, admin) for an account session. state: 'ok' (the backend answered; key may be None when the member has
+    none) | 'nolookup' (no secret here, or the backend refused it / has none) | 'auth' (the session is not valid there) |
+    'down' (unreachable). Only 'ok' answers are cached."""
+    if not LOOKUP_SECRET:
+        return "nolookup", None, False
+    h = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    now = time.time()
+    with _keys_lock:
+        hit = _keys.get(h)
+        if hit and hit[0] > now:
+            return "ok", hit[1], hit[2]
+    s, body = _probe("/ai/key", token, {"X-AIBO-Server": LOOKUP_SECRET})
+    if s == 200 and isinstance(body, dict):
+        key = body.get("key") if isinstance(body.get("key"), str) and body.get("key") else None
+        admin = bool(body.get("admin"))
+        with _keys_lock:
+            _keys[h] = (now + KEY_TTL, key, admin)
+            if len(_keys) > 2000:
+                for k in [k for k, v in _keys.items() if v[0] <= now]:
+                    _keys.pop(k, None)
+        return "ok", key, admin
+    if s in (401, 410):
+        return "auth", None, False
+    if s in (403, 404):
+        return "nolookup", None, False
+    return "down", None, False
+
+
+def resolve_key(token):
+    """Who answers this caller: (how, key, error). how = 'key' (their own) | 'admin' (the env key, the owner only) | None with
+    error = (status, sentence). Never the env key for a member."""
+    ok, via = gate(token)
+    if ok is None:
+        return None, None, (503, "Could not verify your sign-in with the backend just now. Try again in a moment.")
+    if not ok:
+        return None, None, (401, "The assistant needs your sign-in or the positions token on this device (Settings › Connected accounts).")
+    if via in ("token", "open"):
+        if ai_configured():
+            return "admin", None, None
+        return None, None, (503, "The assistant is not configured on this server (ANTHROPIC_API_KEY is not set).")
+    state, key, admin = member_key(token)
+    if state == "ok" and key:
+        return "key", key, None
+    if admin and ai_configured():                 # the owner's account without a key of its own: the env key, nobody else's
+        return "admin", None, None
+    if state == "ok":
+        return None, None, (409, NO_KEY_SENTENCE)
+    if state == "auth":
+        return None, None, (401, "Your sign-in is no longer valid on the backend — sign in again.")
+    if state == "nolookup":
+        return None, None, (503, NO_LOOKUP_SENTENCE)
+    return None, None, (503, "Could not reach the backend for your key just now. Try again in a moment.")
 
 
 # a soft rate limit per token: 40 model calls per 10 minutes
@@ -312,7 +409,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     # ---- routes ----
     def do_GET(self):
         if self.path.split("?")[0] == "/ai/health":
-            return self._json(200, {"ok": True, "configured": ai_configured(), "model": AI_MODEL, "gated": not AI_OPEN})
+            token = self._bearer()
+            if token or AI_OPEN:
+                # for THIS caller: how = whose key would answer. The sentence rides along so the page can show it.
+                how, _key, err = resolve_key(token)
+                return self._json(200, {"ok": True, "configured": how is not None, "how": how or "none", "model": AI_MODEL, "gated": not AI_OPEN,
+                                        "error": err[1] if err else None, "status": err[0] if err else 200})
+            # no Bearer: a stranger learns nothing about the admin's key — configured only when there is no gate at all
+            return self._json(200, {"ok": True, "configured": bool(ai_configured() and AI_OPEN), "model": AI_MODEL, "gated": not AI_OPEN})
         if self.path.split("?")[0] == "/ai/spec":
             # the prompt and the tool definitions, for the page's "your computer first" path (a model on the person's own machine
             # runs the same instructions and the same tools; nothing here is secret)
@@ -323,8 +427,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path != "/ai/chat":
             return self._json(404, {"error": "not found"})
-        if not ai_configured():
-            return self._json(503, {"error": "The assistant is not configured on this server (ANTHROPIC_API_KEY is not set)."})
         try:
             n = int(self.headers.get("Content-Length") or 0)
         except ValueError:
@@ -337,11 +439,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._json(400, {"error": "bad json"})
 
         token = self._bearer()
-        ok = token_ok(token)
-        if ok is None:
-            return self._json(503, {"error": "Could not verify your sign-in with the backend just now. Try again in a moment."})
-        if not ok:
-            return self._json(401, {"error": "The assistant needs your sign-in or the positions token on this device (Settings › Connected accounts)."})
+        how, key, err = resolve_key(token)       # the gate + whose key; a member without a key = 409, never the env key
+        if err:
+            return self._json(err[0], {"error": err[1], "how": "none"})
         if not rate_ok(token):
             return self._json(429, {"error": "Slow down a little — the assistant takes a short breather after 40 questions in ten minutes."})
 
@@ -360,7 +460,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Connection", "close")
         self.end_headers()
         try:
-            client = anthropic_client()
+            client = anthropic_client(key)
             with client.beta.messages.stream(
                 model=AI_MODEL,
                 max_tokens=16000,
@@ -380,9 +480,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 final = stream.get_final_message()
             d = message_to_dict(final)
             self._sse("final", {"message": {"role": "assistant", "content": d.get("content", []), "stop_reason": d.get("stop_reason"),
-                                            "stop_details": d.get("stop_details"), "model": d.get("model"), "usage": d.get("usage")}})
+                                            "stop_details": d.get("stop_details"), "model": d.get("model"), "usage": d.get("usage"), "via": how}})
         except Exception as e:  # the page shows the sentence; the socket is already committed to SSE
-            msg = ai_error_text(e)
+            msg = ai_error_text(e, how)
             try:
                 self._sse("error", {"message": msg})
             except Exception:
@@ -390,10 +490,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             print("ai/chat failed:", repr(e), file=sys.stderr)
 
 
-def ai_error_text(e):
+def ai_error_text(e, how="admin"):
     try:
         import anthropic
         if isinstance(e, anthropic.AuthenticationError):
+            if how == "key":
+                return "Your Anthropic key was not accepted — check it in Settings › Ask Bull Whistle (console.anthropic.com shows your keys)."
             return "The server's Anthropic key was not accepted."
         if isinstance(e, anthropic.RateLimitError):
             return "The model is rate-limited right now. Try again in a minute."
@@ -411,5 +513,6 @@ socketserver.ThreadingTCPServer.daemon_threads = True
 
 if __name__ == "__main__":
     with socketserver.ThreadingTCPServer(("", PORT), Handler) as httpd:
-        print("serving Hosting_Kit on :%d (assistant %s)" % (PORT, "on" if ai_configured() else "off: no ANTHROPIC_API_KEY"))
+        print("serving Hosting_Kit on :%d (assistant: members' own keys %s; admin fallback %s)" % (
+            PORT, "on" if LOOKUP_SECRET else "off: no AIBO_AI_LOOKUP_SECRET", "on" if ai_configured() else "off: no ANTHROPIC_API_KEY"))
         httpd.serve_forever()
