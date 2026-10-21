@@ -11057,7 +11057,8 @@ html[data-gl] body.gl-chrome #mktView .twrap{max-height:calc(100dvh - var(--gl-t
   /* 10-21 (the owner: "in horizontal iPhone the curves cut off a fair amount of the pixels in the top corners … move the most left side in a little bit
      and the most right side in"): sideways, the strip's ends step in by the device's own safe area (measured by shim.js, env() as the fallback),
      never less than 16px — the bull and the You button sit clear of the rounded corners and the sensor housing. */
-  html[data-gl] body.gl-chrome #mStrip{padding-left:max(16px, var(--gl-safe-l,0px), env(safe-area-inset-left,0px));padding-right:max(16px, var(--gl-safe-r,0px), env(safe-area-inset-right,0px));}
+  /* 10-21 later (the owner: "split the difference on how much everything was moved in"): half the safe area, never under 12px */
+  html[data-gl] body.gl-chrome #mStrip{padding-left:max(12px, calc(var(--gl-safe-l,0px) * .5), calc(env(safe-area-inset-left,0px) * .5));padding-right:max(12px, calc(var(--gl-safe-r,0px) * .5), calc(env(safe-area-inset-right,0px) * .5));}
   /* top: the doors live IN the strip — its middle is empty in landscape */
   html[data-gl][data-land="top"] #glDock:not([hidden]){top:2px;bottom:auto;left:50%;right:auto;transform:translateX(-50%);padding:0;gap:2px;background:transparent;border:0;
     box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;border-radius:0;transition:transform .18s ease;}
@@ -11742,7 +11743,10 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
 
   /* ---------- the mirror: prefs + book ---------- */
   function snap(keys){ var o={}; keys.forEach(function(k){ var v=ls(k); if(v!=null) o[k]=v; }); return o; }
-  function applySnap(o,keys){ var changed=false; keys.forEach(function(k){ var v=(o&&Object.prototype.hasOwnProperty.call(o,k))?o[k]:null; if(ls(k)!==v){ lsSet(k,v); changed=true; } }); return changed; }
+  function applySnap(o,keys){ var changed=[]; keys.forEach(function(k){ var v=(o&&Object.prototype.hasOwnProperty.call(o,k))?o[k]:null; if(ls(k)!==v){ lsSet(k,v); changed.push(k); } });
+    /* 10-21: tell the modules that read these keys at load (techlab.js) that the account's copy just landed — the CHANGED keys only, and they must not write back */
+    if(changed.length){ try{ window.dispatchEvent(new CustomEvent('aiboprefs',{detail:{keys:changed}})); }catch(_){} }
+    return changed.length>0; }
   function mem(k){ try{ return JSON.parse(ls(k)||'null')||{rev:0, snap:null}; }catch(_){ return {rev:0, snap:null}; } }
   function memSet(k,rev,snapshot){ lsSet(k,JSON.stringify({rev:rev, snap:snapshot})); }
   var DOCS={prefs:{path:'/me/prefs.json', field:'prefs', keys:PREF_KEYS, ls:LS_PREF}, book:{path:'/me/book.json', field:'book', keys:BOOK_KEYS, ls:LS_BOOK}};
@@ -14179,13 +14183,13 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
   function maN(){ try{ var v=parseInt(localStorage.getItem(LSM),10); return (v>=2&&v<=400)?v:50; }catch(_){ return 50; } }
   function setMaN(v){ v=parseInt(v,10); if(!(v>=2&&v<=400)) return false; try{ localStorage.setItem(LSM,String(v)); }catch(_){} paintLook(false); repaintInfo(); return true; }
   var LSI='aibo.gl.tech.inds', LSI2='aibo.gl.tech.inds.v2';
-  function savedOrder(){ var def=IND.filter(function(i){ return !i.opt; }).map(function(i){ return i.id; });
+  function savedOrder(quiet){ var def=IND.filter(function(i){ return !i.opt; }).map(function(i){ return i.id; });   /* quiet (10-21): read only — no migration write (the account sync must see no change after a pull) */
     try{ var v=localStorage.getItem(LSI); if(v){ var ids=v.split(',').filter(function(x,k,a){ return a.indexOf(x)===k&&IND.some(function(i){ return i.id===x; }); });
       /* 10-07: a device that saved its order before the seven new rows existed gets the three new DEFAULT rows appended once (v2 flag);
          a row it later takes off stays off — the flag is the memory of that one migration, never a re-add */
       var done=false; try{ done=localStorage.getItem(LSI2)==='1'; }catch(_){}
-      if(!done){ ['vol','sma','rs'].forEach(function(id){ if(ids.indexOf(id)<0) ids.push(id); }); try{ localStorage.setItem(LSI2,'1'); localStorage.setItem(LSI,ids.join(',')); }catch(_){} }
-      if(ids.length) return ids; } else { try{ localStorage.setItem(LSI2,'1'); }catch(_){} } }catch(_){}
+      if(!done&&!quiet){ ['vol','sma','rs'].forEach(function(id){ if(ids.indexOf(id)<0) ids.push(id); }); try{ localStorage.setItem(LSI2,'1'); localStorage.setItem(LSI,ids.join(',')); }catch(_){} }
+      if(ids.length) return ids; } else if(!quiet){ try{ localStorage.setItem(LSI2,'1'); }catch(_){} } }catch(_){}
     return def; }
   var ORDER=savedOrder();
   function ACT(){ var a=ORDER.map(byId).filter(function(i,k){ return i&&ORDER[k]===i.id; }); return a.length?a:[IND[0]]; }
@@ -14396,6 +14400,12 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
   function savedLook(){ try{ var v=localStorage.getItem(LSL); return LOOKS.indexOf(v)>=0?v:'wall'; }catch(_){ return 'wall'; } }   /* round 4's cubes / strip fall back to the Wall */
   function saveLook(){ try{ localStorage.setItem(LSL,S.look); }catch(_){} }
   S.look=savedLook();
+  /* 10-21 (the owner: "when I change my technical setup on one device, it doesn't get saved across the others"): the account's prefs land in
+     localStorage from a pull (account.js applySnap) AFTER this file read them, and a later change here saved the stale set back over the
+     other device's. account.js now announces every applied pull ('aiboprefs'); re-read and repaint. */
+  window.addEventListener('aiboprefs',function(e){ var ks=(e&&e.detail&&e.detail.keys)||[]; if(ks.length&&ks.indexOf(LSI)<0&&ks.indexOf(LSI2)<0&&ks.indexOf(LSL)<0) return;
+    var o=savedOrder(true), l=savedLook(), ch=o.join(',')!==ORDER.join(',')||l!==S.look; ORDER=o; S.look=l;
+    if(ch&&S.built){ paintDial(); if(S.open){ repaintInfo(); paintLook(false); } } });
 
   /* a name → {key, kind}. '$TAO' is the card's crypto grammar; a bare key tries the graded universe first, then crypto, then (§56)
      the Market universe through MktView.market.frames(fam, sym) — Coins 500 ('mkc') before US 500 ('mk'); a '$' key asks Coins 500 only.
@@ -14765,7 +14775,12 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     for(k=0;k<o.length;k++){ var r=o[k]; if(c.mk?(r.kind===c.fam&&String(r.sym).toUpperCase()===ck):(r.kind===c.kind&&String(r.key).toUpperCase()===ck)){ i=k; break; } }
     return i<0?null:{list:o, i:i}; }
   function step(d){ var w=walk(); if(!w) return; var n=w.list[w.i+d]; if(!n) return;
-    if(n.kind==='mk'||n.kind==='mkc') show(n.sym,{name:n.name, kind:n.kind==='mkc'?'cr':'eq', fam:n.kind, px:n.px, chg:n.chg}); else show(n.key); }
+    /* 10-21 (the owner: "when we scroll, keep it on the same time frame so it doesn't go back to the first one, which is monthly"): the Wall's
+       column (its scrollLeft) and the page's scroll survive the step — show() repaints the look and would land on Monthly at the top. */
+    var wall=root.querySelector('.glt-wall'), sl=wall?wall.scrollLeft:null, st=root.scrollTop;
+    if(n.kind==='mk'||n.kind==='mkc') show(n.sym,{name:n.name, kind:n.kind==='mkc'?'cr':'eq', fam:n.kind, px:n.px, chg:n.chg}); else show(n.key);
+    var keep=function(){ var w2=root.querySelector('.glt-wall'); if(w2&&sl!=null) w2.scrollLeft=sl; root.scrollTop=st; };
+    keep(); if(window.requestAnimationFrame) requestAnimationFrame(keep); setTimeout(keep,80); }
   function paintWalk(){ var el=root.querySelector('[data-techwalk]'); if(!el) return; var w=walk(); if(!w){ el.hidden=true; return; } el.hidden=false;
     var pos=el.querySelector('[data-techpos]'); if(pos) pos.textContent=(w.i+1)+' / '+w.list.length;
     var pv=el.querySelector('[data-techstep="-1"]'), nx=el.querySelector('[data-techstep="1"]'); if(pv) pv.disabled=w.i<=0; if(nx) nx.disabled=w.i>=w.list.length-1; }
