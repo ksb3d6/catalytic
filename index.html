@@ -11599,6 +11599,15 @@ html[data-glacct]:not([data-glrole="admin"]) #posConnect{display:none;}
 html[data-gl="light"] #glAccount .gla-how[data-how="link"]{color:#0f7a5c;}
 html[data-gl="light"] #glAccount .gla-how[data-how="address"]{color:#0b6b8a;}
 html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
+/* 10-21 ASK BULL WHISTLE — the person's own Anthropic key (account.js htmlAi) */
+#glAccount .gla-ai .gla-item{border-bottom:0;padding:4px 0 2px;}
+#glAccount .gla-ai .gla-item b{display:flex;align-items:center;gap:8px;font-weight:600;}
+#glAccount .gla-ai .gla-dot{flex:0 0 auto;width:9px;height:9px;border-radius:50%;background:var(--muted2);}
+#glAccount .gla-ai .gla-dot.on{background:#39d07f;}
+#glAccount .gla-ai code{font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;color:var(--ink);}
+#glAccount .gla-ai a{color:var(--gl-acc,#1FC6DC);text-decoration:none;}
+#glAccount .gla-ai .gla-lnk{appearance:none;border:0;background:transparent;color:var(--gl-acc,#1FC6DC);font:inherit;padding:0;cursor:pointer;}
+#glAccount .gla-form+.gla-ai{margin-top:10px;}
 
 </style>
 <script id="gl48Acct">
@@ -11632,6 +11641,10 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
      role()       10-16: 'admin' (signed in, an AIBO_ADMIN_EMAILS account) | 'member' (signed in) | 'guest' (accounts on, signed out)
                   | 'open' (accounts off or not known yet — the app behaves exactly as before). Fires window 'aiborole' when it changes;
                   the Studio reads it: the full book library is the admin's, everyone else gets category-only starter templates.
+   ASK BULL WHISTLE — YOUR OWN ANTHROPIC KEY (10-21, the owner's ruling: every member's questions run on THEIR key, never the owner's, never a
+   subscription): a section after Exchanges & brokers. GET /me/ai.json {hasKey, last4, setAt}; PUT {key} seals it on the server (never shown
+   back: the card says "ending ••••1234 · set <date>"); DELETE removes it. After a save or a remove the window event 'aiboaikey' fires and
+   ai.js re-reads /ai/health. Signed out: the section says sign in first. The cost sentence + console.anthropic.com link are on the card.
    ADMIN (10-16, the owner: "my user profile … as an admin", "only one other user profile … for my friend"): an admin's card carries an Admin
    section — invite an address (sign-up is invite-only: backend v4.26 AIBO_SIGNUP_MODE), see who joined, the members, and "Move the
    shared watchlist into my account" (POST /admin/lists/import — the shared-key lists are retired after it). */
@@ -11702,7 +11715,7 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
 
   /* ---------- signed in / out ---------- */
   function setSession(tok,user){ S.tok=tok||null; S.user=user||null; lsSet(LS_TOK,S.tok); lsSet(LS_USER,S.user?JSON.stringify(S.user):null); mark(); }
-  function forget(){ setSession(null,null); lsSet(LS_PREF,null); lsSet(LS_BOOK,null); lsSet('aibo_pos_v1',null); S.devices=null; S.conns=null; mark(); }
+  function forget(){ setSession(null,null); lsSet(LS_PREF,null); lsSet(LS_BOOK,null); lsSet('aibo_pos_v1',null); S.devices=null; S.conns=null; S.ai=null; mark(); }
   function mark(){ try{ if(signedIn()) document.documentElement.setAttribute('data-glacct','1'); else document.documentElement.removeAttribute('data-glacct'); }catch(_){} announceRole(); }
   /* 10-07: sign out / delete put this device's Portfolio saves back to what they were BEFORE the sign-in — a borrowed iPad
      kept the account's saves (dollar figures) after "Sign out". An expired session keeps them (still the person's device). */
@@ -11885,7 +11898,7 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
       if(g) h+='<div class="gla-google" data-gla="google"><span class="gla-note">Loading Google…</span></div>';
       if(pk) h+='<button type="button" class="gla-btn" data-glaact="pk-login">Sign in with '+esc(pkWord())+'</button>';
     }
-    return h+'</div>';
+    return h+'</div>'+htmlAi();
   }
   function htmlIn(){
     var u=S.user||{}, pk=pkAvailable(), keys=u.passkeys||[], dv=S.devices;
@@ -11919,6 +11932,7 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
     /* 10-08 CONNECTIONS, redrawn 10-21 as Option A of sandbox/connect (the owner: "I don't think we should have a button for every
        exchange. Maybe they put in their exchange and there's a generic thing"): htmlConns() — one search box over every way in. */
     h+=htmlConns();
+    h+=htmlAi();
     /* more */
     h+='<details class="gla-more"><summary>Change password</summary><div class="gla-sec">'
       +(u.hasPassword?'<input type="password" class="gla-in" data-gla="cur" placeholder="Current password" autocomplete="current-password">':'<div class="gla-note">This account signs in with Google and has no password yet.</div>')
@@ -12035,6 +12049,35 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
   }
 
   /* ---------- 10-16 the Admin section (admin accounts only) ---------- */
+  /* ---------- 10-21 ASK BULL WHISTLE: the person's own Anthropic key ---------- */
+  var AI_CONSOLE='https://console.anthropic.com/settings/keys';
+  function fmtDay(iso){ if(!iso) return ''; var d=new Date(iso); return isNaN(d)?'':d.toLocaleDateString(undefined,{month:'short',day:'numeric'}); }
+  function htmlAi(){
+    var A=S.ai, h='<div class="gla-sec gla-ai"><div class="gla-head">Ask Bull Whistle</div>';
+    if(!signedIn()) return h+'<div class="gla-note">Sign in first — the assistant answers with your own Anthropic key, kept in your account.</div></div>';
+    if(!A) return h+'<div class="gla-note">'+(S.aiErr?'Could not load this. <button type="button" class="gla-lnk" data-glaact="ai-retry">Try again</button>':'Loading…')+'</div></div>';
+    if(A.hasKey){
+      h+='<div class="gla-item gla-aikey"><span><b><i class="gla-dot on"></i>Your key ending <code>••••'+esc(A.last4||'')+'</code></b><em>'+(A.setAt?'set '+esc(fmtDay(A.setAt))+' · ':'')+'the assistant answers with it</em></span>'
+        +'<button type="button" class="gla-x'+(S.armAi?' arm':'')+'" data-glaact="ai-remove">'+(S.armAi?'Sure?':'Remove')+'</button></div>'
+        +'<div class="gla-msg" data-gla="aimsg" hidden></div>'
+        +'<div class="gla-note">Your questions are billed to your own Anthropic account; a typical question costs a few cents. <a href="'+AI_CONSOLE+'" target="_blank" rel="noopener">console.anthropic.com ↗</a></div>';
+    } else {
+      h+='<div class="gla-note">The assistant answers with your own Anthropic key. Your questions are billed to your own Anthropic account; a typical question costs a few cents.</div>'
+        +'<div class="gla-row"><input type="password" class="gla-in" data-gla="aikey" placeholder="Paste your key (sk-ant-…)" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="button" class="gla-btn primary" data-glaact="ai-save">Save</button></div>'
+        +'<div class="gla-msg" data-gla="aimsg" hidden></div>'
+        +'<div class="gla-links"><a href="'+AI_CONSOLE+'" target="_blank" rel="noopener">Get a key at console.anthropic.com ↗</a></div>'
+        +'<div class="gla-note">Stored encrypted in your account and never shown back. It is used only for your own questions.</div>';
+    }
+    return h+'</div>';
+  }
+  function aiMsg(err,ok){ var e=S.card&&$('[data-gla="aimsg"]',S.card); if(!e) return; e.hidden=!(err||ok); e.className='gla-msg'+(err?' err':' ok'); e.textContent=err||ok||''; }
+  function aiChanged(){ try{ window.dispatchEvent(new CustomEvent('aiboaikey',{detail:{hasKey:!!(S.ai&&S.ai.hasKey)}})); }catch(_){} }
+  function loadAi(){
+    S.aiBusy=true; S.aiErr=false;
+    api('GET','/me/ai.json').then(function(r){ S.aiBusy=false;
+      if(r.status===200&&r.body&&typeof r.body.hasKey==='boolean'){ S.ai=r.body; } else { if(r.status===401) expired(); S.aiErr=true; }
+      paint(); });
+  }
   function htmlAdmin(){
     var A=S.adm||{}, inv=A.inv, ov=A.ov, h='<div class="gla-sec gla-admin"><div class="gla-head">Admin</div>';
     h+='<div class="gla-note">Sign-up is invite-only. Add someone’s e-mail here, then send them the app link — they create their account with that address. Nothing is e-mailed from here.</div>';
@@ -12068,6 +12111,7 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
     paintMsg(); if(!signedIn()) mountGoogle();
     if(signedIn()&&!S.devices&&!S.devErr) api('GET','/auth/devices').then(function(r){ if(r.status===200&&r.body.devices){ S.devices=r.body; paint(); } else if(r.status===401) expired(); else { S.devErr=true; paint(); } });
     if(signedIn()&&!S.conns&&!S.connsBusy) loadConns();
+    if(signedIn()&&!S.ai&&!S.aiBusy&&!S.aiErr) loadAi();
     if(signedIn()&&S.user&&S.user.admin&&!(S.adm&&(S.adm.loaded||S.adm.busy))) loadAdmin();
   }
   function loadConns(){
@@ -12149,6 +12193,15 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
       api('POST','/me/connections/'+encodeURIComponent(cid)+'/remove',{}).then(function(r){ busy(false); S.conns=null; paint(); try{ if(window.AIBO_POS&&AIBO_POS.refresh) AIBO_POS.refresh(); }catch(_){} });
       return;
     }
+    if(a==='ai-retry'){ S.aiErr=false; S.ai=null; paint(); return; }
+    if(a==='ai-save'){ var k=val('[data-gla="aikey"]'); if(!k) return aiMsg('Paste your Anthropic API key first — it starts with sk-ant-.'); busy(true);
+      api('PUT','/me/ai.json',{key:k}).then(function(r){ busy(false);
+        if(r.status===200&&r.body&&r.body.hasKey){ S.ai=r.body; paint(); toast('Your key is saved — ask away'); aiChanged(); }
+        else if(r.status===401) expired(); else aiMsg(errText(r,'That key could not be saved — try again')); }); return; }
+    if(a==='ai-remove'){
+      if(!S.armAi){ S.armAi=true; paint(); setTimeout(function(){ if(S.armAi){ S.armAi=false; paint(); } },3500); return; }
+      S.armAi=false; busy(true);
+      api('DELETE','/me/ai.json').then(function(r){ busy(false); if(r.status===200&&r.body){ S.ai=r.body; paint(); toast('Key removed'); aiChanged(); } else if(r.status===401) expired(); else aiMsg(errText(r)); }); return; }
     if(a==='conn-sync'){ busy(true); api('POST','/me/connections/sync',{}).then(function(r){ busy(false); if(r.status===200){ S.conns=null; paint(); } else fail(errText(r)); }); return; }
     if(a==='delete'){
       if(!S.armDel){ S.armDel=true; paint(); var d=$('details.danger',S.card); if(d) d.open=true; setTimeout(function(){ if(S.armDel){ S.armDel=false; paint(); } },4000); return; }
@@ -12163,6 +12216,7 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
     api('POST','/auth/prefs',{alertEmails:!!b.checked}).then(function(r){ if(r.status===200) takeUser(r.body.user); });
   }
   function onKey(e){ if(e.key!=='Enter') return; if(e.target.tagName==='TEXTAREA') return;
+    if(e.target.closest('[data-gla="aikey"]')){ var ks=$('[data-glaact="ai-save"]',S.card); if(ks) ks.click(); return; }
     if(e.target.closest('[data-gla="q"]')){ var h1=$('.gla-addbox [data-glaact="venue"]',S.card); if(h1) h1.click(); return; }
     var f=e.target.closest('.gla-form,.gla-addform'); if(!f) return; var p=$('.gla-btn.primary',f); if(p) p.click(); }
 
@@ -12196,7 +12250,7 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
     token:function(){ return S.tok; }, signedIn:signedIn, user:function(){ return S.user; }, signOut:function(){ forget(); }, expired:function(){ expired(); }, role:role,
     state:function(){ return {signedIn:signedIn(), user:S.user, cfg:S.cfg, mode:S.mode, card:!!S.card, devices:S.devices?S.devices.devices.length:null, reqs:S.reqs, link:S.link, err:S.err, note:S.note,
                               conns:S.conns?S.conns.connections.map(function(x){ return {id:x.id, kind:x.kind, status:x.status, shown:x.shown, how:x.how}; }):null, addKind:S.addKind, q:S.q, lastLink:S.lastLink,
-                              venues:S.conns?venuesOf(S.conns).length:null, linkOn:!!(S.conns&&S.conns.link), sync:{prefs:mem(LS_PREF).failed||null, book:mem(LS_BOOK).failed||null}}; },
+                              venues:S.conns?venuesOf(S.conns).length:null, linkOn:!!(S.conns&&S.conns.link), ai:S.ai||null, aiArm:!!S.armAi, sync:{prefs:mem(LS_PREF).failed||null, book:mem(LS_BOOK).failed||null}}; },
     nav:null,   /* 10-21: where a broker link goes (the top window); the QA suite swaps it for a recorder */
     pull:function(){ return Promise.all([pull('prefs'),pull('book')]); }, push:function(){ return Promise.all([push('prefs'),push('book')]); }
   };
@@ -19782,22 +19836,30 @@ function runTool(name,input){
 
 
 /* =============================== WHO ANSWERS (10-21) ==============================
-   The cloud answers: main.py -> the Anthropic API with the key the server holds. 10-21 (the owner): members will bring their OWN key (that build
-   follows; never the owner's key or subscription for a member). The "your computer first" Ollama path left this day: a local model answered
-   worse than Claude, and it was one more thing to explain. THE STATUS DOT (the owner: "in the top bar, a little icon to say … using the API"):
-   the sparkle carries a dot — accent = the cloud is set up, dim = not set up yet. The sheet's status line says the same words. */
-var CLOUD={ok:null, at:0};
+   The cloud answers: main.py -> the Anthropic API. WHOSE KEY (10-21, the owner's ruling): every member's questions run on THEIR OWN Anthropic key,
+   pasted once in Settings › Ask Bull Whistle (account.js) and sealed in their account; never the owner's key or subscription for a member.
+   The owner (the positions token, or the admin account without a key of its own) runs on the server's key. The "your computer first" Ollama
+   path left this day. THE STATUS DOT (the owner: "in the top bar, a little icon to say … using the API"): GET /ai/health WITH the Bearer answers
+   for THIS caller — how:'key' (accent dot, "Ask · your key") | 'admin' (accent, "Ask · the owner's key") | 'none' → 'off' (dim, "Ask · add your
+   key in Settings"). The sheet's status line says the same words; a question asked without a key gets the server's 409 sentence as a note
+   with a tap-through to Settings. Re-probed on 'aiboaikey' (a key saved / removed) and 'aiborole' (signed in / out). */
+var CLOUD={ok:null, how:null, err:null, at:0, tok:null};
 function cloudProbe(force){
+  var tok=anyTok();
   /* a dev / QA build (the *_GLASS.html file on the local server) has no /ai routes — asking would only log a refused request (the worlds suite counts those) */
-  if(!W.AIBO_AI_URL&&/_GLASS\.html$/i.test(location.pathname)){ CLOUD.ok=false; CLOUD.at=Date.now(); paintDot(); return Promise.resolve(false); }
-  if(!force&&CLOUD.at&&Date.now()-CLOUD.at<300000) return Promise.resolve(!!CLOUD.ok);
-  return fetch((W.AIBO_AI_URL||'/ai/chat').replace(/\/ai\/chat$/,'/ai/health'),{cache:'no-store'}).then(function(r){ return r.ok?r.json():null; }).then(function(j){ CLOUD.ok=!!(j&&j.configured); CLOUD.at=Date.now(); paintDot(); return CLOUD.ok; },
-    function(){ CLOUD.ok=false; CLOUD.at=Date.now(); paintDot(); return false; });
+  if(!W.AIBO_AI_URL&&/_GLASS\.html$/i.test(location.pathname)){ CLOUD.ok=false; CLOUD.how='none'; CLOUD.at=Date.now(); CLOUD.tok=tok; paintDot(); return Promise.resolve(false); }
+  if(!force&&CLOUD.at&&CLOUD.tok===tok&&Date.now()-CLOUD.at<300000) return Promise.resolve(!!CLOUD.ok);
+  var hdr={}; if(tok) hdr.Authorization='Bearer '+tok;
+  return fetch((W.AIBO_AI_URL||'/ai/chat').replace(/\/ai\/chat$/,'/ai/health'),{cache:'no-store', headers:hdr}).then(function(r){ return r.ok?r.json():null; }).then(function(j){
+      CLOUD.ok=!!(j&&j.configured); CLOUD.how=(j&&j.how)||(CLOUD.ok?'admin':'none'); CLOUD.err=(j&&j.error)||null; CLOUD.at=Date.now(); CLOUD.tok=tok; paintDot(); return CLOUD.ok; },
+    function(){ CLOUD.ok=false; CLOUD.how='none'; CLOUD.err=null; CLOUD.at=Date.now(); CLOUD.tok=tok; paintDot(); return false; });
 }
-function aiState(){ return CLOUD.ok?'cloud':'off'; }
-function paintDot(){ var st=aiState(), lab=st==='cloud'?'Ask · the cloud answers':'Ask · not set up yet (the server has no key)';
+function aiState(){ return CLOUD.how==='key'?'key':CLOUD.how==='admin'?'admin':'off'; }
+function aiWords(){ var st=aiState(); return st==='key'?'your key':st==='admin'?'the owner\'s key':(anyTok()?'add your key in Settings':'sign in first'); }
+function paintDot(){ var st=aiState(), lab='Ask · '+aiWords();
   var bs=D.querySelectorAll('[data-bwai],.bwai-abtn'); for(var i=0;i<bs.length;i++){ bs[i].setAttribute('data-ai',st); bs[i].title=lab; } }
-function callAny(body){ return callModel(body).then(function(m){ m.via='cloud'; return m; }); }
+function goSettings(){ try{ if(W.GL48&&typeof GL48.settings==='function'){ close(); GL48.settings(); return; } var y=D.querySelector('[data-gldoor="settings"]'); if(y){ close(); y.click(); } }catch(_){} }
+function callAny(body){ return callModel(body).then(function(m){ m.via=m.via||CLOUD.how||'cloud'; return m; }); }
 
 /* =============================== THE CONVERSATION =============================== */
 var S={open:false, busy:false, msgs:[], ui:[], mem:memLoad(), reflected:true, lastAt:0, view:'chat', err:null, abort:null, tools:[]};
@@ -19823,7 +19885,7 @@ function callModel(body){
   var ctl=('AbortController' in W)?new AbortController():null; S.abort=ctl;
   var tok=anyTok(), hdr={'Content-Type':'application/json'}; if(tok) hdr.Authorization='Bearer '+tok;
   return fetch(AI_URL,{method:'POST', headers:hdr, body:JSON.stringify(body), signal:ctl?ctl.signal:undefined}).then(function(r){
-    if(!r.ok){ return r.json().then(function(j){ throw new Error((j&&j.error)||('HTTP '+r.status)); }, function(){ throw new Error('HTTP '+r.status); }); }
+    if(!r.ok){ return r.json().then(function(j){ var e=new Error((j&&j.error)||('HTTP '+r.status)); e.status=r.status; throw e; }, function(){ var e=new Error('HTTP '+r.status); e.status=r.status; throw e; }); }
     if(!r.body||!r.body.getReader) return r.text().then(function(t){ return parseSse(t,body.onDelta,body.onTool); });
     var reader=r.body.getReader(), dec=new TextDecoder(), buf='', final=null, err=null;
     function handle(ev,data){ var j=null; try{ j=JSON.parse(data); }catch(_){ return; }
@@ -19861,7 +19923,9 @@ function ask(text,voice){
       });
   }
   function done(){ a.used=used.slice(); a.tools=[]; a.done=true; paintMsg(a); S.busy=false; S.abort=null; speakEnd(); convSave(); paintStatus(); scrollLog(); scheduleReflect(); }
-  round().catch(function(e){ var m=(e&&e.name==='AbortError')?'Stopped.':String(e&&e.message||e); a.text=(a.text||'')+(a.text?'\n\n':'')+'⚠ '+m; a.err=true; done(); });
+  round().catch(function(e){ var m=(e&&e.name==='AbortError')?'Stopped.':String(e&&e.message||e);
+    if(e&&e.status===409){ S.ui=S.ui.filter(function(u){ return u!==a; }); var el_=root&&D.getElementById(a.id); if(el_) el_.remove(); var n=addUi('note',m); n.go='settings'; paintMsg(n); CLOUD.how='none'; CLOUD.err=m; CLOUD.at=Date.now(); S.busy=false; S.abort=null; speakEnd(); convSave(); paintStatus(); scrollLog(); return; }
+    a.text=(a.text||'')+(a.text?'\n\n':'')+'⚠ '+m; a.err=true; done(); });
 }
 function stop(){ try{ if(S.abort) S.abort.abort(); }catch(_){} speakCancel(); }
 
@@ -20001,7 +20065,8 @@ html[data-gl="light"] .bwai-m.user .bwai-t{background:rgba(37,99,235,.10);border
 .bwai-btn-strip{} .appbar .bwai-abtn{appearance:none;height:30px;padding:0 10px;border-radius:9px;border:1px solid var(--hair);background:var(--gl-d12,#101b2b);color:var(--ink);font-family:inherit;font-weight:700;font-size:12px;line-height:1;cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px;}\
 .appbar .bwai-abtn svg{width:14px;height:14px;}\
 .appbar .bwai-abtn{position:relative;} .gl-ibtn[data-bwai]::after,.bwai-abtn::after{content:"";position:absolute;right:3px;top:3px;width:6px;height:6px;border-radius:50%;background:rgba(234,238,245,.28);box-shadow:0 0 0 1.5px rgba(var(--gl-bg-rgb,13,19,32),.9);}\
-[data-ai="computer"]::after{background:var(--gl-up,#39d07f)!important;} [data-ai="cloud"]::after{background:var(--gl-acc,#a78bfa)!important;}';
+[data-ai="key"]::after,[data-ai="admin"]::after{background:var(--gl-acc,#a78bfa)!important;}\
+.bwai-m.note .bwai-go{display:inline-block;margin-top:6px;padding:6px 10px;border-radius:8px;border:1px solid var(--hair);background:transparent;color:var(--gl-acc,#a78bfa);font:600 12px/1 inherit;font-family:inherit;cursor:pointer;}';
 var SVG_SPARK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>';
 var SVG_MIC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>';
 var SVG_SEND='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg>';
@@ -20028,7 +20093,7 @@ function build(){
   B.appendChild(scrim); B.appendChild(root);
   scrim.addEventListener('click',close);
   root.addEventListener('click',function(e){ var b=e.target.closest('[data-act]'); if(!b) return; e.stopPropagation(); var k=b.getAttribute('data-act');
-    if(k==='close') close(); else if(k==='new') newChat(); else if(k==='mem') toggleMem(); else if(k==='send'){ if(S.busy) stop(); else submit(); } else if(k==='mic') toggleMic(); else if(k==='conv') toggleConv(); else if(k==='speak') toggleSpeak();
+    if(k==='close') close(); else if(k==='new') newChat(); else if(k==='settings') goSettings(); else if(k==='mem') toggleMem(); else if(k==='send'){ if(S.busy) stop(); else submit(); } else if(k==='mic') toggleMic(); else if(k==='conv') toggleConv(); else if(k==='speak') toggleSpeak();
     else if(k==='quick'){ var i=$in(); i.value=b.getAttribute('data-q')||''; submit(); } else if(k==='mem-save') memEditSave(); else if(k==='mem-forget'){ if(confirm('Forget everything the assistant has learned about you on this device?')){ memSave({v:1, profile:'', insights:[], convos:[], n:0}); paintMem(); } }
     else if(k==='ins-del'){ var at=b.getAttribute('data-at'); S.mem.insights=S.mem.insights.filter(function(x){ return x.at!==at; }); memSave(S.mem); paintMem(); } });
   var inp=$in(); inp.addEventListener('input',function(){ inp.style.height='auto'; inp.style.height=Math.min(140,inp.scrollHeight)+'px'; });
@@ -20045,12 +20110,12 @@ function note(t){ addUi('note',t); if(S.open){ var n=$('[data-note]'); if(n) n.t
 function addUi(kind,text){ var u={kind:kind, text:text, at:Date.now(), id:'u'+Math.random().toString(36).slice(2,8)}; S.ui.push(u); if(root){ var log=$('[data-log]'); if(log){ log.appendChild(renderMsg(u)); scrollLog(); } paintQuick(); } return u; }
 function renderMsg(u){ var m=el('div','bwai-m '+u.kind+(u.err?' err':'')); m.id=u.id; m.innerHTML=msgHtml(u); return m; }
 function msgHtml(u){
-  if(u.kind==='note') return '<div class="bwai-t">'+esc(u.text)+'</div>';
+  if(u.kind==='note') return '<div class="bwai-t">'+esc(u.text)+(u.go==='settings'?'<br><button type="button" class="bwai-go" data-act="settings">Open Settings</button>':'')+'</div>';
   if(u.kind==='user') return '<div class="bwai-t">'+esc(u.text).replace(/\n/g,'<br>')+'</div>';
   var h='<div class="bwai-t" data-t>'+md(u.text||'')+'</div>';
   if(u.tools&&u.tools.length&&!u.done) h+='<div class="bwai-act"><i></i>'+esc(TOOL_LABEL[u.tools[u.tools.length-1]]||u.tools[u.tools.length-1])+'…</div>';
   else if(!u.done&&!u.text) h+='<div class="bwai-act"><i></i>Thinking…</div>';
-  if(u.done&&(u.via||(u.used&&u.used.length))) h+='<div class="bwai-used">'+(u.via==='cloud'?'cloud':'')+((u.used&&u.used.length)?(u.via?' · ':'')+'used: '+esc(u.used.map(function(n){ return n.replace(/^get_/,'').replace(/_/g,' '); }).join(' · ')):'')+'</div>';
+  if(u.done&&(u.via||(u.used&&u.used.length))) h+='<div class="bwai-used">'+(u.via==='key'?'your key':u.via==='admin'?'the owner\'s key':u.via==='cloud'?'cloud':'')+((u.used&&u.used.length)?(u.via?' · ':'')+'used: '+esc(u.used.map(function(n){ return n.replace(/^get_/,'').replace(/_/g,' '); }).join(' · ')):'')+'</div>';
   return h;
 }
 function paintMsg(u){ var m=root&&D.getElementById(u.id); if(m){ m.className='bwai-m '+u.kind+(u.err?' err':''); m.innerHTML=msgHtml(u); scrollLog(); } }
@@ -20062,7 +20127,7 @@ function paintLive(t){ var l=$('[data-live]'); if(!l) return; if(t==null){ l.hid
 function paintStatus(){
   if(!root) return; var st=$('[data-st]'), m=S.mem, parts=[];
   if(V.listening) parts.push('listening'); else if(V.speaking) parts.push('speaking'); else if(S.busy) parts.push('working');
-  parts.push(CLOUD.ok?'cloud':'not set up yet');
+  parts.push(aiWords());
   paintDot();
   parts.push(m.profile?('knows you · '+(m.insights||[]).length+' notes'):'getting to know you');
   st.textContent=parts.join(' · ');
@@ -20114,10 +20179,11 @@ function mountButtons(){
 }
 mountButtons(); var mt=0, mtries=0; mt=setInterval(function(){ mountButtons(); if(++mtries>20||D.querySelector('[data-bwai]')) clearInterval(mt); },500);
 setTimeout(function(){ cloudProbe(false); paintDot(); },1500);   /* the dot is right before the first open */
+try{ W.addEventListener('aiboaikey',function(){ cloudProbe(true).then(function(){ if(S.open) paintStatus(); }); }); W.addEventListener('aiborole',function(){ cloudProbe(true).then(function(){ if(S.open) paintStatus(); }); }); }catch(_){}
 try{ W.addEventListener('aibolive',function(){ S.liveAt=new Date().toLocaleTimeString(); }); }catch(_){}
 D.addEventListener('visibilitychange',function(){ if(D.hidden&&V.on){ V.on=false; stopListen(); speakCancel(); } });
 
-W.AIBO_AI={open:open, close:close, toggle:toggle, ask:function(t){ open(); ask(t,false); }, memory:function(){ return S.mem; }, reflect:reflect, state:function(){ return {open:S.open, busy:S.busy, turns:S.ui.length, voice:{on:V.on, listening:V.listening, speaking:V.speaking, speak:V.speak}}; },
+W.AIBO_AI={open:open, close:close, toggle:toggle, ask:function(t){ open(); ask(t,false); }, memory:function(){ return S.mem; }, reflect:reflect, state:function(){ return {open:S.open, busy:S.busy, turns:S.ui.length, how:CLOUD.how, dot:aiState(), notes:S.ui.filter(function(u){ return u.kind==='note'; }).map(function(u){ return u.text+(u.go?' ['+u.go+']':''); }), voice:{on:V.on, listening:V.listening, speaking:V.speaking, speak:V.speak}}; },
   _t:{positions:positions, tradeStats:tradeStats, normTrade:normTrade, readsOf:readsOf, seriesOf:seriesOf, evalCond:evalCond, metricKey:metricKey, runScreen:runScreen, rowsToBars:rowsToBars, normTf:normTf, md:md, plain:plain, snapshot:snapshot, TOOLS:TOOLS, memText:memText}};
 })();
 
