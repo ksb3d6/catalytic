@@ -67,6 +67,14 @@ AI_EFFORT = os.environ.get("AIBO_AI_EFFORT", "medium")
 BACKEND = os.environ.get("AIBO_BACKEND", "https://api.bullwhistle.com").rstrip("/")
 AI_OPEN = os.environ.get("AIBO_AI_OPEN", "") == "1"
 MAX_BODY = 3 * 1024 * 1024
+# 10-22 (SECURITY_REVIEW L6): an explicit allowlist. SimpleHTTPRequestHandler served the whole folder — main.py (this file),
+# requirements.txt, a listing of any sub-folder, and whatever a later `railway up` happened to include. Only the app's own files
+# are reachable now; every other path is a 404 and no directory is ever listed.
+STATIC = {"/": "index.html", "/index.html": "index.html", "/sw.js": "sw.js", "/manifest.json": "manifest.json",
+          "/yields.html": "yields.html", "/yields.json": "yields.json", "/yields_intl.json": "yields_intl.json",
+          "/privacy.html": "privacy.html", "/terms.html": "terms.html", "/contact.html": "contact.html", "/legal.css": "legal.css",
+          "/logo.png": "logo.png", "/icon-180.png": "icon-180.png", "/icon-512.png": "icon-512.png",
+          "/favicon-32.png": "favicon-32.png", "/favicon-16.png": "favicon-16.png"}
 MAX_MESSAGES = 120
 LOOKUP_SECRET = os.environ.get("AIBO_AI_LOOKUP_SECRET", "").strip()
 NO_KEY_SENTENCE = "Add your Anthropic key in Settings › Ask Bull Whistle to use the assistant."
@@ -421,7 +429,26 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # the prompt and the tool definitions, for the page's "your computer first" path (a model on the person's own machine
             # runs the same instructions and the same tools; nothing here is secret)
             return self._json(200, {"system": SYSTEM_CHAT, "reflect": SYSTEM_REFLECT, "tools": TOOLS_CHAT, "reflect_tools": TOOLS_REFLECT})
+        if self._static() is None:
+            return self._json(404, {"error": "not found"})
         return super().do_GET()
+
+    def do_HEAD(self):
+        if self._static() is None:
+            return self._json(404, {"error": "not found"})
+        return super().do_HEAD()
+
+    def _static(self):
+        """The allowlisted file for this request (self.path rewritten to it, query dropped), or None = 404."""
+        name = STATIC.get(self.path.split("?")[0].split("#")[0])
+        if name is None or not os.path.isfile(name):
+            return None
+        self.path = "/" + name
+        return name
+
+    def list_directory(self, path):          # belt and braces: never a listing, whatever the path resolved to
+        self._json(404, {"error": "not found"})
+        return None
 
     def do_POST(self):
         path = self.path.split("?")[0]

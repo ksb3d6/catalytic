@@ -11954,14 +11954,18 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
     h+=htmlConns();
     h+=htmlAi();
     /* more */
+    /* 10-22 (SECURITY_REVIEW M1): an account with no password proves itself another way before it moves its e-mail, sets its first
+       password or deletes itself — a sign-in in the last ten minutes passes as is; otherwise a six-digit code to the CURRENT address
+       (/auth/reauth/request, body field `reauth`). The server says so (401 `reauth`); the field and the button are already there. */
+    function htmlReauth(k){ return u.hasPassword?'':'<input class="gla-in" data-gla="rc-'+k+'" placeholder="6-digit code (if asked)" inputmode="numeric" autocomplete="one-time-code"><button type="button" class="gla-btn" data-glaact="reauth-send">Send me a code</button>'; }
     h+='<details class="gla-more"><summary>Change password</summary><div class="gla-sec">'
-      +(u.hasPassword?'<input type="password" class="gla-in" data-gla="cur" placeholder="Current password" autocomplete="current-password">':'<div class="gla-note">This account signs in with Google and has no password yet.</div>')
+      +(u.hasPassword?'<input type="password" class="gla-in" data-gla="cur" placeholder="Current password" autocomplete="current-password">':'<div class="gla-note">This account signs in with Google and has no password yet. Signed in more than ten minutes ago? Send yourself a code first.</div>'+htmlReauth('pw'))
       +'<input type="password" class="gla-in" data-gla="new" placeholder="New password (10+ characters)" autocomplete="new-password"><button type="button" class="gla-btn" data-glaact="password">Change password</button><div class="gla-note">Every other device is signed out.</div></div></details>';
     h+='<details class="gla-more"><summary>Change e-mail</summary><div class="gla-sec"><input type="email" class="gla-in" data-gla="newemail" placeholder="New e-mail" inputmode="email">'
-      +(u.hasPassword?'<input type="password" class="gla-in" data-gla="pw2" placeholder="Your password" autocomplete="current-password">':'')+'<button type="button" class="gla-btn" data-glaact="email-request">Send a code to the new address</button></div></details>';
+      +(u.hasPassword?'<input type="password" class="gla-in" data-gla="pw2" placeholder="Your password" autocomplete="current-password">':htmlReauth('em'))+'<button type="button" class="gla-btn" data-glaact="email-request">Send a code to the new address</button></div></details>';
     h+='<label class="gla-toggle"><input type="checkbox" data-glaact="alertmail" '+((u.prefs&&u.prefs.alertEmails!==false)?'checked':'')+'><span>E-mail me when a price alert fires</span></label>';
     h+='<button type="button" class="gla-btn" data-glaact="signout">Sign out on this device</button>';
-    h+='<details class="gla-more danger"><summary>Delete account</summary><div class="gla-sec">'+(u.hasPassword?'<input type="password" class="gla-in" data-gla="delpw" placeholder="Your password" autocomplete="current-password">':'')
+    h+='<details class="gla-more danger"><summary>Delete account</summary><div class="gla-sec">'+(u.hasPassword?'<input type="password" class="gla-in" data-gla="delpw" placeholder="Your password" autocomplete="current-password">':htmlReauth('del'))
       +'<button type="button" class="gla-btn danger" data-glaact="delete">'+(S.armDel?'Tap again — deletes everything':'Delete my account')+'</button><div class="gla-note">Your lists, journal, alerts, settings and saves go with it. There is no undo.</div></div></details>';
     return h;
   }
@@ -12185,9 +12189,10 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
     if(a==='signout'){ signOut(false); return; }
     if(a==='signout-all'){ signOut(true); return; }
     if(a==='password'){ var cu=val('[data-gla="cur"]'), nw=val('[data-gla="new"]'); if(!nw) return fail('A new password, please'); busy(true);
-      api('POST','/auth/password',{current:cu, password:nw}).then(function(r){ busy(false); if(r.status===200){ takeUser(r.body.user); S.devices=null; toast('Password changed'); paint(); } else fail(errText(r)); }); return; }
+      api('POST','/auth/password',{current:cu, password:nw, reauth:val('[data-gla="rc-pw"]')}).then(function(r){ busy(false); if(r.status===200){ takeUser(r.body.user); S.devices=null; toast('Password changed'); paint(); } else fail(errText(r)); }); return; }
     if(a==='email-request'){ var ne=val('[data-gla="newemail"]'), p2=val('[data-gla="pw2"]'); if(!ne) return fail('The new e-mail, please'); busy(true);
-      api('POST','/auth/email/request',{email:ne, password:p2}).then(function(r){ busy(false); if(r.status===200){ S.user.pendingEmail=r.body.pendingEmail; takeUser(S.user); paint(); } else fail(errText(r)); }); return; }
+      api('POST','/auth/email/request',{email:ne, password:p2, reauth:val('[data-gla="rc-em"]')}).then(function(r){ busy(false); if(r.status===200){ S.user.pendingEmail=r.body.pendingEmail; takeUser(S.user); paint(); } else fail(errText(r)); }); return; }
+    if(a==='reauth-send'){ busy(true); api('POST','/auth/reauth/request',{}).then(function(r){ busy(false); if(r.status===200) note('Code sent to '+(r.body.sentTo||'your e-mail')+' — enter it above'); else fail(errText(r)); }); return; }
     if(a==='email-confirm'){ var ec=val('[data-gla="ecode"]'); if(!ec) return fail('The 6-digit code, please'); busy(true);
       api('POST','/auth/email/confirm',{code:ec}).then(function(r){ busy(false); if(r.status===200){ takeUser(r.body.user); toast('E-mail changed'); paint(); } else fail(errText(r)); }); return; }
     if(a==='email-cancel'){ busy(true); api('POST','/auth/email/cancel',{}).then(function(r){ busy(false); if(r.status===200) takeUser(r.body.user); paint(); }); return; }
@@ -12226,7 +12231,7 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
     if(a==='delete'){
       if(!S.armDel){ S.armDel=true; paint(); var d=$('details.danger',S.card); if(d) d.open=true; setTimeout(function(){ if(S.armDel){ S.armDel=false; paint(); } },4000); return; }
       S.armDel=false; busy(true);
-      api('POST','/auth/delete',{password:val('[data-gla="delpw"]')}).then(function(r){ busy(false); if(r.status===200){ forget(); leaveBook(); toast('Account deleted'); setTimeout(function(){ location.reload(); },600); } else fail(errText(r)); });
+      api('POST','/auth/delete',{password:val('[data-gla="delpw"]'), reauth:val('[data-gla="rc-del"]')}).then(function(r){ busy(false); if(r.status===200){ forget(); leaveBook(); toast('Account deleted'); setTimeout(function(){ location.reload(); },600); } else fail(errText(r)); });
       return;
     }
   }
