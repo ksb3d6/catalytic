@@ -2082,7 +2082,7 @@ const INFO = {
   KTOS:{c:"US",does:"Makes unmanned combat and target drones, plus defense electronics and propulsion.",why:"Levered to attritable, low-cost autonomous airpower."},
   ONDS:{c:"US",does:"Makes drone and industrial-wireless systems for defense and commercial customers.",why:"A small, speculative play on dual-use drone autonomy."},
   UMAC:{c:"US",does:"Makes small-drone components and FPV drones for a domestic, non-China supply chain.",why:"A micro-cap bet on US drone-component reshoring."},
-  SPCX:{c:"US",does:"Launches most of the world's payloads on reusable Falcon rockets and runs Starlink, the only satellite broadband network at scale.",why:"The gatekeeper of access to orbit — and Starlink is the first space business with real recurring revenue."},
+  SPCX:{c:"US",does:"Launches most of the world's payloads on reusable Falcon rockets, runs Starlink's satellite broadband at scale, and since its merger with xAI builds and trains frontier AI models too.",why:"The gatekeeper of orbit with Starlink's recurring revenue — now priced as much on the xAI side (compute, models, Grok) as on rockets, so it trades with the AI names."},
   RKLB:{c:"US",does:"Provides small-rocket launch (Electron), is building the larger Neutron, and makes spacecraft and components.",why:"The clearest pure-play scaling toward an end-to-end space company."},
   ASTS:{c:"US",does:"Building a satellite constellation to deliver broadband directly to ordinary phones.",why:"A high-stakes bet on space-based cellular connectivity."},
   LUNR:{c:"US",does:"Builds lunar landers and provides space services and infrastructure for NASA.",why:"A leveraged play on the cislunar economy."},
@@ -10932,12 +10932,12 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
     cursor:pointer;-webkit-tap-highlight-color:transparent;}
   html[data-gl] .gl-ibtn svg{width:16px;height:16px;display:block;}
   html[data-gl] .gl-ibtn.on{background:rgba(var(--gl-acc-rgb),.18);border-color:rgba(var(--gl-acc-rgb),.5);color:var(--gl-acci);}
-  html[data-gl] .gl-ibadge{position:absolute;top:-5px;right:-5px;min-width:15px;height:15px;padding:0 4px;box-sizing:border-box;border-radius:8px;background:#f0685f;color:var(--gl-ink,#fff);
+  html[data-gl] .gl-ibadge{position:absolute;top:-4px;right:-3px;min-width:14px;height:14px;padding:0 3px;box-sizing:border-box;border-radius:8px;background:#f0685f;color:var(--gl-ink,#fff);
     font:800 9.5px/15px ui-monospace,"SF Mono",Menlo,monospace;text-align:center;font-style:normal;}
   html[data-gl] .gl-ibadge[hidden]{display:none;}
   /* 10-12: FOUR icons (search joined). Phones: 28px with 4px gaps, and the book HUD leaves the Tape's strip under 420px — [A][🔍][Filters] and the
      four icons are the strip there (the HUD shows on every other page and on wider phones) */
-  @media (max-width:480px){ html[data-gl] .gl-icons{gap:4px;margin-left:4px;} html[data-gl] .gl-ibtn{width:28px;height:28px;} html[data-gl] .gl-ibtn svg{width:15px;height:15px;} }
+  @media (max-width:480px){ html[data-gl] .gl-icons{gap:5px;margin-left:4px;} html[data-gl] .gl-ibtn{width:28px;height:28px;} html[data-gl] .gl-ibtn svg{width:15px;height:15px;} html[data-gl] .gl-ibadge{top:-3px;right:-2px;min-width:13px;height:13px;font-size:9px;line-height:13px;} }   /* 10-24 (the owner: 'top bar button circles overlapping' on the vertical iPhone) — the alerts badge sat 5px outside its circle, over the next one */
   @media (max-width:420px){ html[data-gl] body.gl-tape #mStrip .m-hud{display:none;} }
   /* round 9: the stats line ("195 assets · 1D 85▲/98▼") no longer rides the strip — the owner: "maybe we just don't have that text on the top"
      (it differed per universe and the strip's buttons obscured it); the Markets module carries it at the head of the Filters sheet */
@@ -13843,6 +13843,7 @@ html[data-gl] .glf-page .glfs{margin-top:22px;padding-top:16px;}
 html[data-gl] body.gl-tech #glTech{display:block;position:fixed;left:0;right:0;top:47px;bottom:0;z-index:52;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
   background:rgb(var(--gl-bg-rgb));color:var(--ink,var(--gl-ink,#EAEEF5));font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;animation:glIn .26s ease both;transition:top .18s ease;}
 html[data-gl] body.gl-tech{overflow:hidden;}
+html[data-gl] body.gl-tech.gl-tsheet #glTech{overflow:hidden;}   /* 10-24: the Indicators sheet is the only scroller while it is up */
 html[data-gl] body.gl-tech #aibo-live-chip{display:none!important;}      /* it reports PRICE freshness; the head has the price */
 @media (max-width:740px), (pointer:coarse){
   html[data-gl] body.gl-tech #glTech{top:calc(40px + var(--gl-safe-t,0px));}
@@ -14067,7 +14068,7 @@ html[data-gl] .glt-ihead{display:grid;grid-template-columns:minmax(0,1fr) auto;g
 html[data-gl] .glt-ihead b{grid-area:t;font:800 15px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--gl-ink,#eaeef5);}
 html[data-gl] .glt-ihead span{grid-area:s;font:500 11.5px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:rgba(var(--gl-ink-rgb,234,238,245),.55);}
 html[data-gl] .glt-ix{grid-area:x;appearance:none;width:34px;height:34px;border-radius:50%;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.12);background:rgba(var(--gl-wh-rgb,255,255,255),.06);color:rgba(var(--gl-ink-rgb,234,238,245),.8);font-size:20px;line-height:1;cursor:pointer;}
-html[data-gl] .glt-ilist{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:4px 16px calc(var(--gl-dock-h,0px) + var(--gl-safe-b,0px) + 28px);}
+html[data-gl] .glt-ilist{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;padding:4px 16px calc(var(--gl-dock-h,0px) + var(--gl-safe-b,0px) + 28px);}   /* 10-24: min-height:0 — a flex child without it never shrinks, so the list overflowed the card instead of scrolling (iPhone: 'the scroll function was not working on Indicators') */
 html[data-gl] .glt-icap{font:700 10px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:rgba(var(--gl-ink-rgb,234,238,245),.45);padding:14px 0 4px;}
 html[data-gl] .glt-iitem{border-bottom:1px solid rgba(var(--gl-wh-rgb,255,255,255),.07);}
 html[data-gl] .glt-irow{display:flex;align-items:center;gap:10px;min-height:44px;}
@@ -14316,8 +14317,8 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     s+=polyline(X,Y,mm,C_MA,'1.3','.95');
     s+=polyline(X,Y,rr,C_CY,'1.5','1');
     var lastV=rr[n-1]; if(lastV!=null) s+='<circle cx="'+X(n-1).toFixed(1)+'" cy="'+Y(lastV).toFixed(1)+'" r="1.9" fill="'+(lastV>70?C_UP:lastV<30?C_DN:C_CY)+'"/>';
-    /* the levels, in the right gutter */
-    if(gut) labels.forEach(function(v){ if(v<lo||v>hi) return; var ty=Math.min(h-2,Math.max(8,Y(v)+2.6)), tx=(xr-2).toFixed(1); s+='<rect x="'+(xr-gut+2).toFixed(1)+'" y="'+(ty-7).toFixed(1)+'" width="'+(gut-3).toFixed(1)+'" height="9" rx="2" fill="rgba(13,19,32,.55)"/><text x="'+tx+'" y="'+ty.toFixed(1)+'" text-anchor="end" font-size="7.5" font-family="ui-monospace,Menlo,monospace" fill="rgba(234,238,245,.6)">'+v+'</text>'; });
+    /* the levels, on the LEFT (10-24, the owner: on the iPhone the numbers on the right covered where the RSI is developing) */
+    if(gut) labels.forEach(function(v){ if(v<lo||v>hi) return; var ty=Math.min(h-2,Math.max(8,Y(v)+2.6)), tx='3'; if(ty<26) return;   /* the read chip owns the top-left corner */ s+='<rect x="1.5" y="'+(ty-7).toFixed(1)+'" width="'+(gut-3).toFixed(1)+'" height="9" rx="2" fill="rgba(13,19,32,.55)"/><text x="'+tx+'" y="'+ty.toFixed(1)+'" text-anchor="start" font-size="7.5" font-family="ui-monospace,Menlo,monospace" fill="rgba(234,238,245,.6)">'+v+'</text>'; });
     return window.tfSvg(w,h)+s+'</svg>';
   };
   function macdOf(cl){ var e12=window.tfEma(cl,12), e26=window.tfEma(cl,26), m=[], i, ms=[], idx=[];
@@ -14802,8 +14803,10 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
       +'<div class="glt-ilist"><div class="glt-icap">On the page</div>'+on.map(function(i,k){ return infoRow(i,true,k,on.length); }).join('')
       +'<div class="glt-icap">Add to the page</div>'+(off.length?off.map(function(i){ return infoRow(i,false,0,0); }).join(''):'<div class="glt-inone">Every indicator is on the page.</div>')+'</div></div>';
   }
-  function openInfo(){ var el=root.querySelector('[data-techsheet]'); if(!el) return; el.innerHTML=infoHTML(); el.hidden=false; clearTimeout(S.idle); }
-  function closeInfo(){ var el=root.querySelector('[data-techsheet]'); if(!el||el.hidden) return false; el.hidden=true; el.innerHTML=''; armIdle(); return true; }
+  /* 10-24 (the owner: on the vertical iPhone the scroll did not work while on Indicators): while the sheet is up the host under it stops being a
+     scroller (body.gl-tsheet → #glTech overflow hidden) — iOS Safari mishandles a fixed, scrolling sheet inside a scrolling host */
+  function openInfo(){ var el=root.querySelector('[data-techsheet]'); if(!el) return; el.innerHTML=infoHTML(); el.hidden=false; document.body.classList.add('gl-tsheet'); clearTimeout(S.idle); }
+  function closeInfo(){ document.body.classList.remove('gl-tsheet'); var el=root.querySelector('[data-techsheet]'); if(!el||el.hidden) return false; el.hidden=true; el.innerHTML=''; armIdle(); return true; }
   function repaintInfo(){ var el=root.querySelector('[data-techsheet]'); if(!el||el.hidden) return; var top=el.querySelector('.glt-ilist'), y=top?top.scrollTop:0;
     el.innerHTML=infoHTML(); var l2=el.querySelector('.glt-ilist'); if(l2) l2.scrollTop=y; }
   function setOrder(next){ ORDER=next; saveInds(); repaintInfo(); paintLook(false);
