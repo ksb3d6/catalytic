@@ -283,6 +283,13 @@ html,body{margin:0;background:
   background:linear-gradient(180deg,rgba(var(--fc-rgb),.17),rgba(var(--gl-d14-rgb,23,34,48),.35)),var(--card);}
 #flowView .card.vivid{border:1.5px solid var(--fc);box-shadow:0 0 0 1px rgba(var(--fc-rgb),.18),0 10px 34px rgba(0,0,0,.5),inset 0 0 34px rgba(var(--fc-rgb),.06);
   background:linear-gradient(180deg,rgba(var(--fc-rgb),.05),rgba(var(--gl-d14-rgb,23,34,48),0)),var(--card);}
+/* 10-24 the build-out pulse (applyPulse): the wash deepens with --pw, the read line under the title, a turn blinks the card */
+#flowView .card.fv-pup,#flowView .card.fv-pdn{background:linear-gradient(180deg,rgba(var(--fc-rgb),calc(.10 + var(--pw,0) * .26)),rgba(var(--fc-rgb),calc(var(--pw,0) * .08)) 70%),var(--card)!important;}
+#flowView .fv-pulse{position:absolute;top:7px;right:9px;max-width:50%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:600 9.5px/1.3 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.02em;color:rgba(var(--gl-ink-rgb,234,238,245),.7);background:rgba(var(--gl-d08-rgb,13,19,32),.6);padding:2px 6px;border-radius:5px;pointer-events:none;}
+#flowView .fv-pulse b{color:rgb(var(--fc-rgb));}
+@keyframes fvBlink{0%,100%{box-shadow:0 10px 34px rgba(0,0,0,.42);}50%{box-shadow:0 0 0 3px rgba(var(--fc-rgb),.85),0 0 28px rgba(var(--fc-rgb),.5);}}
+#flowView .card.fv-turn-up,#flowView .card.fv-turn-dn{animation:fvBlink 1.1s ease-in-out infinite;}
+@media (prefers-reduced-motion:reduce){ #flowView .card.fv-turn-up,#flowView .card.fv-turn-dn{animation:none;box-shadow:0 0 0 3px rgba(var(--fc-rgb),.8);} }
 #flowView .card.feature{border:1.6px solid var(--fc);box-shadow:0 0 0 1px rgba(var(--fc-rgb),.30),0 0 28px rgba(var(--fc-rgb),.34),0 12px 36px rgba(0,0,0,.55);
   background:linear-gradient(180deg,rgba(var(--fc-rgb),.12),rgba(var(--gl-d14-rgb,23,34,48),0)),var(--card);}
 #flowView .card .ttl{font-size:14px;font-weight:750;letter-spacing:.2px;margin:0 0 2px;line-height:1.2;}
@@ -2082,7 +2089,7 @@ const INFO = {
   KTOS:{c:"US",does:"Makes unmanned combat and target drones, plus defense electronics and propulsion.",why:"Levered to attritable, low-cost autonomous airpower."},
   ONDS:{c:"US",does:"Makes drone and industrial-wireless systems for defense and commercial customers.",why:"A small, speculative play on dual-use drone autonomy."},
   UMAC:{c:"US",does:"Makes small-drone components and FPV drones for a domestic, non-China supply chain.",why:"A micro-cap bet on US drone-component reshoring."},
-  SPCX:{c:"US",does:"Launches most of the world's payloads on reusable Falcon rockets, runs Starlink's satellite broadband at scale, and since its merger with xAI builds and trains frontier AI models too.",why:"The gatekeeper of orbit with Starlink's recurring revenue — now priced as much on the xAI side (compute, models, Grok) as on rockets, so it trades with the AI names."},
+  SPCX:{c:"US",does:"Runs the world's launch business and Starlink's satellite broadband, and since folding in xAI sells Grok and X as its biggest segment — AI revenue passed Starlink's in Q3 2026.",why:"Public since June 2026 and priced like an AI name: Starlink is the profit engine (13.6M subscribers), the AI arm is the growth engine, reusable rockets are the moat."},
   RKLB:{c:"US",does:"Provides small-rocket launch (Electron), is building the larger Neutron, and makes spacecraft and components.",why:"The clearest pure-play scaling toward an end-to-end space company."},
   ASTS:{c:"US",does:"Building a satellite constellation to deliver broadband directly to ordinary phones.",why:"A high-stakes bet on space-based cellular connectivity."},
   LUNR:{c:"US",does:"Builds lunar landers and provides space services and infrastructure for NASA.",why:"A leveraged play on the cislunar economy."},
@@ -3798,7 +3805,31 @@ function loadFunding(){
     .then(j=>{ if(to) clearTimeout(to); if(applyFunding(j)){ try{ localStorage.setItem('aibo_funding_v1',JSON.stringify(j)); }catch(_){} if(typeof activeView!=='undefined'&&activeView==='flow'){ /* 10-19: through the PUBLIC run — stage48/worlds.js wraps FlowView.run to re-place its worlds + the legend; the bare run() left the legend under the bottom world cards */ if(typeof FlowView!=='undefined'&&FlowView&&FlowView.run) FlowView.run(); else run(); } } })
     .catch(()=>{ if(to) clearTimeout(to); }).then(()=>{ loadFunding.busy=false; });
 }
-const _run0=run; run=function(){ loadFunding(); _run0(); };
+const _run0=run; run=function(){ loadFunding(); _run0(); applyPulse(); };
+
+/* ---- 10-24 THE BUILD-OUT PULSE (the owner: "I would like to have the map pulse within the AI build-out 100% and that can override the color of
+   each section"). GLPulse.section(id, names) (stage48/pulse.js) reads a section's sector fund when the feed covers it, else the equal-weight
+   month of its own listed names against the market — the rule is written there. With the Pulse switch ON every build-out card wears the
+   signal INSTEAD of its value-chain colour (--fc / --fc-rgb swap to the up / down colour, depth = --pw), a read line under the title says
+   "+2.1% vs the market · juiced · via SMH" or "· 5 names", and a turn blinks the card. Switch OFF: the colours come back, nothing else
+   changes. Glass only (GLPulse is a stage48 module): under ?gl=off this never runs. ---- */
+const PULSE_UP='57,208,127', PULSE_DN='240,104,95';
+function sectionNames(id){ const d=C[id]; if(!d||!d.grp) return []; const out=[]; d.grp.forEach(g=>{ String(g.c||'').split(/\s+/).forEach(t=>{ if(t&&!/^\(/.test(t)) out.push(t); }); }); return out; }
+function applyPulse(){
+  const GP=window.GLPulse; if(!GP||!GP.section) return;
+  Object.keys(C).forEach(id=>{ const el=els[id]; if(!el) return;
+    const p=GP.on()?GP.section(id, sectionNames(id)):null;
+    let line=el.querySelector('.fv-pulse');
+    if(!p){ if(el.dataset.fc){ el.style.setProperty('--fc',el.dataset.fc); el.style.setProperty('--fc-rgb',el.dataset.fcRgb); if(el.dataset.border) el.style.border=el.dataset.border; }
+      el.classList.remove('fv-pup','fv-pdn','fv-turn-up','fv-turn-dn'); el.style.removeProperty('--pw'); if(line) line.remove(); return; }
+    if(!el.dataset.fc){ el.dataset.fc=el.style.getPropertyValue('--fc'); el.dataset.fcRgb=el.style.getPropertyValue('--fc-rgb'); el.dataset.border=el.style.border||''; }
+    const up=p.s>0; el.style.setProperty('--fc',up?'#39d07f':'#f0685f'); el.style.setProperty('--fc-rgb',up?PULSE_UP:PULSE_DN); el.style.setProperty('--pw',p.hue.toFixed(2));
+    if(el.dataset.border) el.style.border='1px solid rgba('+(up?PULSE_UP:PULSE_DN)+','+(0.35+0.5*p.hue).toFixed(2)+')';
+    el.classList.toggle('fv-pup',up); el.classList.toggle('fv-pdn',!up); el.classList.toggle('fv-turn-up',p.turn==='up'); el.classList.toggle('fv-turn-dn',p.turn==='dn');
+    if(!line){ line=document.createElement('div'); line.className='fv-pulse'; el.appendChild(line); }   /* a corner badge: the card keeps its place and size (worlds suite: the build-out's geometry is untouched) */
+    line.innerHTML='<b>'+(up?'+':'')+(p.s*100).toFixed(1)+'%</b> vs the market · '+(p.turn?(p.turn==='up'?'turning up':'turning down'):p.label)+' · '+(p.via==='names'?(p.n+' name'+(p.n===1?'':'s')):('via '+p.via)); });
+}
+if(window.GLPulse&&window.GLPulse.onChange) window.GLPulse.onChange(function(){ if(typeof activeView==='undefined'||activeView==='flow') applyPulse(); });
 
 return { run:function(){ run(); }, funding:function(){ return FUNDING; }, applyFunding:applyFunding };
 })();
@@ -15156,7 +15187,24 @@ html[data-gl] #mkBody tr.glp-turn-up .mk-udot{animation:glpDotUp 1.1s ease-in-ou
   S.subs.push(function(){ paintCard(); tapeSoon(); });
   D.addEventListener('click',function(e){ var t=e.target&&e.target.closest&&e.target.closest('[data-glwp]'); if(t){ /* the Flow chart's switch (worlds.js owns the button; the state lives here) */ } });
   (function(){ var tries=0, tt=setInterval(function(){ tries++; if(D.getElementById('mkBody')&&H.hasAttribute('data-gl')){ clearInterval(tt); watchTape(); } else if(tries>120||(tries>6&&!H.hasAttribute('data-gl'))) clearInterval(tt); },500); })();   /* shim.js sets data-gl after this file loads */
-  W.GLPulse={load:load, feed:function(){ return S.data; }, adopt:adopt, on:function(){ return S.on; }, set:set, world:function(w,t){ return S.on?group(WORLDS[w],t):null; }, group:group, fund:fundState, rowPulse:rowPulse, mount:mount, paint:paintCard,
+  /* ---- 10-24 THE BUILD-OUT (the owner: "the map pulse within the AI build-out 100%… that can override the color of each section… a data rule
+     for neoclouds and the subsections that don't have an ETF"). THE RULE: a section reads its SECTOR FUND(S) when one of the feed's 37 covers it
+     (compute · memory · foundry · equipment → SMH; raw materials → REMX COPX LIT; power → URA GRID; cybersecurity → CIBR; software → IGV;
+     defense primes → ITA); every other section (neoclouds, hyperscalers, networking, space, drones, defense software, quantum, robotics,
+     mega-cap, the credit box) reads its OWN NAMES: the equal-weight month of its listed tickers against the market from the Tape's daily
+     candles (the same closes the row tint uses), the turn by the same third-of-the-group rule. A section with neither (the two cash
+     capital boxes) has no pulse. `via` says which, `n` how many funds or names carried the read. ---- */
+  var SECTION={compute:['SMH'], memory:['SMH'], foundry:['SMH'], equipment:['SMH'], raw:['REMX','COPX','LIT'], power:['URA','GRID'], cyber:['CIBR'], software:['IGV'], primes:['ITA']};
+  function namesGroup(syms){ if(!S.on||!S.base||!syms||!syms.length) return null; var ss=[],up=0,dn=0,j=0,ls=0;
+    syms.forEach(function(sym){ var cl=null; try{ cl=closesOf(sym,'mk'); }catch(_){} var p=cl?rowPulse(cl):null; if(!p) return; ss.push(p.s); if(p.turn==='up') up++; if(p.turn==='dn') dn++;
+      var n=cl.length, w=(n>=6&&cl[n-1]>0&&cl[n-6]>0)?Math.log(cl[n-1]/cl[n-6]):0, wp=(n>=11&&cl[n-6]>0&&cl[n-11]>0)?Math.log(cl[n-6]/cl[n-11]):0; if(p.s>0){ if(w>=wp) j++; else ls++; } else { if(w>wp) j++; else ls++; } });
+    if(ss.length<2&&syms.length>1) return null;                                   /* one name is a name, not a section */
+    if(!ss.length) return null; var s=ss.reduce(function(x,y){ return x+y; },0)/ss.length, need=Math.max(1,Math.ceil(ss.length/3)), turn=(up>=need&&up>dn)?'up':(dn>=need&&dn>up)?'dn':null;
+    return {s:s, hue:Math.min(1,Math.abs(s)/SCALE), turn:turn, label:s>0?(j>=ls?'juiced':'losing steam'):(j>ls?'bottoming':'falling'), n:ss.length, via:'names'}; }
+  function section(id,names){ if(!S.on||!S.data||!S.base) return null; var f=(SECTION[id]||[]).filter(function(x){ return S.data.daily&&S.data.daily[x]; });
+    if(f.length){ var g=group(f,undefined); if(g){ g.via=f.join(' '); return g; } }
+    return namesGroup((names||[]).map(function(x){ return String(x).replace(/[~*()]/g,''); }).filter(function(x){ return /^[A-Z][A-Z0-9.$-]{0,9}$/.test(x); })); }
+  W.GLPulse={section:section, load:load, feed:function(){ return S.data; }, adopt:adopt, on:function(){ return S.on; }, set:set, world:function(w,t){ return S.on?group(WORLDS[w],t):null; }, group:group, fund:fundState, rowPulse:rowPulse, mount:mount, paint:paintCard,
     asOf:function(){ return S.data&&S.data.asOf||null; }, onChange:function(f){ S.subs.push(f); }, state:function(){ return {on:S.on, loaded:!!S.data, n:S.n, err:S.err, at:S.at, funds:S.data?Object.keys(S.data.daily).length:0}; },
     worlds:WORLDS, fam:FAM, decorateTape:decorateTape};
 })();
