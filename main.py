@@ -74,7 +74,8 @@ STATIC = {"/": "index.html", "/index.html": "index.html", "/sw.js": "sw.js", "/m
           "/yields.html": "yields.html", "/yields.json": "yields.json", "/yields_intl.json": "yields_intl.json",
           "/privacy.html": "privacy.html", "/terms.html": "terms.html", "/contact.html": "contact.html", "/legal.css": "legal.css",
           "/logo.png": "logo.png", "/icon-180.png": "icon-180.png", "/icon-512.png": "icon-512.png",
-          "/favicon-32.png": "favicon-32.png", "/favicon-16.png": "favicon-16.png"}
+          "/favicon-32.png": "favicon-32.png", "/favicon-16.png": "favicon-16.png",
+          "/favicon-192.png": "favicon-192.png", "/icon-512-maskable.png": "icon-512-maskable.png"}
 MAX_MESSAGES = 120
 LOOKUP_SECRET = os.environ.get("AIBO_AI_LOOKUP_SECRET", "").strip()
 NO_KEY_SENTENCE = "Add your Anthropic key in Settings › Ask Bull Whistle to use the assistant."

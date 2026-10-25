@@ -13,8 +13,8 @@
    straight to the network (the app keeps its own caches and honest
    "unreachable" rows). v3 drops the v2 cache with every stored API body. */
 /* v4 (10-20): the Bull Whistle icon set — the cache bump drops the old placeholder icons so the new ones show on the next open. */
-const CACHE = 'aibo-v4';
-const CORE = ['./', './index.html', './manifest.json', './icon-180.png', './icon-512.png', './logo.png', './favicon-32.png', './favicon-16.png'];
+const CACHE = 'aibo-v5';   // 10-25: the mark-9 icons
+const CORE = ['./', './index.html', './manifest.json', './icon-180.png', './icon-512.png', './logo.png', './favicon-32.png', './favicon-16.png', './favicon-192.png', './icon-512-maskable.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
