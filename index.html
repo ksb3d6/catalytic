@@ -17400,6 +17400,12 @@ html[data-gl="light"] #gllImp .gll-tag.gll-US500,html[data-gl="light"] #gllImp .
 html[data-gl="light"] #gllImp .gll-tag.gll-COINS500,html[data-gl="light"] #gllImp .gll-tag.gll-COIN{color:#5b3fa6;border-color:rgba(91,63,166,.4);}
 html[data-gl="light"] #gllImp .gll-tag.gll-OTC,html[data-gl="light"] #gllImp .gll-tag.gll-NOTFOUND,html[data-gl="light"] #gllImp .gll-icounts .w,html[data-gl="light"] #gllImp .gll-ir.unk b{color:#8a5a00;border-color:rgba(138,90,0,.45);}
 
+/* 10-25 combine lists: the + on each menu entry, the chips in the bar */
+#mkUni .gll-item .gll-plus{flex:none;width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font:700 13px/1 ui-monospace,"SF Mono",Menlo,monospace;color:var(--muted);border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.12);margin-left:4px;}
+#mkUni .gll-item.on .gll-plus{color:var(--gl-acci);border-color:rgba(var(--gl-acc-rgb),.5);}
+#gllBar .gll-chip{display:inline-flex;align-items:center;gap:4px;font:600 11px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:rgba(var(--gl-wh-rgb,255,255,255),.06);border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.1);border-radius:999px;padding:2px 4px 2px 9px;margin-left:6px;}
+#gllBar .gll-chip button{appearance:none;border:0;background:transparent;color:var(--muted);font:700 13px/1 ui-monospace,Menlo,monospace;width:18px;height:18px;border-radius:50%;cursor:pointer;padding:0;}
+
 </style>
 <script id="gl48Lists">
 /* Stage 48 — SHARED LISTS (2026-10-05; the owner: a friend beta-tests the app — "he can just add new watch lists that we both
@@ -17433,7 +17439,7 @@ html[data-gl="light"] #gllImp .gll-tag.gll-OTC,html[data-gl="light"] #gllImp .gl
   'use strict';
   var BASE=String(window.AIBO_LIVE_URL||'https://asset-grading-production.up.railway.app/universe.json').replace(/\/universe\.json.*$/,'');
   var LS_KEY='aibo.lists.key', REFRESH=60*1000, TIMEOUT=15000, MAX_RES=12;
-  var S={key:null, acctDead:false, doc:null, active:null, fam:'mk', edit:false, target:null, busy:false, err:null, at:0,
+  var S={key:null, acctDead:false, doc:null, active:null, sel:[], fam:'mk', edit:false, target:null, busy:false, err:null, at:0,
          idx:null, idxBusy:false, idxErr:null, mounted:false, armed:false, look:{}};
   /* 10-07 ACCOUNTS: a signed-in person's lists are their own (/me/lists.json with the session, backend v4.19) — the account wins
      over the shared key on a device that holds both; account.js is bundled before this file and sets window.AIBO_ACCOUNT.
@@ -17543,22 +17549,36 @@ html[data-gl="light"] #gllImp .gll-tag.gll-OTC,html[data-gl="light"] #gllImp .gl
     if(fam==='mk') return function(r){ return !!set['eq:'+String(r.mkSym||r.sym).toUpperCase()]; };
     return function(r){ return r.kind==='mkc'?!!set['cr:'+r.key]:!!crSym[String(r.mkSym||r.sym).toUpperCase()]; };
   }
+  /* 10-25 (the owner: "combine watchlist in the tape… the cumulative of two or three"): S.sel = the lists on show, S.active = the first of them
+     (what Rename / Delete / Remove names act on — those buttons hide while more than one list is combined). view() = the list, or a
+     virtual list that is the union of the selected ones (an item counted once); the menu's + on each list adds it to / drops it from
+     the combination, the name itself still picks that list alone. Per device: localStorage 'aibo.lists.sel'. */
+  var LS_SEL='aibo.lists.sel';
+  function selIds(){ S.sel=(S.sel||[]).filter(function(id){ return !!listOf(id); }); if(S.active&&S.sel.indexOf(S.active)<0) S.sel.unshift(S.active); return S.sel; }
+  function view(){ var ids=selIds(); if(!ids.length) return null; if(ids.length===1) return listOf(ids[0]);
+    var seen={}, items=[], names=[]; ids.forEach(function(id){ var l=listOf(id); if(!l) return; names.push(l.name); (l.items||[]).forEach(function(it){ if(!seen[it]){ seen[it]=1; items.push(it); } }); });
+    return {id:'combo', name:names.join(' + '), items:items, combo:ids.slice()}; }
+  function saveSel(){ try{ if(S.sel.length>1) localStorage.setItem(LS_SEL,JSON.stringify(S.sel)); else localStorage.removeItem(LS_SEL); }catch(_){} }
+  function toggleCombo(id){ if(!listOf(id)) return; var ids=selIds(), i=ids.indexOf(id);
+    if(i>=0){ ids.splice(i,1); if(!ids.length){ leave(false); var b=document.querySelector('#mkUni button[data-u="all"]'); if(b) b.click(); return; } }
+    else ids.push(id);
+    S.sel=ids; S.active=ids[0]; S.target=S.active; S.edit=false; S.armed=false; var k=kinds(view()); S.fam=(k.eq||!k.cr)?'mk':'mkc'; saveSel(); paintBar(); show(true); }
   function show(force){
-    var a=api(), l=S.active&&listOf(S.active); if(!a||!l||!a.built()) return;
+    var a=api(), l=view(); if(!a||!l||!a.built()) return;
     var k=kinds(l);
     if(S.fam==='mkc'&&!k.cr) S.fam='mk'; else if(S.fam==='mk'&&!k.eq&&k.cr) S.fam='mkc';
-    a.show(S.fam,tester(l,S.fam),l.name,'Nothing in “'+l.name+'” yet — search above to add a stock or coin');
+    a.show(S.fam,tester(l,S.fam),l.name,l.combo?'Nothing in these lists yet':'Nothing in “'+l.name+'” yet — search above to add a stock or coin');
     var tw=document.querySelector('#mktView .twrap'); if(tw) tw.classList.toggle('gll-edit',!!S.edit);
-    document.querySelectorAll('#mkUni .gll-item').forEach(function(b){ b.classList.toggle('on',b.getAttribute('data-wl')===S.active); });
+    var ids=selIds(); document.querySelectorAll('#mkUni .gll-item').forEach(function(b){ var on=ids.indexOf(b.getAttribute('data-wl'))>=0; b.classList.toggle('on',on); var pl=b.querySelector('.gll-plus'); if(pl) pl.textContent=on&&ids.length>1?'✓':'+'; });
   }
   function pick(id){
     var l=listOf(id); if(!l) return;
-    S.active=id; S.target=id; S.edit=false; S.armed=false;
+    S.active=id; S.sel=[id]; S.target=id; S.edit=false; S.armed=false; saveSel();
     var k=kinds(l); S.fam=(k.eq||!k.cr)?'mk':'mkc';
     paintBar(); show(true);
   }
   function leave(quiet){
-    var was=S.active; S.active=null; S.edit=false; S.armed=false;
+    var was=S.active; S.active=null; S.sel=[]; S.edit=false; S.armed=false; saveSel();
     var tw=document.querySelector('#mktView .twrap'); if(tw) tw.classList.remove('gll-edit');
     document.querySelectorAll('#mkUni .gll-item').forEach(function(b){ b.classList.remove('on'); });
     paintBar();
@@ -17572,8 +17592,9 @@ html[data-gl="light"] #gllImp .gll-tag.gll-OTC,html[data-gl="light"] #gllImp .gl
     if(!S.doc) return;
     m.appendChild(el('div','gll-sep',acct()?'My lists':'Shared lists'));
     lists().forEach(function(l){
-      var b=el('button','gll-item'+(l.id===S.active?' on':''),esc(l.name)+'<i>'+(l.items||[]).length+'</i>'); b.type='button'; b.setAttribute('data-wl',l.id);
-      b.addEventListener('click',function(e){ e.stopPropagation(); pick(l.id); });
+      var on=selIds().indexOf(l.id)>=0;
+      var b=el('button','gll-item'+(on?' on':''),esc(l.name)+'<i>'+(l.items||[]).length+'</i><span class="gll-plus" title="Show this list together with the one on show" aria-label="Combine">'+(on&&S.sel.length>1?'✓':'+')+'</span>'); b.type='button'; b.setAttribute('data-wl',l.id);
+      b.addEventListener('click',function(e){ e.stopPropagation(); if(e.target.closest('.gll-plus')){ toggleCombo(l.id); return; } pick(l.id); });
       m.appendChild(b);
     });
     var nb=el('button','gll-new','+ New list'); nb.type='button';
@@ -17587,21 +17608,25 @@ html[data-gl="light"] #gllImp .gll-tag.gll-OTC,html[data-gl="light"] #gllImp .gl
   /* ---------- the list bar ---------- */
   function paintBar(){
     var bar=document.getElementById('gllBar'); if(!bar) return;
-    var l=S.active&&listOf(S.active);
+    var l=view();
     if(!l){ bar.hidden=true; bar.innerHTML=''; return; }
-    var k=kinds(l), h='<b class="gll-name">'+esc(l.name)+'</b><span class="gll-n">'+(k.eq+k.cr)+'</span>';
+    var k=kinds(l), h;
+    if(l.combo){ h='<b class="gll-name">'+l.combo.length+' lists</b><span class="gll-n">'+(k.eq+k.cr)+'</span>'+l.combo.map(function(id){ var x=listOf(id); return x?'<span class="gll-chip" data-wl="'+esc(id)+'">'+esc(x.name)+'<button type="button" data-drop="'+esc(id)+'" aria-label="Take this list out">×</button></span>':''; }).join(''); }
+    else h='<b class="gll-name">'+esc(l.name)+'</b><span class="gll-n">'+(k.eq+k.cr)+'</span>';
     if(k.eq&&k.cr) h+='<span class="gll-seg"><button type="button" data-f="mk" class="'+(S.fam==='mk'?'on':'')+'">Stocks '+k.eq+'</button><button type="button" data-f="mkc" class="'+(S.fam==='mkc'?'on':'')+'">Coins '+k.cr+'</button></span>';
     h+='<span class="gll-sp"></span>';
-    if(k.eq+k.cr) h+='<button type="button" class="gll-b'+(S.edit?' on':'')+'" data-a="edit">'+(S.edit?'Done':'Remove names')+'</button>';
+    if(k.eq+k.cr&&!l.combo) h+='<button type="button" class="gll-b'+(S.edit?' on':'')+'" data-a="edit">'+(S.edit?'Done':'Remove names')+'</button>';
     if(k.eq+k.cr) h+='<button type="button" class="gll-b" data-a="exp" title="A .txt in TradingView\'s format">Export</button>';
-    h+='<button type="button" class="gll-b" data-a="ren">Rename</button><button type="button" class="gll-b'+(S.armed?' arm':'')+'" data-a="del">'+(S.armed?'Tap again to delete':'Delete list')+'</button>';
+    if(!l.combo) h+='<button type="button" class="gll-b" data-a="ren">Rename</button><button type="button" class="gll-b'+(S.armed?' arm':'')+'" data-a="del">'+(S.armed?'Tap again to delete':'Delete list')+'</button>';
     bar.innerHTML=h; bar.hidden=false;
   }
   function barClick(e){
     var b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.drop){ toggleCombo(b.dataset.drop); return; }
     var l=S.active&&listOf(S.active); if(!l) return;
     if(b.dataset.f){ S.fam=b.dataset.f; paintBar(); show(true); return; }
     var a=b.dataset.a;
+    if(a==='exp'&&S.sel.length>1){ exportList(view()); return; }
     if(a==='edit'){ S.edit=!S.edit; S.armed=false; paintBar(); var tw=document.querySelector('#mktView .twrap'); if(tw) tw.classList.toggle('gll-edit',S.edit); return; }
     if(a==='exp'){ exportList(l); return; }
     if(a==='ren'){ var nm=askName('Rename the list',l.name); if(!nm||nm===l.name) return; var id=l.id;
