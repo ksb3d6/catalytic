@@ -15368,6 +15368,7 @@ html[data-gl="light"] .glr-mxr td.c{border-left-color:#fff;}
 html[data-gl] .glr-lab{font:700 10px ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.02em;paint-order:stroke;stroke:var(--panel2,var(--gl-d06,#0d151f));stroke-width:3px;stroke-linejoin:round;transition:opacity .18s ease;}
 html[data-gl] .glr-lead{fill:none;stroke-width:1;stroke-opacity:.55;transition:opacity .18s ease;}
 html[data-gl] .glr-lab.dim,html[data-gl] .glr-lead.dim{opacity:.25;}
+html[data-gl] .glr-read .r small{font-size:10px;color:rgba(var(--gl-ink-rgb,234,238,245),.55);margin-left:2px;}   /* 10-27: the World card's read-out carries the ticker after the country */
 
 </style>
 <script id="gl48Rot">
@@ -15425,7 +15426,8 @@ html[data-gl] .glr-lab.dim,html[data-gl] .glr-lead.dim{opacity:.25;}
   var BASE=String(window.AIBO_LIVE_URL||'https://asset-grading-production.up.railway.app/universe.json').replace(/\/universe\.json.*$/,'');
   function makeRot(CFG){
   var FEED=BASE+CFG.feed;
-  function lab(sym,name){ return CFG.nameFirst?[name,sym]:[sym,name]; }   /* the row's bold word and its small word: ticker · name (sectors) or country · ticker (world) */
+  function lab(sym,name){ return CFG.nameFirst?[name,sym]:[sym,name]; }
+  function labOf(sym){ return (CFG.labels&&CFG.labels[sym])||sym; }   /* 10-27 (the owner): the chart's margin label — a short country name on the World card, the ticker on the sector card */   /* the row's bold word and its small word: ticker · name (sectors) or country · ticker (world) */
   var RANGES=['1D','5D','1M','3M','6M','YTD','1Y'], MONTHS={'1M':1,'3M':3,'6M':6,'1Y':12}, SESS={'1D':1,'5D':5};
   var VIEWS=[['chart','Chart'],['matrix','Matrix'],['bars','Leaders']];
   var MODES=[['top','Top 3'],['bot','Bottom 3'],['up','Up'],['dn','Down'],['against','Against trend'],['mine','Mine'],['all','All'],['none','None']];
@@ -15710,7 +15712,8 @@ html[data-gl] .glr-lab.dim,html[data-gl] .glr-lead.dim{opacity:.25;}
     var win=S.win, n=win?win.pts.length:0, vis=visible(), lo=0, hi=0;
     (vis.length?vis:(S.ser||[]).filter(function(sr){ return sr.has; })).forEach(function(sr){ sr.v.forEach(function(y){ if(y==null) return; if(y<lo) lo=y; if(y>hi) hi=y; }); });   /* the axis fits the PICKED lines; threads may run off the plot */
     if(hi-lo<1e-6){ lo=-1; hi=1; } var span=hi-lo, pad=span*.08; lo-=pad; hi+=pad;
-    var LABW=vis.length?Math.min(46,Math.max(34,Math.round(W*.09))):0;   /* 10-25 (the owner: option A, the ticker only): a label column on the right for the picked lines */
+    var LABW=0;   /* 10-25 (the owner: option A, the ticker only): a label column on the right for the picked lines; 10-27: sized to the longest label shown ("South Korea") when CFG.labels names countries, never more than a third of the plot */
+    if(vis.length){ if(CFG.labels){ var mc=0; vis.forEach(function(sr){ mc=Math.max(mc,labOf(sr.sym).length); }); LABW=Math.min(Math.round(W*.34),Math.max(34,Math.round(mc*6.4)+12)); } else LABW=Math.min(46,Math.max(34,Math.round(W*.09))); }
     var padL=6, padR=6+LABW, padT=8, padB=18, pw=W-padL-padR, ph=Hh-padT-padB;
     var y=function(v){ return padT+(hi-v)/(hi-lo)*ph; }, x=function(i){ return n>1?padL+i*pw/(n-1):padL+pw/2; };
     var step=niceStep((hi-lo)/5.5), ticks=[], t0=Math.ceil(lo/step)*step; for(var t=t0;t<=hi+1e-9;t+=step) ticks.push(+t.toFixed(6));
@@ -15761,7 +15764,7 @@ html[data-gl] .glr-lab.dim,html[data-gl] .glr-lead.dim{opacity:.25;}
       var x0=g.W-g.padR, x1=x0+7;
       labs.forEach(function(L){ var cls=hs?(hs===L.sr.sym?' hi':' dim'):'', ty=Math.max(g.padT+4,Math.min(g.padT+g.ph,L.y));
         out.push('<line class="glr-lead'+cls+'" data-sym="'+esc(L.sr.sym)+'" x1="'+g.x(L.sr.lastI).toFixed(1)+'" y1="'+L.y0.toFixed(1)+'" x2="'+x1.toFixed(1)+'" y2="'+ty.toFixed(1)+'" stroke="'+esc(L.sr.col)+'"/>'
-          +'<text class="glr-lab'+cls+'" data-sym="'+esc(L.sr.sym)+'" x="'+(x1+2).toFixed(1)+'" y="'+(ty+3.5).toFixed(1)+'" fill="'+esc(L.sr.col)+'">'+esc(L.sr.sym)+'</text>'); }); }
+          +'<text class="glr-lab'+cls+'" data-sym="'+esc(L.sr.sym)+'" x="'+(x1+2).toFixed(1)+'" y="'+(ty+3.5).toFixed(1)+'" fill="'+esc(L.sr.col)+'">'+esc(labOf(L.sr.sym))+'</text>'); }); }
     g.ticks.forEach(function(t){ var yy=g.y(t); if(yy<g.padT+6||yy>g.padT+g.ph-2) return;
       out.push('<text class="glr-yt" x="'+(g.W-g.padR-2)+'" y="'+(yy-3).toFixed(1)+'" text-anchor="end">'+esc(pct(t,stepDp(g.step)))+'</text>'); });
     svg.innerHTML=out.join('');
@@ -15811,8 +15814,8 @@ html[data-gl] .glr-lab.dim,html[data-gl] .glr-lead.dim{opacity:.25;}
     var g=S.geo, win=S.win, i=S.scrub, c=$('[data-glrcross]'), rd=$('[data-glrread]'); if(!g||!win||!c||!rd||i<0||i>=win.pts.length){ unscrub(); return; }
     var x=g.x(i); c.hidden=false; c.style.left=x.toFixed(1)+'px'; c.style.top=g.padT+'px'; c.style.height=g.ph+'px';
     var when=win.kind==='h'?dow(nyDate(win.pts[i]))+' '+fmtDay(nyDate(win.pts[i]))+' · '+nyTime(win.pts[i]):dow(win.pts[i])+' '+fmtDay(win.pts[i],true);
-    var rows=visible().map(function(sr){ return {name:sr.name, col:sr.col, v:sr.v[i]}; }).sort(function(a,b){ return (b.v==null?-1e9:b.v)-(a.v==null?-1e9:a.v); });
-    rd.hidden=false; rd.innerHTML='<b>'+esc(when)+'</b>'+(rows.length?'<div class="rs">'+rows.map(function(r){ return '<span class="r'+(r.v==null?' na':'')+'" style="--c:'+esc(r.col)+'"><i></i>'+esc(r.name)+'<u>'+pct(r.v)+'</u></span>'; }).join('')+'</div>':'');
+    var rows=visible().map(function(sr){ return {name:sr.name, sym:sr.sym, col:sr.col, v:sr.v[i]}; }).sort(function(a,b){ return (b.v==null?-1e9:b.v)-(a.v==null?-1e9:a.v); });
+    rd.hidden=false; rd.innerHTML='<b>'+esc(when)+'</b>'+(rows.length?'<div class="rs">'+rows.map(function(r){ return '<span class="r'+(r.v==null?' na':'')+'" style="--c:'+esc(r.col)+'"><i></i>'+esc(r.name)+(CFG.nameFirst?'<small> · '+esc(r.sym)+'</small>':'')+'<u>'+pct(r.v)+'</u></span>'; }).join('')+'</div>':'');
     rd.classList.toggle('right',x<g.W/2);
   }
 
@@ -15874,7 +15877,8 @@ html[data-gl] .glr-lab.dim,html[data-gl] .glr-lead.dim{opacity:.25;}
     ['Asia-Pacific','#5fd3c7',[['EWJ','Japan'],['EWY','South Korea'],['EWT','Taiwan'],['MCHI','China'],['INDA','India'],['EWA','Australia']]],
     ['Broad','#d19bff',[['VEA','Developed ex-US'],['VWO','Emerging markets'],['VXUS','All international']]]];
   window.GLRot=makeRot({feed:'/sectors.json', key:'rot', fam:SECTOR_FAM, listKey:'sectors', noun:'sector', nouns:'sectors', cap:'Sectors', col:'Sector', event:'glrot', pulse:true, nameFirst:false});
-  window.GLWorld=makeRot({feed:'/countries.json', key:'world', fam:COUNTRY_FAM, listKey:'funds', noun:'country', nouns:'countries', cap:'Countries', col:'Country', event:'glworld', pulse:false, nameFirst:true});
+  window.GLWorld=makeRot({feed:'/countries.json', key:'world', fam:COUNTRY_FAM, listKey:'funds', noun:'country', nouns:'countries', cap:'Countries', col:'Country', event:'glworld', pulse:false, nameFirst:true,
+    labels:{EWY:'South Korea', EWJ:'Japan', MCHI:'China', EWT:'Taiwan', INDA:'India', EWG:'Germany', EWU:'UK', EWQ:'France', EWZ:'Brazil', EWC:'Canada', EWA:'Australia', EWW:'Mexico', VEA:'Developed', VWO:'Emerging', VXUS:'All ex-US'}});   /* 10-27 the owner's margin labels (the ticker stays in the read-out and the help text) */
 
   /* deep link: ?rot=5D on this document or the top one (the app runs inside latest.html's iframe) → the desk, open at the card */
   (function(){
@@ -16232,7 +16236,7 @@ html[data-gl] .glm-owner .oe{font-size:11px;color:rgba(var(--gl-ink-rgb,234,238,
     corr:'How much two assets move together, from daily returns over the window: +1 = in step, −1 = opposite, 0 = unrelated. The asset-class basket is the macro picture; "My portfolio" runs the same maths on your own holdings from the price history the app already holds. A diversified book wants low numbers between its big pieces. The amber outline marks the pairs whose 30-day number moved most against their 90-day one.',
     risk:'Your real holdings (from the Portfolio door, never sent anywhere) run through the backend\'s factor table: each name\'s beta to the S&P, to bitcoin, to long Treasuries and to the dollar, from the last 120 sessions. Book beta is the weighted sum — 1.4 means the book moves 1.4× the market. The ladder shows every holding\'s share of that beta (collapsed to the biggest; expand for all). The stress table is simple arithmetic, not a forecast.',
     alerts:'Regime alerts are computed from the other cards — VIX above 30 or up 8+ points in five sessions, junk bonds at a one-year low against Treasuries (the proxy), breadth under 40%, BTC / ETH / SOL funding above 0.05% or open interest up 15% in a week, net liquidity down $150B+ in 13 weeks, the Fed path (Treasury yields) moving 25 bp+ in a week, a futures market at a three-year positioning extreme — and re-arm by themselves when the condition clears. Price alerts are yours: a ticker and a level; the backend checks them every hour against the quotes it already holds and fires once (up to an hour late, never intraday-exact). Tap a fired alert to mark it seen. With the positions token on the device, alerts and seen-marks sync across your devices.',
-    world:'Fifteen US-listed country and region funds, rebased to 0% at the start of the range, so the lines show which countries are taking the capital. Every row is the country, then the fund that tracks it — "South Korea — EWY". Tracked through a US-listed country fund; not the official index level. The controls are the Sector rotation card\'s: Chart, Matrix (1D · 1W · 1M · 3M), Leaders; the quick picks; tap a country or a region in the grid to show or hide it — rows never move; ← → walk the window; 1D and 5D use hourly bars, the longer ranges daily closes. Regions: Americas, Europe, Asia-Pacific, and the broad funds (developed ex-US, emerging, all international).',
+    world:'Fifteen US-listed country and region funds, rebased to 0% at the start of the range, so the lines show which countries are taking the capital. Every row is the country, then the fund that tracks it — "South Korea — EWY"; the chart names each line by country at its end (UK, Developed, Emerging and All ex-US for short), and the read-out under your finger carries the fund\'s ticker. Tracked through a US-listed country fund; not the official index level. The controls are the Sector rotation card\'s: Chart, Matrix (1D · 1W · 1M · 3M), Leaders; the quick picks; tap a country or a region in the grid to show or hide it — rows never move; ← → walk the window; 1D and 5D use hourly bars, the longer ranges daily closes. Regions: Americas, Europe, Asia-Pacific, and the broad funds (developed ex-US, emerging, all international).',
     journal:'Your executed trades, pulled from the accounts the app already reads (Kraken, IBKR), with the realised P&L of every closing trade matched first-in-first-out against your buys, a running total, and a "why" field per trade — the thesis, written when it is fresh, so it can be checked later. Free-text entries without a trade sit in the same list. Everything syncs through the positions token. An account that cannot supply fills says so on the card, and what to change.'};
   var SRC={pulse:'daily sector-ETF closes via Financial Modeling Prep (licensed), the same feed as the Sector rotation card — the tint and the turns are computed on this device', funding:'Morgan Stanley Research (the headline split, 2025–28) · J.P. Morgan Asset Management and CreditSights (signals) — a research estimate reviewed monthly on the backend, config/funding_mix.json', yc:'U.S. Department of the Treasury (daily par yield curve) · around the world: each country\'s statistics office or central bank, named on its row', rot:'daily and hourly sector-ETF closes via Financial Modeling Prep (licensed) — rebased on this device', breadth:'US 500 daily closes © Financial Modeling Prep — computed on the backend, hourly', vol:'Cboe VIX, daily closes via Financial Modeling Prep',
     credit:'ETF closes via Financial Modeling Prep (HYG, LQD, IEF) · Federal Reserve Bank of Chicago (NFCI) · Federal Reserve Board (senior loan officer survey)', liquidity:'Federal Reserve Board (H.4.1, broad dollar, M2) · US Treasury (TGA) · Federal Reserve Bank of New York (reverse repo), via FRED',
