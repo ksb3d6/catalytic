@@ -17094,7 +17094,7 @@ html[data-gl] .glm-owner .oe{font-size:11px;color:rgba(var(--gl-ink-rgb,234,238,
   }
   function state(){ return {open:S.open, err:S.err, at:S.at, fetching:S.fetching, backoffUntil:S.backoff, set:curSet(), unseen:unseenCount(), have:S.data?Object.keys(S.data.sections).filter(function(k){ return !!S.data.sections[k]; }):[], corrWin:S.corrWin, cotGroup:S.cotGroup, coin:S.coin, views:Object.assign({},S.views), ladderOpen:S.ladderOpen,
     alerts:rules().map(function(r){ return {id:r.id,on:r.on}; }), priceAlerts:alertsList().length, journal:journal().length, holdings:!!holdings(), notes:{err:NOTES.err, rev:NOTES.doc?NOTES.doc.rev:null, why:Object.keys(whyMap()).length}, trades:{n:TR.data?(TR.data.trades||[]).length:0, err:TR.err, status:TR.status}}; }
-  window.GLMacro={show:show, hide:hide, jump:jump, setPane:setPane, pane:curPane, refresh:function(){ load(true); tradesLoad(true); ixLoad(true); }, state:state, brief:brief, unseen:unseenCount, load:function(){ load(false); }, yields:function(){ return {have:!!YD.data, intl:!!YD.intl, err:YD.err, at:YD.at}; }, prime:function(){ load(false); notesLoad(); }, SETS:SETS, view:function(p,v){ if(v!=null&&(ALLOWED[p]||[]).indexOf(v)>=0){ setView(p,v); if(S.open) paintPanel(p); } return S.views[p]; }, PANELS:PANELS.map(function(p){ return p.k; })};
+  window.GLMacro={draw:{chart:chart, chH:chH, xlFor:xlFor, leg:leg, sliceLast:sliceLast, acc:acc}, /* 10-27: the card renderer, shared so the owner's gauge tile (stage48/gauge.js) draws exactly the card's chart */ show:show, hide:hide, jump:jump, setPane:setPane, pane:curPane, refresh:function(){ load(true); tradesLoad(true); ixLoad(true); }, state:state, brief:brief, unseen:unseenCount, load:function(){ load(false); }, yields:function(){ return {have:!!YD.data, intl:!!YD.intl, err:YD.err, at:YD.at}; }, prime:function(){ load(false); notesLoad(); }, SETS:SETS, view:function(p,v){ if(v!=null&&(ALLOWED[p]||[]).indexOf(v)>=0){ setView(p,v); if(S.open) paintPanel(p); } return S.views[p]; }, PANELS:PANELS.map(function(p){ return p.k; })};
 
   /* a dock door or another Atlas row tapped while open hides the page (capture phase, before the shim's own delegates) */
   document.addEventListener('click',function(e){
@@ -17113,94 +17113,109 @@ html[data-gl] .glm-owner .oe{font-size:11px;color:rgba(var(--gl-ink-rgb,234,238,
 </script>
 <script id="gl48Gauge">
 /* stage48/gauge.js — the BULL WHISTLE VOLATILITY GAUGE, owner-only preview (the owner 2026-10-25; backend jobs/macro_src/gauge.py).
-   WHAT  a tile under Macro card 02's read: the gauge (number + calm / elevated / stress label) beside the real figure the card already
-         shows, the day's gap in points, a two-line chart of the last 260 sessions (gauge vs the card's series), the inputs, the
-         held-out error. For the owner to compare by eye for a few weeks; members never see it (nothing mounts unless the signed-in account
-         is an admin — the data route answers 403 to anyone else, so the bundle carries no gauge data).
+   WHAT  a tile under Macro card 02's read line: the gauge (number + calm / elevated / stress label) beside the figure the card already
+         shows, the day's gap in points, and THE CARD'S OWN CHART (10-27, the owner: "the chart matches the official card's chart exactly" —
+         drawn by GLMacro.draw.chart, the same renderer, width, height, line weight and gutter; the gauge in the accent with its end dot,
+         the card's series dashed and dim, the cut-offs as the card's bands and marks). Everything explanatory sits behind a "?" button
+         (the card's own .glm-q / .glm-help pattern): inputs today, the spike rule, the 5-session change, the fit date and held-out error,
+         the wording. A STALE feed still says so in one visible line (the feed rule: never hide a stale flag).
+   WHO   members never see it: nothing mounts unless the signed-in account is an admin (the data route answers 403 to anyone else, so the
+         bundle carries no gauge data).
    DATA  GET <API>/owner/gauge.json (bearer = the account session, added by the Stage 43 fetch wrapper) + the vol section of
          <API>/macro.json for the comparison line. Refetched every 15 min while the desk is open; 403 / 503 / errors are said plainly.
    MOUNT after every paint of card 02 ([data-glmbody="vol"]): the 'glmacro' event + a MutationObserver on the card body (a pane switch
-         repaints without announcing). Removed on sign-out ('aiborole').
-   NAMING  "Bull Whistle volatility gauge" — never "VIX" in the gauge's name, next to its number or in a title; the comparison line
-         says "card 02's series". Member swap (card 02, the two alerts, the Calendar line): planned in 7-26/VOL_GAUGE_PLAN.md, not built. */
+         repaints without announcing). Removed on sign-out ('aiborole'). The theme attribute is checked at MOUNT time (the shim sets
+         data-gl after this bundle runs).
+   NAMING  "Bull Whistle volatility gauge" — never "VIX" in the gauge's name, next to its number or in a title; the comparison line says
+         "card 02's series". Member swap (card 02, the two alerts, the Calendar line): planned in 7-26/VOL_GAUGE_PLAN.md, not built. */
 (function(){
   'use strict';
   var W=window, D=document;
-  /* theme off (?gl=off): the attribute is set by the shim, which is bundled AFTER this file — so it is checked at mount time, never at load */
   function glOn(){ return D.documentElement.hasAttribute('data-gl'); }
   var BASE=String(W.AIBO_LIVE_URL||'https://asset-grading-production.up.railway.app/universe.json').replace(/\/universe\.json.*$/,'');
   var URL_G=BASE+'/owner/gauge.json', URL_M=BASE+'/macro.json', REFRESH=15*60*1000, TIMEOUT=15000, N=260;
-  var S={data:null, vix:null, err:null, at:0, fetching:false, mounted:false};
+  /* 10-27 (the owner): THE BETA OVERLAY — the official VIX as a second line on the gauge's chart, for the owner's eye-test only. ONE SWITCH:
+     GAUGE_VIX_OVERLAY off = no second line, no "VIX" legend, no "card 02 today" / gap cells, no help wording about it, and /macro.json is
+     not even fetched by this module — nothing of the official figure can render from here. The tile itself is still admin-only on top of
+     that. window.AIBO_GAUGE_VIX_OVERLAY (boolean) overrides the constant (the suite flips it); the real VIX stays in the God's-eye view
+     regardless of this flag. */
+  var GAUGE_VIX_OVERLAY=true;
+  function overlay(){ return (typeof W.AIBO_GAUGE_VIX_OVERLAY==='boolean'?W.AIBO_GAUGE_VIX_OVERLAY:GAUGE_VIX_OVERLAY)&&admin(); }
+  var C_VIX='rgba(236,160,90,.85)';                                        /* the official line: a muted amber-orange against the accent */
+  var S={data:null, vix:null, err:null, at:0, fetching:false, help:false};
   function fin(v){ return typeof v==='number'&&isFinite(v); }
   function num(v,dp){ return fin(v)?v.toFixed(dp==null?1:dp):'—'; }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function admin(){ try{ var A=W.AIBO_ACCOUNT; return !!(A&&A.role&&A.role()==='admin'&&A.token&&A.token()); }catch(_){ return false; } }
   function body(){ return D.querySelector('[data-glmbody="vol"]'); }
+  function draw(){ return (W.GLMacro&&W.GLMacro.draw)||null; }
   function css(){
     if(D.getElementById('gl48GaugeCss')) return;
     var st=D.createElement('style'); st.id='gl48GaugeCss';
-    st.textContent='html[data-gl] .glg{margin:10px 0 4px;padding:10px 10px 8px;border:1px dashed var(--gl-acci,#8ab4ff);border-radius:10px;background:rgba(255,255,255,.025);}'
-      +'html[data-gl] .glg-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;}'
-      +'html[data-gl] .glg-h b{font-size:12.5px;letter-spacing:.01em;color:var(--ink,#EAEEF5);}html[data-gl] .glg-h small{font-size:10.5px;color:rgba(234,238,245,.5);text-transform:uppercase;letter-spacing:.08em;}'
-      +'html[data-gl] .glg-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:4px 0 8px;}'
-      +'html[data-gl] .glg-cell{min-width:0;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.035);}html[data-gl] .glg-cell .k{display:block;font-size:10.5px;color:rgba(234,238,245,.55);line-height:1.3;}'
+    st.textContent='html[data-gl] .glg{margin:10px 0 4px;padding:8px 10px 6px;border:1px dashed var(--gl-acci,#8ab4ff);border-radius:10px;background:rgba(255,255,255,.025);}'
+      +'html[data-gl] .glg-h{display:flex;align-items:center;gap:8px;margin-bottom:6px;}'
+      +'html[data-gl] .glg-h b{font-size:12.5px;letter-spacing:.01em;color:var(--ink,#EAEEF5);}html[data-gl] .glg-h small{flex:1 1 auto;min-width:0;font-size:10.5px;color:rgba(234,238,245,.5);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+      +'html[data-gl] .glg-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:4px 0 6px;}html[data-gl] .glg-row.one{grid-template-columns:minmax(0,1fr);}'
+      +'html[data-gl] .glg-cell{min-width:0;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.035);}html[data-gl] .glg-cell .k{display:block;font-size:10.5px;color:rgba(234,238,245,.55);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
       +'html[data-gl] .glg-cell .v{display:block;font-size:20px;font-weight:700;line-height:1.15;color:var(--ink,#EAEEF5);font-variant-numeric:tabular-nums;}html[data-gl] .glg-cell .v small{font-size:11px;font-weight:600;margin-left:4px;}'
       +'html[data-gl] .glg-cell.calm .v small{color:#39d07f;}html[data-gl] .glg-cell.elevated .v small{color:#e8b04a;}html[data-gl] .glg-cell.stress .v small{color:#f0685f;}'
-      +'html[data-gl] .glg svg{display:block;width:100%;height:auto;}html[data-gl] .glg-leg{display:flex;gap:14px;flex-wrap:wrap;font-size:10.5px;color:rgba(234,238,245,.6);margin-top:4px;}'
-      +'html[data-gl] .glg-leg i{display:inline-block;width:14px;height:0;border-top:2px solid var(--c);vertical-align:middle;margin-right:5px;}html[data-gl] .glg-leg i.dash{border-top-style:dashed;}'
-      +'html[data-gl] .glg-note{font-size:11px;color:rgba(234,238,245,.45);margin-top:6px;line-height:1.4;}html[data-gl] .glg-note.dn{color:#f0685f;}'
-      +'html[data-gl] .glg-rule{font-size:11px;color:rgba(234,238,245,.6);margin-top:4px;line-height:1.4;}';
+      +'html[data-gl] .glg-chart{margin:0 -10px;}'                                     /* the card\'s full body width: the chart is the card\'s, edge to edge */
+      +'html[data-gl] .glg .glm-help p{margin:0 0 6px;}html[data-gl] .glg .glm-help p:last-child{margin:0;}'
+      +'html[data-gl] .glg-note{font-size:11px;color:#f0685f;margin-top:6px;line-height:1.4;}';
     D.head.appendChild(st);
   }
-  function chart(days,a,b,Wd){
-    var H=120, L=6, R=6, T=6, Bt=16, n=days.length; if(n<2) return '';
-    var all=a.concat(b).filter(fin), hi=Math.max.apply(null,all.concat([35])), lo=0, w=Wd-L-R, h=H-T-Bt;
-    function x(i){ return L+i/(n-1)*w; } function y(v){ return T+(1-(v-lo)/(hi-lo))*h; }
-    function path(s){ var d='', pen=false; for(var i=0;i<n;i++){ var v=s[i]; if(!fin(v)){ pen=false; continue; } d+=(pen?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1); pen=true; } return d; }
-    var cut=S.data&&S.data.cutoffs||{}, marks=[cut.elevatedFrom,cut.stressFrom].filter(fin);
-    var g='<svg class="glg-svg" viewBox="0 0 '+Wd+' '+H+'" width="'+Wd+'" height="'+H+'" role="img" aria-label="gauge against card 02, '+n+' sessions">';
-    marks.forEach(function(m){ g+='<line x1="'+L+'" x2="'+(Wd-R)+'" y1="'+y(m).toFixed(1)+'" y2="'+y(m).toFixed(1)+'" stroke="rgba(232,176,74,.35)" stroke-dasharray="3 4"/><text x="'+(Wd-R)+'" y="'+(y(m)-3).toFixed(1)+'" text-anchor="end" font-size="9" fill="rgba(234,238,245,.5)">'+num(m,1)+'</text>'; });
-    g+='<path d="'+path(b)+'" fill="none" stroke="rgba(234,238,245,.5)" stroke-width="1.2" stroke-dasharray="4 3"/>';
-    g+='<path d="'+path(a)+'" fill="none" stroke="var(--gl-acci,#8ab4ff)" stroke-width="1.8"/>';
-    g+='<text x="'+L+'" y="'+(H-4)+'" font-size="9" fill="rgba(234,238,245,.5)">'+esc(days[0])+'</text><text x="'+(Wd-R)+'" y="'+(H-4)+'" text-anchor="end" font-size="9" fill="rgba(234,238,245,.5)">'+esc(days[n-1])+'</text></svg>';
-    return g;
-  }
-  function html(Wd){
-    var h='<div class="glg" data-glgauge><div class="glg-h"><b>Bull Whistle volatility gauge</b><small>owner preview · not shown to members</small></div>';
-    if(!S.data){ return h+'<div class="glg-note'+(S.err?' dn':'')+'">'+esc(S.err||'loading…')+'</div></div>'; }
-    var d=S.data, L=d.latest||{}, v=L.value, lab=L.label||'—', vix=S.vix&&fin(S.vix.v)?S.vix.v:null, gap=fin(v)&&fin(vix)?v-vix:null;
-    h+='<div class="glg-row">'
-      +'<div class="glg-cell '+esc(lab)+'"><span class="k">the gauge</span><span class="v">'+num(v,1)+'<small>'+esc(lab)+(L.spike?' ↑':'')+'</small></span></div>'
-      +'<div class="glg-cell"><span class="k">card 02 today</span><span class="v">'+num(vix,1)+'</span></div>'
-      +'<div class="glg-cell"><span class="k">gap, points</span><span class="v">'+(fin(gap)?(gap>=0?'+':'−')+num(Math.abs(gap),1):'—')+'</span></div></div>';
-    var days=(d.days||[]).slice(-N), off=(d.days||[]).length-days.length, ga=(d.series&&d.series.gauge||[]).slice(off);
-    var vs=days.map(function(dt){ return S.vix&&S.vix.map?S.vix.map[dt]:null; });
-    h+=chart(days,ga,vs,Math.max(240,Wd||320));
-    h+='<div class="glg-leg"><span><i style="--c:var(--gl-acci,#8ab4ff)"></i>the gauge</span><span><i class="dash" style="--c:rgba(234,238,245,.5)"></i>card 02\'s series</span><span><i class="dash" style="--c:rgba(232,176,74,.5)"></i>'+num((d.cutoffs||{}).elevatedFrom,1)+' elevated · '+num((d.cutoffs||{}).stressFrom,1)+' stress</span></div>';
-    h+='<div class="glg-rule">Inputs today: realised S&amp;P 500 volatility '+num(L.rv10,1)+' / '+num(L.rv20,1)+' / '+num(L.rv30,1)+'% (10 / 20 / 30 sessions); VIXY '+(fin(L.vixy1d)?(L.vixy1d>=0?'+':'')+num(L.vixy1d,1):'—')+'% on the day, '+(fin(L.vixy5d)?(L.vixy5d>=0?'+':'')+num(L.vixy5d,1):'—')+'% over five'+(L.spike?' — <b>spike rule on: lifted to elevated</b>':'')+'. '
-      +(fin(L.chg5d)?'Gauge '+(L.chg5d>=0?'up ':'down ')+num(Math.abs(L.chg5d),1)+' in five sessions.':'')+'</div>';
-    var ho=d.fit&&d.fit.heldOut, k=ho&&Object.keys(ho)[0];
-    h+='<div class="glg-note'+(d.stale?' dn':'')+'">'+(d.stale?'STALE — '+esc(d.staleWhy||'feed not fresh')+'. Last good numbers shown. ':'')
-      +'As of '+esc(d.asOf||'—')+'. Weights fitted '+esc((d.fit||{}).date||'—')+(k?'; held-out '+esc(k)+': typical miss '+num(ho[k].mae,1)+' points, median '+num(ho[k].med,1):'')+'. '+esc(d.basis||'')+'</div></div>';
+  function helpHtml(d){
+    var L=d.latest||{}, ho=d.fit&&d.fit.heldOut, k=ho&&Object.keys(ho)[0];
+    var h='<p><b>What it is.</b> A volatility gauge on a similar scale to the VIX, calculated by Bull Whistle from S&amp;P 500 data: realised volatility of SPY over the last 10, 20 and 30 sessions, plus VIXY\'s one- and five-session moves as the early-warning term. Not the VIX, and not affiliated with Cboe. Owner preview — not shown to members.</p>';
+    h+='<p><b>Inputs today.</b> Realised S&amp;P 500 volatility '+num(L.rv10,1)+' / '+num(L.rv20,1)+' / '+num(L.rv30,1)+'% (10 / 20 / 30 sessions); VIXY '+(fin(L.vixy1d)?(L.vixy1d>=0?'+':'')+num(L.vixy1d,1):'—')+'% on the day, '+(fin(L.vixy5d)?(L.vixy5d>=0?'+':'')+num(L.vixy5d,1):'—')+'% over five.'
+      +(fin(L.chg5d)?' The gauge is '+(L.chg5d>=0?'up ':'down ')+num(Math.abs(L.chg5d),1)+' in five sessions'+(fin(L.chg20d)?', '+(L.chg20d>=0?'up ':'down ')+num(Math.abs(L.chg20d),1)+' in twenty':'')+'.':'')
+      +(L.spike?' <b>Spike rule on:</b> VIXY jumped, so the label is lifted to elevated.':'')+'</p>';
+    h+='<p><b>How to read the chart.</b> Solid accent line = the gauge, dot = today'+(overlay()?'; the thinner amber line = the official VIX on the same scale (owner-only beta overlay, one switch to remove)':'')+'. Amber band from '+num((d.cutoffs||{}).elevatedFrom,1)+' = elevated, red from '+num((d.cutoffs||{}).stressFrom,1)+' = stress (cut-offs on the gauge\'s own scale). A VIXY move of +'+num((d.spikeRule||{}).vixy1dPct,0)+'% in a day or +'+num((d.spikeRule||{}).vixy5dPct,0)+'% over five lifts calm to elevated before realised volatility catches up.</p>';
+    h+='<p><b>How good it is.</b> Weights fitted '+esc((d.fit||{}).date||'—')+(k?'; held-out '+esc(k)+': typical miss '+num(ho[k].mae,1)+' points, median '+num(ho[k].med,1)+', RMSE '+num(ho[k].rmse,1):'')+'. It runs low when fear is priced without realised movement behind it, and decays slower than the official figure after a panic. As of '+esc(d.asOf||'—')+'.</p>';
     return h;
   }
+  function html(Wd){
+    var h='<div class="glg" data-glgauge><div class="glg-h"><b>Bull Whistle volatility gauge</b><small>owner preview</small>'
+      +'<button type="button" class="glm-q'+(S.help?' on':'')+'" data-glgq aria-label="How to read the gauge" aria-expanded="'+(S.help?'true':'false')+'">?</button></div>';
+    if(!S.data){ return h+'<div class="glg-note">'+esc(S.err||'loading…')+'</div></div>'; }
+    var d=S.data, L=d.latest||{}, v=L.value, lab=L.label||'—', ov=overlay(), vix=ov&&S.vix&&fin(S.vix.v)?S.vix.v:null, gap=fin(v)&&fin(vix)?v-vix:null;
+    h+='<div class="glm-help" data-glgqbox'+(S.help?'':' hidden')+'>'+helpHtml(d)+'</div>';
+    h+='<div class="glg-row'+(ov?'':' one')+'">'
+      +'<div class="glg-cell '+esc(lab)+'"><span class="k">the gauge</span><span class="v">'+num(v,1)+'<small>'+esc(lab)+(L.spike?' ↑':'')+'</small></span></div>'
+      +(ov?'<div class="glg-cell"><span class="k">VIX today</span><span class="v">'+num(vix,1)+'</span></div>'
+      +'<div class="glg-cell"><span class="k">gap, points</span><span class="v">'+(fin(gap)?(gap>=0?'+':'−')+num(Math.abs(gap),1):'—')+'</span></div>':'')+'</div>';
+    var R=draw();
+    if(R){
+      var days=R.sliceLast(d.days||[],N), off=(d.days||[]).length-days.length, ga=(d.series&&d.series.gauge||[]).slice(off);
+      var vs=ov?days.map(function(dt){ var m=S.vix&&S.vix.map?S.vix.map[dt]:null; return fin(m)?m:null; }):null;
+      var c1=(d.cutoffs||{}).elevatedFrom, c2=(d.cutoffs||{}).stressFrom, bands=[], marks=[];
+      if(fin(c2)) { bands.push([c2,999,'rgba(240,104,95,.08)']); marks.push([c2,num(c2,1)+' — stress']); }
+      if(fin(c1)&&fin(c2)) { bands.push([c1,c2,'rgba(232,176,74,.06)']); marks.push([c1,num(c1,1)+' — elevated','rgba(232,176,74,.55)']); }
+      h+='<div class="glg-chart">'+R.chart({w:Wd,h:R.chH(),floor:0,fmt:function(x){ return String(x); },xl:R.xlFor(days,5),bands:bands,marks:marks,
+        series:(vs?[{v:vs,c:C_VIX,w:1.3}]:[]).concat([{v:ga,c:R.acc(),w:1.8,dot:true}])})+'</div>';
+      h+=R.leg(vs?[[R.acc(),'Gauge'],[C_VIX,'VIX']]:[[R.acc(),'Gauge']]);
+    } else h+='<div class="glg-note">chart renderer not available</div>';
+    if(d.stale) h+='<div class="glg-note">STALE — '+esc(d.staleWhy||'feed not fresh')+'. Last good numbers shown.</div>';
+    return h+'</div>';
+  }
+  function widthOf(b){ var c=b.closest('.glm-card'); var w=Math.round(b.getBoundingClientRect().width); if(w<60&&c) w=Math.round(c.getBoundingClientRect().width)-24; return w<60?320:w; }
+  function paint(b){ var el=D.createElement('div'); el.innerHTML=html(widthOf(b)); return el.firstChild; }
   function mount(){
     if(!glOn()) return;
     var b=body(); if(!b) return;
     var old=b.querySelector('[data-glgauge]');
     if(!admin()){ if(old) old.remove(); return; }
     css();
-    var Wd=Math.round(b.getBoundingClientRect().width)||320, el=D.createElement('div'); el.innerHTML=html(Wd);
-    var node=el.firstChild;
+    var node=paint(b);
     if(old) old.replaceWith(node); else { var read=b.querySelector('.glm-read'); if(read&&read.nextSibling) b.insertBefore(node,read.nextSibling); else if(read) b.appendChild(node); else b.insertBefore(node,b.firstChild); }
-    S.mounted=true;
     if(!S.fetching&&(!S.data||Date.now()-S.at>REFRESH)) load();
   }
+  function repaint(){ var b=body(); if(!b) return; var old=b.querySelector('[data-glgauge]'); if(old) old.replaceWith(paint(b)); }
   function load(){
     if(!glOn()||!admin()||S.fetching) return; S.fetching=true;
     var ctl=null; try{ ctl=new AbortController(); }catch(_){} var to=setTimeout(function(){ if(ctl) ctl.abort(); },TIMEOUT), opt={cache:'no-store'}; if(ctl) opt.signal=ctl.signal;
     var pg=fetch(URL_G,opt).then(function(r){ if(!r.ok){ var e=new Error('http '+r.status); e.status=r.status; throw e; } return r.json(); });
-    var pm=fetch(URL_M,opt).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; });
+    var pm=overlay()?fetch(URL_M,opt).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }):Promise.resolve(null);
     Promise.all([pg,pm]).then(function(res){ var g=res[0], m=res[1];
         if(!g||!g.series||!g.latest) throw new Error('shape');
         S.data=g; S.err=null; S.at=Date.now();
@@ -17208,7 +17223,7 @@ html[data-gl] .glm-owner .oe{font-size:11px;color:rgba(var(--gl-ink-rgb,234,238,
         if(vol&&vol.days&&vol.series&&vol.series.vix){ vol.days.forEach(function(dt,i){ map[dt]=vol.series.vix[i]; }); v=vol.latest&&fin(vol.latest.vix)?vol.latest.vix:vol.series.vix[vol.series.vix.length-1]; }
         S.vix={map:map, v:v};
       }).catch(function(e){ S.err=(e&&e.status===403)?'owner-only feed refused this session (403) — sign in as the owner':(e&&e.status===503)?'gauge not built yet on the backend (503)':(e&&e.status)?('gauge feed error ('+e.status+')'):(e&&e.name==='AbortError')?'gauge feed unreachable (timed out)':(e&&e.message==='shape')?'gauge feed: unexpected shape':'gauge feed unreachable'; })
-      .then(function(){ clearTimeout(to); S.fetching=false; var b=body(); if(b) { var old=b.querySelector('[data-glgauge]'); if(old){ var el=D.createElement('div'); el.innerHTML=html(Math.round(b.getBoundingClientRect().width)||320); old.replaceWith(el.firstChild); } } });
+      .then(function(){ clearTimeout(to); S.fetching=false; repaint(); });
   }
   var mo=null, t=null;
   function watch(){
@@ -17217,10 +17232,12 @@ html[data-gl] .glm-owner .oe{font-size:11px;color:rgba(var(--gl-ink-rgb,234,238,
     mo.observe(b,{childList:true});
   }
   function kick(){ watch(); mount(); }
+  D.addEventListener('click',function(e){ var q=e.target&&e.target.closest&&e.target.closest('[data-glgq]'); if(!q) return; S.help=!S.help; var box=q.closest('[data-glgauge]'); var bx=box&&box.querySelector('[data-glgqbox]'); if(bx) bx.hidden=!S.help; q.classList.toggle('on',S.help); q.setAttribute('aria-expanded',String(S.help)); });
   W.addEventListener('glmacro',kick);
   W.addEventListener('aiborole',function(){ S.data=null; S.err=null; S.at=0; kick(); });
+  W.addEventListener('resize',function(){ clearTimeout(t); t=setTimeout(function(){ if(body()&&body().querySelector('[data-glgauge]')) repaint(); },150); });
   if(D.readyState==='loading') D.addEventListener('DOMContentLoaded',function(){ setTimeout(kick,300); }); else setTimeout(kick,300);
-  W.GLGauge={state:function(){ return {mounted:!!(body()&&body().querySelector('[data-glgauge]')), have:!!S.data, err:S.err, at:S.at, latest:S.data?S.data.latest:null, vix:S.vix?S.vix.v:null}; }, refresh:function(){ S.at=0; load(); }};
+  W.GLGauge={state:function(){ return {overlay:overlay(), mounted:!!(body()&&body().querySelector('[data-glgauge]')), have:!!S.data, err:S.err, at:S.at, help:S.help, latest:S.data?S.data.latest:null, vix:S.vix?S.vix.v:null}; }, refresh:function(){ S.at=0; load(); }};
 })();
 
 </script>
