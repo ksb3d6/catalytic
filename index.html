@@ -2626,37 +2626,8 @@ function tfTboSVG(bars,w,h,tailN){
   for(var j=0;j<n;j++){ pts+=(pts?' ':'')+X(j).toFixed(1)+','+Y(c[j]).toFixed(1); }
   s+='<polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>';
   s+='<circle cx="'+(w-p)+'" cy="'+Y(c[n-1]).toFixed(1)+'" r="1.7" fill="'+col+'"/>';
-  var top=[],bot=[];
-  for(var k2=0;k2<n;k2++){
-    if(s21[k2]==null||s40[k2]==null){top.push(null);bot.push(null);continue}
-    top.push(Math.max(s21[k2],s40[k2]));bot.push(Math.min(s21[k2],s40[k2]));
-  }
-  function mode(i){ if(top[i]==null)return null; return c[i]>top[i]?1:(c[i]<bot[i]?-1:0); }
-  /* 10-05 (the owner): the marks are O / X. GREEN O = a long opens (the close breaks ABOVE the 21/40 spread), GREEN X = that long
-     closes (the close falls back into / through it); RED O = a short opens (the close breaks BELOW), RED X = that short closes.
-     Long marks ride above the line, short marks below it, so a straight flip (green X + red O on one bar) never overlaps.
-     The newest TWO marks only (10-07, the owner: four read as clutter — the triangles were two as well). Nothing else about the ribbon changed. */
-  var evs=[];
-  for(var k3=1;k3<n;k3++){
-    var m0=mode(k3-1),m1=mode(k3);
-    if(m0==null||m1==null||m0===m1)continue;
-    if(m0===1)evs.push({i:k3,side:1,open:false});
-    if(m0===-1)evs.push({i:k3,side:-1,open:false});
-    if(m1===1)evs.push({i:k3,side:1,open:true});
-    if(m1===-1)evs.push({i:k3,side:-1,open:true});
-  }
-  evs=evs.slice(-2);
-  var mr=w>=120?3:2.2;
-  for(var k4=0;k4<evs.length;k4++){
-    var v=evs[k4],x=Math.max(mr+1,Math.min(w-mr-1,X(v.i))),y=Y(c[v.i]);
-    var my=v.side===1?Math.max(mr+1.5,y-mr-4):Math.min(h-mr-1.5,y+mr+4), mc=v.side===1?TF_UP:TF_DN;
-    if(v.open){
-      s+='<circle class="tf-mk" data-mk="'+(v.side===1?'ol':'os')+'" cx="'+x.toFixed(1)+'" cy="'+my.toFixed(1)+'" r="'+mr+'" fill="none" stroke="'+mc+'" stroke-width="1.6"/>';
-    }else{
-      s+='<path class="tf-mk" data-mk="'+(v.side===1?'cl':'cs')+'" d="M'+(x-mr).toFixed(1)+','+(my-mr).toFixed(1)+' L'+(x+mr).toFixed(1)+','+(my+mr).toFixed(1)
-        +' M'+(x-mr).toFixed(1)+','+(my+mr).toFixed(1)+' L'+(x+mr).toFixed(1)+','+(my-mr).toFixed(1)+'" fill="none" stroke="'+mc+'" stroke-width="1.8" stroke-linecap="round"/>';
-    }
-  }
+  /* 10-27 (the owner): the O / X marks (long / short opens and closes, 10-05) are GONE — the row is the EMA CLOUD: the bands, the 8, the price
+     line and the last-close dot, nothing else. The read pill still says where the close sits against the 21/40 band. */
   return tfSvg(w,h)+s+'</svg>';
 }
 
@@ -2980,7 +2951,7 @@ function techBox(strip,panel){
   if(!panel) return strip||'';
   if(!strip) return panel;
   var btn='<button type="button" class="as-xp" data-xp aria-expanded="false">Technicals'
-        +'<span>candles \u00b7 EMA spread \u00b7 divergence \u00b7 Bollinger \u2014 M/W/D/4H/H</span>'
+        +'<span>candles \u00b7 EMA cloud \u00b7 divergence \u00b7 Bollinger \u2014 M/W/D/4H/H</span>'
         +'<b class="xp-ch">\u25BE</b></button>';
   strip=strip.replace(/<\/div>$/, btn+'</div>');
   return '<div class="aibo-box">'+strip+panel+'</div>';
@@ -3019,7 +2990,7 @@ function techPanel(tk,kind){
   liveStripCSS();
   var METS=[
     {l:'CANDLES·55EMA', fn:tfCandleSVG},
-    {l:'EMA SPREAD',    fn:tfTboSVG},
+    {l:'EMA CLOUD',     fn:tfTboSVG},
     {l:'DIVERGENCE',    fn:tfDivSVG},
     {l:'BOLLINGER',     fn:tfBbSVG}
   ];
@@ -3040,7 +3011,7 @@ function techPanel(tk,kind){
         :'<span class="tp-gap">'+(j>=3?'no intraday yet':'short history')+'</span>')+'</div>';
     }
   }
-  return '<details class="aibo-tech"><summary>Technicals <span>candles · EMA spread · divergence · Bollinger — M/W/D/H</span></summary>'
+  return '<details class="aibo-tech"><summary>Technicals <span>candles · EMA cloud · divergence · Bollinger — M/W/D/H</span></summary>'
        + '<div class="tp-scroll"><div class="tp-grid tp-grid5">'+out+'</div></div></details>';
 }
 function liveStrip(tk){
@@ -3784,16 +3755,29 @@ function applyFunding(j){
   const self=fundPct(j.mix,'self'), pc=fundPct(j.mix,'private_credit'), debt=fundPct(j.mix,'debt'), sov=fundPct(j.mix,'sovereign');
   if(self==null||pc==null||debt==null||sov==null) return false;
   FUNDING=j;
-  const r=v=>'~'+Math.round(v)+'%';
-  C.cap_self.share=r(self); C.cap_debt.share=r(pc)+' + '+r(debt); C.cap_off.share=r(sov);   /* 10-22 (the owner): the two figures the Macro card shows, not their sum — one '~40%' read as the old split */
-  C.cap_debt.desc='private credit '+r(pc)+' \u00b7 bonds & ABS '+r(debt);
+  /* 10-27 (the owner: "when the split changed, it added a percent from one bucket onto another … recalculate and re-render the whole thing from
+     scratch on every new data pull, so the shares always total 100%"): every number below is derived afresh from THIS payload — nothing is
+     carried from the previous pull or the baked split. The four feed shares are normalised to 100 first (a feed that sums to 99 or 101 after
+     rounding is scaled), then the three boxes get ONE whole-number share each by largest remainder, so what the map shows always adds to
+     exactly 100: self-funding / private credit & debt (its two parts named on the box, not added on the share line) / sovereign · gov · PE. */
+  const raw={self:self, pc:pc, debt:debt, sov:sov}, tot=self+pc+debt+sov, k100=tot>0?100/tot:0;
+  const norm={}; Object.keys(raw).forEach(id=>{ norm[id]=raw[id]*k100; });
+  const boxes=[['cap_self',norm.self],['cap_debt',norm.pc+norm.debt],['cap_off',norm.sov]];
+  const floors=boxes.map(b=>Math.floor(b[1])); let left=100-floors.reduce((a,b)=>a+b,0);
+  boxes.map((b,i)=>[b[1]-floors[i],i]).sort((a,b)=>b[0]-a[0]).forEach(x=>{ if(left>0){ floors[x[1]]++; left--; } });
+  const share={}; boxes.forEach((b,i)=>{ share[b[0]]=floors[i]; });
+  const r=v=>'~'+Math.round(v)+'%', rs=id=>'~'+share[id]+'%';
+  C.cap_self.share=rs('cap_self'); C.cap_debt.share=rs('cap_debt'); C.cap_off.share=rs('cap_off');
+  C.cap_self.desc='operating cash flow \u00b7 equity';
+  C.cap_debt.desc='private credit '+r(norm.pc)+' \u00b7 public debt '+r(norm.debt);
   C.cap_off.desc='sovereign \u00b7 government \u00b7 PE / VC \u00b7 largely not investable';
   /* the cards are built ONCE at load (Object.keys(C).forEach(buildCard)) — repaint the three capital cards' share + desc in place */
   ['cap_self','cap_debt','cap_off'].forEach(id=>{ const el=els[id]; if(!el) return; const cs=el.querySelector('.cs'); if(cs) cs.textContent=C[id].share; const ds=el.querySelector('.desc'); if(ds) ds.textContent=C[id].desc; });
-  const pct={cap_self:self, cap_debt:pc+debt, cap_off:sov};
+  /* the pay ribbons: ALWAYS from the baked widths (FUND_SW, drawn to FUND_BASEPCT) times this pull's share — never from the last pull's widths */
+  const pct={cap_self:share.cap_self, cap_debt:share.cap_debt, cap_off:share.cap_off};
   RIBBONS.forEach((rb,i)=>{ if(!FUND_SW[i]) return; const k=pct[rb.from]/FUND_BASEPCT[rb.from]; rb.sw=Math.max(4,Math.round(FUND_SW[i][0]*k)); rb.tw=Math.max(5,Math.round(FUND_SW[i][1]*k)); });
   const h=j.headline||{}, when=j.asOf?new Date(j.asOf):null, whenTx=(when&&!isNaN(when))?when.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):(j.asOf||'');
-  const split=document.getElementById('flowCapSplit'); if(split) split.textContent='Capital split ('+r(self)+' self-funding / '+r(pc)+' private credit / '+r(debt)+' public debt / '+r(sov)+' sovereign\u00b7government\u00b7PE) per '+(h.source||'the funding feed')+(h.horizon?' \u2014 '+h.horizon:'')+'; reviewed '+whenTx+'.';
+  const split=document.getElementById('flowCapSplit'); if(split) split.textContent='Capital split ('+rs('cap_self')+' self-funding / '+rs('cap_debt')+' private credit & debt \u2014 '+r(norm.pc)+' private credit, '+r(norm.debt)+' public debt / '+rs('cap_off')+' sovereign\u00b7government\u00b7PE = 100%) per '+(h.source||'the funding feed')+(h.horizon?' \u2014 '+h.horizon:'')+'; reviewed '+whenTx+'.';
   const note=document.getElementById('flowCapNote'); if(note) note.textContent='capital split: '+(h.sourceShort||h.source||'funding feed')+(h.published?' ('+h.published+')':'')+' \u00b7 reviewed '+whenTx+' \u00b7 the same feed as the Macro desk\u2019s AI build-out funding card';
   return true;
 }
@@ -9967,7 +9951,7 @@ window.MktView = (function(){
     var P=null; try{ P=tfParse(mkCtTf(r.sym)||r.tf)||{}; }catch(_){ P={}; }
     var tfs=[['m','M'],['w','W'],['d','D'],['h4','4H'],['h','H']];
     return '<button type="button" class="mk-thin-tech" data-mkthintech aria-label="Open the Technicals page"><b class="ttl">Technicals</b>'
-      +'<span class="sub">candles · EMA spread · divergence · Bollinger</span><em>'
+      +'<span class="sub">candles · EMA cloud · divergence · Bollinger</span><em>'
       +tfs.map(function(t){ return '<i'+(P[t[0]]?'':' class="off"')+'>'+t[1]+'</i>'; }).join('')+'</em><b class="go" aria-hidden="true">↗</b></button>';
   }
   function mkThinTechHtml(r){ return mkThinStrip(r)+mkThinBtn(r); }
@@ -10203,7 +10187,7 @@ window.MktView = (function(){
     var P=null; try{ P=tfParse(tf)||{}; }catch(_){ P={}; }
     var tfs=[['m','M'],['w','W'],['d','D'],['h4','4H'],['h','H']];
     return '<button type="button" class="mk-thin-tech" data-mkthintech aria-label="Open the Technicals page"><b class="ttl">Technicals</b>'
-      +'<span class="sub">candles · EMA spread · divergence · Bollinger</span><em>'
+      +'<span class="sub">candles · EMA cloud · divergence · Bollinger</span><em>'
       +tfs.map(function(t){ return '<i'+(P[t[0]]?'':' class="off"')+'>'+t[1]+'</i>'; }).join('')+'</em><b class="go" aria-hidden="true">↗</b></button>';
   }
   function mkEqTechHtml(r){ return mkEqStrip(r)+mkEqTechBtn(mkTeTf(r.sym)||r.tf); }
@@ -13983,7 +13967,7 @@ html[data-gl] .glt-plot.cell .gp{font-size:10px;}
 
 /* ---- the card under Glass (R6 §22): the stock TECHNICALS toggle + inline grid hide (never removed); the entry is ITS OWN BOX — a full-width
    bordered, accent-tinted button that sits UNDER the price strip (a sibling in .aibo-box, so the strip's bullet lane never eats its right edge):
-   "Technicals" bold, "candles · EMA spread · divergence · Bollinger — M W D 4H H" muted under it, an ↗ at the right, ≥44px, a pressed state, no caret.
+   "Technicals" bold, "candles · EMA cloud · divergence · Bollinger — M W D 4H H" muted under it, an ↗ at the right, ≥44px, a pressed state, no caret.
    On a phone (≤480) the frames move up beside the title so the description keeps to ONE line; the same grammar as the fundamentals' pill. ---- */
 html[data-gl] #sheetBody .aibo-box details.aibo-tech,html[data-gl] #sheetBody .aibo-box .aibo-strip .as-xp{display:none!important;}
 html[data-gl] :is(.aibo-box,.sh-grades,.glf) .glt-row{appearance:none;box-sizing:border-box;width:calc(100% - 24px);margin:0 12px 12px;min-height:44px;padding:8px 10px 8px 12px;
@@ -14167,7 +14151,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
             a 667), still snapping per column; the height follows the four-row fit, capped at h/w .34 so it stays a rectangle.
      Stack  one indicator (a seg), its five timeframes stacked coarse→fine as tall full-width plots.
    Round 9b (§54/§56): a CRYPTO candle row asks the stock renderer for its line mode (tfCandleSVG(bars,w,h,tail,{line:true}) — the
-   close line + a soft area, coloured by the frame's direction); EMA spread / divergence / Bollinger are untouched. A Market name (Coins 500
+   close line + a soft area, coloured by the frame's direction); EMA cloud / divergence / Bollinger are untouched. A Market name (Coins 500
    'mkc' / US 500 'mk') routes through MktView.market.frames(fam, sym) when the curated sources miss — see resolve()/mkFrames().
    Every plot carries ONE small read pill at its top-left and nothing else over the data — no hi/lo, no bar count, nothing
    on the right. A frame a renderer cannot draw is a dashed cell that says "no intraday yet" / "short history"; a plot is
@@ -14181,7 +14165,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
    Landscape (touch, ≤520px tall): the app strip auto-hides 1.5s after the last touch (#mStrip.m-hide — the stock class,
    the top-mode doors follow it through skin.css) and the page takes its 40px; a tap on the top edge brings it back.
    The card: under Glass the stock TECHNICALS toggle + its inline grid are hidden (techlab.css) and ONE full-width BOX (R6 §22:
-   bordered, accent-tinted, "Technicals" bold over the rows on the page ("candles · EMA spread · …") + "M W D 4H H", the frames on
+   bordered, accent-tinted, "Technicals" bold over the rows on the page ("candles · EMA cloud · …") + "M W D 4H H", the frames on
    hand lit, ↗ at the right, ≥44px, pressed state) sits under the price strip and opens this page. Theme off = stock.
    Persisted: 'aibo.gl.tech.look' (the look) and 'aibo.gl.tech.last' (the name; '$'-prefixed for crypto).
 
@@ -14212,7 +14196,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
   var UNIT={eq:{m:21,w:5,d:1,h4:1/2,h:1/7}, cr:{m:30,w:7,d:1,h4:1/6,h:1/24}};
   var NEXT={m:'w',w:'d',d:'h4',h4:'h'};                   /* the next-finer frame; H has none */
   var GUT={candle:1,tbo:2,div:2,bb:2,rsi:2,macd:2,vol:2,sma:1,atr:2,vwap:1,rs:2,adx:2,stoch:2};                    /* each renderer's side padding p: its bars span [p, w−p] (tfCandleSVG p=1, the rest p=2) */
-  /* 10-05 (the owner): the EMA spread is the EMA SPREAD (it is built on EMAs: 8 / 13 / 21 / 40). Two standard oscillators join as OPTIONAL rows —
+  /* 10-05 (the owner): the EMA spread is the EMA SPREAD (it is built on EMAs: 8 / 13 / 21 / 40); 10-27 (the owner): named the EMA CLOUD, its O / X marks gone. Two standard oscillators join as OPTIONAL rows —
      RSI 14 and MACD 12·26·9 (drawn by this file: tfRsiSVG / tfMacdSVG below) — and every indicator carries a plain description (`d`),
      shown in the Indicators sheet (the "Indicators" button in the head), where each row is also switched on or off.
      `opt:true` = off until switched on. The chosen set is kept on this device ('aibo.gl.tech.inds'). */
@@ -14221,10 +14205,9 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
       d:['Each candle is one period of the timeframe: the body runs from the open to the close (green = closed higher, red = closed lower), the wicks reach the high and the low. Crypto draws a close line instead.',
          'The line is the 55-period exponential moving average (EMA) — an average of the last 55 closes that weights the recent ones more.',
          'The label shows how far the last close is from that average, and the arrow is the direction the average itself is moving. Green: price above a rising average. Red: price below a falling one. Grey: mixed.']},
-    {id:'tbo',    s:'EMA SPREAD',       r:['EMA','SPREAD'],     l:'EMA spread', min:45, fn:'tfTboSVG',    why:'last close vs the 21/40 EMA band',
-      d:['Four exponential moving averages of the close — 8, 13, 21 and 40 periods — drawn as a ribbon under the grey price line.',
+    {id:'tbo',    s:'EMA CLOUD',        r:['EMA','CLOUD'],      l:'EMA cloud',  min:45, fn:'tfTboSVG',    why:'last close vs the 21/40 EMA band',
+      d:['Four exponential moving averages of the close — 8, 13, 21 and 40 periods — drawn as a cloud under the price line.',
          'The strong band is the gap between the 21 and the 40; the lighter band is the gap between the 13 and the 21; the thin line is the 8. A band is green while the faster average is above the slower one (trend up) and red while it is below (trend down). A wide band is a strong trend; a band that pinches shut is a trend running out or turning.',
-         'The marks: a green O is where the close broke ABOVE the 21/40 band (a long opens); a green X is where it fell back into it (that long closes). A red O is where the close broke BELOW the band (a short opens); a red X is where it climbed back (that short closes).',
          'The label says where the last close sits: above the band, inside it, or below — and by how much. It is a rule read from the averages, not advice.']},
     {id:'div',    s:'DIVERGENCE',       r:['DIVERGENCE'],      l:'Divergence', min:30, fn:'tfDivSVG',    why:'latest RSI-14 divergence inside the plotted window · bars since',
       d:['Divergence is price and momentum disagreeing. Momentum here is the 14-period RSI.',
@@ -14266,7 +14249,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
          'Green area above 100: it has outperformed since the window began; red below: underperformed. The dashed line is the 20-period average of the ratio, so the arrow tells you whether the leadership is improving or fading right now.',
          'This is the row that matches how the grades and the sector rotation think: the strongest names in a weak tape are the ones that hold their relative line. The benchmark’s bars are aligned to the name’s by position from the newest bar.']},
     {id:'adx',    s:'ADX 14 · DMI',      r:['ADX','DMI 14'],     l:'ADX',        min:30, fn:'tfAdxSVG',    opt:true, why:'ADX above 25 = a trend worth following (the DI lines say which way); under 20 = chop, trend tools misfire',
-      d:['Wilder’s directional system. The white line is the ADX — the STRENGTH of the trend from 0 to 100, with no direction of its own. Above the 25 line a trend is in force and trend tools (the averages, the EMA spread) work; under 20 the name is chopping and those same tools whipsaw, while the oscillators (RSI, stochastic) work better.',
+      d:['Wilder’s directional system. The white line is the ADX — the STRENGTH of the trend from 0 to 100, with no direction of its own. Above the 25 line a trend is in force and trend tools (the averages, the EMA cloud) work; under 20 the name is chopping and those same tools whipsaw, while the oscillators (RSI, stochastic) work better.',
          'The green line is +DI (upward pressure) and the red line −DI (downward pressure): whichever is on top says which way the trend points, and their crossing is the classic entry. A rising ADX with +DI on top is a strong uptrend; a falling ADX from a high level is a trend running out of steam.',
          'The label is the ADX reading with “trending ↑ / ↓” or “chop”.']},
     {id:'stoch',  s:'STOCH 14·3·3',      r:['STOCH','14·3·3'],   l:'Stochastic', min:20, fn:'tfStochSVG',  opt:true, why:'%K above 80 overbought, below 20 oversold · arrow = %K vs its %D signal',
@@ -14335,7 +14318,8 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     /* 10-21 (the owner: "when RSI is below that 30 threshold, it's still green — let's have it be coherent with red, like the band above it"):
        everything under 30 is the down colour and everything over 70 the up colour — the 30/70 lines, the shaded stretches, the last dot. */
     /* 10-21 (the owner: "anything under 40 colour is red and anything above 60 colour is green"): the 40 and 60 dotted lines take the bands' hues too, faintly. */
-    s+=hl(80,C_FL,.22,'4 3')+hl(20,C_FL,.22,'4 3')+hl(60,C_UP,.34,'1 3')+hl(40,C_DN,.34,'1 3')+hl(50,C_FL,.38,'4 3')+hl(70,C_UP,.6,'3 2.5')+hl(30,C_DN,.6,'3 2.5');
+    /* 10-27 (the owner: "when RSI goes into 80 or 90, label those dotted lines like the others"): the 90 and the 10 draw like the 80 and the 20 — the window only reaches them when the RSI did */
+    s+=hl(90,C_FL,.22,'4 3')+hl(10,C_FL,.22,'4 3')+hl(80,C_FL,.22,'4 3')+hl(20,C_FL,.22,'4 3')+hl(60,C_UP,.34,'1 3')+hl(40,C_DN,.34,'1 3')+hl(50,C_FL,.38,'4 3')+hl(70,C_UP,.6,'3 2.5')+hl(30,C_DN,.6,'3 2.5');
     /* the stretches beyond a band, shaded between the curve and the line */
     function zone(test,yl,col){ var d='', open=false, x0=0;
       for(var k=0;k<n;k++){ var v=rr[k], inz=(v!=null&&test(v));
@@ -14349,7 +14333,14 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
     s+=polyline(X,Y,rr,C_WH,'1.5','1');   /* 10-25 (the owner's colour rule): the RSI itself is the ink line, its average the theme's average colour */
     var lastV=rr[n-1]; if(lastV!=null) s+='<circle cx="'+X(n-1).toFixed(1)+'" cy="'+Y(lastV).toFixed(1)+'" r="1.9" fill="'+(lastV>70?C_UP:lastV<30?C_DN:C_WH)+'"/>';
     /* the levels, on the LEFT (10-24, the owner: on the iPhone the numbers on the right covered where the RSI is developing) */
-    if(gut) labels.forEach(function(v){ if(v<lo||v>hi) return; var ty=Math.min(h-2,Math.max(8,Y(v)+2.6)), tx='3'; if(ty<26) return;   /* the read chip owns the top-left corner */ s+='<rect x="1.5" y="'+(ty-7).toFixed(1)+'" width="'+(gut-3).toFixed(1)+'" height="9" rx="2" fill="rgba(13,19,32,.55)"/><text x="'+tx+'" y="'+ty.toFixed(1)+'" text-anchor="start" font-size="7.5" font-family="ui-monospace,Menlo,monospace" fill="rgba(234,238,245,.6)">'+v+'</text>'; });
+    /* 10-27 (the owner: "when RSI goes into 80 or 90, label those dotted lines like the others"): a level whose label would sit under the read chip
+       (the top-left corner, ty < 26) used to go unlabelled — exactly the 80 / 90 (and 10 / 20) lines the window stretches to. Those labels now
+       sit at the RIGHT edge of the plot instead, the same chip; every other level keeps the left edge (10-24: the right side covered the
+       developing RSI on the iPhone — one label at the very top does not). The labels are every 10-level in view when the rows are tall enough,
+       else every 20 — plus the window's own top and bottom levels, so a stretch to 80 or 90 is always named. */
+    if(gut){ var lab2=labels.slice(); [levels[0],levels[levels.length-1]].forEach(function(v){ if(v!=null&&lab2.indexOf(v)<0) lab2.push(v); });
+      lab2.forEach(function(v){ if(v<lo||v>hi) return; var ty=Math.min(h-2,Math.max(8,Y(v)+2.6)), right=ty<26, bw=(gut-3), bx=right?(w-1.5-bw):1.5, tx=right?(w-3):3;
+        s+='<rect x="'+bx.toFixed(1)+'" y="'+(ty-7).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="9" rx="2" fill="rgba(13,19,32,.55)"/><text x="'+tx+'" y="'+ty.toFixed(1)+'" text-anchor="'+(right?'end':'start')+'" font-size="7.5" font-family="ui-monospace,Menlo,monospace" fill="rgba(234,238,245,.6)">'+v+'</text>'; }); }
     return window.tfSvg(w,h)+s+'</svg>';
   };
   function macdOf(cl){ var e12=window.tfEma(cl,12), e26=window.tfEma(cl,26), m=[], i, ms=[], idx=[];
@@ -14573,7 +14564,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
   }
   function stamp(){ var L=window.AIBO_LIVE, s=(L&&L.state&&(L.state.at||'')+'|'+(L.state.src||''))||'';
     /* round 12 §68: a Market name's frames grow on their own clock (a frames page lands, a coin's DEEP technicals land) — MktView.market.rev()
-       ticks then, and the plots re-key on it: the 4s keep-up sees a new stamp and re-fits every plot in place (a weekly / monthly EMA spread
+       ticks then, and the plots re-key on it: the 4s keep-up sees a new stamp and re-fits every plot in place (a weekly / monthly EMA cloud
        that was a "short history" gap on the light frames draws once the deep ones are there). Curated names: the feed stamp alone, as before. */
     if(S.cur&&S.cur.mk){ try{ var M=window.MktView, mk=M&&M.market; if(mk&&typeof mk.rev==='function') s+='|mk'+mk.rev(); }catch(_){} }
     return s; }
@@ -14990,7 +14981,7 @@ window.GLDivInfo={html:"<p>Divergence is price and momentum disagreeing. Momentu
      inside .aibo-box (the stock toggle + grid are hidden by techlab.css under Glass): "Technicals" bold / the rows on the page muted / the frames on hand
      lit (a missing one dimmed, never invented) / ↗ at the right. ---------- */
   function cardKey(){ var body=document.getElementById('sheetBody'); if(!body) return null; var tk=body.querySelector('.sh-tk'); if(!tk) return null; var t=tk.textContent.trim(); if(!t) return null; return body.querySelector('.cr-sheet')?'$'+t:t; }
-  var SUBL={candle:'candles',tbo:'EMA spread',div:'divergence',bb:'Bollinger',rsi:'RSI',macd:'MACD',vol:'volume',sma:'MA',atr:'ATR',vwap:'VWAP',rs:'relative strength',adx:'ADX',stoch:'stochastic'};
+  var SUBL={candle:'candles',tbo:'EMA cloud',div:'divergence',bb:'Bollinger',rsi:'RSI',macd:'MACD',vol:'volume',sma:'MA',atr:'ATR',vwap:'VWAP',rs:'relative strength',adx:'ADX',stoch:'stochastic'};
   /* 10-07: the box lists the rows ON THE PAGE (ORDER) — it said four after the default became seven */
   function decorateCard(){
     if(!H.getAttribute('data-gl')) return;
@@ -19256,7 +19247,7 @@ html[data-gl="light"] #flowLegend{background:#ffffff;box-shadow:0 10px 30px rgba
     ['Segment','A theme inside the Stocks or Crypto sleeve (Compute, Power, Software…) with its own weight and its own names.'],
     ['Look-through','Opening a fund up to the names inside it, so Exposure counts what you really hold.'],
     ['EMA','An average of recent prices that weights the newest days most. The 55 EMA is the line on the candles; its length is yours to set.'],
-    ['EMA spread','Four EMAs drawn together; where they open and close marks a trend starting or ending.'],
+    ['EMA cloud','Four EMAs (8, 13, 21, 40) drawn as bands; green while the faster average leads, red while it lags; a band that pinches shut is a trend running out.'],
     ['RSI','Relative Strength Index, 0 to 100: how stretched a move is. Above 70 is overbought, under 30 oversold.'],
     ['MACD','The gap between two EMAs and its own average; crossings and the histogram show momentum turning.'],
     ['RS','Relative strength: this name divided by SPY (stocks and funds) or BTC (coins). Rising = beating the market.'],
