@@ -17975,8 +17975,9 @@ html[data-gl] #glmapTiers .glmap-tlegend .lrow{width:100%;}
    C1 with his amendments). One market, one flowchart: the whole-market funds across the very top, the Money world under them with
    the build-out's four sources lit inside it, the buyers as three cards (neoclouds · who orders · hyperscalers), chips & hardware
    drawn as its chain, the sectors that feed the build-out down the left, the sectors that use it down the right (software, defense,
-   space, consumer), and the sectors the build-out does not touch along the bottom (health, media & telecom, crypto in the middle,
-   staples & brands, transport). The dim money rains down both outer gutters; the lit money falls on the clouds.
+   space, consumer). Under the chain, in the centre's former dead space (the owner 11-03 evening): Crypto in its own box directly under
+   Chips & hardware, then the four sectors the build-out does not touch (health, media & telecom, staples & brands, transport) in a
+   2×2 inside the dashed "Beyond the build-out" frame. The dim money rains down both outer gutters; the lit money falls on the clouds.
 
    This file is DATA: card bodies (the hand-built lit groups), the sector-table sections each card absorbs under the Watchlist | US 500
    scope (`secs` are ids from worlds_data.js), the funds each card pulses by, the ribbons, the zones and the phone tiers. flowmap.js
@@ -17985,12 +17986,12 @@ html[data-gl] #glmapTiers .glmap-tlegend .lrow{width:100%;}
 window.GLMAP_DATA = (function () {
   'use strict';
   var L = { x: 70, w: 320 }, M1 = { x: 430, w: 270 }, M2 = { x: 724, w: 300 }, M3 = { x: 1048, w: 312 }, R = { x: 1410, w: 330 };
-  var BOT = [70, 408, 746, 1084, 1422], BW = 318;
+  var MID = { x: 430, w: 930 }, HALF = 450, MID2 = 910;   /* the centre block under the chain: Crypto full width, then a 2×2 of the outside sectors */
   return {
     stageW: 1800,
     cols: { L: L, m1: M1, m2: M2, m3: M3, R: R },
     /* names that live in Crypto / Space whatever industry FMP files them under */
-    CRYPTO: 'COIN HOOD MSTR MARA RIOT CLSK HUT WULF CIFR CORZ APLD BITF GLXY BMNR SMLR CRCL BTDR IREN BTBT CAN ETOR FIGR BLSH',
+    CRYPTO: 'COIN HOOD MSTR MARA RIOT CLSK WULF CIFR GLXY BMNR SMLR CRCL BTDR IREN BTBT CAN ETOR FIGR BLSH',   /* 11-03: CORZ APLD HUT BITF out — they left mining (see the Property card) */
     SPACE: 'RKLB ASTS LUNR PL KRMN BKSY VOYG SPCX FLY RDW SPCE SATS IRDM GSAT ACHR JOBY',
     /* a fund not placed by hand lands on this card (every other fund: by its worlds_data section) */
     FUNDHOME: { SPY: 'index', QQQ: 'index', DIA: 'index', IWM: 'index', VTI: 'index', RSP: 'index', MDY: 'index', IWD: 'index', IWF: 'index', SCHD: 'index', VYM: 'index', MTUM: 'index', USMV: 'index', QUAL: 'index', ARKK: 'index',
@@ -18033,7 +18034,7 @@ window.GLMAP_DATA = (function () {
         groups: [{ lab: 'Generation · nuclear', c: 'CEG VST GEV TLN OKLO SMR BE' }, { lab: 'Nuclear fuel', c: 'LEU UUUU CCJ (URA) (NUKZ) (NLR)' }, { lab: 'Funds', c: '(XLE) (XOP) (OIH) (XLU) (GRID) (ICLN) (TAN) (PBW)', fundsOnly: true }] },
       { id: 'property', kind: 'world', color: '#B79C7A', col: 'L', after: 'energy', title: 'Property & the landlords', desc: 'owns the halls · the AI hosts, next to the power', pulseFunds: ['DTCR', 'SRVR', 'XLRE'],
         secs: ['dc', 'living', 'trade', 'f_property'], restLab: 'The rest of Property · homes, shops, offices, housing',
-        groups: [{ lab: 'Data-centre landlords · AI hosts · also in Crypto', c: 'DLR EQIX CORZ* APLD* WULF* CIFR* HUT* (DTCR) (SRVR)' }, { lab: 'Towers · fibre', c: 'AMT CCI SBAC' }, { lab: 'Housing · builders · funds', c: '(XLRE) (VNQ) (ITB) (XHB) (REM)', fundsOnly: true }] },
+        groups: [{ lab: 'Data-centre landlords · AI hosts · the ex-miners (CORZ, APLD, HUT)', c: 'DLR EQIX CORZ APLD HUT WULF* CIFR* (DTCR) (SRVR)' }, { lab: 'Towers · fibre', c: 'AMT CCI SBAC' }, { lab: 'Housing · builders · funds', c: '(XLRE) (VNQ) (ITB) (XHB) (REM)', fundsOnly: true }] },
       { id: 'industry', kind: 'world', color: '#8FA4C9', col: 'L', after: 'property', title: 'Industry · the plant', desc: 'builds and cools the halls', pulseFunds: ['XLI', 'AIRR'],
         secs: ['mach', 'works', 'f_industry'], restLab: 'The rest of Industry · machinery, construction, services',
         groups: [{ lab: 'Electrical · cooling', c: 'ETN VRT NVT SU' }, { lab: 'Engineering · construction', c: 'PWR EME FIX STRL' }, { lab: 'Infrastructure', c: '(XLI) (AIRR) (PAVE) (PHO)', fundsOnly: true }] },
@@ -18076,27 +18077,31 @@ window.GLMAP_DATA = (function () {
       { id: 'consumer', kind: 'world', color: '#9CCB5A', col: 'R', after: 'space', title: 'Consumer', desc: 'the chips in the devices · AI in the products people buy', pulseFunds: ['XLY', 'XRT'],
         secs: ['autos', 'retail', 'gear', 'f_consumer'], restLab: 'The rest of Consumer · retail, autos, devices',
         groups: [{ lab: 'Products · physical AI', c: 'AAPL TSLA* ISRG SYM (ROBO) (BOTZ)' }, { lab: 'AI already pays here', c: 'AMZN~ WMT COST' }, { lab: 'Funds', c: '(XLY) (XRT)', fundsOnly: true }] },
-      /* ===== the bottom row: the outside, what the build-out does not touch (crypto in the middle, as asked) ===== */
-      { id: 'health', kind: 'world', lit: false, color: '#EC7FA9', x: BOT[0], w: BW, after: ['materials', 'quantum', 'memory', 'consumer'], gap: 80, title: 'Health', desc: 'where AI already pays · the rest is outside', pulseFunds: ['XLV', 'IBB', 'XBI'],
+      /* ===== under the chain (the owner 11-03 evening): Crypto in its own box directly under Chips & hardware, then the four sectors the
+         build-out does not touch in a 2×2 inside the dashed "Beyond the build-out" frame — the centre's dead space filled, nothing at the very bottom.
+         The miners group keeps only the names still mining bitcoin (Nov 2026 filings): MARA RIOT CLSK BTDR IREN WULF CIFR; Core Scientific (winding
+         down through 2026), Bitfarms (now Keel, mining ceased), Hut 8 (mining carved out into American Bitcoin) and Applied Digital (never mined)
+         sit in Property as landlords. ===== */
+      { id: 'health', kind: 'world', lit: false, color: '#EC7FA9', x: MID.x, w: HALF, after: 'crypto', gap: 60, title: 'Health', desc: 'where AI already pays · the rest is outside', pulseFunds: ['XLV', 'IBB', 'XBI'],
         secs: ['pharma', 'bio', 'tools', 'care', 'f_health'], restLab: 'The rest of Health · pharma, biotech, devices, insurers',
         groups: [{ lab: 'AI already pays here', c: 'TEM ISRG* HIMS' }, { lab: 'Funds', c: '(XLV) (IBB) (XBI) (IHI)', fundsOnly: true }] },
-      { id: 'media', kind: 'world', lit: false, color: '#C58BE8', x: BOT[1], w: BW, beside: 'health', title: 'Media & telecom', desc: 'carries the traffic · sells the ads', pulseFunds: ['XLC'],
+      { id: 'media', kind: 'world', lit: false, color: '#C58BE8', x: MID2, w: HALF, beside: 'health', title: 'Media & telecom', desc: 'carries the traffic · sells the ads', pulseFunds: ['XLC'],
         secs: ['telco', 'net', 'show', 'f_media'], restLab: 'The rest of Media & telecom · telecom, internet, entertainment',
         groups: [{ lab: 'AI already pays here', c: 'NFLX SPOT TTD' }, { lab: 'Funds', c: '(XLC)', fundsOnly: true }] },
-      { id: 'crypto', kind: 'world', color: '#E8B53C', x: BOT[2], w: BW, beside: 'health', title: 'Crypto', desc: 'coins · exchanges · miners · the pivot into the halls', pulseFunds: ['IBIT'],
+      { id: 'crypto', kind: 'world', color: '#E8B53C', x: MID.x, w: MID.w, after: ['quantum', 'memory'], gap: 78, title: 'Crypto', desc: 'coins · exchanges · the miners still mining · the ex-miners moved up to Property', pulseFunds: ['IBIT'],
         secs: [], restLab: 'The rest of Crypto',
-        groups: [{ lab: 'Coins', c: 'BTC? ETH? SOL? XRP? BNB? DOGE?' }, { lab: 'Exchanges · holders · treasuries', c: 'COIN HOOD MSTR SMLR BMNR GLXY (IBIT) (ETHA) (BITO) (BLOK)' }, { lab: 'Miners · and the ones who became AI hosts', c: 'MARA RIOT CLSK BITF CORZ* APLD* WULF* CIFR* HUT*' }, { lab: 'Rails', c: 'CRCL' }] },
-      { id: 'brands', kind: 'world', lit: false, color: '#9CCB5A', x: BOT[3], w: BW, beside: 'health', title: 'Staples · brands · travel', desc: 'the consumer the build-out does not touch', pulseFunds: ['XLP'],
+        groups: [{ lab: 'Coins', c: 'BTC? ETH? SOL? XRP? BNB? DOGE?' }, { lab: 'Exchanges · holders · treasuries', c: 'COIN HOOD MSTR SMLR BMNR GLXY (IBIT) (ETHA) (BITO) (BLOK)' }, { lab: 'Miners · still mining bitcoin (most lease to AI too)', c: 'MARA RIOT CLSK BTDR IREN* WULF* CIFR*' }, { lab: 'Rails', c: 'CRCL' }] },
+      { id: 'brands', kind: 'world', lit: false, color: '#9CCB5A', x: MID.x, w: HALF, after: ['health', 'media'], title: 'Staples · brands · travel', desc: 'the consumer the build-out does not touch', pulseFunds: ['XLP'],
         secs: ['staples', 'leisure'], restLab: 'The rest · staples, brands, travel, leisure',
         groups: [{ lab: 'Funds', c: '(XLP)', fundsOnly: true }] },
-      { id: 'transport', kind: 'world', lit: false, color: '#8FA4C9', x: BOT[4], w: BW, beside: 'health', title: 'Transport & logistics', desc: 'rails, trucks, planes, ships', pulseFunds: ['IYT', 'JETS'],
+      { id: 'transport', kind: 'world', lit: false, color: '#8FA4C9', x: MID2, w: HALF, beside: 'brands', title: 'Transport & logistics', desc: 'rails, trucks, planes, ships', pulseFunds: ['IYT', 'JETS'],
         secs: ['move', 'unsorted'], restLab: 'The rest · transport, logistics, unsorted',
         groups: [{ lab: 'Funds', c: '(IYT) (JETS)', fundsOnly: true }] }
     ],
     zones: [
       { label: 'The clouds', color: '#87A8D0', pad: 18, soft: true, cards: ['neo', 'labs', 'hyper'] },
       { label: 'Chips & hardware', sub: 'one sector, drawn as its chain', color: '#1FC6DC', pad: 22, cards: ['servers', 'net', 'compute', 'equipment', 'foundry', 'memory', 'quantum'] },
-      { label: 'The outside', sub: 'the sectors the build-out does not touch · crypto in the middle', color: '#7C8AA5', pad: 18, soft: true, cards: ['health', 'media', 'crypto', 'brands', 'transport'] }
+      { label: 'Beyond the build-out', sub: 'the sectors the AI build-out does not touch', color: '#7C8AA5', pad: 18, cards: ['health', 'media', 'brands', 'transport'] }
     ],
     ribbons: [
       /* capital falls from the Money world onto the card it funds (cells: house 14 · self 19 · private 20 · debt 15 · sovereign 16 · markets 16 of 100) */
@@ -18124,7 +18129,7 @@ window.GLMAP_DATA = (function () {
       { from: 'hyper', to: 'software', se: 'R', sf: .5, te: 'L', tf: .35, w: 40, kind: 'output', k: .4 },
       { from: 'compute', to: 'defense', se: 'R', sf: .4, te: 'L', tf: .5, w: 26, kind: 'output', k: .3 },
       { from: 'space', to: 'defense', se: 'T', sf: .5, te: 'B', tf: .5, w: 20, kind: 'data', label: 'orbital data · ISR', lt: .5 },
-      { from: 'memory', to: 'consumer', se: 'B', sf: .9, te: 'L', tf: .5, w: 28, kind: 'output', k: .3 },
+      { from: 'memory', to: 'consumer', se: 'R', sf: .85, te: 'L', tf: .5, w: 28, kind: 'output', k: .05 }   /* down the right gutter: the centre block now sits under Memory */,
       /* the money rain: the dim cells pay the rest of the market down the two gutters */
       { from: 'money', to: 'energy', se: 'L', sf: .55, te: 'L', tf: .5, w: 10, color: '#6FB1E8', label: 'project lending', lt: .5, op: .45, k: .06, rain: true },
       { from: 'money', to: 'property', se: 'L', sf: .65, te: 'L', tf: .5, w: 10, color: '#6FB1E8', label: 'mortgages', lt: .5, op: .45, k: .06, rain: true },
@@ -18140,7 +18145,7 @@ window.GLMAP_DATA = (function () {
       { id: 'builds', label: 'The clouds and what feeds them', sub: 'the buyers · the power, halls and plant they take', cards: ['neo', 'hyper', 'labs', 'energy', 'property', 'industry'] },
       { id: 'buys', label: 'Chips & hardware', sub: 'one sector, drawn as its chain, down to the mine', cards: ['compute', 'net', 'servers', 'memory', 'foundry', 'equipment', 'quantum', 'materials'] },
       { id: 'uses', label: 'Where it is used', sub: 'software, the platforms, space, the products', cards: ['software', 'defense', 'space', 'consumer'] },
-      { id: 'outside', label: 'The outside', sub: 'what the build-out does not touch · crypto in the middle', cards: ['health', 'media', 'crypto', 'brands', 'transport'] }
+      { id: 'outside', label: 'Beyond the build-out', sub: 'crypto under the chain · then the sectors the build-out does not touch', cards: ['crypto', 'health', 'media', 'brands', 'transport'] }
     ]
   };
 })();
