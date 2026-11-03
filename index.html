@@ -20248,6 +20248,26 @@ html[data-gl="light"] #flowLegend{background:#ffffff;box-shadow:0 10px 30px rgba
     sync(); resetZoom();
   }
   window.GL48.go=go; window.GL48.settings=function(fromCal){ go('settings',fromCal); };
+  /* ---- ?go=<door>/<pane> (11-03, the owner: "a direct link so that I can just check these out full screen on the website"): the same
+     forwarder from the address bar. bullwhistle.com/?go=markets/map opens the map, ?go=research/SMH the fund face, ?go=research/NVDA a
+     company, ?go=markets/sc the Scorecard, ?go=portfolio/exposure a Portfolio pane, ?go=macro/cot a desk card, ?go=settings the sheet.
+     Door aliases: markets → tape, research → fin, portfolio → studio, today → calendar; the router's own names land too. The pane is
+     handed to go() untouched (a company or fund key for research — the link waits for the universe so the page never falls back to the
+     default company). Read once at boot, never persisted, Glass only (theme off = exact Stage 43 ignores it); an unknown door is ignored.
+     ?techlab=KEY (techlab.js), ?macro= and ?rot= stay as they were. ---- */
+  (function(){
+    var m=/[?&]go=([A-Za-z0-9_\-\.\/%:$]+)/.exec(QS); if(!m) return;
+    var s=m[1]; try{ s=decodeURIComponent(s); }catch(_){}
+    var i=s.indexOf('/'); if(i<0&&s.indexOf('.')>0) i=s.indexOf('.');
+    var door=(i<0?s:s.slice(0,i)).toLowerCase(), opt=(i<0||i>=s.length-1)?undefined:s.slice(i+1);
+    door=({markets:'tape',research:'fin',portfolio:'studio',today:'calendar'})[door]||door;
+    if(['tape','fin','studio','macro','calendar','alerts','settings','atlas'].indexOf(door)<0) return;
+    function keyReady(){ if(door!=='fin'||!opt) return true; var up=String(opt).toUpperCase().replace(/^\$/,''), lk=null; try{ lk=window.lookup(opt); }catch(_){}
+      return !!((lk&&lk.type==='co')||(typeof FUNDS!=='undefined'&&FUNDS&&FUNDS[up])); }
+    var tries=0; (function land(){
+      if(!H.getAttribute('data-gl')||!window.GL48||!window.GL48.sync||(!keyReady()&&tries<80)){ if(tries++<80) setTimeout(land,250); return; }
+      try{ go(door,opt); }catch(e){ log('go: '+(e&&e.message||e)); } })();
+  })();
   window.GL48.openFin=openFin;
   dock.addEventListener('click',function(e){
     var b=e.target.closest('[data-gldoor]'); if(!b) return;
