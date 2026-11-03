@@ -14992,7 +14992,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
   function readStoch(bars){ if(!bars||bars.length<20) return null; var M=stochOf(bars), n=bars.length, k=M.k[n-1], d=M.d[n-1]; if(k==null) return null;
     return {v:k>80?-1:k<20?1:0, t:k.toFixed(0)+(k>80?' overbought':k<20?' oversold':'')+(d==null?'':k>d?' ↗':' ↘')}; }
   var READ={candle:readCandle, tbo:readTbo, div:readDiv, bb:readBb, rsi:readRsi, macd:readMacd, vol:readVol, sma:readSma, atr:readAtr, vwap:readVwap, adx:readAdx, stoch:readStoch};
-  function readOf(ind,bars,tail,bb,ema){ if(!(bars&&bars.length>=ind.min)) return null; if(ind.id==='rs') return readRsFor(bars,bb,tail); if(ind.id==='candle') return readCandle(bars,ema); if(ind.id==='lines'){ try{ return window.GLLines?window.GLLines.read(bars,tail,S.cur,asofOf(S.cur)):null; }catch(_){ return null; } } return READ[ind.id](bars,tail); }
+  function readOf(ind,bars,tail,bb,ema,tf){ if(!(bars&&bars.length>=ind.min)) return null; if(ind.id==='rs') return readRsFor(bars,bb,tail); if(ind.id==='candle') return readCandle(bars,ema); if(ind.id==='lines'){ try{ return window.GLLines?window.GLLines.read(bars,tail,S.cur,asofOf(S.cur),tf):null; }catch(_){ return null; } } return READ[ind.id](bars,tail); }
   function cls(rd){ return !rd?'gap':rd.v>0?'up':rd.v<0?'dn':'flat'; }
 
   /* ---------- pieces ---------- */
@@ -15089,7 +15089,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
         setRead(el,null,mode,tf);
         if(nx){ nx.hidden=true; } el.removeAttribute('data-next'); el.removeAttribute('title'); return; }
       el.classList.remove('gap'); gp.hidden=true; sv.innerHTML=svg;
-      setRead(el,readOf(I,bars,tail,bb,I.id==='candle'&&o?o.ema:null),mode,tf);
+      setRead(el,readOf(I,bars,tail,bb,I.id==='candle'&&o?o.ema:null,tf),mode,tf);
       nextWin(el,I,tf,P,w,tail,bars);
     });
   }
@@ -15453,7 +15453,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
    open it full screen… the TradingView phone-app bullseye… line colours congruent with the theme… a midline on those channels").
    Bundled right after techlab.js. Three jobs:
      1. window.tfLinesSVG(bars,w,h,tail,o) — the ROW's renderer (techlab IND 'lines'): plain bars through tfCandleSVG with no average, the
-        person's drawings over them on the DAILY column only (the other columns are bars alone), a small ⤢ glyph. `o` = {sym, kind, fam,
+        person's drawings over them on the D, W and M columns (11-04: a day maps to a fraction of a weekly / monthly bar; H and 4H are bars alone), a small ⤢ glyph. `o` = {sym, kind, fam,
         tf, asof, el, line} from techlab's fit().
      2. The FULL-SCREEN view (#glLines): a canvas chart of the daily bars — pinch zoom, pan, a price-axis stretch, double-tap zoom, Fit; the
         tools Line · Ray · Level · Channel (with its dotted midline) · Box; the OFFSET RETICLE: touch anywhere, the crosshair floats 60/80 px
@@ -15484,6 +15484,14 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     var sign=1; if(tb<ta){ var x=ta; ta=tb; tb=x; sign=-1; } var n=0; for(var t=ta+DAY;t<=tb+1;t+=DAY) if(isSess(t,'eq')) n++; return n*sign; }
   function dayPlus(a,k,kind){ var t=dnum(a); if(!isFinite(t)) return null; if(kind==='cr') return dstr(t+k*DAY); var step=k>0?DAY:-DAY, n=Math.abs(k), guard=0; while(n>0&&guard++<2000){ t+=step; if(isSess(t,'eq')) n--; } return dstr(t); }
   function kindOf(c){ return c&&c.kind==='cr'?'cr':'eq'; }
+  /* 11-04 (the owner: "the lines for weekly and monthly too"): a DAY lands on a fractional bar of any frame. D = whole bars back from asof; W = Monday
+     weeks (the backend's, the forming week included) with the weekday as a fraction of the bar (a stock's five sessions, a coin's seven days);
+     M = calendar months with the day of the month as the fraction. Slopes stay per bar, so a line drawn on the daily keeps its shape on the weekly. */
+  function weekStart(t){ var d=new Date(t), dow=(d.getUTCDay()+6)%7; return t-dow*DAY; }
+  function idxFor(tf,day,n,asof,kind){ var td=dnum(day), ta=dnum(asof); if(!isFinite(td)||!isFinite(ta)) return null;
+    if(tf==='w'){ var wk=Math.round((weekStart(td)-weekStart(ta))/(7*DAY)), dow=(new Date(td).getUTCDay()+6)%7, days=kind==='cr'?7:5; return (n-1)+wk+Math.min(days-.5,dow+.5)/days-.5; }
+    if(tf==='m'){ var D1=new Date(td), A1=new Date(ta), mo=(D1.getUTCFullYear()-A1.getUTCFullYear())*12+(D1.getUTCMonth()-A1.getUTCMonth()), dim=new Date(Date.UTC(D1.getUTCFullYear(),D1.getUTCMonth()+1,0)).getUTCDate(); return (n-1)+mo+(D1.getUTCDate()-.5)/dim-.5; }
+    return (n-1)+barsBetween(asof,day,kind); }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function fmt(p){ return p>=1000?p.toFixed(0):p>=100?p.toFixed(1):p>=1?p.toFixed(2):p.toFixed(4); }
 
@@ -15521,8 +15529,8 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   window.addEventListener('aiborole',function(){ var t=tok()||null; if(t===S.tokSeen) return; S.tokSeen=t; S.loaded=false; S.doc=null; S.dirty={}; if(t) load(true); else repaint(); });   /* only a CHANGED session resets the copy (the role is announced more than once) */
 
   /* ---------- geometry in bar-index space (x = index into the frame's bars; n-1 = the newest bar = `asof`) ---------- */
-  function edgesIdx(d,n,asof,kind){
-    var X=d.pts.map(function(p){ return (n-1)+barsBetween(asof,p.d,kind); }), P=d.pts.map(function(p){ return +p.p; });
+  function edgesIdx(d,n,asof,kind,tf){
+    var X=d.pts.map(function(p){ return idxFor(tf||'d',p.d,n,asof,kind); }), P=d.pts.map(function(p){ return +p.p; }); if(X.some(function(x){ return x==null; })) return [];
     if(d.type==='level') return [{at:function(){ return P[0]; }, n:'level'}];
     if(d.type==='box'){ var lo=Math.min(X[0],X[1]), hi=Math.max(X[0],X[1]), top=Math.max(P[0],P[1]), bot=Math.min(P[0],P[1]), sp=function(x){ return x>=lo-1e-9&&x<=hi+1e-9; };
       return [{at:function(x){ return sp(x)?top:null; }, n:'box top'},{at:function(x){ return sp(x)?bot:null; }, n:'box bottom'}]; }
@@ -15532,14 +15540,14 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     var off=P[2]-base(X[2]), lo3=Math.min(X[0],X[1]), hi3=Math.max(X[0],X[1]), sp3=function(x){ return x>=lo3-1e-9&&x<=hi3+1e-9; };
     return [{at:function(x){ return sp3(x)?base(x):null; }, n:'channel'},{at:function(x){ return sp3(x)?base(x)+off:null; }, n:'channel far side'},{at:function(x){ return sp3(x)?base(x)+off/2:null; }, n:'channel midline', mid:true}];
   }
-  function breakState(d,bars,asof,kind){ var n=bars.length; if(n<2) return null; var c1=bars[n-1].c, c0=bars[n-2].c, out=null;
-    edgesIdx(d,n,asof,kind).forEach(function(e){ var v1=e.at(n-1), v0=e.at(n-2); if(v1==null) return;
+  function breakState(d,bars,asof,kind,tf){ var n=bars.length; if(n<2) return null; var c1=bars[n-1].c, c0=bars[n-2].c, out=null;
+    edgesIdx(d,n,asof,kind,tf).forEach(function(e){ var v1=e.at(n-1), v0=e.at(n-2); if(v1==null) return;
       if(v0!=null){ var s1=Math.sign(c1-v1), s0=Math.sign(c0-v0); if(s1!==s0&&s1!==0&&!(out&&out.v)) out={v:s1, t:s1>0?'BROKE ▲':'BROKE ▼'}; }
       if(!out&&Math.abs(c1-v1)/v1<.005) out={v:0, t:'at a line'}; });
     return out; }
-  function read(bars,tail,cur,asof){ if(!cur||!cur.key) return null; var items=list(cur.key); if(!items.length) return {v:0, t:'tap to draw'};
-    if(!asof||!bars||bars.length<2) return {v:0, t:items.length+(items.length===1?' line':' lines')};
-    var st=null; for(var i=0;i<items.length;i++){ var s=breakState(items[i],bars,asof,kindOf(cur)); if(s&&(!st||(s.v&&!st.v))) st=s; }
+  function read(bars,tail,cur,asof,tf){ if(!cur||!cur.key) return null; var items=list(cur.key); if(!items.length) return {v:0, t:'tap to draw'}; tf=tf||'d';
+    if(!asof||!bars||bars.length<2||(tf!=='d'&&tf!=='w'&&tf!=='m')) return {v:0, t:items.length+(items.length===1?' line':' lines')};
+    var st=null; for(var i=0;i<items.length;i++){ var s=breakState(items[i],bars,asof,kindOf(cur),tf); if(s&&(!st||(s.v&&!st.v))) st=s; }
     return st&&st.v?st:{v:0, t:items.length+(items.length===1?' line':' lines')+(st?' · at one':'')}; }
 
   /* ---------- the row's renderer ---------- */
@@ -15549,13 +15557,13 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     var nul=bars.map(function(){ return null; }), line=!!(o&&o.line);
     var svg=window.tfCandleSVG(bars,w,h,tail,{ema:nul, line:line}); if(!svg) return '';
     var over=''; try{ over=overlay(bars,w,h,tail,o,line); }catch(_){ over=''; }
-    if(o&&o.el) o.el.setAttribute('data-gls',o.tf==='d'?'d':'x');
+    if(o&&o.el) o.el.setAttribute('data-gls',(o.tf==='d'||o.tf==='w'||o.tf==='m')?o.tf:'x');
     if(o&&o.sym) S.last={sym:o.sym, kind:o.kind, fam:o.fam, asof:o.asof};
     var glyph='<g class="gls-x" transform="translate('+(w-17)+',4)"><rect width="13" height="13" rx="3"/><path d="M7.5 2.5h3v3M5.5 10.5h-3v-3M10.5 2.5 7 6M2.5 10.5 6 7"/></g>';
     return svg.replace(/<\/svg>\s*$/,over+glyph+'</svg>');
   };
   function overlay(bars,w,h,tailN,o,line){
-    if(!o||o.tf!=='d'||!o.asof||!o.sym) return '';
+    if(!o||!o.asof||!o.sym||(o.tf!=='d'&&o.tf!=='w'&&o.tf!=='m')) return '';   /* H / 4H carry no day clock the anchors can use */
     var items=list(o.sym); if(!items.length) return '';
     /* tfCandleSVG's geometry, repeated exactly (no average → lo/hi from the bars alone) */
     var n=bars.length, tail=tailN?Math.min(n,tailN):Math.max(20,Math.min(n,Math.floor(w/4.5))), Bt=bars.slice(-tail), ohlc=0, i;
@@ -15566,8 +15574,8 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     function Y(v){ return (h-p)-(v-lo)*(h-2*p)/rg; }
     function X(idx){ return p+(idx-off)*slot+slot/2; }
     var out='', xmax=w+slot, steps=Math.max(8,Math.ceil(w/3)), i0=off-1, i1=off+(xmax-p)/slot;
-    items.forEach(function(d){ var es=edgesIdx(d,n,o.asof,kind); if(!es.length) return;
-      if(d.type==='box'){ var X0=(n-1)+barsBetween(o.asof,d.pts[0].d,kind), X1=(n-1)+barsBetween(o.asof,d.pts[1].d,kind);
+    items.forEach(function(d){ var es=edgesIdx(d,n,o.asof,kind,o.tf); if(!es.length) return;
+      if(d.type==='box'){ var X0=idxFor(o.tf,d.pts[0].d,n,o.asof,kind), X1=idxFor(o.tf,d.pts[1].d,n,o.asof,kind);
         var x1=X(Math.min(X0,X1)), x2=X(Math.max(X0,X1)), y1=Y(Math.max(d.pts[0].p,d.pts[1].p)), y2=Y(Math.min(d.pts[0].p,d.pts[1].p));
         out+='<rect class="gls-f" x="'+x1.toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+Math.max(0,x2-x1).toFixed(1)+'" height="'+Math.max(0,y2-y1).toFixed(1)+'"/><rect class="gls-e" x="'+x1.toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+Math.max(0,x2-x1).toFixed(1)+'" height="'+Math.max(0,y2-y1).toFixed(1)+'"/>'; return; }
       if(d.type==='channel'&&es.length===3){ var a=[], c=[]; for(var s=0;s<=steps;s++){ var xi=i0+(i1-i0)*s/steps, va=es[0].at(xi), vc=es[1].at(xi); if(va==null||vc==null) continue; a.push(X(xi).toFixed(1)+','+Y(va).toFixed(1)); c.unshift(X(xi).toFixed(1)+','+Y(vc).toFixed(1)); }
@@ -15772,7 +15780,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   /* a tap on the row's plot (any column) opens the view */
   document.addEventListener('click',function(e){ var t=e.target; if(!t||!t.closest) return; var el=t.closest('.glt-plot[data-ind="lines"]'); if(!el||!H.getAttribute('data-gl')) return; e.preventDefault(); e.stopPropagation(); open(); },true);
   if(H.getAttribute('data-gl')&&tok()) setTimeout(function(){ load(false); },1500);
-  window.GLLines={list:list, set:setList, open:open, close:close, read:read, reload:function(){ load(true); }, barsBetween:barsBetween, dayPlus:dayPlus};
+  window.GLLines={list:list, set:setList, open:open, close:close, read:read, reload:function(){ load(true); }, barsBetween:barsBetween, dayPlus:dayPlus, idxFor:idxFor};
 })();
 
 </script>
