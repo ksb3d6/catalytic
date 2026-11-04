@@ -14520,7 +14520,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
       d:['Four exponential moving averages of the close — 8, 13, 21 and 40 periods — drawn as a cloud under the price line.',
          'The strong band is the gap between the 21 and the 40; the lighter band is the gap between the 13 and the 21; the thin line is the 8. A band is green while the faster average is above the slower one (trend up) and red while it is below (trend down). A wide band is a strong trend; a band that pinches shut is a trend running out or turning.',
          'The label says where the last close sits: above the band, inside it, or below — and by how much. It is a rule read from the averages, not advice.']},
-    {id:'div',    s:'DIVERGENCE',       r:['DIVERGENCE'],      l:'Divergence', min:30, fn:'tfDivSVG',    why:'every RSI-14 divergence in the window — the same pairs the RSI pane draws (TradingView’s rules, regular + hidden) · the pill = the newest · bars since',
+    {id:'div',    s:'DIVERGENCE',       r:['DIVERGENCE'],      l:'Divergence', min:30, fn:'tfDivSVG',    why:'every RSI-14 divergence in the window, the same pairs the RSI pane draws (TradingView’s pivot rules + the swing read, regular + hidden): the price line between the two tops or bottoms, the dashed ghost at the RSI’s own angle, the badge at the newer one · the lane below = momentum pressure, price and RSI pulling apart over 4 / 8 / 14 bars, shaded by strength · the pill = the newest pair · bars since',
       d:['Divergence is price and momentum disagreeing. Momentum here is the 14-period RSI.',
          'How it is found: the swing highs and swing lows of the RSI are located (a bar higher, or lower, than the three bars either side of it). Two neighbouring swings 5 to 60 bars apart are compared. BEARISH: price made a higher high while the RSI made a lower high — the rise is losing force. BULLISH: price made a lower low while the RSI made a higher low — the fall is losing force.',
          'How it is drawn: a solid line joins the two price points, a dashed line from the same start shows the slope the RSI took instead, and an arrow marks the newest one (red pointing down = bearish, green pointing up = bullish).',
@@ -14641,27 +14641,98 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
     return out;
   }
   window.tfRsiDivs=function(bars,opts){ var cl=window.tfCloses(bars), r=window.tfRsi(cl,(opts&&opts.len)||14); return rsiDivs(bars,r,opts&&opts.L,opts&&opts.R,opts&&opts.minG,opts&&opts.maxG); };
+  /* 11-05 (the owner, GOOGL monthly: "the candles and the EMA cloud are clearly making a higher high and the RSI a lower high, and it's not called"):
+     the SWING read. TradingView's pivot rule wants an RSI peak to top the five bars on either side, so a peak that comes exactly five bars
+     after a taller one (GOOGL: Nov 2025 82.0, Apr 2026 75.7) is never a pivot at all — the eye sees two swings, the rule sees one. This pass
+     reads the chart the way the eye does: a zigzag ON THE RSI — an RSI swing high is confirmed when the RSI has fallen D (10) points from its
+     running peak, a swing low when it has risen D from its running trough (the turns alternate; the running extreme restarts from the bars
+     after the last turn); the PRICE extreme of each swing is the wick high / low between the previous turn and the confirmation bar.
+     Consecutive swing highs (lows) are compared exactly as the pivot pairs are (regular / hidden, wicks), no gap floor, the same 60-bar
+     ceiling, confirmed at the reversal bar. allDivs() = the pivot pairs PLUS every swing pair whose newer RSI extreme the pivot rule did not
+     already pair (same type, hidden flag and newer bar) — one list for the pane, the row, the pill and the census. Every pair carries
+     q / p (the RSI bars) and pq / pp (the price bars; = q / p for a pivot pair) and src 'tv' | 'swing'. */
+  function swingDivs(bars,r,D,maxG){
+    D=D||10; maxG=(maxG==null)?60:maxG;
+    var n=r.length, i0=-1, i, j;
+    for(i=0;i<n;i++){ if(r[i]!=null){ i0=i; break; } }
+    if(i0<0) return [];
+    function lo(i){ var b=bars[i]; return (b&&b.l!=null&&isFinite(+b.l))?+b.l:(b?+b.c:NaN); }
+    function hi(i){ var b=bars[i]; return (b&&b.h!=null&&isFinite(+b.h))?+b.h:(b?+b.c:NaN); }
+    function amin(a,b){ var k=-1; for(j=a;j<=b;j++){ if(r[j]==null) continue; if(k<0||r[j]<r[k]) k=j; } return k; }
+    function amax(a,b){ var k=-1; for(j=a;j<=b;j++){ if(r[j]==null) continue; if(k<0||r[j]>r[k]) k=j; } return k; }
+    var turns=[], mode=null, mx=i0, mn=i0, start=i0;
+    for(i=i0+1;i<n;i++){ var v=r[i]; if(v==null) continue;
+      if(v>r[mx]) mx=i; if(v<r[mn]) mn=i;
+      if(mode===null){
+        if(v<=r[mx]-D){ mode='down'; turns.push({k:'H',i:mx,at:i,s:start}); start=mx; mn=amin(mx+1,i); }
+        else if(v>=r[mn]+D){ mode='up'; turns.push({k:'L',i:mn,at:i,s:start}); start=mn; mx=amax(mn+1,i); } }
+      else if(mode==='up'){ if(v<=r[mx]-D){ turns.push({k:'H',i:mx,at:i,s:start}); start=mx; mode='down'; mn=amin(mx+1,i); } }
+      else { if(v>=r[mn]+D){ turns.push({k:'L',i:mn,at:i,s:start}); start=mn; mode='up'; mx=amax(mn+1,i); } }
+    }
+    function pmax(a,b){ var k=a; for(j=a;j<=b;j++){ if(hi(j)>hi(k)) k=j; } return k; }
+    function pmin(a,b){ var k=a; for(j=a;j<=b;j++){ if(lo(j)<lo(k)) k=j; } return k; }
+    var H=turns.filter(function(t){ return t.k==='H'; }), Lw=turns.filter(function(t){ return t.k==='L'; }), out=[];
+    for(i=1;i<H.length;i++){ var a=H[i-1], b=H[i], q=a.i, p=b.i; if(p-q-1>maxG) continue; var pq=pmax(a.s,a.at), pp=pmax(b.s,b.at);
+      if(r[p]<r[q]&&hi(pp)>hi(pq)) out.push({type:'bear', hidden:false, q:q, p:p, pq:pq, pp:pp, at:b.at, src:'swing'});
+      else if(r[p]>r[q]&&hi(pp)<hi(pq)) out.push({type:'bear', hidden:true, q:q, p:p, pq:pq, pp:pp, at:b.at, src:'swing'}); }
+    for(i=1;i<Lw.length;i++){ var a2=Lw[i-1], b2=Lw[i], q2=a2.i, p2=b2.i; if(p2-q2-1>maxG) continue; var pq2=pmin(a2.s,a2.at), pp2=pmin(b2.s,b2.at);
+      if(r[p2]>r[q2]&&lo(pp2)<lo(pq2)) out.push({type:'bull', hidden:false, q:q2, p:p2, pq:pq2, pp:pp2, at:b2.at, src:'swing'});
+      else if(r[p2]<r[q2]&&lo(pp2)>lo(pq2)) out.push({type:'bull', hidden:true, q:q2, p:p2, pq:pq2, pp:pp2, at:b2.at, src:'swing'}); }
+    out.sort(function(a,b){ return a.p-b.p||a.q-b.q; });
+    return out;
+  }
+  function allDivs(bars,r){
+    var tv=rsiDivs(bars,r), seen={}, out=[], i, d;
+    for(i=0;i<tv.length;i++){ d=tv[i]; d.pq=d.q; d.pp=d.p; d.src='tv'; seen[d.type+(d.hidden?'h':'')+d.p]=1; out.push(d); }
+    var sw=swingDivs(bars,r);
+    for(i=0;i<sw.length;i++){ d=sw[i]; if(!seen[d.type+(d.hidden?'h':'')+d.p]) out.push(d); }
+    out.sort(function(a,b){ return a.p-b.p||a.q-b.q||(a.type<b.type?-1:a.type>b.type?1:0)||((a.hidden?1:0)-(b.hidden?1:0)); });
+    return out;
+  }
+  window.tfSwingDivs=function(bars,opts){ var cl=window.tfCloses(bars), r=window.tfRsi(cl,(opts&&opts.len)||14); return swingDivs(bars,r,opts&&opts.D,opts&&opts.maxG); };
+  window.tfAllDivs=function(bars){ var cl=window.tfCloses(bars), r=window.tfRsi(cl,14); return allDivs(bars,r); };
   /* 11-04 (the owner: "the RSI indicator divergences and the divergence indicator itself are not congruent … make sure these sync up and
-     are the same"): under Glass the Divergence row draws the SAME pairs as the RSI pane, from the same rsiDivs — every regular and hidden
-     divergence whose newer pivot sits in the window, as a line between the two PRICE pivots (the wick low for a bullish pair, the wick
-     high for a bearish one) on the ink price line; solid = regular, dotted = hidden, green / red, no words. The stock row's own detector
-     (closes, 3/3 pivots, regular only) and its slope-disagreement lane fired on their own — that was the incongruence. ?gl=off still runs
-     the stock renderer untouched. window.tfDivPairs(bars,tail) = the pairs a row of that window draws (the census, the suites). */
+     are the same") → 11-05 (the owner: "I didn't want you to take away any functionality … the lines had different shades of red and the bar of
+     different shades underneath … the dotted line with the differing angle — keep that"): under Glass the Divergence row is the STOCK row's
+     look, exactly — the ink price line, the pressure lane below (the strongest price-vs-RSI slope disagreement over 4 / 8 / 14 bars, shaded
+     by strength) and the price line coloured by that lane while momentum leaks, the wedge (solid price trendline + the dashed RSI-slope ghost
+     at the RSI's own angle + the ▲ / ▼ badge) — but the wedges come from allDivs(), the same list the RSI pane draws (pivot rules + the swing
+     read, regular + hidden), and EVERY live pair is drawn, not only the newest (older ones a little dimmer). A hidden pair's price line is
+     dotted, like the pane's. ?gl=off still runs the stock renderer untouched. window.tfDivPairs(bars,tail) = the pairs a row of that window
+     draws (the census, the suites): the newer RSI pivot AND the newer price pivot inside the window, confirmed. */
   function extOf(a){ var lo=Infinity, hi=-Infinity, i; for(i=0;i<a.length;i++){ var v=a[i]; if(v==null||!isFinite(v)) continue; if(v<lo) lo=v; if(v>hi) hi=v; } return lo<=hi?[lo,hi]:null; }
-  function divPairs(bars,tail){ var cl=window.tfCloses(bars), r=window.tfRsi(cl,14), evs=rsiDivs(bars,r), N=cl.length, n=Math.min(tail||60,N), off=N-n; return evs.filter(function(d){ return d.p>=off&&d.at<=N-1; }); }
+  function divPairs(bars,tail){ var cl=window.tfCloses(bars), r=window.tfRsi(cl,14), evs=allDivs(bars,r), N=cl.length, n=Math.min(tail||60,N), off=N-n; return evs.filter(function(d){ return d.p>=off&&d.pp>=off&&d.at<=N-1; }); }
   function glassDivSVG(bars,w,h,tailN){
     if(!bars||bars.length<30) return '';
-    var cl=window.tfCloses(bars), N=cl.length, n=Math.min(tailN||60,N), off=N-n, c=cl.slice(-n), p=2, i, live=divPairs(bars,n);
+    var call=window.tfCloses(bars), r=window.tfRsi(call,14), N=call.length, tail=Math.min(tailN||60,N), off=N-tail, c=call.slice(-tail), rr=r.slice(-tail), n=tail, p=2, i;
+    var stripH=Math.max(3,Math.round(h*0.15)), ph=h-stripH-2, live=divPairs(bars,n);
     function lo(i){ var b=bars[i]; return (b&&b.l!=null&&isFinite(+b.l))?+b.l:+b.c; } function hi(i){ var b=bars[i]; return (b&&b.h!=null&&isFinite(+b.h))?+b.h:+b.c; }
-    var ext=c.slice(); live.forEach(function(d){ var f=d.type==='bull'?lo:hi; if(d.q>=off) ext.push(f(d.q)); ext.push(f(d.p)); });
+    var ext=c.slice(); live.forEach(function(d){ var f=d.type==='bull'?lo:hi; if(d.pq>=off) ext.push(f(d.pq)); ext.push(f(d.pp)); });
     var e=extOf(ext); if(!e) return ''; var rg=e[1]-e[0]||1;
-    function X(i){ return 1+(i+.5)*(w-2)/n; } function Y(v){ return (h-p)-(v-e[0])*(h-2*p)/rg; }
+    function X(i){ return 1+(i+.5)*(w-2)/n; } function Y(v){ return (ph-p)-(v-e[0])*(ph-2*p)/rg; }
+    var Ks=[4,8,14], lane=[], li, L2;
+    for(li=0;li<n;li++){ var best=0;
+      for(L2=0;L2<Ks.length;L2++){ var k=Ks[L2]; if(li<k||rr[li]==null||rr[li-k]==null||!c[li-k]) continue;
+        var a2=(c[li]-c[li-k])/c[li-k], b3=(rr[li]-rr[li-k])/50, dis=0;
+        if(a2>0.003&&b3<-0.015) dis=Math.min(1,(a2*45)*(-b3*9)); else if(a2<-0.003&&b3>0.015) dis=-Math.min(1,(-a2*45)*(b3*9));
+        if(Math.abs(dis)>Math.abs(best)) best=dis; }
+      lane.push(best); }
     var pts=''; for(i=0;i<n;i++) pts+=(pts?' ':'')+X(i).toFixed(1)+','+Y(c[i]).toFixed(1);
     var s='<polyline points="'+pts+'" fill="none" stroke="'+C_FL+'" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>';
-    live.forEach(function(d){ var f=d.type==='bull'?lo:hi, col=d.type==='bull'?C_UP:C_DN, x1=X(d.q-off), y1=Y(f(d.q)), x2=X(d.p-off), y2=Y(f(d.p));
-      s+='<line data-div="'+(d.hidden?'h':'')+d.type+'" data-q="'+d.q+'" data-p="'+d.p+'" x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+col+'" stroke-width="'+(d.hidden?1.6:1.8)+'" stroke-linecap="round" opacity="'+(d.hidden?'.75':'.7')+'"'+(d.hidden?' stroke-dasharray="0.1 3.4"':'')+'/>';
-      s+='<circle cx="'+x2.toFixed(1)+'" cy="'+y2.toFixed(1)+'" r="2" fill="'+col+'" opacity=".85"/>'; });
-    var lastC=c[n-1]; if(lastC!=null) s+='<circle cx="'+X(n-1).toFixed(1)+'" cy="'+Y(lastC).toFixed(1)+'" r="1.7" fill="'+C_FL+'"/>';
+    for(var sg=1;sg<n;sg++){ var lv=Math.abs(lane[sg])>=0.12?lane[sg]:0; if(!lv) continue;
+      s+='<line x1="'+X(sg-1).toFixed(1)+'" y1="'+Y(c[sg-1]).toFixed(1)+'" x2="'+X(sg).toFixed(1)+'" y2="'+Y(c[sg]).toFixed(1)+'" stroke="'+(lv>0?C_DN:C_UP)+'" stroke-width="1.5" stroke-linecap="round"/>'; }
+    live.forEach(function(d,k){ var f=d.type==='bull'?lo:hi, cc=d.type==='bull'?C_UP:C_DN, op=(k===live.length-1)?1:.6;
+      var x1=X(d.pq-off), y1=Y(f(d.pq)), x2=X(d.pp-off), y2=Y(f(d.pp));
+      s+='<g opacity="'+op+'"><line data-div="'+(d.hidden?'h':'')+d.type+'" data-q="'+d.q+'" data-p="'+d.p+'" data-pq="'+d.pq+'" data-pp="'+d.pp+'" data-src="'+d.src+'" x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+cc+'" stroke-width="1.4" stroke-linecap="round"'+(d.hidden?' stroke-dasharray="0.1 3.4"':'')+'/>';
+      var rs1=r[d.q], rs2=r[d.p];
+      if(rs1!=null&&rs2!=null){ var dy=(rs1-rs2)/100*(ph-2*p);
+        s+='<line data-ghost="1" x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+(y1+dy).toFixed(1)+'" stroke="'+cc+'" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".75"/>'; }
+      var by=d.type==='bear'?Math.max(4,y2-5):Math.min(ph-2,y2+5);
+      s+='<path data-badge="'+d.type+'" d="M'+(x2-2.8).toFixed(1)+','+by.toFixed(1)+' L'+(x2+2.8).toFixed(1)+','+by.toFixed(1)+' L'+x2.toFixed(1)+','+(d.type==='bear'?by+4.2:by-4.2).toFixed(1)+' Z" fill="'+cc+'"/></g>'; });
+    var bwv=(w-2*p)/n, y0=h-stripH;
+    for(var i2=0;i2<n;i2++){ var bl=lane[i2], fill='rgba(90,102,120,.18)';
+      if(bl>0) fill='rgba(240,104,95,'+(0.2+bl*0.72).toFixed(2)+')'; else if(bl<0) fill='rgba(57,208,127,'+(0.2-bl*0.72).toFixed(2)+')';
+      s+='<rect data-lane="1" x="'+(p+i2*bwv).toFixed(1)+'" y="'+y0+'" width="'+(bwv+0.3).toFixed(1)+'" height="'+stripH+'" fill="'+fill+'"/>'; }
     return window.tfSvg(w,h)+s+'</svg>';
   }
   var stockDivSVG=window.tfDivSVG;
@@ -14723,10 +14794,10 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
        ones dimmed (they were overbearing); off when switched off in the Indicators sheet (the Divergence row keeps its own drawing);
        drawn at every pane size (the census proved the row and the pane differ at tiny sizes with a gate).
        data-q / data-p = the two pivots' absolute bar indexes, so the census (tools/div_census.py) can prove the row and the pane agree. */
-    if(rsiDivOn()){ var off=r.length-n, divs=rsiDivs(bars,r), dv, k;   /* 11-04: no size gate any more — no words to fit, and the row draws at every size */
-      for(k=0;k<divs.length;k++){ dv=divs[k]; if(dv.at>r.length-1) continue; var kp=dv.p-off, kq=dv.q-off; if(kp<0) continue;
+    if(rsiDivOn()){ var off=r.length-n, divs=allDivs(bars,r), dv, k;   /* 11-05: pivot pairs + the swing read */   /* 11-04: no size gate any more — no words to fit, and the row draws at every size */
+      for(k=0;k<divs.length;k++){ dv=divs[k]; if(dv.at>r.length-1) continue; var kp=dv.p-off, kq=dv.q-off; if(kp<0||dv.pp<off) continue;   /* 11-05: the same window rule as divPairs — the newer RSI pivot AND the newer price pivot inside */
         var col=dv.type==='bull'?C_UP:C_DN, x1=X(kq), y1=Y(r[dv.q]), x2=X(kp), y2=Y(r[dv.p]);
-        s+='<line data-div="'+(dv.hidden?'h':'')+dv.type+'" data-q="'+dv.q+'" data-p="'+dv.p+'" x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+col+'" stroke-width="'+(dv.hidden?1.6:1.8)+'" stroke-linecap="round" opacity="'+(dv.hidden?'.75':'.7')+'"'+(dv.hidden?' stroke-dasharray="0.1 3.4"':'')+'/>';
+        s+='<line data-div="'+(dv.hidden?'h':'')+dv.type+'" data-q="'+dv.q+'" data-p="'+dv.p+'" data-pq="'+dv.pq+'" data-pp="'+dv.pp+'" data-src="'+dv.src+'" x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+col+'" stroke-width="'+(dv.hidden?1.6:1.8)+'" stroke-linecap="round" opacity="'+(dv.hidden?'.75':'.7')+'"'+(dv.hidden?' stroke-dasharray="0.1 3.4"':'')+'/>';
         s+='<circle cx="'+x2.toFixed(1)+'" cy="'+y2.toFixed(1)+'" r="2" fill="'+col+'" opacity=".85"/>'; } }
     /* the levels, on the LEFT (10-24, the owner: on the iPhone the numbers on the right covered where the RSI is developing) */
     /* 10-27 (the owner: "when RSI goes into 80 or 90, label those dotted lines like the others"): a level whose label would sit under the read chip
@@ -15000,8 +15071,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
   }
   function readDiv(bars,tail){
     if(!bars||bars.length<30) return null;
-    var cl=window.tfCloses(bars), r=window.tfRsi(cl,14), evs=rsiDivs(bars,r), n=cl.length, win=Math.min(tail||45,n), off=n-win, hit=null;
-    for(var i=0;i<evs.length;i++){ if(evs[i].p>=off&&evs[i].at<=n-1) hit=evs[i]; }      /* 11-04: the newest pair the row draws — its newer pivot inside the window, confirmed */
+    var evs=divPairs(bars,tail||45), n=bars.length, hit=evs.length?evs[evs.length-1]:null;      /* 11-04: the newest pair the row draws — its newer pivot inside the window, confirmed */
     if(!hit) return {v:0, t:'none'};
     var age=n-1-hit.p;
     return {v:hit.type==='bull'?1:-1, t:(hit.hidden?'hidden ':'')+hit.type+' · '+age+'b'};
@@ -15202,7 +15272,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
       +'</div>'
       +(i.id==='candle'?'<div class="glt-iset"><label>EMA length <input type="number" inputmode="numeric" min="2" max="400" step="1" value="'+emaN()+'" data-techema aria-label="EMA length"></label><span>periods of this timeframe · 55 is the app’s standard</span></div>':'')
       +(i.id==='sma'?'<div class="glt-iset"><label>MA length <input type="number" inputmode="numeric" min="2" max="400" step="1" value="'+maN()+'" data-techma aria-label="MA length"></label><span>periods of this timeframe · 50 and 200 are the classics</span></div>':'')
-      +(i.id==='rsi'?'<div class="glt-iset"><label><input type="checkbox" data-techrsidiv'+(rsiDivOn()?' checked':'')+' aria-label="Draw divergences on the RSI"> Divergences on the RSI pane</label><span>solid = regular · dotted = hidden · green bullish · red bearish · the Divergence row keeps its own</span></div>':'')
+      +(i.id==='rsi'?'<div class="glt-iset"><label><input type="checkbox" data-techrsidiv'+(rsiDivOn()?' checked':'')+' aria-label="Draw divergences on the RSI"> Divergences on the RSI pane</label><span>solid = regular · dotted = hidden · green bullish · red bearish · the Divergence row keeps drawing</span></div>':'')
       +'<details class="glt-idesc'+((i.id==='div'&&window.GLDivInfo)||(window.GLIndInfo&&GLIndInfo[i.id])?' gdv':'')+'"><summary>What it shows</summary>'+((i.id==='div'&&window.GLDivInfo)?window.GLDivInfo.html:i.d.map(function(p){ return '<p>'+esc((i.id==='candle'?p.replace(/55/g,String(emaN())):p).replace(/\{N\}/g,String(maN())))+'</p>'; }).join('')+((window.GLIndInfo&&GLIndInfo[i.id]&&GLIndInfo[i.id].html)?GLIndInfo[i.id].html:''))+'</details></section>';   /* 10-17: the Divergence fold is illustrated (stage48/divinfo.js); 11-03: every other row too (stage48/indinfo.js, tools/gen_indinfo.py) */
   }
   /* ---- drag to arrange (10-07, the owner: "grab a certain button and move it in real time"): pointer events on the ≡ handle; the row
