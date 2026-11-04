@@ -2475,6 +2475,14 @@ function tfParse(tf){
     for(var e=0;e<ks.length;e++){ var ek=ks[e], ea=tf.ema[ek]; if(out[ek]&&Array.isArray(ea)&&ea.length===out[ek].length){ if(!em) em={}; em[ek]=ea; } }
     if(em) out.ema=em;
   }
+  /* 11-04 (backend v4.45): THE CLOCK — tf.clock = {d,w,m,h,h4}: one compact string per frame ('start|gap,gap,…', days for D/W/M, UTC minutes
+     for H/4H), n bars = n-1 gaps. Carried as P.clock for the frames whose gap count matches their bars (stage48/lines.js expands it and puts a
+     drawing on the right bar of any frame); a key that does not match is dropped. No clock → nothing changes anywhere. */
+  if(any&&tf.clock&&typeof tf.clock==='object'&&!Array.isArray(tf.clock)){
+    var ck=null;
+    for(var c=0;c<ks.length;c++){ var ckk=ks[c], cs=tf.clock[ckk]; if(out[ckk]&&typeof cs==='string'&&cs.indexOf('|')>0){ var gs=cs.slice(cs.indexOf('|')+1); var gn=gs?gs.split(',').length:0; if(gn+1===out[ckk].length){ if(!ck) ck={}; ck[ckk]=cs; } } }
+    if(ck) out.clock=ck;
+  }
   return any?out:null;
 }
 /* round 10 §62: tfEmaOpts(base, P, k) → the renderer opts for frame k: base plus {ema: P.ema[k]} when the sidecar carries that frame —
@@ -14877,7 +14885,8 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
     try{ var M=window.MktView, mk=M&&M.market; if(!mk||typeof mk.frames!=='function') return null;
       var t=mk.frames(fam,sym); if(!t||typeof t!=='object') return null;
       var P=window.tfParse(t); if(!P) return null;
-      if(!P.ema&&t.ema&&typeof t.ema==='object'&&!Array.isArray(t.ema)) P.ema=t.ema;   /* round 10 §62: tfParse now carries a validated tf.ema itself; this is only a fallback (the renderer ignores a misaligned series) */
+      if(!P.ema&&t.ema&&typeof t.ema==='object'&&!Array.isArray(t.ema)) P.ema=t.ema;
+      if(!P.clock&&t.clock&&typeof t.clock==='object'&&!Array.isArray(t.clock)) P.clock=t.clock;   /* 11-04: the clock (backend v4.45), same fallback */   /* round 10 §62: tfParse now carries a validated tf.ema itself; this is only a fallback (the renderer ignores a misaligned series) */
       return P; }catch(_){ return null; }
   }
   function resolveMarket(bare,opt,fams){
@@ -15072,7 +15081,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
       var rd=el.querySelector('.rd');
       if((I.id==='sma'||I.id==='vwap')&&S.cur.kind==='cr') o={line:true};      /* 10-07: the candle-based rows share §54's line mode for coins */
       if(I.id==='rs'){ bb=benchBars(tf); o={bench:bb}; }
-      if(I.id==='lines') o={sym:S.cur.key, kind:S.cur.kind, fam:S.cur.fam||null, tf:tf, asof:asofOf(S.cur), el:el, line:S.cur.kind==='cr'};   /* 11-03: the drawings row needs the name + the newest bar's day (lines.js) */
+      if(I.id==='lines') o={sym:S.cur.key, kind:S.cur.kind, fam:S.cur.fam||null, tf:tf, asof:asofOf(S.cur), el:el, line:S.cur.kind==='cr', clock:P.clock||null};   /* 11-03: the drawings row needs the name + the newest bar's day (lines.js) */
       if(I.id==='candle'){                                 /* the renderer contract (§56): only the candle row takes opts; the other three rows are called as before */
         if(S.cur.kind==='cr') o={line:true};               /* §54: crypto = the close line + area, never candles */
         if(emaN()!==55){ o=o||{}; o.ema=window.tfEma(window.tfCloses(bars),emaN()); }   /* 10-07: the person's own length, from the frame's bars */
@@ -15467,7 +15476,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
    open it full screen… the TradingView phone-app bullseye… line colours congruent with the theme… a midline on those channels").
    Bundled right after techlab.js. Three jobs:
      1. window.tfLinesSVG(bars,w,h,tail,o) — the ROW's renderer (techlab IND 'lines'): plain bars through tfCandleSVG with no average, the
-        person's drawings over them on the D, W and M columns (11-04: a day maps to a fraction of a weekly / monthly bar; H and 4H are bars alone), a small ⤢ glyph. `o` = {sym, kind, fam,
+        person's drawings over them on EVERY column (11-04: the backend's clock puts a day on the right bar of the W / M / 4H / 1H frames too), a small ⤢ glyph. `o` = {sym, kind, fam,
         tf, asof, el, line} from techlab's fit().
      2. The FULL-SCREEN view (#glLines): TradingView Lightweight Charts™ (Apache 2.0, stage48/vendor/) draws the daily bars and owns the pan, the
         pinch, the kinetic scroll, the price-axis stretch and the crosshair (11-04, the owner: "I just like the way it scrolls"); our drawings ride an overlay; Fit; the
@@ -15507,11 +15516,51 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     if(tf==='w'){ var wk=Math.round((weekStart(td)-weekStart(ta))/(7*DAY)), dow=(new Date(td).getUTCDay()+6)%7, days=kind==='cr'?7:5; return (n-1)+wk+Math.min(days-.5,dow+.5)/days-.5; }
     if(tf==='m'){ var D1=new Date(td), A1=new Date(ta), mo=(D1.getUTCFullYear()-A1.getUTCFullYear())*12+(D1.getUTCMonth()-A1.getUTCMonth()), dim=new Date(Date.UTC(D1.getUTCFullYear(),D1.getUTCMonth()+1,0)).getUTCDate(); return (n-1)+mo+(D1.getUTCDate()-.5)/dim-.5; }
     return (n-1)+barsBetween(asof,day,kind); }
+
+  /* ---------- THE FRAME CONTEXT (11-04, the owner: "draw geometry on any time scale… see the drawings I've drawn on the daily on the four hour
+     and the one hour") ----------
+     A drawing's anchor is a DAY (+ a UTC minute `t` when it was placed on an hourly / 4-hour bar). Backend v4.45 serves a CLOCK per frame —
+     tf.clock[tf] = 'start|gap,gap,…' (days for D/W/M, UTC minutes for H/4H), the start of every served bar — and tfParse carries it as P.clock.
+     fc(tf, n, asof, kind, clock) = the frame context: `times` (ms, one per bar) when the clock is there, else null (the calendar fallback:
+     D/W/M by day arithmetic; H/4H cannot place a day without a clock). anchorIdx(FC, pt) = the fractional bar index of an anchor on that
+     frame: the bar whose span holds its moment, a fraction inside it (so a daily line keeps its slope on the weekly, and lands mid-session
+     on the hourly); before the first bar / after the last = extrapolated in bars per session. barAnchor(FC, i) = the anchor a lock on bar i
+     records: its session date (New York for a stock, UTC for a coin) + the bar's UTC minute on an intraday frame. ---------- */
+  var CK={};
+  function expandClock(str,intr){ var k=typeof str==='string'?str.indexOf('|'):-1; if(k<0) return null; var key=(intr?'i':'d')+str; if(CK[key]) return CK[key];
+    var start=str.slice(0,k), gaps=str.slice(k+1), t0=intr?Date.parse(start+':00Z'):dnum(start); if(!isFinite(t0)) return null; var unit=intr?60000:DAY, out=[t0], g=gaps?gaps.split(','):[];
+    for(var i=0;i<g.length;i++){ var n=+g[i]; if(!isFinite(n)||n<0) return null; out.push(out[out.length-1]+n*unit); } CK[key]=out; return out; }
+  function nyParts(ms){ try{ var f=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false}); var o={}; f.formatToParts(new Date(ms)).forEach(function(p){ o[p.type]=p.value; }); return o; }catch(_){ var d=new Date(ms-5*3600e3); return {year:String(d.getUTCFullYear()), month:('0'+(d.getUTCMonth()+1)).slice(-2), day:('0'+d.getUTCDate()).slice(-2), hour:('0'+d.getUTCHours()).slice(-2), minute:('0'+d.getUTCMinutes()).slice(-2)}; } }
+  function sessionDate(ms,kind){ if(kind==='cr') return dstr(ms); var p=nyParts(ms); return p.year+'-'+p.month+'-'+p.day; }
+  function nyToUtc(day,hh,mm){ var guess=dnum(day)+(hh+5)*3600e3+mm*60e3; var p=nyParts(guess), got=(+p.hour)*60+(+p.minute), want=hh*60+mm, dd=(p.year+'-'+p.month+'-'+p.day===day)?0:(p.year+'-'+p.month+'-'+p.day<day?-1440:1440); return guess+((want-got)-dd)*60e3; }
+  function fc(tf,n,asof,kind,clock){ var intr=tf==='h'||tf==='h4', times=clock&&clock[tf]?expandClock(clock[tf],intr):null; if(times&&times.length!==n) times=null;
+    var F={tf:tf, n:n, asof:asof||null, kind:kind||'eq', intr:intr, times:times, bpd:1, gap:DAY};
+    if(times&&n>1){ var gaps=[]; for(var i=1;i<n;i++) gaps.push(times[i]-times[i-1]); gaps.sort(function(a,b){ return a-b; }); F.gap=gaps[Math.floor(gaps.length/2)]||DAY;
+      if(intr){ var per={}; for(var j=0;j<n;j++){ var dk=sessionDate(times[j],F.kind); per[dk]=(per[dk]||0)+1; } var cs=Object.keys(per).map(function(k){ return per[k]; }).sort(function(a,b){ return a-b; }); F.bpd=cs[Math.floor(cs.length/2)]||1; } }
+    return F; }
+  function anchorMs(FC,pt){ if(!pt) return NaN; if(FC.intr){ if(pt.t) return Date.parse(String(pt.t).length===16?pt.t+':00Z':pt.t); return FC.kind==='cr'?dnum(pt.d)+12*3600e3:nyToUtc(pt.d,12,45); } return dnum(pt.d); }   /* a day on an hourly frame = mid-session */
+  function anchorIdx(FC,pt){
+    if(!pt||!pt.d) return null;
+    if(!FC.times){ if(FC.intr) return null; if(!FC.asof) return null; return idxFor(FC.tf,pt.d,FC.n,FC.asof,FC.kind); }
+    var ms=anchorMs(FC,pt), T=FC.times, n=FC.n; if(!isFinite(ms)) return null;
+    if(ms<T[0]){ if(FC.intr){ var d0=sessionDate(T[0],FC.kind), dk=pt.t?sessionDate(ms,FC.kind):pt.d; var sb=barsBetween(dk,d0,FC.kind); return -sb*FC.bpd+(FC.bpd-1)/2; } return (ms-T[0])/FC.gap; }
+    var lo=0, hi=n-1; while(hi-lo>1){ var m=(lo+hi)>>1; if(T[m]<=ms) lo=m; else hi=m; }
+    var i=T[hi]<=ms?hi:lo;
+    if(i>=n-1){ if(FC.intr){ var dl=sessionDate(T[n-1],FC.kind), dk2=pt.t?sessionDate(ms,FC.kind):pt.d; var sf=barsBetween(dl,dk2,FC.kind); if(sf>0) return (n-1)+sf*FC.bpd; return n-1+Math.min(.49,(ms-T[n-1])/Math.max(FC.gap,1)*.5); } return (n-1)+(ms-T[n-1])/FC.gap; }
+    var span=T[i+1]-T[i]; return i+(span>0?(ms-T[i])/span:0); }
+  function barDate(FC,i){ i=Math.round(i); if(FC.times){ if(i>=0&&i<FC.n) return sessionDate(FC.times[i],FC.kind); if(FC.intr){ var edge=i<0?0:FC.n-1, ses=Math.round((i-edge)/FC.bpd); return dayPlus(sessionDate(FC.times[edge],FC.kind),ses,FC.kind); } var e2=i<0?0:FC.n-1; return dstr(FC.times[e2]+(i-e2)*FC.gap); }
+    if(!FC.asof||FC.intr) return null; return dayPlus(FC.asof,i-(FC.n-1),FC.kind); }
+  function barAnchor(FC,i,p){ var d=barDate(FC,i); if(!d) return null; var a={d:d, p:p}; if(FC.intr&&FC.times){ var j=Math.round(i); if(j>=0&&j<FC.n) a.t=new Date(FC.times[j]).toISOString().slice(0,16); } return a; }
+  function timeOfBar(FC,i){ if(FC.times){ var t=FC.times[i]; return FC.intr?Math.floor(t/1000):dstr(t); } var d=barDate(FC,i); return d||dstr(Date.UTC(2000,0,1)+i*DAY); }
+  function fmtBar(FC,i){ var j=Math.round(i); if(FC.times&&j>=0&&j<FC.n){ var ms=FC.times[j]; if(FC.intr){ var p=FC.kind==='cr'?null:nyParts(ms); var dd=new Date(ms); return (FC.kind==='cr'?dd.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'})+' '+('0'+dd.getUTCHours()).slice(-2)+':'+('0'+dd.getUTCMinutes()).slice(-2):new Date(dnum(p.year+'-'+p.month+'-'+p.day)).toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'})+' '+p.hour+':'+p.minute); }
+      return new Date(ms).toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}); }
+    var d=barDate(FC,i); if(!d) return ''; return new Date(dnum(d)).toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}); }
+  var TFL={m:'M', w:'W', d:'D', h4:'4H', h:'1H'};
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function fmt(p){ return p>=1000?p.toFixed(0):p>=100?p.toFixed(1):p>=1?p.toFixed(2):p.toFixed(4); }
 
   /* ---------- the store ---------- */
-  var S={doc:null, local:null, loaded:false, busy:false, timer:0, dirty:{}, conf:0, last:null, F:null};
+  var S={doc:null, local:null, loaded:false, busy:false, timer:0, dirty:{}, conf:0, last:null, F:null, clockBy:{}};
   function tok(){ try{ var A=window.AIBO_ACCOUNT; return (A&&A.token&&A.token())||null; }catch(_){ return null; } }
   function localDoc(){ if(!S.local){ try{ S.local=JSON.parse(localStorage.getItem(LSK)||'null'); }catch(_){ S.local=null; } if(!S.local||typeof S.local!=='object'||!S.local.syms) S.local={syms:{}}; } return S.local; }
   function doc(){ return (tok()&&S.doc)?S.doc:localDoc(); }
@@ -15544,8 +15593,8 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   window.addEventListener('aiborole',function(){ var t=tok()||null; if(t===S.tokSeen) return; S.tokSeen=t; S.loaded=false; S.doc=null; S.dirty={}; if(t) load(true); else repaint(); });   /* only a CHANGED session resets the copy (the role is announced more than once) */
 
   /* ---------- geometry in bar-index space (x = index into the frame's bars; n-1 = the newest bar = `asof`) ---------- */
-  function edgesIdx(d,n,asof,kind,tf){
-    var X=d.pts.map(function(p){ return idxFor(tf||'d',p.d,n,asof,kind); }), P=d.pts.map(function(p){ return +p.p; }); if(X.some(function(x){ return x==null; })) return [];
+  function edgesIdx(d,FC){
+    var X=d.pts.map(function(p){ return anchorIdx(FC,p); }), P=d.pts.map(function(p){ return +p.p; }); if(X.some(function(x){ return x==null||!isFinite(x); })) return [];
     if(d.type==='level') return [{at:function(){ return P[0]; }, n:'level'}];
     if(d.type==='vline') return [{at:function(){ return null; }, n:'vertical', vx:X[0]}];   /* 11-04 (the owner): a vertical line at a bar — nothing for price to cross */
     if(d.type==='box'){ var lo=Math.min(X[0],X[1]), hi=Math.max(X[0],X[1]), top=Math.max(P[0],P[1]), bot=Math.min(P[0],P[1]), sp=function(x){ return x>=lo-1e-9&&x<=hi+1e-9; };
@@ -15557,15 +15606,15 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     var off=P[2]-base(X[2]), lo3=Math.min(X[0],X[1]), hi3=Math.max(X[0],X[1]), sp3=function(x){ return x>=lo3-1e-9&&x<=hi3+1e-9; };
     return [{at:function(x){ return sp3(x)?base(x):null; }, n:'channel'},{at:function(x){ return sp3(x)?base(x)+off:null; }, n:'channel far side'},{at:function(x){ return sp3(x)?base(x)+off/2:null; }, n:'channel midline', mid:true}];
   }
-  function breakState(d,bars,asof,kind,tf){ var n=bars.length; if(n<2) return null; var c1=bars[n-1].c, c0=bars[n-2].c, out=null;
+  function breakState(d,bars,FC){ var n=bars.length; if(n<2) return null; var c1=bars[n-1].c, c0=bars[n-2].c, out=null;
     if(d.type==='vline') return null;
-    edgesIdx(d,n,asof,kind,tf).forEach(function(e){ var v1=e.at(n-1), v0=e.at(n-2); if(v1==null) return;
+    edgesIdx(d,FC).forEach(function(e){ var v1=e.at(n-1), v0=e.at(n-2); if(v1==null) return;
       if(v0!=null){ var s1=Math.sign(c1-v1), s0=Math.sign(c0-v0); if(s1!==s0&&s1!==0&&!(out&&out.v)) out={v:s1, t:s1>0?'BROKE ▲':'BROKE ▼'}; }
       if(!out&&Math.abs(c1-v1)/v1<.005) out={v:0, t:'at a line'}; });
     return out; }
   function read(bars,tail,cur,asof,tf){ if(!cur||!cur.key) return null; var items=list(cur.key); if(!items.length) return {v:0, t:'tap to draw'}; tf=tf||'d';
-    if(!asof||!bars||bars.length<2||(tf!=='d'&&tf!=='w'&&tf!=='m')) return {v:0, t:items.length+(items.length===1?' line':' lines')};
-    var st=null; for(var i=0;i<items.length;i++){ var s=breakState(items[i],bars,asof,kindOf(cur),tf); if(s&&(!st||(s.v&&!st.v))) st=s; }
+    var FC=bars&&bars.length>=2?fc(tf,bars.length,asof,kindOf(cur),S.clockBy[cur.key]||null):null; if(!FC||(!FC.times&&(FC.intr||!asof))) return {v:0, t:items.length+(items.length===1?' line':' lines')};
+    var st=null; for(var i=0;i<items.length;i++){ var s=breakState(items[i],bars,FC); if(s&&(!st||(s.v&&!st.v))) st=s; }
     return st&&st.v?st:{v:0, t:items.length+(items.length===1?' line':' lines')+(st?' · at one':'')}; }
 
   /* ---------- the row's renderer ---------- */
@@ -15575,29 +15624,29 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     var nul=bars.map(function(){ return null; }), line=!!(o&&o.line);
     var svg=window.tfCandleSVG(bars,w,h,tail,{ema:nul, line:line}); if(!svg) return '';
     var over=''; try{ over=overlay(bars,w,h,tail,o,line); }catch(_){ over=''; }
-    if(o&&o.el) o.el.setAttribute('data-gls',(o.tf==='d'||o.tf==='w'||o.tf==='m')?o.tf:'x');
-    if(o&&o.sym) S.last={sym:o.sym, kind:o.kind, fam:o.fam, asof:o.asof};
+    if(o&&o.sym){ S.last={sym:o.sym, kind:o.kind, fam:o.fam, asof:o.asof}; S.clockBy[o.sym]=o.clock||null; }
+    if(o&&o.el){ var FCe=fc(o.tf,bars.length,o.asof,kindOf(o),o.clock); o.el.setAttribute('data-gls',(FCe.times||(!FCe.intr&&o.asof))?o.tf:'x'); }
     var glyph='<g class="gls-x" transform="translate('+(w-17)+',4)"><rect width="13" height="13" rx="3"/><path d="M7.5 2.5h3v3M5.5 10.5h-3v-3M10.5 2.5 7 6M2.5 10.5 6 7"/></g>';
     return svg.replace(/<\/svg>\s*$/,over+glyph+'</svg>');
   };
   function overlay(bars,w,h,tailN,o,line){
-    if(!o||!o.asof||!o.sym||(o.tf!=='d'&&o.tf!=='w'&&o.tf!=='m')) return '';   /* H / 4H carry no day clock the anchors can use */
-    var items=list(o.sym); if(!items.length) return '';
+    if(!o||!o.sym) return ''; var items=list(o.sym); if(!items.length) return '';
+    var FC=fc(o.tf,bars.length,o.asof,kindOf(o),o.clock); if(!FC.times&&(FC.intr||!o.asof)) return '';   /* an hourly / 4H column needs the clock; D / W / M fall back to the calendar */
     /* tfCandleSVG's geometry, repeated exactly (no average → lo/hi from the bars alone) */
     var n=bars.length, tail=tailN?Math.min(n,tailN):Math.max(20,Math.min(n,Math.floor(w/4.5))), Bt=bars.slice(-tail), ohlc=0, i;
     for(i=0;i<Bt.length;i++){ if(Bt[i].o!=null&&Bt[i].h!=null&&Bt[i].l!=null) ohlc++; }
     var candle=!line&&ohlc>=Bt.length*0.8, lo=Infinity, hi=-Infinity;
     for(i=0;i<Bt.length;i++){ var b=Bt[i], bl=candle&&b.l!=null?b.l:b.c, bh=candle&&b.h!=null?b.h:b.c; if(bl<lo) lo=bl; if(bh>hi) hi=bh; }
-    var rg=hi-lo||1, p=1, slot=(w-2*p)/Bt.length, off=n-tail, kind=kindOf(o);
+    var rg=hi-lo||1, p=1, slot=(w-2*p)/Bt.length, off=n-tail;
     function Y(v){ return (h-p)-(v-lo)*(h-2*p)/rg; }
     function X(idx){ return p+(idx-off)*slot+slot/2; }
     var out='', xmax=w+slot, steps=Math.max(8,Math.ceil(w/3)), i0=off-1, i1=off+(xmax-p)/slot;
-    items.forEach(function(d){ var es=edgesIdx(d,n,o.asof,kind,o.tf); if(!es.length) return;
-      if(d.type==='box'){ var X0=idxFor(o.tf,d.pts[0].d,n,o.asof,kind), X1=idxFor(o.tf,d.pts[1].d,n,o.asof,kind);
+    items.forEach(function(d){ var es=edgesIdx(d,FC); if(!es.length&&d.type!=='vline') return;
+      if(d.type==='box'){ var X0=anchorIdx(FC,d.pts[0]), X1=anchorIdx(FC,d.pts[1]); if(X0==null||X1==null) return;
         var x1=X(Math.min(X0,X1)), x2=X(Math.max(X0,X1)), y1=Y(Math.max(d.pts[0].p,d.pts[1].p)), y2=Y(Math.min(d.pts[0].p,d.pts[1].p));
         out+='<rect class="gls-f" x="'+x1.toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+Math.max(0,x2-x1).toFixed(1)+'" height="'+Math.max(0,y2-y1).toFixed(1)+'"/><rect class="gls-e" x="'+x1.toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+Math.max(0,x2-x1).toFixed(1)+'" height="'+Math.max(0,y2-y1).toFixed(1)+'"/>'; return; }
-      if(d.type==='vline'){ var vxi=o.tf==='d'?(n-1)+barsBetween(o.asof,d.pts[0].d,kind):idxFor(o.tf,d.pts[0].d,n,o.asof,kind); if(vxi!=null){ var vxx=X(vxi); out+='<line class="gls-e" x1="'+vxx.toFixed(1)+'" x2="'+vxx.toFixed(1)+'" y1="0" y2="'+h+'"/>'; } return; }
-      if(d.type==='fib'&&es.length===5){ var fx0=X(Math.min((n-1)+barsBetween(o.asof,d.pts[0].d,kind),(n-1)+barsBetween(o.asof,d.pts[1].d,kind))); if(o.tf!=='d'){ fx0=X(Math.min(idxFor(o.tf,d.pts[0].d,n,o.asof,kind),idxFor(o.tf,d.pts[1].d,n,o.asof,kind))); }
+      if(d.type==='vline'){ var vxi=anchorIdx(FC,d.pts[0]); if(vxi!=null&&isFinite(vxi)){ var vxx=X(vxi); out+='<line class="gls-e" x1="'+vxx.toFixed(1)+'" x2="'+vxx.toFixed(1)+'" y1="0" y2="'+h+'"/>'; } return; }
+      if(d.type==='fib'&&es.length===5){ var fx0=X(Math.min(anchorIdx(FC,d.pts[0]),anchorIdx(FC,d.pts[1])));
         es.forEach(function(e){ var y=Y(e.lvl); out+='<line class="'+(e.mid?'gls-m':'gls-e')+'" x1="'+Math.max(0,fx0).toFixed(1)+'" x2="'+w+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'"/>'; }); return; }
       if(d.type==='channel'&&es.length===3){ var a=[], c=[]; for(var s=0;s<=steps;s++){ var xi=i0+(i1-i0)*s/steps, va=es[0].at(xi), vc=es[1].at(xi); if(va==null||vc==null) continue; a.push(X(xi).toFixed(1)+','+Y(va).toFixed(1)); c.unshift(X(xi).toFixed(1)+','+Y(vc).toFixed(1)); }
         if(a.length>1) out+='<polygon class="gls-f" points="'+a.concat(c).join(' ')+'"/>'; }
@@ -15641,24 +15690,27 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     bindOverlay(r.querySelector('[data-gllc]')); bindAxis(r.querySelector('[data-gllaxis]'));
     S.root=r; return r;
   }
-  function open(){
+  function open(tf){
     var r=root(); if(!r) return false; var fr=null; try{ fr=window.GLTech&&GLTech.frames&&GLTech.frames(); }catch(_){ fr=null; }
-    if(!fr||!fr.cur||!fr.P||!fr.P.d||fr.P.d.length<6) return false;
+    tf=(tf&&fr&&fr.P&&fr.P[tf]&&fr.P[tf].length>=6)?tf:'d';
+    if(!fr||!fr.cur||!fr.P||!fr.P[tf]||fr.P[tf].length<6) return false;
     if(!window.LightweightCharts){ toast('The chart engine did not load'); return false; }
-    var bars=fr.P.d, cur=fr.cur, asof=fr.asof;
+    var bars=fr.P[tf], cur=fr.cur, asof=fr.asof, FC=fc(tf,bars.length,asof,kindOf(cur),fr.P.clock||null);
     if(S.F&&S.F.chart){ try{ S.F.chart.remove(); }catch(_){} }
-    S.F={open:true, sym:cur.key, kind:kindOf(cur), asof:asof, B:bars, N:bars.length, tool:'pan', placing:null, sel:-1, drag:null, ret:null, hover:null, ptrs:{}, moved:false, W:0, H:0, DPR:1, chart:null, series:null, raf:0, sig:'', yr:null, cur:null, press:null};
-    r.querySelector('[data-gllsym]').textContent=(cur.kind==='cr'?'$':'')+cur.key;
+    S.F={open:true, tf:tf, FC:FC, sym:cur.key, kind:kindOf(cur), asof:asof, B:bars, N:bars.length, tool:'pan', placing:null, sel:-1, drag:null, ret:null, hover:null, ptrs:{}, moved:false, W:0, H:0, DPR:1, chart:null, series:null, raf:0, sig:'', yr:null, cur:null, press:null};
+    r.querySelector('[data-gllsym]').textContent=(cur.kind==='cr'?'$':'')+cur.key; r.querySelector('.gll-ttl span').textContent=' · Line structure · '+(TFL[tf]||tf.toUpperCase());
     S.prevFocus=document.activeElement; r.hidden=false; B.classList.add('gl-lines');
-    load(false); mountChart(); resize(); setTool('pan'); if(!asof) toast('This name has no dated daily bar yet — drawings will not be saved');
+    load(false); mountChart(); resize(); setTool('pan');
+    if(!FC.times&&(FC.intr||!asof)) toast(FC.intr?'This hourly frame has no clock yet — the next data pass brings it; drawings wait':'This name has no dated daily bar yet — drawings will not be saved');
     return true;
   }
   function close(){ var r=S.root; if(!r||r.hidden) return; r.hidden=true; B.classList.remove('gl-lines'); if(S.F){ S.F.open=false; cancelAnimationFrame(S.F.raf); if(S.F.chart){ try{ S.F.chart.remove(); }catch(_){} S.F.chart=null; S.F.series=null; } } repaint();
     var pf=S.prevFocus; S.prevFocus=null; if(pf&&pf.focus&&B.contains(pf)){ try{ pf.focus({preventScroll:true}); }catch(_){} } }
   function cv(){ return S.root&&S.root.querySelector('[data-gllc]'); }
   /* index <-> day (the frame's newest bar = asof); a name with no asof gets a synthetic clock so the library still has unique, ascending times */
-  function dayOf(i){ var F=S.F; if(!F.asof) return null; return dayPlus(F.asof, Math.round(i)-(F.N-1), F.kind); }
-  function timeOf(i){ return dayOf(i)||dstr(Date.UTC(2000,0,1)+i*DAY); }
+  function dayOf(i){ var F=S.F; return barDate(F.FC,i); }
+  function timeOf(i){ return timeOfBar(S.F.FC,i); }
+  function canPlace(){ var F=S.F; return !!(F.FC.times||(!F.FC.intr&&F.asof)); }
   function mountChart(){
     var F=S.F, LW=window.LightweightCharts, host=S.root.querySelector('[data-gllhost]'), C=col(); host.innerHTML='';
     var ohlc=0; for(var i=0;i<F.N;i++){ var b=F.B[i]; if(b.o!=null&&b.h!=null&&b.l!=null) ohlc++; }
@@ -15666,9 +15718,10 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     var chart=LW.createChart(host,{autoSize:true,
       layout:{background:{type:'solid', color:C.bg}, textColor:C.muted, fontFamily:'ui-monospace,Menlo,Consolas,monospace', fontSize:11, attributionLogo:true},
       grid:{vertLines:{color:'rgba(128,128,128,.10)'}, horzLines:{color:'rgba(128,128,128,.14)'}},
-      rightPriceScale:{borderVisible:false, scaleMargins:{top:.08, bottom:.08}}, timeScale:{borderVisible:false, rightOffset:6, barSpacing:7, minBarSpacing:1.5, fixLeftEdge:false, fixRightEdge:false},
+      rightPriceScale:{borderVisible:false, scaleMargins:{top:.08, bottom:.08}}, timeScale:{borderVisible:false, rightOffset:6, barSpacing:7, minBarSpacing:1.5, fixLeftEdge:false, fixRightEdge:false, timeVisible:!!F.FC.intr, secondsVisible:false,
+        tickMarkFormatter:function(t){ return tickLabel(t); }}, localization:{priceFormatter:fmt, timeFormatter:function(t){ return tickLabel(t,true); }},
       crosshair:{mode:LW.CrosshairMode.Normal}, handleScroll:{mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:false},
-      handleScale:{axisPressedMouseMove:true, mouseWheel:true, pinch:true}, kineticScroll:{touch:true, mouse:false}, localization:{priceFormatter:fmt}});
+      handleScale:{axisPressedMouseMove:true, mouseWheel:true, pinch:true}, kineticScroll:{touch:true, mouse:false}});
     /* 11-04 (the owner: "grab the right side bar where the numbers are… pull my thumb down and scrunch everything up vertically, push up and expand"): the
        library's own axis drag is mouse-made, so the strip over the price scale (bindAxis) sets F.yr and this provider hands the library that range */
     var asp=function(orig){ var o=orig(); if(F.yr){ return {priceRange:{minValue:F.yr.lo, maxValue:F.yr.hi}, margins:{above:0, below:0}}; } return o; };
@@ -15681,6 +15734,9 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     fit();
     cancelAnimationFrame(F.raf); (function tick(){ if(!F.open) return; var s=sig(); if(s!==F.sig){ F.sig=s; draw(); } F.raf=requestAnimationFrame(tick); })();   /* the price-axis stretch has no event: a cheap signature watch */
   }
+  function tickLabel(t,full){ var F=S.F, ms=typeof t==='number'?t*1000:(t&&typeof t==='object'&&t.year)?Date.UTC(t.year,t.month-1,t.day):dnum(t); if(!isFinite(ms)) return '';
+    if(F.FC.intr){ var p=F.kind==='cr'?null:nyParts(ms), d=new Date(ms), hh=p?p.hour:('0'+d.getUTCHours()).slice(-2), mm=p?p.minute:('0'+d.getUTCMinutes()).slice(-2), day=p?new Date(dnum(p.year+'-'+p.month+'-'+p.day)):d, dl=day.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}); return full?dl+' '+hh+':'+mm:((hh==='09'&&mm==='30')||(F.kind==='cr'&&hh==='00'&&mm==='00')?dl:hh+':'+mm); }
+    return new Date(ms).toLocaleDateString('en-US',full?{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'}:{month:'short',day:'numeric',timeZone:'UTC'}); }
   function sig(){ var F=S.F; if(!F.chart) return ''; try{ var r=F.chart.timeScale().getVisibleLogicalRange(), c=F.B[F.N-1].c; return (r?r.from.toFixed(3)+'|'+r.to.toFixed(3):'')+'|'+F.series.priceToCoordinate(c)+'|'+F.series.priceToCoordinate(c*1.02)+'|'+F.W+'x'+F.H; }catch(_){ return ''; } }
   function resize(){ var c=cv(), F=S.F; if(!c||!F) return; var r=c.parentElement.getBoundingClientRect(); F.DPR=Math.min(3,window.devicePixelRatio||1); F.W=r.width; F.H=r.height; c.width=Math.round(F.W*F.DPR); c.height=Math.round(F.H*F.DPR);
     var ax=S.root.querySelector('[data-gllaxis]'); if(ax&&F.chart){ var pb=paneBox(); ax.style.width=Math.max(30,F.W-pb.w)+'px'; ax.style.bottom=Math.max(0,F.H-pb.h)+'px'; } draw(); }
@@ -15701,9 +15757,9 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   function Pr(y){ var F=S.F; if(!F.series) return NaN; var p=F.series.coordinateToPrice(y); return p==null?NaN:p; }
   function range(){ var F=S.F; try{ var r=F.chart.timeScale().getVisibleLogicalRange(); if(r) return r; }catch(_){} return {from:0, to:F.N}; }
   function fit(){ var F=S.F; if(!F||!F.chart) return; F.yr=null; try{ F.chart.timeScale().setVisibleLogicalRange({from:Math.max(0,F.N-90)-.5, to:F.N+6}); }catch(_){} reautoscale(); draw(); }
-  function fmtDay(i){ var d=dayOf(i); if(!d) return ''; var t=new Date(dnum(d)); return t.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}); }
-  function idxEdges(d){ var F=S.F; return edgesIdx(d,F.N,F.asof,F.kind); }
-  function ptIdx(pt){ var F=S.F; return (F.N-1)+barsBetween(F.asof,pt.d,F.kind); }
+  function fmtDay(i){ return fmtBar(S.F.FC,i); }
+  function idxEdges(d){ return edgesIdx(d,S.F.FC); }
+  function ptIdx(pt){ var v=anchorIdx(S.F.FC,pt); return v==null?NaN:v; }
 
   function draw(){
     var c=cv(), F=S.F; if(!c||!F||!F.open||!F.W||!F.chart) return; var ctx=c.getContext('2d'); ctx.setTransform(F.DPR,0,0,F.DPR,0,0); var C=col(), pb=paneBox();
@@ -15727,13 +15783,13 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     else if(d.type==='channel'&&es.length===3){ var i0=ptIdx(d.pts[0]), i1=ptIdx(d.pts[1]), lo=Math.min(i0,i1), hi=Math.max(i0,i1), pa=es[0].at(lo), pb=es[0].at(hi), qa=es[1].at(lo), qb=es[1].at(hi);
       if(pa!=null&&pb!=null&&qa!=null&&qb!=null&&[X(lo),X(hi),Y(pa),Y(pb),Y(qa),Y(qb)].every(isFinite)){ ctx.globalAlpha=.08; ctx.fillStyle=C.acc; ctx.beginPath(); ctx.moveTo(X(lo),Y(pa)); ctx.lineTo(X(hi),Y(pb)); ctx.lineTo(X(hi),Y(qb)); ctx.lineTo(X(lo),Y(qa)); ctx.closePath(); ctx.fill(); ctx.globalAlpha=1; }
       es.forEach(function(e){ strokeEdge(ctx,e.at,colr,e.mid?1:wdt,e.mid?[3,4]:dash); }); }
-    else if(d.type==='vline'){ var vx=X(ptIdx(d.pts[0])), pbh=paneBox().h; if(isFinite(vx)){ ctx.strokeStyle=colr; ctx.lineWidth=wdt; ctx.setLineDash(dash||[]); ctx.beginPath(); ctx.moveTo(vx,0); ctx.lineTo(vx,pbh); ctx.stroke(); ctx.setLineDash([]); if(!pv) label(ctx,C,fmtDay(ptIdx(d.pts[0])),Math.min(paneBox().w-60,vx+6),12,colr); } }
+    else if(d.type==='vline'){ var vx=X(ptIdx(d.pts[0])), pbh=paneBox().h; if(isFinite(vx)){ ctx.strokeStyle=colr; ctx.lineWidth=wdt; ctx.setLineDash(dash||[]); ctx.beginPath(); ctx.moveTo(vx,0); ctx.lineTo(vx,pbh); ctx.stroke(); ctx.setLineDash([]); if(!pv) label(ctx,C,fmtDay(ptIdx(d.pts[0])),Math.min(paneBox().w-96,vx+6),12,colr); } }
     else if(d.type==='fib'&&d.pts.length===2){ var pbw=paneBox().w, x0=X(Math.min(ptIdx(d.pts[0]),ptIdx(d.pts[1]))); if(isFinite(x0)){ es.forEach(function(e){ var y=Y(e.lvl); if(!isFinite(y)) return; ctx.strokeStyle=colr; ctx.lineWidth=e.mid?1:wdt; ctx.setLineDash(dash||(e.mid?[3,4]:[])); ctx.beginPath(); ctx.moveTo(Math.max(0,x0),y); ctx.lineTo(pbw,y); ctx.stroke(); ctx.setLineDash([]); if(!pv) label(ctx,C,(e.r===0?'0':e.r===1?'1':String(e.r).replace(/^0/,''))+' · '+fmt(e.lvl),pbw-92,y-9,colr); }); } }
     else es.forEach(function(e){ strokeEdge(ctx,e.at,colr,wdt,dash); });
     if(selected||pv) d.pts.forEach(function(pt){ var x=X(ptIdx(pt)), y=Y(pt.p); if(!isFinite(x)||!isFinite(y)) return; ctx.beginPath(); ctx.arc(x,y,selected?5:3,0,Math.PI*2);   /* 11-04 (the owner): the handles only on the selected drawing; otherwise just the lines */ ctx.fillStyle=selected?C.acci:C.bg; ctx.fill(); ctx.strokeStyle=colr; ctx.lineWidth=1.5; ctx.stroke(); });
     var pb=paneBox();
     if(d.type==='level'&&isFinite(Y(d.pts[0].p))) label(ctx,C,fmt(d.pts[0].p),pb.w-60,Y(d.pts[0].p),colr);
-    if(!pv){ var st=breakState(d,F.B,F.asof,F.kind), e0=es[0], v=e0&&e0.at(F.N-1); if(st&&st.v&&v!=null&&isFinite(X(F.N-1))&&isFinite(Y(v))) label(ctx,C,st.t,Math.min(pb.w-70,X(F.N-1)+6),Y(v)-12,st.v>0?C.up:C.dn);
+    if(!pv){ var st=breakState(d,F.B,F.FC), e0=es[0], v=e0&&e0.at(F.N-1); if(st&&st.v&&v!=null&&isFinite(X(F.N-1))&&isFinite(Y(v))) label(ctx,C,st.t,Math.min(pb.w-70,X(F.N-1)+6),Y(v)-12,st.v>0?C.up:C.dn);
       if(d.alert){ var q=d.pts[0]; if(isFinite(X(ptIdx(q)))&&isFinite(Y(q.p))) label(ctx,C,'🔔',X(ptIdx(q))-22,Y(q.p)-12,C.warn); } }
   }
   function label(ctx,C,txt,x,y,colr){ ctx.font='700 10px ui-monospace,Menlo,Consolas,monospace'; ctx.textAlign='left'; ctx.textBaseline='middle'; var w=ctx.measureText(txt).width+8; ctx.globalAlpha=.85; ctx.fillStyle=C.bg; ctx.fillRect(x-4,y-8,w,16); ctx.globalAlpha=1; ctx.fillStyle=colr; ctx.fillText(txt,x,y); }
@@ -15753,9 +15809,9 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
        coin's close line offers the close; farther away the point goes free-form */
     if(i>=0&&i<F.N&&Math.abs(X(i)-x)<Math.max(10,(t?t.bs:7)/2+6)){ var r=F.B[i], cands=(r.o!=null&&r.h!=null&&r.l!=null)?[['wick top',r.h],['wick bottom',r.l],['body top',Math.max(r.o,r.c)],['body bottom',Math.min(r.o,r.c)]]:[['close',r.c]];
       cands.forEach(function(e){ var dy=Math.abs(Y(e[1])-y); if(dy<12&&(!best||dy<best.dy)) best={n:e[0], p:e[1], dy:dy}; }); }
-    var day=dayOf(i), xi=X(i), p=Pr(y);
-    if(best) return {x:isFinite(xi)?xi:x, y:Y(best.p), i:i, pt:{d:day, p:best.p}, snap:best.n};
-    return {x:isFinite(xi)?xi:x, y:y, i:i, pt:{d:day, p:isFinite(p)?p:F.B[F.N-1].c}, snap:null}; }   /* a free point still lands on a whole bar — anchors are days */
+    var xi=X(i), p=Pr(y);
+    if(best) return {x:isFinite(xi)?xi:x, y:Y(best.p), i:i, pt:barAnchor(F.FC,i,best.p), snap:best.n};
+    return {x:isFinite(xi)?xi:x, y:y, i:i, pt:barAnchor(F.FC,i,isFinite(p)?p:F.B[F.N-1].c), snap:null}; }   /* a free point still lands on a whole bar — anchors are days */
   function makeRet(fx,fy){ var F=S.F, dx=-60, dy=-80; if(fx+dx<24) dx=60; if(fy+dy<24) dy=80; if(fx+dx>F.W-24) dx=-60; var s=snapPoint(fx+dx,fy+dy); return Object.assign({fx:fx, fy:fy, dx:dx, dy:dy, grab:null},s); }
   function moveRet(r,fx,fy){ r.fx=fx; r.fy=fy; Object.assign(r,snapPoint(fx+r.dx,fy+r.dy)); }
   function hitTest(x,y){ var F=S.F, items=list(F.sym), k, j;
@@ -15767,7 +15823,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
       if(dd.type==='vline'){ if(Math.abs(X(ptIdx(dd.pts[0]))-x)<12) return {k:k, pt:null}; continue; }
       var es=idxEdges(dd); for(j=0;j<es.length;j++){ var v=es[j].at(i); if(v!=null&&Math.abs(Y(v)-y)<12) return {k:k, pt:null}; } }
     return null; }
-  function shift(d,di,dp){ return Object.assign({},d,{pts:d.pts.map(function(pt){ return {d:dayOf(ptIdx(pt)+di), p:pt.p+dp}; })}); }
+  function shift(d,di,dp){ var F=S.F; return Object.assign({},d,{pts:d.pts.map(function(pt){ return barAnchor(F.FC,ptIdx(pt)+di,pt.p+dp)||pt; })}); }
   function commit(items){ var F=S.F; setList(F.sym,items); }
   /* Pan mode = the library's; a tap on a drawing selects it (edit mode); a tool captures the overlay */
   function capture(){ var F=S.F, c=cv(); if(!c||!F) return; var on=F.tool!=='pan'||F.sel>=0; c.style.pointerEvents=on?'auto':'none'; c.classList.toggle('on',on); }
@@ -15787,7 +15843,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
         if(h){ F.sel=h.k; showSel(); draw(); return; }      /* another drawing: select it instead */
         F.sel=-1; showSel(); capture(); draw(); return;      /* empty space: back to the library's pan */
       }
-      if(!F.asof){ toast('No dated daily bar for this name yet — nothing to anchor a line to'); return; }
+      if(!canPlace()){ toast(F.FC.intr?'No clock on this hourly frame yet — draw on the daily for now':'No dated daily bar for this name yet — nothing to anchor a line to'); return; }
       /* 11-04 (the owner: "hit the line button and immediately an XY bull's-eye… wherever I touch… moves one to one… tap the screen anywhere again to
          lock that part of the line in… the bull's-eye jumps to the next element"): the press itself moves nothing — a drag carries the cursor by
          the thumb's own delta, a tap (no movement) locks the point */
@@ -15809,7 +15865,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   }
   function moveCursor(x,y){ var F=S.F, pb=paneBox(); F.cur={x:Math.max(0,Math.min(pb.w,x)), y:Math.max(0,Math.min(pb.h,y))}; F.ret=snapPoint(F.cur.x,F.cur.y); draw(); }
   function showCursor(){ var F=S.F, pb=paneBox(); if(!F.cur) F.cur={x:pb.w*.5, y:pb.h*.45}; moveCursor(F.cur.x,F.cur.y); }
-  function place(pt){ var F=S.F; if(!F.placing||!pt||!pt.d) return; F.placing.pts.push(pt); var need=TYPES[F.placing.type];
+  function place(pt){ var F=S.F; if(!F.placing||!pt||!pt.d) return; if(!canPlace()) return; F.placing.pts.push(pt); var need=TYPES[F.placing.type];
     if(F.placing.pts.length>=need){ var items=list(F.sym).slice(), d={id:'d'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36), type:F.placing.type, kind:F.kind, pts:F.placing.pts, alert:false, createdAt:new Date().toISOString().slice(0,19)+'Z'};
       items.push(d); commit(items); toast(NAMES[d.type]+' placed'); setTool('pan'); F.sel=items.length-1; showSel(); capture(); draw(); }
     else toast(F.placing.type==='channel'&&F.placing.pts.length===2?'Now the channel width — drag the bull’s-eye, tap to lock':'Now the second point — drag the bull’s-eye, tap to lock'); }
@@ -15825,9 +15881,9 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   var toastT=0; function toast(s){ var r=S.root; if(!r) return; var t=r.querySelector('[data-glltoast]'); t.textContent=s; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(function(){ t.classList.remove('on'); },2200); }
 
   /* a tap on the row's plot (any column) opens the view */
-  document.addEventListener('click',function(e){ var t=e.target; if(!t||!t.closest) return; var el=t.closest('.glt-plot[data-ind="lines"]'); if(!el||!H.getAttribute('data-gl')) return; e.preventDefault(); e.stopPropagation(); open(); },true);
+  document.addEventListener('click',function(e){ var t=e.target; if(!t||!t.closest) return; var el=t.closest('.glt-plot[data-ind="lines"]'); if(!el||!H.getAttribute('data-gl')) return; e.preventDefault(); e.stopPropagation(); open(el.getAttribute('data-tf')||'d'); },true);
   if(H.getAttribute('data-gl')&&tok()) setTimeout(function(){ load(false); },1500);
-  window.GLLines={list:list, set:setList, open:open, close:close, read:read, reload:function(){ load(true); }, barsBetween:barsBetween, dayPlus:dayPlus, idxFor:idxFor, range:function(){ return S.F&&S.F.open?range():null; }, engine:function(){ return !!(S.F&&S.F.chart); }, chart:function(){ return S.F&&S.F.open?S.F.chart:null; }, y:function(p){ return S.F&&S.F.open?Y(p):NaN; }, cursor:function(){ return S.F&&S.F.cur?{x:S.F.cur.x, y:S.F.cur.y}:null; }, yr:function(){ return S.F?S.F.yr:null; }};
+  window.GLLines={list:list, set:setList, open:open, close:close, read:read, reload:function(){ load(true); }, barsBetween:barsBetween, dayPlus:dayPlus, idxFor:idxFor, fc:fc, anchorIdx:anchorIdx, tf:function(){ return S.F&&S.F.open?S.F.tf:null; }, range:function(){ return S.F&&S.F.open?range():null; }, engine:function(){ return !!(S.F&&S.F.chart); }, chart:function(){ return S.F&&S.F.open?S.F.chart:null; }, y:function(p){ return S.F&&S.F.open?Y(p):NaN; }, cursor:function(){ return S.F&&S.F.cur?{x:S.F.cur.x, y:S.F.cur.y}:null; }, yr:function(){ return S.F?S.F.yr:null; }};
 })();
 
 </script>
