@@ -15469,7 +15469,11 @@ html[data-gl] #glLines[hidden]{display:none;}
 html[data-gl] body.gl-lines{overflow:hidden;}
 html[data-gl] .gll-top{display:flex;align-items:center;gap:8px;padding:calc(6px + var(--gl-safe-t,0px)) 8px 4px;flex:0 0 auto;min-height:40px;}
 html[data-gl] .gll-top .gll-ttl{flex:1;text-align:center;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-gl] .gll-top .gll-ttl{display:flex;align-items:center;justify-content:center;gap:8px;}
 html[data-gl] .gll-top .gll-ttl span{color:var(--muted);font-weight:500;}
+html[data-gl] .gll-tfs{flex:0 0 auto;font-size:11.5px;}   /* 11-05: the timeframe seg inside the view (1H · 4H · D · W · M) */
+html[data-gl] .gll-tfs button{padding:3px 8px;min-width:0;}
+html[data-gl] .gll-tfs button[disabled]{opacity:.35;}
 html[data-gl] .gll-top button{border:0;background:transparent;color:var(--gl-acci);font:inherit;font-size:14px;padding:6px 8px;border-radius:8px;cursor:pointer;}
 html[data-gl] .gll-top button:active{background:rgba(var(--gl-acc-rgb),.15);}
 html[data-gl] .gll-wrap{position:relative;flex:1 1 auto;min-height:0;}
@@ -15492,6 +15496,7 @@ html[data-gl] .gll-tools button{flex:1 1 0;border:1px solid transparent;backgrou
 html[data-gl] .gll-tools button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 html[data-gl] .gll-tools button.on{color:var(--gl-acci);background:rgba(var(--gl-acc-rgb),.12);border-color:rgba(var(--gl-acc-rgb),.35);}
 html[data-gl] .gll-tools button.danger{color:#f0685f;}
+html[data-gl] .gll-tools button[data-armed="1"]{color:var(--gl-ink,#fff);background:#f0685f;border-color:#f0685f;}   /* 11-05: Clear's double check — the armed button */
 html[data-gl] .gll-tools button[disabled]{opacity:.35;}
 @media (orientation:landscape) and (max-height:480px){
   html[data-gl] .gll-top{min-height:32px;padding-top:calc(2px + var(--gl-safe-t,0px));padding-bottom:2px;}
@@ -15587,7 +15592,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     var i=T[hi]<=ms?hi:lo;
     if(i>=n-1){ if(FC.intr){ var dl=sessionDate(T[n-1],FC.kind), dk2=pt.t?sessionDate(ms,FC.kind):pt.d; var sf=barsBetween(dl,dk2,FC.kind); if(sf>0) return (n-1)+sf*FC.bpd; return n-1+Math.min(.49,(ms-T[n-1])/Math.max(FC.gap,1)*.5); } return (n-1)+(ms-T[n-1])/FC.gap; }
     var span=T[i+1]-T[i]; return i+(span>0?(ms-T[i])/span:0); }
-  function barDate(FC,i){ i=Math.round(i); if(FC.times){ if(i>=0&&i<FC.n) return sessionDate(FC.times[i],FC.kind); if(FC.intr){ var edge=i<0?0:FC.n-1, ses=Math.round((i-edge)/FC.bpd); return dayPlus(sessionDate(FC.times[edge],FC.kind),ses,FC.kind); } var e2=i<0?0:FC.n-1; return dstr(FC.times[e2]+(i-e2)*FC.gap); }
+  function barDate(FC,i){ i=Math.round(i); if(FC.times){ if(i>=0&&i<FC.n) return FC.intr?sessionDate(FC.times[i],FC.kind):dstr(FC.times[i]);   /* 11-05 (the owner: the line "moves over to the side of the candle"): a daily bar's day is its own date */ if(FC.intr){ var edge=i<0?0:FC.n-1, ses=Math.round((i-edge)/FC.bpd); return dayPlus(sessionDate(FC.times[edge],FC.kind),ses,FC.kind); } var e2=i<0?0:FC.n-1; return dstr(FC.times[e2]+(i-e2)*FC.gap); }
     if(!FC.asof||FC.intr) return null; return dayPlus(FC.asof,i-(FC.n-1),FC.kind); }
   function barAnchor(FC,i,p){ var d=barDate(FC,i); if(!d) return null; var a={d:d, p:p}; if(FC.intr&&FC.times){ var j=Math.round(i); if(j>=0&&j<FC.n) a.t=new Date(FC.times[j]).toISOString().slice(0,16); } return a; }
   function timeOfBar(FC,i){ if(FC.times){ var t=FC.times[i]; return FC.intr?Math.floor(t/1000):dstr(t); } var d=barDate(FC,i); return d||dstr(Date.UTC(2000,0,1)+i*DAY); }
@@ -15599,7 +15604,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   function fmt(p){ return p>=1000?p.toFixed(0):p>=100?p.toFixed(1):p>=1?p.toFixed(2):p.toFixed(4); }
 
   /* ---------- the store ---------- */
-  var S={doc:null, local:null, loaded:false, busy:false, timer:0, dirty:{}, conf:0, last:null, F:null, clockBy:{}};
+  var S={doc:null, local:null, loaded:false, busy:false, timer:0, dirty:{}, conf:0, last:null, F:null, clockBy:{}, deep:{}, deepBusy:{}};
   function tok(){ try{ var A=window.AIBO_ACCOUNT; return (A&&A.token&&A.token())||null; }catch(_){ return null; } }
   function localDoc(){ if(!S.local){ try{ S.local=JSON.parse(localStorage.getItem(LSK)||'null'); }catch(_){ S.local=null; } if(!S.local||typeof S.local!=='object'||!S.local.syms) S.local={syms:{}}; } return S.local; }
   function doc(){ return (tok()&&S.doc)?S.doc:localDoc(); }
@@ -15632,13 +15637,13 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   window.addEventListener('aiborole',function(){ var t=tok()||null; if(t===S.tokSeen) return; S.tokSeen=t; S.loaded=false; S.doc=null; S.dirty={}; if(t) load(true); else repaint(); });   /* only a CHANGED session resets the copy (the role is announced more than once) */
 
   /* ---------- geometry in bar-index space (x = index into the frame's bars; n-1 = the newest bar = `asof`) ---------- */
-  function edgesIdx(d,FC){
+  function edgesIdx(d,FC,forAlert){
     var X=d.pts.map(function(p){ return anchorIdx(FC,p); }), P=d.pts.map(function(p){ return +p.p; }); if(X.some(function(x){ return x==null||!isFinite(x); })) return [];
     if(d.type==='level') return [{at:function(){ return P[0]; }, n:'level'}];
     if(d.type==='vline') return [{at:function(){ return null; }, n:'vertical', vx:X[0]}];   /* 11-04 (the owner): a vertical line at a bar — nothing for price to cross */
     if(d.type==='box'){ var lo=Math.min(X[0],X[1]), hi=Math.max(X[0],X[1]), top=Math.max(P[0],P[1]), bot=Math.min(P[0],P[1]), sp=function(x){ return x>=lo-1e-9&&x<=hi+1e-9; };
       return [{at:function(x){ return sp(x)?top:null; }, n:'box top'},{at:function(x){ return sp(x)?bot:null; }, n:'box bottom'}]; }
-    if(d.type==='fib'){ var lo0=Math.min(X[0],X[1]); return FIB.map(function(r){ var v=P[1]+(P[0]-P[1])*r; return {at:function(x){ return x>=lo0-1e-9?v:null; }, n:'fib '+r, r:r, lvl:v, mid:r!==0&&r!==1}; }); }
+    if(d.type==='fib'){ var lo0=Math.min(X[0],X[1]), hi0=Math.max(X[0],X[1]); return FIB.map(function(r){ var v=P[1]+(P[0]-P[1])*r; return {at:function(x){ return (x>=lo0-1e-9&&(forAlert||x<=hi0+1e-9))?v:null; }, n:'fib '+r, r:r, lvl:v, mid:r!==0&&r!==1}; }); }   /* 11-05 (the owner): the levels fill the space between the two points, never off to the right — but keep ARMING alerts beyond (a retracement reached later still fires) */
     var dx=X[1]-X[0]; if(!dx) return []; var sl=(P[1]-P[0])/dx, base=function(x){ return P[0]+sl*(x-X[0]); };
     if(d.type==='line'){ var lo2=Math.min(X[0],X[1]), hi2=Math.max(X[0],X[1]); return [{at:function(x){ return (x>=lo2-1e-9&&x<=hi2+1e-9)?base(x):null; }, n:'trend line'}]; }
     if(d.type==='ray') return [{at:function(x){ return (dx>0?x>=X[0]-1e-9:x<=X[0]+1e-9)?base(x):null; }, n:'ray'}];
@@ -15647,7 +15652,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   }
   function breakState(d,bars,FC){ var n=bars.length; if(n<2) return null; var c1=bars[n-1].c, c0=bars[n-2].c, out=null;
     if(d.type==='vline') return null;
-    edgesIdx(d,FC).forEach(function(e){ var v1=e.at(n-1), v0=e.at(n-2); if(v1==null) return;
+    edgesIdx(d,FC,true).forEach(function(e){ var v1=e.at(n-1), v0=e.at(n-2); if(v1==null) return;
       if(v0!=null){ var s1=Math.sign(c1-v1), s0=Math.sign(c0-v0); if(s1!==s0&&s1!==0&&!(out&&out.v)) out={v:s1, t:s1>0?'BROKE ▲':'BROKE ▼'}; }
       if(!out&&Math.abs(c1-v1)/v1<.005) out={v:0, t:'at a line'}; });
     return out; }
@@ -15685,8 +15690,8 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
         var x1=X(Math.min(X0,X1)), x2=X(Math.max(X0,X1)), y1=Y(Math.max(d.pts[0].p,d.pts[1].p)), y2=Y(Math.min(d.pts[0].p,d.pts[1].p));
         out+='<rect class="gls-f" x="'+x1.toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+Math.max(0,x2-x1).toFixed(1)+'" height="'+Math.max(0,y2-y1).toFixed(1)+'"/><rect class="gls-e" x="'+x1.toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+Math.max(0,x2-x1).toFixed(1)+'" height="'+Math.max(0,y2-y1).toFixed(1)+'"/>'; return; }
       if(d.type==='vline'){ var vxi=anchorIdx(FC,d.pts[0]); if(vxi!=null&&isFinite(vxi)){ var vxx=X(vxi); out+='<line class="gls-e" x1="'+vxx.toFixed(1)+'" x2="'+vxx.toFixed(1)+'" y1="0" y2="'+h+'"/>'; } return; }
-      if(d.type==='fib'&&es.length===5){ var fx0=X(Math.min(anchorIdx(FC,d.pts[0]),anchorIdx(FC,d.pts[1])));
-        es.forEach(function(e){ var y=Y(e.lvl); out+='<line class="'+(e.mid?'gls-m':'gls-e')+'" x1="'+Math.max(0,fx0).toFixed(1)+'" x2="'+w+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'"/>'; }); return; }
+      if(d.type==='fib'&&es.length===5){ var fa=anchorIdx(FC,d.pts[0]), fb=anchorIdx(FC,d.pts[1]), fx0=X(Math.min(fa,fb)), fx1=X(Math.max(fa,fb));
+        es.forEach(function(e){ var y=Y(e.lvl); out+='<line class="'+(e.mid?'gls-m':'gls-e')+'" x1="'+Math.max(0,fx0).toFixed(1)+'" x2="'+Math.min(w,fx1).toFixed(1)+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'"/>'; }); return; }
       if(d.type==='channel'&&es.length===3){ var a=[], c=[]; for(var s=0;s<=steps;s++){ var xi=i0+(i1-i0)*s/steps, va=es[0].at(xi), vc=es[1].at(xi); if(va==null||vc==null) continue; a.push(X(xi).toFixed(1)+','+Y(va).toFixed(1)); c.unshift(X(xi).toFixed(1)+','+Y(vc).toFixed(1)); }
         if(a.length>1) out+='<polygon class="gls-f" points="'+a.concat(c).join(' ')+'"/>'; }
       es.forEach(function(e){ var pts='', on=false; for(var s=0;s<=steps;s++){ var xi=i0+(i1-i0)*s/steps, v=e.at(xi); if(v==null){ if(on){ out+='<polyline class="'+(e.mid?'gls-m':'gls-e')+'" points="'+pts+'"/>'; pts=''; on=false; } continue; } pts+=(pts?' ':'')+X(xi).toFixed(1)+','+Y(v).toFixed(1); on=true; }
@@ -15709,41 +15714,65 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   var ICON={pan:'<path d="M9 11V5a1.5 1.5 0 0 1 3 0v6M12 10V4a1.5 1.5 0 0 1 3 0v7M15 11V6a1.5 1.5 0 0 1 3 0v8c0 3.5-2.5 6-6 6s-5-2-6.5-4.5L4 14a1.5 1.5 0 0 1 2.4-1.8L9 14.5V8a1.5 1.5 0 0 1 3 0"/>',
     line:'<path d="M5 19 19 5"/><circle cx="5" cy="19" r="1.6"/><circle cx="19" cy="5" r="1.6"/>', ray:'<path d="M5 19 21 3"/><circle cx="5" cy="19" r="1.6"/><circle cx="12" cy="12" r="1.6"/>',
     level:'<path d="M3 12h18"/><circle cx="12" cy="12" r="1.6"/>', channel:'<path d="M3 20 13 4"/><path d="M11 20 21 4"/><path d="M7 20 17 4" stroke-dasharray="2 2.5"/>', box:'<rect x="4" y="6" width="16" height="12" rx="1"/>',
-    fib:'<path d="M4 5h16M4 10h11M4 13h8M4 16h11M4 20h16"/>', vline:'<path d="M12 3v18"/><circle cx="12" cy="12" r="1.6"/>', cancel:'<path d="M6 6l12 12M18 6 6 18"/>'};
+    fib:'<path d="M4 5h16M4 10h11M4 13h8M4 16h11M4 20h16"/>', vline:'<path d="M12 3v18"/><circle cx="12" cy="12" r="1.6"/>', clear:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3"/>', cancel:'<path d="M6 6l12 12M18 6 6 18"/>'};
   function root(){
     if(S.root) return S.root; if(!H.getAttribute('data-gl')) return null;
     var r=document.createElement('div'); r.id='glLines'; r.hidden=true; r.setAttribute('role','dialog'); r.setAttribute('aria-modal','true'); r.setAttribute('aria-label','Line structure, full screen');
     var tools=['pan','line','ray','level','channel','box','fib','vline'].map(function(t){ return '<button type="button" data-glltool="'+t+'"><svg viewBox="0 0 24 24" aria-hidden="true">'+ICON[t]+'</svg>'+(t==='pan'?'Pan':t==='line'?'Line':t==='fib'?'Fib':t==='vline'?'Vert':NAMES[t])+'</button>'; }).join('');
-    r.innerHTML='<div class="gll-top"><button type="button" data-gllx aria-label="Back to Technicals">‹ Back</button><div class="gll-ttl"><b data-gllsym></b><span> · Line structure · D</span></div><button type="button" data-gllfit>Fit</button></div>'
+    r.innerHTML='<div class="gll-top"><button type="button" data-gllx aria-label="Back to Technicals">‹ Back</button><div class="gll-ttl"><b data-gllsym></b><div class="gl-seg gll-tfs" role="tablist" aria-label="Timeframe" data-glltfs><button type=\"button\" role=\"tab\" data-glltf=\"h\">1H</button><button type=\"button\" role=\"tab\" data-glltf=\"h4\">4H</button><button type=\"button\" role=\"tab\" data-glltf=\"d\">D</button><button type=\"button\" role=\"tab\" data-glltf=\"w\">W</button><button type=\"button\" role=\"tab\" data-glltf=\"m\">M</button></div></div><button type="button" data-gllfit>Fit</button></div>'
       +'<div class="gll-wrap"><div class="gll-host" data-gllhost></div><canvas class="gll-over" data-gllc aria-label="Your drawings over the daily bars"></canvas><div class="gll-axis" data-gllaxis aria-label="Drag to stretch or scrunch the price axis"></div><div class="gll-sel" data-gllsel hidden><span data-gllname></span><button type="button" data-gllbell></button><button type="button" class="del" data-glldel>Delete</button></div><div class="gll-toast" data-glltoast aria-live="polite"></div></div>'
-      +'<div class="gll-tools">'+tools+'<button type="button" class="danger" data-gllcancel><svg viewBox="0 0 24 24" aria-hidden="true">'+ICON.cancel+'</svg>Cancel</button></div>';
+      +'<div class="gll-tools">'+tools+'<button type="button" class="danger" data-gllcancel><svg viewBox="0 0 24 24" aria-hidden="true">'+ICON.cancel+'</svg>Cancel</button><button type="button" class="danger" data-gllclear><svg viewBox="0 0 24 24" aria-hidden="true">'+ICON.clear+'</svg>Clear</button></div>';
     B.appendChild(r);
     r.addEventListener('click',function(e){ var b, t=e.target; if(!t||!t.closest) return;
       if(t.closest('[data-gllx]')){ close(); return; } if(t.closest('[data-gllfit]')){ fit(); return; }
+      if((b=t.closest('[data-glltf]'))){ if(!b.disabled) useFrame(b.getAttribute('data-glltf')); return; }
       if((b=t.closest('[data-glltool]'))){ setTool(b.getAttribute('data-glltool')); return; } if(t.closest('[data-gllcancel]')){ setTool('pan'); return; }
-      if(t.closest('[data-gllbell]')){ bell(); return; } if(t.closest('[data-glldel]')){ del(); return; } });
+      if(t.closest('[data-gllbell]')){ bell(); return; } if(t.closest('[data-glldel]')){ del(); return; } if(t.closest('[data-gllclear]')){ clearAll(); return; } });
     r.addEventListener('touchmove',function(e){ if(e.target&&e.target.closest&&e.target.closest('.gll-host')) return; if(e.cancelable) e.preventDefault(); },{passive:false});   /* the library's own touch handling stays untouched */
     window.addEventListener('keydown',function(e){ if(!S.root||S.root.hidden) return; if(e.key==='Escape'){ e.preventDefault(); e.stopImmediatePropagation(); close(); } },true);
     var rs=function(){ if(!S.F||!S.F.open) return; resize(); }; window.addEventListener('resize',rs); window.addEventListener('orientationchange',function(){ setTimeout(rs,120); });
     if(window.ResizeObserver){ try{ new ResizeObserver(rs).observe(r.querySelector('.gll-wrap')); }catch(_){} }
-    bindOverlay(r.querySelector('[data-gllc]')); bindAxis(r.querySelector('[data-gllaxis]'));
+    bindOverlay(r.querySelector('[data-gllc]')); bindAxis(r.querySelector('[data-gllaxis]')); bindLongPress(r.querySelector('.gll-wrap'));
     S.root=r; return r;
   }
+  /* ---------- 11-05 (the owner: "the TradingView chart kind of have a standalone… switch between one hour four hour daily weekly and monthly
+     within the chart and see all the historical data"): the view opens on the capped frames the row draws, asks GET /chart/<SYM>.json
+     (backend v4.46: every frame UNCAPPED with its clock — the whole daily history, every month of the listing, the hourly window) and
+     re-mounts on it when it lands; the 1H · 4H · D · W · M seg in the head switches frames inside the view. The drawings are frame-free
+     (day + price anchors + the clock), so a line drawn on any frame is the same line on all five. ---------- */
+  function deepUrl(sym,kind){ return BASE+'/chart/'+(kind==='cr'?'%24':'')+encodeURIComponent(sym)+'.json'; }
+  function loadDeep(sym,kind){ var k=(kind==='cr'?'$':'')+sym, have=S.deep[k]; if(have&&Date.now()-have.at<10*60e3) return; if(S.deepBusy[k]) return; S.deepBusy[k]=true;
+    var ctl=('AbortController' in window)?new AbortController():null, t=setTimeout(function(){ if(ctl) ctl.abort(); },25000);
+    fetch(deepUrl(sym,kind),{cache:'no-store', signal:ctl?ctl.signal:undefined}).then(function(r){ clearTimeout(t); return r.ok?r.json():null; }).then(function(j){ S.deepBusy[k]=false;
+      var P=j&&j.tf&&typeof window.tfParse==='function'?window.tfParse(j.tf):null; if(!P) return;
+      S.deep[k]={P:P, at:Date.now(), asOf:j.asOf||null, stale:!!(j.coverage&&j.coverage.stale)};
+      var F=S.F; if(F&&F.open&&F.sym===sym){ useFrame(F.tf,true); toast(S.deep[k].stale?'The full history (an older copy)':'The full history is in'); } },
+      function(){ S.deepBusy[k]=false; }); }
+  function source(){ var F=S.F, k=(F.kind==='cr'?'$':'')+F.sym, d=S.deep[k]; return d?{P:d.P, src:'deep'}:{P:F.P0, src:'capped'}; }
   function open(tf){
     var r=root(); if(!r) return false; var fr=null; try{ fr=window.GLTech&&GLTech.frames&&GLTech.frames(); }catch(_){ fr=null; }
-    tf=(tf&&fr&&fr.P&&fr.P[tf]&&fr.P[tf].length>=6)?tf:'d';
-    if(!fr||!fr.cur||!fr.P||!fr.P[tf]||fr.P[tf].length<6) return false;
+    if(!fr||!fr.cur||!fr.P||!fr.P.d||fr.P.d.length<6) return false;
     if(!window.LightweightCharts){ toast('The chart engine did not load'); return false; }
-    var bars=fr.P[tf], cur=fr.cur, asof=fr.asof, FC=fc(tf,bars.length,asof,kindOf(cur),fr.P.clock||null);
+    var cur=fr.cur;
     if(S.F&&S.F.chart){ try{ S.F.chart.remove(); }catch(_){} }
-    S.F={open:true, tf:tf, FC:FC, sym:cur.key, kind:kindOf(cur), asof:asof, B:bars, N:bars.length, tool:'pan', placing:null, sel:-1, drag:null, ret:null, hover:null, ptrs:{}, moved:false, W:0, H:0, DPR:1, chart:null, series:null, raf:0, sig:'', yr:null, cur:null, press:null};
-    r.querySelector('[data-gllsym]').textContent=(cur.kind==='cr'?'$':'')+cur.key; r.querySelector('.gll-ttl span').textContent=' · Line structure · '+(TFL[tf]||tf.toUpperCase());
+    S.F={open:true, tf:null, FC:null, sym:cur.key, kind:kindOf(cur), asof:fr.asof, P0:fr.P, B:[], N:0, tool:'pan', placing:null, sel:-1, drag:null, ret:null, hover:null, ptrs:{}, moved:false, W:0, H:0, DPR:1, chart:null, series:null, raf:0, sig:'', yr:null, cur:null, press:null, inspect:false};
+    r.querySelector('[data-gllsym]').textContent=(cur.kind==='cr'?'$':'')+cur.key;
     S.prevFocus=document.activeElement; r.hidden=false; B.classList.add('gl-lines');
-    load(false); mountChart(); resize(); setTool('pan');
-    if(!FC.times&&(FC.intr||!asof)) toast(FC.intr?'This hourly frame has no clock yet — the next data pass brings it; drawings wait':'This name has no dated daily bar yet — drawings will not be saved');
+    load(false); useFrame(tf||'d'); loadDeep(cur.key,S.F.kind);
     return true;
   }
-  function close(){ var r=S.root; if(!r||r.hidden) return; r.hidden=true; B.classList.remove('gl-lines'); if(S.F){ S.F.open=false; cancelAnimationFrame(S.F.raf); if(S.F.chart){ try{ S.F.chart.remove(); }catch(_){} S.F.chart=null; S.F.series=null; } } repaint();
+  function useFrame(tf,keep){
+    var F=S.F, r=S.root; if(!F||!r) return; var src=source(), P=src.P; if(!P[tf]||P[tf].length<6){ tf=P.d&&P.d.length>=6?'d':tf; if(!P[tf]||P[tf].length<6) return; }
+    var bars=P[tf], FC=fc(tf,bars.length,F.asof,F.kind,P.clock||null), rangeKeep=null;
+    if(keep&&F.chart&&F.tf===tf){ try{ var rg=F.chart.timeScale().getVisibleLogicalRange(); if(rg) rangeKeep={from:F.N-rg.to, to:F.N-rg.from}; }catch(_){} }   /* a re-mount on the deep data keeps the same bars in view, counted from the newest */
+    if(F.chart){ try{ F.chart.remove(); }catch(_){} F.chart=null; F.series=null; cancelAnimationFrame(F.raf); }
+    F.inspect=false; F.tf=tf; F.FC=FC; F.B=bars; F.N=bars.length; F.src=src.src; F.yr=null; F.sel=-1; F.placing=null; F.press=null; F.cur=null; F.ret=null; F.tool='pan';
+    [].forEach.call(r.querySelectorAll('[data-glltf]'),function(b){ var k=b.getAttribute('data-glltf'); b.disabled=!(P[k]&&P[k].length>=6); b.classList.toggle('on',k===tf); b.setAttribute('aria-selected',k===tf?'true':'false'); });
+    mountChart(); resize(); setTool('pan'); showSel();
+    if(rangeKeep){ try{ F.chart.timeScale().setVisibleLogicalRange({from:F.N-rangeKeep.to, to:F.N-rangeKeep.from}); }catch(_){} }
+    if(!FC.times&&(FC.intr||!F.asof)) toast(FC.intr?'This hourly frame has no clock yet — the next data pass brings it; drawings wait':'This name has no dated daily bar yet — drawings will not be saved');
+  }
+  function close(){ var r=S.root; if(!r||r.hidden) return; try{ if(S.F&&S.F.chart) S.F.chart.clearCrosshairPosition(); }catch(_){} r.hidden=true; B.classList.remove('gl-lines'); if(S.F){ S.F.open=false; cancelAnimationFrame(S.F.raf); if(S.F.chart){ try{ S.F.chart.remove(); }catch(_){} S.F.chart=null; S.F.series=null; } } repaint();
     var pf=S.prevFocus; S.prevFocus=null; if(pf&&pf.focus&&B.contains(pf)){ try{ pf.focus({preventScroll:true}); }catch(_){} } }
   function cv(){ return S.root&&S.root.querySelector('[data-gllc]'); }
   /* index <-> day (the frame's newest bar = asof); a name with no asof gets a synthetic clock so the library still has unique, ascending times */
@@ -15759,7 +15788,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
       grid:{vertLines:{color:'rgba(128,128,128,.10)'}, horzLines:{color:'rgba(128,128,128,.14)'}},
       rightPriceScale:{borderVisible:false, scaleMargins:{top:.08, bottom:.08}}, timeScale:{borderVisible:false, rightOffset:6, barSpacing:7, minBarSpacing:1.5, fixLeftEdge:false, fixRightEdge:false, timeVisible:!!F.FC.intr, secondsVisible:false,
         tickMarkFormatter:function(t){ return tickLabel(t); }}, localization:{priceFormatter:fmt, timeFormatter:function(t){ return tickLabel(t,true); }},
-      crosshair:{mode:LW.CrosshairMode.Normal}, handleScroll:{mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:false},
+      crosshair:{mode:(window.matchMedia&&matchMedia('(pointer:coarse)').matches)?LW.CrosshairMode.Hidden:LW.CrosshairMode.Normal}, handleScroll:{mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:false},
       handleScale:{axisPressedMouseMove:true, mouseWheel:true, pinch:true}, kineticScroll:{touch:true, mouse:false}});
     /* 11-04 (the owner: "grab the right side bar where the numbers are… pull my thumb down and scrunch everything up vertically, push up and expand"): the
        library's own axis drag is mouse-made, so the strip over the price scale (bindAxis) sets F.yr and this provider hands the library that range */
@@ -15784,7 +15813,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   function bindAxis(el){ var st=null;
     el.addEventListener('pointerdown',function(e){ e.preventDefault(); e.stopPropagation(); try{ el.setPointerCapture(e.pointerId); }catch(_){} var F=S.F; if(!F) return; var pb=paneBox(); st={y:e.clientY, top:F.yr?F.yr.hi:Pr(0), bot:F.yr?F.yr.lo:Pr(pb.h), t:Date.now(), moved:false}; });
     el.addEventListener('pointermove',function(e){ var F=S.F; if(!st||!F) return; var dy=e.clientY-st.y; if(Math.abs(dy)>2) st.moved=true; if(!isFinite(st.top)||!isFinite(st.bot)) return;
-      var f=Math.exp(dy/160), mid=(st.top+st.bot)/2, half=Math.abs(st.top-st.bot)/2*f; F.yr={lo:mid-half, hi:mid+half}; reautoscale(); draw(); });   /* thumb down = a wider range = everything scrunched; up = expanded */
+      var f=Math.exp(dy/320), mid=(st.top+st.bot)/2, half=Math.abs(st.top-st.bot)/2*f;   /* 11-05 (the owner): half as strong */ F.yr={lo:mid-half, hi:mid+half}; reautoscale(); draw(); });   /* thumb down = a wider range = everything scrunched; up = expanded */
     var end=function(e){ if(!st) return; var tap=!st.moved&&Date.now()-st.t<400; st=null; if(tap){ var now=Date.now(); if(now-(el._lt||0)<350){ var F=S.F; if(F){ F.yr=null; reautoscale(); draw(); } el._lt=0; } else el._lt=now; } };   /* a double-tap on the numbers = back to auto */
     el.addEventListener('pointerup',end); el.addEventListener('pointercancel',end); }
   function paneBox(){ var F=S.F, pw=F.W, ph=F.H; try{ pw=F.W-(F.chart.priceScale('right').width()||0); ph=F.H-(F.chart.timeScale().height()||0); }catch(_){} return {w:Math.max(0,pw), h:Math.max(0,ph)}; }
@@ -15823,13 +15852,13 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
       if(pa!=null&&pb!=null&&qa!=null&&qb!=null&&[X(lo),X(hi),Y(pa),Y(pb),Y(qa),Y(qb)].every(isFinite)){ ctx.globalAlpha=.08; ctx.fillStyle=C.acc; ctx.beginPath(); ctx.moveTo(X(lo),Y(pa)); ctx.lineTo(X(hi),Y(pb)); ctx.lineTo(X(hi),Y(qb)); ctx.lineTo(X(lo),Y(qa)); ctx.closePath(); ctx.fill(); ctx.globalAlpha=1; }
       es.forEach(function(e){ strokeEdge(ctx,e.at,colr,e.mid?1:wdt,e.mid?[3,4]:dash); }); }
     else if(d.type==='vline'){ var vx=X(ptIdx(d.pts[0])), pbh=paneBox().h; if(isFinite(vx)){ ctx.strokeStyle=colr; ctx.lineWidth=wdt; ctx.setLineDash(dash||[]); ctx.beginPath(); ctx.moveTo(vx,0); ctx.lineTo(vx,pbh); ctx.stroke(); ctx.setLineDash([]); if(!pv) label(ctx,C,fmtDay(ptIdx(d.pts[0])),Math.min(paneBox().w-96,vx+6),12,colr); } }
-    else if(d.type==='fib'&&d.pts.length===2){ var pbw=paneBox().w, x0=X(Math.min(ptIdx(d.pts[0]),ptIdx(d.pts[1]))); if(isFinite(x0)){ es.forEach(function(e){ var y=Y(e.lvl); if(!isFinite(y)) return; ctx.strokeStyle=colr; ctx.lineWidth=e.mid?1:wdt; ctx.setLineDash(dash||(e.mid?[3,4]:[])); ctx.beginPath(); ctx.moveTo(Math.max(0,x0),y); ctx.lineTo(pbw,y); ctx.stroke(); ctx.setLineDash([]); if(!pv) label(ctx,C,(e.r===0?'0':e.r===1?'1':String(e.r).replace(/^0/,''))+' · '+fmt(e.lvl),pbw-92,y-9,colr); }); } }
+    else if(d.type==='fib'&&d.pts.length===2){ var pbw=paneBox().w, ia0=ptIdx(d.pts[0]), ia1=ptIdx(d.pts[1]), x0=X(Math.min(ia0,ia1)), x1=X(Math.max(ia0,ia1)); if(isFinite(x0)&&isFinite(x1)){ es.forEach(function(e){ var y=Y(e.lvl); if(!isFinite(y)) return; ctx.strokeStyle=colr; ctx.lineWidth=e.mid?1:wdt; ctx.setLineDash(dash||(e.mid?[3,4]:[])); ctx.beginPath(); ctx.moveTo(Math.max(0,x0),y); ctx.lineTo(Math.min(pbw,x1),y); ctx.stroke(); ctx.setLineDash([]); }); } }   /* 11-05 (the owner): no text on the fibs */
     else es.forEach(function(e){ strokeEdge(ctx,e.at,colr,wdt,dash); });
     if(selected||pv) d.pts.forEach(function(pt){ var x=X(ptIdx(pt)), y=Y(pt.p); if(!isFinite(x)||!isFinite(y)) return; ctx.beginPath(); ctx.arc(x,y,selected?5:3,0,Math.PI*2);   /* 11-04 (the owner): the handles only on the selected drawing; otherwise just the lines */ ctx.fillStyle=selected?C.acci:C.bg; ctx.fill(); ctx.strokeStyle=colr; ctx.lineWidth=1.5; ctx.stroke(); });
     var pb=paneBox();
     if(d.type==='level'&&isFinite(Y(d.pts[0].p))) label(ctx,C,fmt(d.pts[0].p),pb.w-60,Y(d.pts[0].p),colr);
     if(!pv){ var st=breakState(d,F.B,F.FC), e0=es[0], v=e0&&e0.at(F.N-1); if(st&&st.v&&v!=null&&isFinite(X(F.N-1))&&isFinite(Y(v))) label(ctx,C,st.t,Math.min(pb.w-70,X(F.N-1)+6),Y(v)-12,st.v>0?C.up:C.dn);
-      if(d.alert){ var q=d.pts[0]; if(isFinite(X(ptIdx(q)))&&isFinite(Y(q.p))) label(ctx,C,'🔔',X(ptIdx(q))-22,Y(q.p)-12,C.warn); } }
+      if(d.alert){ var q=d.pts[0]; if(isFinite(X(ptIdx(q)))&&isFinite(Y(q.p))) label(ctx,C,d.alert==='close'?'🔔 close':'🔔',X(ptIdx(q))-22,Y(q.p)-12,C.warn); } }
   }
   function label(ctx,C,txt,x,y,colr){ ctx.font='700 10px ui-monospace,Menlo,Consolas,monospace'; ctx.textAlign='left'; ctx.textBaseline='middle'; var w=ctx.measureText(txt).width+8; ctx.globalAlpha=.85; ctx.fillStyle=C.bg; ctx.fillRect(x-4,y-8,w,16); ctx.globalAlpha=1; ctx.fillStyle=colr; ctx.fillText(txt,x,y); }
   function readout(ctx,C,x,y,p,i){ var pb=paneBox(), txt=(isFinite(p)?fmt(p):'—')+'  ·  '+(fmtDay(i)||'—'); ctx.font='600 11px ui-monospace,Menlo,Consolas,monospace'; var w=ctx.measureText(txt).width+12, bx=x+14, by=y-28; if(bx+w>pb.w-4) bx=x-14-w; if(by<4) by=y+14;
@@ -15865,14 +15894,31 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   function shift(d,di,dp){ var F=S.F; return Object.assign({},d,{pts:d.pts.map(function(pt){ return barAnchor(F.FC,ptIdx(pt)+di,pt.p+dp)||pt; })}); }
   function commit(items){ var F=S.F; setList(F.sym,items); }
   /* Pan mode = the library's; a tap on a drawing selects it (edit mode); a tool captures the overlay */
-  function capture(){ var F=S.F, c=cv(); if(!c||!F) return; var on=F.tool!=='pan'||F.sel>=0; c.style.pointerEvents=on?'auto':'none'; c.classList.toggle('on',on); }
+  function capture(){ var F=S.F, c=cv(); if(!c||!F) return; var on=F.tool!=='pan'||F.sel>=0||!!F.inspect; c.style.pointerEvents=on?'auto':'none'; c.classList.toggle('on',on); }
   function onChartTap(p){ var F=S.F; if(!F||!F.open||F.tool!=='pan'||F.sel>=0||!p||!p.point) return; var h=hitTest(p.point.x,p.point.y); if(h){ F.sel=h.k; showSel(); capture(); draw(); } }
 
-  /* ---------- gestures on the overlay (only while a tool is active or a drawing is selected) ---------- */
+  /* ---------- 11-05 (the owner: "click and hold… you can get an XY and then move that XY in the same way that the lines move… really precise… checking
+     levels and divergences"): THE INSPECT CROSSHAIR. In Pan mode the library owns the touches; a press held 450 ms without moving (listened for on
+     the wrap, where the library's own events bubble up) hands the pointer to the overlay (setPointerCapture), freezes the library's pan / pinch,
+     and shows the bull's-eye with its price · time readout under the thumb; from then on a drag moves it 1:1 by the thumb's delta — lift, press
+     anywhere else, drag again; a plain tap dismisses it and gives the library its gestures back. ---------- */
+  function scrollOn(on){ var F=S.F; if(!F||!F.chart) return; try{ F.chart.applyOptions({handleScroll:{mouseWheel:on, pressedMouseMove:on, horzTouchDrag:on, vertTouchDrag:false}, handleScale:{axisPressedMouseMove:on, mouseWheel:on, pinch:on}}); }catch(_){} }
+  function inspectStart(id,x,y){ var F=S.F, c=cv(); if(!F||!F.open||F.tool!=='pan'||F.sel>=0) return; F.inspect=true; scrollOn(false); capture(); try{ c.setPointerCapture(id); }catch(_){}
+    F.ptrs[id]={x:x, y:y}; F.cur={x:x, y:y}; F.press={x:x, y:y, t:Date.now(), moved:true}; moveCursor(x,y); try{ if(navigator.vibrate) navigator.vibrate(8); }catch(_){} }
+  function inspectEnd(){ var F=S.F; if(!F||!F.inspect) return; F.inspect=false; F.cur=null; F.ret=null; F.press=null; scrollOn(true); capture(); draw(); }
+  function bindLongPress(wrap){ var lp=null;
+    wrap.addEventListener('pointerdown',function(e){ var F=S.F; if(!F||!F.open||F.tool!=='pan'||F.sel>=0||F.inspect) return; var t=e.target; if(!t||!t.closest||!t.closest('[data-gllhost]')) return;
+      var r=wrap.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top, pb=paneBox(); if(x>pb.w||y>pb.h) return;   /* the axes are the library's */
+      clearTimeout(lp&&lp.t); lp={id:e.pointerId, x:x, y:y, t:setTimeout(function(){ var l=lp; lp=null; if(l) inspectStart(l.id,l.x,l.y); },450)}; });
+    wrap.addEventListener('pointermove',function(e){ if(!lp||e.pointerId!==lp.id) return; var r=wrap.getBoundingClientRect(); if(Math.hypot(e.clientX-r.left-lp.x,e.clientY-r.top-lp.y)>6){ clearTimeout(lp.t); lp=null; } });
+    var off=function(e){ if(lp&&e.pointerId===lp.id){ clearTimeout(lp.t); lp=null; } }; wrap.addEventListener('pointerup',off); wrap.addEventListener('pointercancel',off); }
+
+  /* ---------- gestures on the overlay (only while a tool is active, a drawing is selected, or the inspect crosshair is up) ---------- */
   function bindOverlay(c){
     function pos(e){ var r=c.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; }
     c.addEventListener('pointerdown',function(e){ var F=S.F; if(!F||!F.open) return; e.preventDefault(); try{ c.setPointerCapture(e.pointerId); }catch(_){} if(!F.W||!F.H) resize();
       var q=pos(e); F.ptrs[e.pointerId]=q; F.moved=false; if(Object.keys(F.ptrs).length>1){ F.ret=null; F.drag=null; return; }
+      if(F.inspect){ F.press={x:q.x, y:q.y, t:Date.now(), moved:false}; return; }   /* the inspect crosshair: a drag moves it 1:1, a tap dismisses it */
       if(F.tool==='pan'){                                   /* edit mode: a selected drawing */
         var h=hitTest(q.x,q.y);
         if(h&&h.k===F.sel){
@@ -15890,12 +15936,13 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     c.addEventListener('pointermove',function(e){ var F=S.F; if(!F||!F.open) return; var q=pos(e);
       if(!F.ptrs[e.pointerId]){ if(e.pointerType==='mouse'&&!F.drag){ F.hover=q; draw(); } return; }
       var prev=F.ptrs[e.pointerId]; F.ptrs[e.pointerId]=q; if(Math.hypot(q.x-prev.x,q.y-prev.y)>2) F.moved=true;
-      if(F.tool!=='pan'&&F.press){ var pv=F.ptrs[e.pointerId]; if(!F.press.moved&&Math.hypot(q.x-F.press.x,q.y-F.press.y)>4) F.press.moved=true; if(F.press.moved) moveCursor(F.cur.x+(q.x-prev.x), F.cur.y+(q.y-prev.y)); return; }
+      if((F.tool!=='pan'||F.inspect)&&F.press){ if(!F.press.moved&&Math.hypot(q.x-F.press.x,q.y-F.press.y)>4) F.press.moved=true; if(F.press.moved) moveCursor(F.cur.x+(q.x-prev.x), F.cur.y+(q.y-prev.y)); return; }
       var D=F.drag; if(!D) return;
       if(D.kind==='anchor'){ moveRet(F.ret,q.x,q.y); if(D.kind==='anchor'&&F.work){ F.work[F.ret.grab.k].pts[F.ret.grab.pt]=F.ret.pt; } drawWork(); return; }
       if(D.kind==='body'){ var li=I(q.x), pr=Pr(q.y); if(!isFinite(li)||!isFinite(pr)) return; var di=Math.round(li-D.i), dp=pr-D.p; if(di||dp){ F.work[D.k]=shift(F.work[D.k],di,dp); D.i+=di; D.p=pr; } drawWork(); return; } });
     function drawWork(){ var F=S.F; if(!F.work){ draw(); return; } var d=doc(); d.syms=d.syms||{}; var keep=d.syms[F.sym]; d.syms[F.sym]=F.work; draw(); if(keep) d.syms[F.sym]=keep; else delete d.syms[F.sym]; }
     function end(e){ var F=S.F; if(!F||!F.open) return; var had=!!F.ptrs[e.pointerId]; delete F.ptrs[e.pointerId]; if(!had) return; var D=F.drag;
+      if(F.inspect&&F.press){ var ip=F.press; F.press=null; if(!ip.moved&&Date.now()-ip.t<600) inspectEnd(); else draw(); return; }
       if(F.tool!=='pan'&&F.press){ var pr=F.press; F.press=null; if(!pr.moved&&Date.now()-pr.t<600&&F.ret) place(F.ret.pt); draw(); return; }
       if(D&&(D.kind==='anchor'||D.kind==='body')){ if(F.work&&F.moved){ commit(F.work); toast(NAMES[F.work[D.k!=null?D.k:F.ret.grab.k].type]+' moved'); } F.work=null; }
       F.ret=null; F.drag=null; F.hover=null; draw(); }
@@ -15906,23 +15953,28 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   function showCursor(){ var F=S.F, pb=paneBox(); if(!F.cur) F.cur={x:pb.w*.5, y:pb.h*.45}; moveCursor(F.cur.x,F.cur.y); }
   function place(pt){ var F=S.F; if(!F.placing||!pt||!pt.d) return; if(!canPlace()) return; F.placing.pts.push(pt); var need=TYPES[F.placing.type];
     if(F.placing.pts.length>=need){ var items=list(F.sym).slice(), d={id:'d'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36), type:F.placing.type, kind:F.kind, pts:F.placing.pts, alert:false, createdAt:new Date().toISOString().slice(0,19)+'Z'};
-      items.push(d); commit(items); toast(NAMES[d.type]+' placed'); setTool('pan'); F.sel=items.length-1; showSel(); capture(); draw(); }
+      items.push(d); commit(items); toast(NAMES[d.type]+' placed'); setTool('pan'); F.sel=items.length-1; showSel(); capture(); try{ F.chart.clearCrosshairPosition(); }catch(_){} draw(); }
     else toast(F.placing.type==='channel'&&F.placing.pts.length===2?'Now the channel width — drag the bull’s-eye, tap to lock':'Now the second point — drag the bull’s-eye, tap to lock'); }
-  function setTool(t){ var F=S.F, r=S.root; if(!F||!r) return; F.tool=t; F.placing=t==='pan'?null:{type:t, pts:[]}; F.press=null; if(t!=='pan'){ F.sel=-1; showSel(); }
+  function setTool(t){ var F=S.F, r=S.root; if(!F||!r) return; if(F.inspect) inspectEnd(); F.tool=t; F.placing=t==='pan'?null:{type:t, pts:[]}; F.press=null; if(t!=='pan'){ F.sel=-1; showSel(); }
     [].forEach.call(r.querySelectorAll('[data-glltool]'),function(b){ b.classList.toggle('on',b.getAttribute('data-glltool')===t); }); r.querySelector('[data-gllcancel]').disabled=t==='pan';
     if(t!=='pan'){ showCursor(); toast('Drag anywhere to move the bull’s-eye; tap anywhere to lock the point.'); } else { F.cur=null; F.ret=null; } capture(); draw(); }
   function showSel(){ var F=S.F, r=S.root; if(!r) return; var bar=r.querySelector('[data-gllsel]'), items=list(F.sym); if(F.sel<0||!items[F.sel]){ bar.hidden=true; return; }
     var d=items[F.sel]; r.querySelector('[data-gllname]').textContent=NAMES[d.type]; var b=r.querySelector('[data-gllbell]'); var signed=!!tok();
-    b.textContent=d.alert?'🔔 Alert on':'🔕 Alert off'; b.classList.toggle('on',!!d.alert); b.disabled=!signed; b.title=signed?'Tell me when the price crosses this line':'Sign in to get alerts on your lines'; bar.hidden=false; }
+    var mode=d.alert===true?'cross':d.alert; b.textContent=mode==='close'?'🔔 Closes outside':mode==='cross'?'🔔 Crosses':'🔕 Alert off'; b.classList.toggle('on',!!mode); b.disabled=!signed; b.title=signed?'Tap to cycle: off → when the price crosses it → when a day closes outside it':'Sign in to get alerts on your lines'; bar.hidden=false; }
   function bell(){ var F=S.F, items=list(F.sym).slice(); if(F.sel<0||!items[F.sel]) return; if(!tok()){ toast('Sign in to get alerts on your lines'); return; }
-    items[F.sel]=Object.assign({},items[F.sel],{alert:!items[F.sel].alert, side:null}); commit(items); showSel(); toast(items[F.sel].alert?'Alert set: fires when the price crosses this line':'Alert off'); }
+    var cur=items[F.sel].alert===true?'cross':items[F.sel].alert, next=cur==='cross'?'close':cur==='close'?false:'cross';
+    items[F.sel]=Object.assign({},items[F.sel],{alert:next, side:null}); commit(items); showSel(); toast(next==='cross'?'Alert: fires when the price crosses this line':next==='close'?'Alert: fires when a day closes outside it':'Alert off'); }
   function del(){ var F=S.F, items=list(F.sym).slice(); if(F.sel<0||!items[F.sel]) return; var n=NAMES[items[F.sel].type]; items.splice(F.sel,1); F.sel=-1; commit(items); showSel(); capture(); toast(n+' deleted'); }
+  /* 11-05 (the owner: "a function to delete all drawings, but make sure it does a double check"): the first tap arms the button for four seconds and says so; the second tap deletes */
+  function clearAll(){ var F=S.F, r=S.root, b=r&&r.querySelector('[data-gllclear]'); if(!F||!b) return; var items=list(F.sym); if(!items.length){ toast('No drawings on '+F.sym); return; }
+    if(b.getAttribute('data-armed')==='1'){ b.removeAttribute('data-armed'); b.lastChild.textContent='Clear'; clearTimeout(b._t); commit([]); F.sel=-1; showSel(); capture(); toast('All '+items.length+' drawings on '+F.sym+' deleted'); return; }
+    b.setAttribute('data-armed','1'); b.lastChild.textContent='Really?'; toast('Delete all '+items.length+' drawings on '+F.sym+'? Tap Really? to confirm'); clearTimeout(b._t); b._t=setTimeout(function(){ b.removeAttribute('data-armed'); b.lastChild.textContent='Clear'; },4000); }
   var toastT=0; function toast(s){ var r=S.root; if(!r) return; var t=r.querySelector('[data-glltoast]'); t.textContent=s; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(function(){ t.classList.remove('on'); },2200); }
 
   /* a tap on the row's plot (any column) opens the view */
   document.addEventListener('click',function(e){ var t=e.target; if(!t||!t.closest) return; var el=t.closest('.glt-plot[data-ind="lines"]'); if(!el||!H.getAttribute('data-gl')) return; e.preventDefault(); e.stopPropagation(); open(el.getAttribute('data-tf')||'d'); },true);
   if(H.getAttribute('data-gl')&&tok()) setTimeout(function(){ load(false); },1500);
-  window.GLLines={list:list, set:setList, open:open, close:close, read:read, reload:function(){ load(true); }, barsBetween:barsBetween, dayPlus:dayPlus, idxFor:idxFor, fc:fc, anchorIdx:anchorIdx, tf:function(){ return S.F&&S.F.open?S.F.tf:null; }, range:function(){ return S.F&&S.F.open?range():null; }, engine:function(){ return !!(S.F&&S.F.chart); }, chart:function(){ return S.F&&S.F.open?S.F.chart:null; }, y:function(p){ return S.F&&S.F.open?Y(p):NaN; }, cursor:function(){ return S.F&&S.F.cur?{x:S.F.cur.x, y:S.F.cur.y}:null; }, yr:function(){ return S.F?S.F.yr:null; }};
+  window.GLLines={list:list, set:setList, open:open, close:close, read:read, reload:function(){ load(true); }, barsBetween:barsBetween, dayPlus:dayPlus, idxFor:idxFor, fc:fc, anchorIdx:anchorIdx, tf:function(){ return S.F&&S.F.open?S.F.tf:null; }, range:function(){ return S.F&&S.F.open?range():null; }, engine:function(){ return !!(S.F&&S.F.chart); }, chart:function(){ return S.F&&S.F.open?S.F.chart:null; }, bars:function(){ return S.F&&S.F.open?S.F.N:0; }, src:function(){ return S.F&&S.F.open?S.F.src:null; }, useFrame:function(tf){ useFrame(tf); }, inspect:function(){ return !!(S.F&&S.F.inspect); }, y:function(p){ return S.F&&S.F.open?Y(p):NaN; }, cursor:function(){ return S.F&&S.F.cur?{x:S.F.cur.x, y:S.F.cur.y}:null; }, yr:function(){ return S.F?S.F.yr:null; }};
 })();
 
 </script>
