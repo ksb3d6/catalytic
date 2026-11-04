@@ -14520,7 +14520,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
       d:['Four exponential moving averages of the close — 8, 13, 21 and 40 periods — drawn as a cloud under the price line.',
          'The strong band is the gap between the 21 and the 40; the lighter band is the gap between the 13 and the 21; the thin line is the 8. A band is green while the faster average is above the slower one (trend up) and red while it is below (trend down). A wide band is a strong trend; a band that pinches shut is a trend running out or turning.',
          'The label says where the last close sits: above the band, inside it, or below — and by how much. It is a rule read from the averages, not advice.']},
-    {id:'div',    s:'DIVERGENCE',       r:['DIVERGENCE'],      l:'Divergence', min:30, fn:'tfDivSVG',    why:'latest RSI-14 divergence inside the plotted window · bars since',
+    {id:'div',    s:'DIVERGENCE',       r:['DIVERGENCE'],      l:'Divergence', min:30, fn:'tfDivSVG',    why:'every RSI-14 divergence in the window — the same pairs the RSI pane draws (TradingView’s rules, regular + hidden) · the pill = the newest · bars since',
       d:['Divergence is price and momentum disagreeing. Momentum here is the 14-period RSI.',
          'How it is found: the swing highs and swing lows of the RSI are located (a bar higher, or lower, than the three bars either side of it). Two neighbouring swings 5 to 60 bars apart are compared. BEARISH: price made a higher high while the RSI made a lower high — the rise is losing force. BULLISH: price made a lower low while the RSI made a higher low — the fall is losing force.',
          'How it is drawn: a solid line joins the two price points, a dashed line from the same start shows the slope the RSI took instead, and an arrow marks the newest one (red pointing down = bearish, green pointing up = bullish).',
@@ -14529,7 +14529,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
     {id:'bb',     s:'BOLLINGER',        r:['BOLLINGER'],        l:'Bollinger',  min:21, fn:'tfBbSVG',     why:'%B of the last close inside the 20/2 bands (1 = upper band, 0 = lower)',
       d:['Bollinger bands: the dashed line is the 20-period average of the close; the shaded band reaches two standard deviations above and below it, so it widens when price is volatile and squeezes when price goes quiet. A tight squeeze often comes before a large move.',
          'The label is %B — where the last close sits inside the band: 1.00 is the upper band, 0.50 the middle, 0.00 the lower band. Above 1 or below 0 means the close is outside the band.']},
-    {id:'rsi',    s:'RSI 14',           r:['RSI','14'],         l:'RSI',        min:16, fn:'tfRsiSVG',    opt:true, why:'RSI-14 of the last close and its 14-period average · above 70 overbought, below 30 oversold · divergences drawn as TradingView does (regular + hidden)',
+    {id:'rsi',    s:'RSI 14',           r:['RSI','14'],         l:'RSI',        min:16, fn:'tfRsiSVG',    opt:true, why:'RSI-14 of the last close and its 14-period average · above 70 overbought, below 30 oversold · divergences drawn as TradingView does (solid = regular, dotted = hidden; switch them off in the Indicators sheet)',
       d:['The Relative Strength Index, 14 periods (Wilder’s standard). It compares the average size of the up-closes with the average size of the down-closes and prints the result from 0 to 100.',
          'The cyan line is the RSI; the line in your theme colour is its own 14-period average — RSI crossing up through its average is the momentum turn traders watch for, crossing down the other way. The dashed lines are 70 and 30 (the zones beyond them are tinted; the stretches the RSI spends beyond them are shaded), the dotted ones 60 and 40, the dashed grey line 50 — above 50 the up-closes are winning, below it the down-closes.',
          'In a strong trend the RSI can sit beyond 70 or 30 for a long time: the line is a stretch warning, not a turn signal. The label is the latest reading; the levels are written down the left edge.',
@@ -14587,6 +14587,9 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
   var LSM='aibo.gl.tech.ma';                              /* 10-07: the simple-MA row's period — the person's, like the EMA's (default 50; 2..400) */
   function maN(){ try{ var v=parseInt(localStorage.getItem(LSM),10); return (v>=2&&v<=400)?v:50; }catch(_){ return 50; } }
   function setMaN(v){ v=parseInt(v,10); if(!(v>=2&&v<=400)) return false; try{ localStorage.setItem(LSM,String(v)); }catch(_){} paintLook(false); repaintInfo(); return true; }
+  var LSD='aibo.gl.tech.rsidiv';   /* 11-04 (the owner): divergences on the RSI pane on | off — on until switched off in the Indicators sheet; the Divergence row is unaffected */
+  function rsiDivOn(){ try{ return localStorage.getItem(LSD)!=='0'; }catch(_){ return true; } }
+  function setRsiDiv(on){ try{ localStorage.setItem(LSD,on?'1':'0'); }catch(_){} paintLook(false); repaintInfo(); }
   var LSI='aibo.gl.tech.inds', LSI2='aibo.gl.tech.inds.v2', LSI3='aibo.gl.tech.inds.v3';   /* 11-03: v3 = the Line structure row appended once */
   function savedOrder(quiet){ var def=IND.filter(function(i){ return !i.opt; }).map(function(i){ return i.id; });   /* quiet (10-21): read only — no migration write (the account sync must see no change after a pull) */
     try{ var v=localStorage.getItem(LSI); if(v){ var ids=v.split(',').filter(function(x,k,a){ return a.indexOf(x)===k&&IND.some(function(i){ return i.id===x; }); });
@@ -14615,8 +14618,8 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
      at the RSI pivot bars (the low for the bullish pair, the high for the bearish; the close when a frame has no wicks); the two pivots
      compared are consecutive and 5 to 60 bars apart (bars strictly between). Regular bullish: price lower low, RSI higher low. Hidden
      bullish: price higher low, RSI lower low. Regular bearish: price higher high, RSI lower high. Hidden bearish: price lower high, RSI
-     higher high. Drawn on the RSI pane only: a 2px line between the two RSI pivots (hidden ones faint and dashed), a label at the newer
-     pivot — Bull · H Bull · Bear · H Bear. Late by design: five bars. Exposed as window.tfRsiDivs for the suites and the validation runs. */
+     higher high. Drawn on the RSI pane (a line between the two RSI pivots) AND, from 11-04, on the Divergence row between the two price pivots —
+     one detector for both (glassDivSVG below). No words: solid = regular, dotted = hidden. Late by design: five bars. Exposed as window.tfRsiDivs for the suites and the validation runs. */
   function rsiDivs(bars,r,L,R,minG,maxG){
     L=L||5; R=R||5; minG=(minG==null)?5:minG; maxG=(maxG==null)?60:maxG;
     var n=r.length, lows=[], highs=[], out=[], i, j;
@@ -14638,6 +14641,38 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
     return out;
   }
   window.tfRsiDivs=function(bars,opts){ var cl=window.tfCloses(bars), r=window.tfRsi(cl,(opts&&opts.len)||14); return rsiDivs(bars,r,opts&&opts.L,opts&&opts.R,opts&&opts.minG,opts&&opts.maxG); };
+  /* 11-04 (the owner: "the RSI indicator divergences and the divergence indicator itself are not congruent … make sure these sync up and
+     are the same"): under Glass the Divergence row draws the SAME pairs as the RSI pane, from the same rsiDivs — every regular and hidden
+     divergence whose newer pivot sits in the window, as a line between the two PRICE pivots (the wick low for a bullish pair, the wick
+     high for a bearish one) on the ink price line; solid = regular, dotted = hidden, green / red, no words. The stock row's own detector
+     (closes, 3/3 pivots, regular only) and its slope-disagreement lane fired on their own — that was the incongruence. ?gl=off still runs
+     the stock renderer untouched. window.tfDivPairs(bars,tail) = the pairs a row of that window draws (the census, the suites). */
+  function extOf(a){ var lo=Infinity, hi=-Infinity, i; for(i=0;i<a.length;i++){ var v=a[i]; if(v==null||!isFinite(v)) continue; if(v<lo) lo=v; if(v>hi) hi=v; } return lo<=hi?[lo,hi]:null; }
+  function divPairs(bars,tail){ var cl=window.tfCloses(bars), r=window.tfRsi(cl,14), evs=rsiDivs(bars,r), N=cl.length, n=Math.min(tail||60,N), off=N-n; return evs.filter(function(d){ return d.p>=off&&d.at<=N-1; }); }
+  function glassDivSVG(bars,w,h,tailN){
+    if(!bars||bars.length<30) return '';
+    var cl=window.tfCloses(bars), N=cl.length, n=Math.min(tailN||60,N), off=N-n, c=cl.slice(-n), p=2, i, live=divPairs(bars,n);
+    function lo(i){ var b=bars[i]; return (b&&b.l!=null&&isFinite(+b.l))?+b.l:+b.c; } function hi(i){ var b=bars[i]; return (b&&b.h!=null&&isFinite(+b.h))?+b.h:+b.c; }
+    var ext=c.slice(); live.forEach(function(d){ var f=d.type==='bull'?lo:hi; if(d.q>=off) ext.push(f(d.q)); ext.push(f(d.p)); });
+    var e=extOf(ext); if(!e) return ''; var rg=e[1]-e[0]||1;
+    function X(i){ return 1+(i+.5)*(w-2)/n; } function Y(v){ return (h-p)-(v-e[0])*(h-2*p)/rg; }
+    var pts=''; for(i=0;i<n;i++) pts+=(pts?' ':'')+X(i).toFixed(1)+','+Y(c[i]).toFixed(1);
+    var s='<polyline points="'+pts+'" fill="none" stroke="'+C_FL+'" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>';
+    live.forEach(function(d){ var f=d.type==='bull'?lo:hi, col=d.type==='bull'?C_UP:C_DN, x1=X(d.q-off), y1=Y(f(d.q)), x2=X(d.p-off), y2=Y(f(d.p));
+      s+='<line data-div="'+(d.hidden?'h':'')+d.type+'" data-q="'+d.q+'" data-p="'+d.p+'" x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+col+'" stroke-width="'+(d.hidden?1.6:1.8)+'" stroke-linecap="round" opacity="'+(d.hidden?'.75':'.7')+'"'+(d.hidden?' stroke-dasharray="0.1 3.4"':'')+'/>';
+      s+='<circle cx="'+x2.toFixed(1)+'" cy="'+y2.toFixed(1)+'" r="2" fill="'+col+'" opacity=".85"/>'; });
+    var lastC=c[n-1]; if(lastC!=null) s+='<circle cx="'+X(n-1).toFixed(1)+'" cy="'+Y(lastC).toFixed(1)+'" r="1.7" fill="'+C_FL+'"/>';
+    return window.tfSvg(w,h)+s+'</svg>';
+  }
+  var stockDivSVG=window.tfDivSVG;
+  window.tfDivSVG=function(bars,w,h,tailN,o){ return H.getAttribute('data-gl')?glassDivSVG(bars,w,h,tailN):stockDivSVG(bars,w,h,tailN,o); };
+  window.tfDivPairs=divPairs;
+  /* 11-04 (the owner: "the shaded green and red areas in the RSI bands, the stochastic bands and the EMA cloud look a little muted … a little more
+     neon … based off the candle red and green … don't overdo it"): the cloud's quads under Glass carry ~1.4× the stock opacity (the same
+     candle colours); the RSI 60–70 / 30–40 bands and the stochastic 80 / 20 bands went from .09 to .15. ?gl=off = the stock cloud. */
+  var stockTboSVG=window.tfTboSVG;
+  window.tfTboSVG=function(bars,w,h,tailN,o){ var r=stockTboSVG(bars,w,h,tailN,o); if(!r||!H.getAttribute('data-gl')) return r;
+    return r.replace(/ opacity="\.(30|26|18|15)"\/>/g,function(m,v){ return ' opacity="'+({'30':'.42','26':'.37','18':'.26','15':'.22'})[v]+'"/>'; }); };
   window.tfRsiSVG=function(bars,w,h,tailN){
     if(!bars||bars.length<16) return '';
     var cl=window.tfCloses(bars), r=window.tfRsi(cl,14), ma=smaOf(r,14), n=Math.min(tailN||60,cl.length), rr=r.slice(-n), mm=ma.slice(-n), p=2, i;
@@ -14663,7 +14698,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
     var xr=w-1, s='';
     /* the approach bands, tinted (10-19, the owner: "the upper will go from 60 to 70 and the lower from 40 to 30") — clipped to the window.
        10-20 (the owner: "the shaded area from 30 to 40 can you make that red and the 60 to 70 green"): the 60–70 band takes the scheme's up colour, the 30–40 band its down colour. */
-    function band(a,b,col){ var t=Math.min(hi,b), m=Math.max(lo,a); if(t<=m) return ''; return '<rect x="1" y="'+Y(t).toFixed(1)+'" width="'+(xr-1).toFixed(1)+'" height="'+Math.max(0,Y(m)-Y(t)).toFixed(1)+'" fill="'+col+'" opacity=".09"/>'; }
+    function band(a,b,col){ var t=Math.min(hi,b), m=Math.max(lo,a); if(t<=m) return ''; return '<rect x="1" y="'+Y(t).toFixed(1)+'" width="'+(xr-1).toFixed(1)+'" height="'+Math.max(0,Y(m)-Y(t)).toFixed(1)+'" fill="'+col+'" opacity=".15"/>'; }
     s+=band(60,70,C_UP)+band(30,40,C_DN);
     function hl(v,col,op,dash,sw){ if(v<lo||v>hi) return ''; var y=Y(v).toFixed(1); return '<line x1="1" x2="'+xr.toFixed(1)+'" y1="'+y+'" y2="'+y+'" stroke="'+col+'" stroke-width="'+(sw||.7)+'" stroke-dasharray="'+dash+'" opacity="'+op+'"/>'; }
     /* 10-21 (the owner: "when RSI is below that 30 threshold, it's still green — let's have it be coherent with red, like the band above it"):
@@ -14684,13 +14719,15 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
     s+=polyline(X,Y,rr,C_WH,'1.5','1');   /* 10-25 (the owner's colour rule): the RSI itself is the ink line, its average the theme's average colour */
     var lastV=rr[n-1]; if(lastV!=null) s+='<circle cx="'+X(n-1).toFixed(1)+'" cy="'+Y(lastV).toFixed(1)+'" r="1.9" fill="'+(lastV>70?C_UP:lastV<30?C_DN:C_WH)+'"/>';
     /* 11-03: the divergences (regular + hidden) on the pane — lines between the two RSI pivots, a label at the newer one */
-    if(w>=90&&h>=40){ var off=r.length-n, divs=rsiDivs(bars,r), fs=w>=140?7.5:7, dv, k;
+    /* 11-03 the divergences on the pane; 11-04 (the owner): NO WORDS — solid = regular, dotted = hidden, green bullish, red bearish, the solid
+       ones dimmed (they were overbearing); off when switched off in the Indicators sheet (the Divergence row keeps its own drawing);
+       drawn at every pane size (the census proved the row and the pane differ at tiny sizes with a gate).
+       data-q / data-p = the two pivots' absolute bar indexes, so the census (tools/div_census.py) can prove the row and the pane agree. */
+    if(rsiDivOn()){ var off=r.length-n, divs=rsiDivs(bars,r), dv, k;   /* 11-04: no size gate any more — no words to fit, and the row draws at every size */
       for(k=0;k<divs.length;k++){ dv=divs[k]; if(dv.at>r.length-1) continue; var kp=dv.p-off, kq=dv.q-off; if(kp<0) continue;
         var col=dv.type==='bull'?C_UP:C_DN, x1=X(kq), y1=Y(r[dv.q]), x2=X(kp), y2=Y(r[dv.p]);
-        s+='<line data-div="'+(dv.hidden?'h':'')+dv.type+'" x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+col+'" stroke-width="'+(dv.hidden?1.4:2)+'" stroke-linecap="round" opacity="'+(dv.hidden?'.5':'.95')+'"'+(dv.hidden?' stroke-dasharray="3 2.5"':'')+'/>';
-        s+='<circle cx="'+x2.toFixed(1)+'" cy="'+y2.toFixed(1)+'" r="2" fill="'+col+'" opacity="'+(dv.hidden?'.6':'1')+'"/>';
-        var lab=(dv.hidden?'H ':'')+(dv.type==='bull'?'Bull':'Bear'), bw=lab.length*fs*.62+6, bx=Math.max(1.5,Math.min(xr-bw-.5,x2-bw/2)), ty=dv.type==='bull'?Math.min(h-2,y2+fs+4):Math.max(fs+1,y2-5);
-        s+='<rect x="'+bx.toFixed(1)+'" y="'+(ty-fs+1).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+(fs+2)+'" rx="2" fill="rgba(13,19,32,.7)"/><text data-divlab="'+lab+'" x="'+(bx+bw/2).toFixed(1)+'" y="'+ty.toFixed(1)+'" text-anchor="middle" font-size="'+fs+'" font-weight="700" font-family="ui-monospace,Menlo,monospace" fill="'+col+'">'+lab+'</text>'; } }
+        s+='<line data-div="'+(dv.hidden?'h':'')+dv.type+'" data-q="'+dv.q+'" data-p="'+dv.p+'" x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+col+'" stroke-width="'+(dv.hidden?1.6:1.8)+'" stroke-linecap="round" opacity="'+(dv.hidden?'.75':'.7')+'"'+(dv.hidden?' stroke-dasharray="0.1 3.4"':'')+'/>';
+        s+='<circle cx="'+x2.toFixed(1)+'" cy="'+y2.toFixed(1)+'" r="2" fill="'+col+'" opacity=".85"/>'; } }
     /* the levels, on the LEFT (10-24, the owner: on the iPhone the numbers on the right covered where the RSI is developing) */
     /* 10-27 (the owner: "when RSI goes into 80 or 90, label those dotted lines like the others"): a level whose label would sit under the read chip
        (the top-left corner, ty < 26) used to go unlabelled — exactly the 80 / 90 (and 10 / 20) lines the window stretches to. Those labels now
@@ -14818,7 +14855,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
     var M=stochOf(bars), n=Math.min(tailN||60,bars.length), K=M.k.slice(-n), Dd=M.d.slice(-n), p=2;
     if(!K.some(function(v){ return v!=null; })) return '';
     function X(i){ return 1+(i+.5)*(w-2)/n; }   /* 10-21: bar CENTRES in the candle rows' own slots (their side pad is 1px) — one time axis for every row */ function Y(v){ return (h-p)-(v/100)*(h-2*p); }
-    var s='<rect x="'+p+'" y="'+Y(100).toFixed(1)+'" width="'+(w-2*p)+'" height="'+(Y(80)-Y(100)).toFixed(1)+'" fill="'+C_DN+'" opacity=".09"/><rect x="'+p+'" y="'+Y(20).toFixed(1)+'" width="'+(w-2*p)+'" height="'+(Y(0)-Y(20)).toFixed(1)+'" fill="'+C_UP+'" opacity=".09"/>'
+    var s='<rect x="'+p+'" y="'+Y(100).toFixed(1)+'" width="'+(w-2*p)+'" height="'+(Y(80)-Y(100)).toFixed(1)+'" fill="'+C_DN+'" opacity=".15"/><rect x="'+p+'" y="'+Y(20).toFixed(1)+'" width="'+(w-2*p)+'" height="'+(Y(0)-Y(20)).toFixed(1)+'" fill="'+C_UP+'" opacity=".15"/>'
       +'<line x1="'+p+'" x2="'+(w-p)+'" y1="'+Y(80).toFixed(1)+'" y2="'+Y(80).toFixed(1)+'" stroke="'+C_DN+'" stroke-width=".7" stroke-dasharray="3 2.5" opacity=".5"/>'
       +'<line x1="'+p+'" x2="'+(w-p)+'" y1="'+Y(20).toFixed(1)+'" y2="'+Y(20).toFixed(1)+'" stroke="'+C_UP+'" stroke-width=".7" stroke-dasharray="3 2.5" opacity=".5"/>';
     s+=polyline(X,Y,Dd,C_MA,'.9','.85')+polyline(X,Y,K,C_WH,'1.4','1');   /* 10-25: %D (the average of %K) in the average colour */
@@ -14963,11 +15000,11 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
   }
   function readDiv(bars,tail){
     if(!bars||bars.length<30) return null;
-    var cl=window.tfCloses(bars), r=window.tfRsi(cl,14), evs=window.tfDivergences(cl,r), n=cl.length, win=Math.min(tail||45,n), off=n-win, hit=null;
-    for(var i=0;i<evs.length;i++) if(evs[i].i1>=off) hit=evs[i];       /* the one the renderer draws: the last divergence that starts inside the window */
+    var cl=window.tfCloses(bars), r=window.tfRsi(cl,14), evs=rsiDivs(bars,r), n=cl.length, win=Math.min(tail||45,n), off=n-win, hit=null;
+    for(var i=0;i<evs.length;i++){ if(evs[i].p>=off&&evs[i].at<=n-1) hit=evs[i]; }      /* 11-04: the newest pair the row draws — its newer pivot inside the window, confirmed */
     if(!hit) return {v:0, t:'none'};
-    var age=n-1-hit.i2;
-    return {v:hit.type==='bull'?1:-1, t:(hit.type==='bull'?'bull':'bear')+' · '+age+'b'};
+    var age=n-1-hit.p;
+    return {v:hit.type==='bull'?1:-1, t:(hit.hidden?'hidden ':'')+hit.type+' · '+age+'b'};
   }
   function bbAt(cl,gi){ var s=0,j; for(j=gi-19;j<=gi;j++) s+=cl[j]; var m=s/20, v=0; for(j=gi-19;j<=gi;j++) v+=(cl[j]-m)*(cl[j]-m); var sd=Math.sqrt(v/20); return [m-2*sd,m+2*sd]; }
   function readBb(bars){
@@ -15128,7 +15165,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
       if(t.closest('[data-techinfox]')||(t.matches&&t.matches('[data-techsheet]'))){ closeInfo(); return; }
       if((b=t.closest('[data-techadd]'))){ addInd(b.getAttribute('data-techadd')); return; }
       if((b=t.closest('[data-techrm]'))){ removeInd(b.getAttribute('data-techrm')); return; }
-      if(t.closest('[data-techema]')||t.closest('[data-techma]')||t.closest('[data-techgrab]')) return;
+      if(t.closest('[data-techema]')||t.closest('[data-techma]')||t.closest('[data-techrsidiv]')||t.closest('[data-techgrab]')) return;
       if(t.closest('[data-techinfo]')){ openInfo(); return; }
       if(t.closest('[data-techclose]')){ hide(); return; }
       if((b=t.closest('[data-techface]'))){ var tf=b.getAttribute('data-techface'); if(tf==='fin') toFin(); else if(tf==='card') toCardT(); return; }
@@ -15165,6 +15202,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
       +'</div>'
       +(i.id==='candle'?'<div class="glt-iset"><label>EMA length <input type="number" inputmode="numeric" min="2" max="400" step="1" value="'+emaN()+'" data-techema aria-label="EMA length"></label><span>periods of this timeframe · 55 is the app’s standard</span></div>':'')
       +(i.id==='sma'?'<div class="glt-iset"><label>MA length <input type="number" inputmode="numeric" min="2" max="400" step="1" value="'+maN()+'" data-techma aria-label="MA length"></label><span>periods of this timeframe · 50 and 200 are the classics</span></div>':'')
+      +(i.id==='rsi'?'<div class="glt-iset"><label><input type="checkbox" data-techrsidiv'+(rsiDivOn()?' checked':'')+' aria-label="Draw divergences on the RSI"> Divergences on the RSI pane</label><span>solid = regular · dotted = hidden · green bullish · red bearish · the Divergence row keeps its own</span></div>':'')
       +'<details class="glt-idesc'+((i.id==='div'&&window.GLDivInfo)||(window.GLIndInfo&&GLIndInfo[i.id])?' gdv':'')+'"><summary>What it shows</summary>'+((i.id==='div'&&window.GLDivInfo)?window.GLDivInfo.html:i.d.map(function(p){ return '<p>'+esc((i.id==='candle'?p.replace(/55/g,String(emaN())):p).replace(/\{N\}/g,String(maN())))+'</p>'; }).join('')+((window.GLIndInfo&&GLIndInfo[i.id]&&GLIndInfo[i.id].html)?GLIndInfo[i.id].html:''))+'</details></section>';   /* 10-17: the Divergence fold is illustrated (stage48/divinfo.js); 11-03: every other row too (stage48/indinfo.js, tools/gen_indinfo.py) */
   }
   /* ---- drag to arrange (10-07, the owner: "grab a certain button and move it in real time"): pointer events on the ≡ handle; the row
@@ -15187,7 +15225,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
   root.addEventListener('pointerdown',function(e){ var h=e.target&&e.target.closest&&e.target.closest('[data-techgrab]'); if(h) dragStart(e,h); });
   root.addEventListener('pointermove',function(e){ if(DRAG) dragMove(e); });
   root.addEventListener('pointerup',dragEnd); root.addEventListener('pointercancel',dragEnd);
-  root.addEventListener('change',function(e){ var t=e.target; if(t&&t.matches&&t.matches('[data-techema]')){ if(!setEmaN(t.value)) t.value=emaN(); } else if(t&&t.matches&&t.matches('[data-techma]')){ if(!setMaN(t.value)) t.value=maN(); } });
+  root.addEventListener('change',function(e){ var t=e.target; if(t&&t.matches&&t.matches('[data-techema]')){ if(!setEmaN(t.value)) t.value=emaN(); } else if(t&&t.matches&&t.matches('[data-techma]')){ if(!setMaN(t.value)) t.value=maN(); } else if(t&&t.matches&&t.matches('[data-techrsidiv]')){ setRsiDiv(!!t.checked); } });
   root.addEventListener('keydown',function(e){ var t=e.target; if(t&&t.matches&&t.matches('[data-techema],[data-techma]')&&e.key==='Enter'){ e.preventDefault(); t.blur(); } });   /* Enter = leave the field; the change event (fired by the blur) applies the value ONCE — setting it here too repainted the sheet twice, the second time from inside the first's blur */
   function infoHTML(){
     var on=ACT(), off=IND.filter(function(i){ return ORDER.indexOf(i.id)<0; });
@@ -15351,6 +15389,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
   function current(){ return S.cur?chipKey(S.cur):null; }
   function door(){ return S.open?S.door:null; }
   window.GLTech={show:show, hide:hide, look:look, current:current, door:door, maN:maN, setMaN:setMaN, frames:function(){ return S.cur?{cur:S.cur, P:frames(S.cur), asof:asofOf(S.cur)}:null; }, refit:function(){ [].forEach.call(root.querySelectorAll('.glt-plot[data-ind="lines"]'),function(el){ el.removeAttribute('data-fit'); }); schedule(); }, bench:function(){ return {at:BENCH.at, err:BENCH.err, have:BENCH.data?Object.keys(BENCH.data.bench||{}):[]}; }, inds:function(){ return ACT().map(function(i){ return i.id; }); }, setInd:function(id,on){ if((ORDER.indexOf(id)>=0)!==!!on) toggleInd(id); }, setInds:function(ids){ var ok=(ids||[]).filter(function(x,k,a){ return a.indexOf(x)===k&&IND.some(function(i){ return i.id===x; }); }); if(ok.length) setOrder(ok); }};
+  window.GLTech.rsiDiv=function(on){ if(on===true||on===false) setRsiDiv(on); return rsiDivOn(); };   /* 11-04: the RSI pane's divergences on | off (the sheet's checkbox) */
 
   /* ---------- the card (R6 §22): ONE box under the price strip opens the page — a full-width bordered, accent-tinted button, a sibling of the strip
      inside .aibo-box (the stock toggle + grid are hidden by techlab.css under Glass): "Technicals" bold / the rows on the page muted / the frames on hand
