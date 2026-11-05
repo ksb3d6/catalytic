@@ -12655,7 +12655,9 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
     if(!st.forig) st.forig=[].slice.call(tb.children);
     var rows=st.forig.slice(), q=norm(st.q);
     if(q&&!st.cat) rows=rows.filter(function(r){ var t=norm(r.textContent); if(t.indexOf(q)>=0) return true; var role=r.children[2]?r.children[2].textContent:''; for(var i=0;i<WORDS.length;i++) if(WORDS[i][0].test(q)&&WORDS[i][1].test(role)) return true; return false; });
-    if(st.fcol!=null) rows.sort(function(a,b){ var x=(a.children[st.fcol]||{}).textContent||'', y=(b.children[st.fcol]||{}).textContent||''; x=x.trim().toUpperCase(); y=y.trim().toUpperCase(); return x===y?0:(x<y?-1:1)*st.fdir; });
+    if(st.fcol!=null) rows.sort(function(a,b){ var ta=a.children[st.fcol], tb=b.children[st.fcol]; var na=ta&&ta.hasAttribute('data-sortv')?+ta.getAttribute('data-sortv'):null, nb=tb&&tb.hasAttribute('data-sortv')?+tb.getAttribute('data-sortv'):null;
+      if(na!=null||nb!=null){ if(na==null) return 1; if(nb==null) return -1; return na===nb?0:(na<nb?-1:1)*st.fdir; }   /* 11-05: the holdings grade / assets cells (etfhold.js) sort as numbers; a row without one sorts last */
+      var x=(ta||{}).textContent||'', y=(tb||{}).textContent||''; x=x.trim().toUpperCase(); y=y.trim().toUpperCase(); return x===y?0:(x<y?-1:1)*st.fdir; });
     while(tb.firstChild) tb.removeChild(tb.firstChild);
     rows.forEach(function(r){ tb.appendChild(r); });
     if(q&&!st.cat&&!rows.length){ var tr0=document.createElement('tr'); tr0.className='gl-scempty'; tr0.innerHTML='<td colspan="4">No fund matches \u201c'+esc(st.q)+'\u201d.</td>'; tb.appendChild(tr0); }
@@ -12682,7 +12684,7 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
     if(t.hasAttribute('data-glsccat')){ var c=t.getAttribute('data-glsccat'); setFind('', (c&&c!==st.cat)?c:''); return; }
     if(t.hasAttribute('data-glscclear')){ setFind('',''); return; }
     if(t.hasAttribute('data-glsort')){ var c=+t.getAttribute('data-glsort'); if(st.col===c) st.dir=-st.dir; else { st.col=c; st.dir=(c===0)?1:1; } save(); apply(); return; }
-    if(t.hasAttribute('data-glfsort')){ var f=+t.getAttribute('data-glfsort'); if(st.fcol===f) st.fdir=-st.fdir; else { st.fcol=f; st.fdir=1; } applyFunds(); return; }
+    if(t.hasAttribute('data-glfsort')){ var f=+t.getAttribute('data-glfsort'); if(st.fcol===f) st.fdir=-st.fdir; else { st.fcol=f; st.fdir=t.getAttribute('data-glfdesc')==='1'?-1:1; } applyFunds(); return; }
   },true);
   function setFind(q,cat){ st.q=q||''; st.cat=cat||''; var inp=document.querySelector('#scMount [data-glscfind]'); if(inp&&inp.value!==st.q) inp.value=st.q; apply(); applyFunds(); }
   document.addEventListener('input',function(e){ if(!gl()) return; var t=e.target; if(!t||!t.hasAttribute||!t.hasAttribute('data-glscfind')||!t.closest('#scMount')) return; setFind(t.value,''); },true);
@@ -12694,7 +12696,253 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',arm); else arm();
   window.GLScSort={state:st, apply:apply, group:function(g){ if(g==='layer'||g==='map'||g==='none'){ st.group=g; save(); apply(); } return st.group; }, sort:function(col,dir){ st.col=col; st.dir=dir||1; save(); apply(); },
-    find:function(q){ setFind(q,''); return st.q; }, cat:function(c){ setFind('',c); return st.cat; }, matches:catMatches};
+    find:function(q){ setFind(q,''); return st.q; }, cat:function(c){ setFind('',c); return st.cat; }, matches:catMatches, funds:function(){ st.forig=null; applyFunds(); }};   /* funds(): re-read the funds table (etfhold.js added columns) and re-stamp its heads */
+})();
+
+</script>
+<style id="gl48HoldCss">
+/* stage48/etfhold.css — THE FUND'S HOLDINGS (11-05, etfhold.js): the block on the fund's card + the Research fund face, the two Scorecard columns */
+html[data-gl] .glh{display:block;margin:10px 0 0;padding:12px 14px 14px;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.09);border-radius:12px;background:rgba(var(--gl-wh-rgb,255,255,255),.035);}
+html[data-gl] .glh.glh-face{margin:0 0 14px;}
+html[data-gl] .glh-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:0 0 8px;}
+html[data-gl] .glh-head b{font-size:14px;color:var(--ink);}
+html[data-gl] .glh-facts{display:inline-flex;flex-wrap:wrap;gap:4px 10px;font-size:11.5px;color:rgba(var(--gl-ink-rgb,234,238,245),.62);}
+html[data-gl] .glh-facts i{font-style:normal;font-variant-numeric:tabular-nums;}
+html[data-gl] .glh-facts i:first-child{color:var(--ink);font-weight:700;}
+html[data-gl] .glh-grade{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 10px;font-size:12px;color:rgba(var(--gl-ink-rgb,234,238,245),.75);}
+html[data-gl] .glh-grade .glh-gl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+html[data-gl] .glh-grade .glh-gw{color:rgba(var(--gl-ink-rgb,234,238,245),.6);}
+html[data-gl] .glh-grade.glh-thin .glh-cb{opacity:.7;}
+html[data-gl] .glh-grade.glh-none{color:rgba(var(--gl-ink-rgb,234,238,245),.55);}
+html[data-gl] .glh-cb{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:22px;padding:0 6px;border-radius:6px;font-weight:800;font-size:12.5px;box-shadow:inset 0 0 0 1px rgba(var(--gl-wh-rgb,255,255,255),.12);}
+html[data-gl] .glh-cb.sm{min-width:28px;height:18px;font-size:10.5px;border-radius:5px;padding:0 4px;}
+html[data-gl] .glh-seg-row{display:flex;align-items:center;gap:8px;margin:0 0 10px;flex-wrap:wrap;}
+html[data-gl] .glh-segl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+html[data-gl] .glh-seg{max-width:150px;margin:0;}
+html[data-gl] .glh-seg button{padding:5px 4px;font-size:12px;}
+html[data-gl] .glh-segh{font-size:11px;color:var(--muted);}
+html[data-gl] .glh-grid{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px 18px;align-items:start;}
+@media (max-width:480px){ html[data-gl] .glh-grid{grid-template-columns:120px minmax(0,1fr);gap:10px;} }
+html[data-gl] .glh-dwrap{position:sticky;top:0;}
+html[data-gl] .glh-donut{width:100%;height:auto;display:block;}
+html[data-gl] .glh-donut path{stroke:rgba(10,14,22,.9);stroke-width:1;}
+html[data-gl] .glh-donut .glh-dn{font:800 22px ui-monospace,"SF Mono",Menlo,monospace;fill:var(--ink);}
+html[data-gl] .glh-donut .glh-dl{font:600 8.5px ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;fill:rgba(var(--gl-ink-rgb,234,238,245),.55);}
+html[data-gl] .glh-legend{list-style:none;margin:0;padding:0;display:grid;gap:3px;min-width:0;counter-reset:glh;}
+html[data-gl] .glh-legend li,html[data-gl] .glh-restlist li{display:grid;grid-template-columns:10px auto minmax(0,1fr) auto auto;gap:7px;align-items:center;font-size:12px;color:rgba(var(--gl-ink-rgb,234,238,245),.72);min-width:0;}
+html[data-gl] .glh-restlist li{grid-template-columns:auto minmax(0,1fr) auto auto;}
+html[data-gl] .glh-legend li i{display:block;width:10px;height:10px;border-radius:3px;}
+html[data-gl] .glh-tk{font:700 12px ui-monospace,"SF Mono",Menlo,monospace;color:var(--ink);white-space:nowrap;}
+html[data-gl] .glh-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgba(var(--gl-ink-rgb,234,238,245),.55);}
+html[data-gl] .glh-legend li b,html[data-gl] .glh-restlist li b{font:600 12px ui-monospace,"SF Mono",Menlo,monospace;font-variant-numeric:tabular-nums;color:var(--ink);}
+html[data-gl] .glh-nog{display:inline-flex;min-width:28px;justify-content:center;font-size:10px;color:rgba(var(--gl-ink-rgb,234,238,245),.35);}
+html[data-gl] .glh-rest{margin:10px 0 0;}
+html[data-gl] .glh-rest summary{cursor:pointer;font-size:12px;color:rgba(var(--gl-ink-rgb,234,238,245),.65);list-style:none;}
+html[data-gl] .glh-rest summary::-webkit-details-marker{display:none;}
+html[data-gl] .glh-rest summary::before{content:"\25B8";display:inline-block;width:12px;color:var(--muted);}
+html[data-gl] .glh-rest[open] summary::before{content:"\25BE";}
+html[data-gl] .glh-restlist{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:3px;max-height:320px;overflow:auto;}
+html[data-gl] .glh-src,html[data-gl] .glh-one{margin:10px 0 0;font-size:11px;line-height:1.5;color:rgba(var(--gl-ink-rgb,234,238,245),.5);}
+html[data-gl] .glh-one{font-size:12.5px;color:rgba(var(--gl-ink-rgb,234,238,245),.7);margin:0;}
+html[data-gl] .glh-load{opacity:.7;}
+html[data-gl] .glh-tag small{font-weight:600;opacity:.75;}
+html[data-gl] .glh-tag .glh-cb{margin-left:4px;}
+html[data-gl] .sc-root .sc-dtable td.glh-gcell{white-space:nowrap;}
+html[data-gl] .sc-root .sc-dtable td.glh-gcell small{color:rgba(var(--gl-ink-rgb,234,238,245),.5);margin-left:2px;}
+html[data-gl] .sc-root .sc-dtable td.glh-acell{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--ink);}
+html[data-gl] .sc-root .sc-dtable th small{font-weight:600;text-transform:none;letter-spacing:0;opacity:.7;margin-left:3px;}
+
+</style>
+<script id="gl48Hold">
+/* stage48/etfhold.js — THE FUND'S HOLDINGS (11-05, the owner: "for every fund and ETF … if it's a fund, we show technicals and nothing else …
+   I would like to show the donut chart of everything that's held in that fund … the top 10, 15, or 20 equities … and then the rest just
+   in a list … comprehensively for every ETF … when you add an ETF, it pulls that" + "a grading system with the ETFs … take the first 10
+   or 15, whatever comes first, sum them into a combined grade" + "how much money is in an ETF … figure out what you call it").
+   Reads backend v4.48: GET /etf_holdings.json (the index: every app fund's top 25 + period + net assets) and /etf_holdings/<SYM>.json
+   (one fund's whole filed portfolio, built on demand for ANY fund the SEC lists — the obscure-watchlist case), both from the fund's own
+   SEC N-PORT-P filing; the money in the fund = ASSETS UNDER MANAGEMENT (AUM; "net assets" on the filing) from /etf_info.json, the
+   filing's net assets when the facts feed has no row.
+   THREE SURFACES: the fund's card (the Tape / the Map / search — a block under the technicals, wrapping openSheet the way fund.js does),
+   the Research fund face (fin.js drops a [data-glhold] node in; we fill it), the Scorecard's funds table (two sortable columns: the
+   holdings grade and the assets).
+   THE HOLDINGS GRADE: the fund's largest 15 equity holdings (all of them when it holds fewer); each one the app grades contributes its
+   grade for the current lens (Expansion | Recession, the same switch as every grade on the page) weighted by its share of the fund; the
+   weighted mean grade is the fund's. Shown with its coverage ("9 of its top 15 graded · 58% of the fund"); THIN (muted, tilde) when the
+   graded names are fewer than 3 or under 30% of the top-15 weight; none when no top-15 name is graded; a trust / bond fund has no
+   equity grade. Never a grade on a guess: only names the registry grades count. The N seg (10 | 15 | 20) is the donut's size only and
+   is kept on the device ('aibo.gl.hold.n'); the grade's 15 does not move. Glass only; theme off = the stock card. */
+(function(){
+  'use strict';
+  var H=document.documentElement, LSN='aibo.gl.hold.n', TOP=15;
+  function gl(){ return H.hasAttribute('data-gl'); }
+  var BASE=String(window.AIBO_LIVE_URL||'https://api.bullwhistle.com/universe.json').replace(/\/universe\.json.*$/,'');
+  var ORDER=['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F'];
+  var COL=['#a78bfa','#1FC6DC','#39d07f','#E3A857','#EC7FA9','#6FB1E8','#FF8C42','#9CCB5A','#C58BE8','#59C9A5','#F2C14E','#7FA7FF','#E88A6F','#8ED1C3','#C9A0DC','#6CC56C','#F0A3C9','#8A93A5','#B5C06B','#D4A373'];
+  var S={index:null, indexErr:null, indexWait:null, funds:{}, wait:{}, facts:null, factsWait:null, n:15};
+  try{ var n0=+localStorage.getItem(LSN); if(n0===10||n0===15||n0===20) S.n=n0; }catch(_){}
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function D(){ try{ return (typeof DATA!=='undefined'&&DATA)||window.DATA||{}; }catch(_){ return window.DATA||{}; } }
+  function FU(){ try{ return (typeof FUNDS!=='undefined'&&FUNDS)||window.FUNDS||{}; }catch(_){ return window.FUNDS||{}; } }
+  function lens(){ try{ return (typeof currentLens!=='undefined'&&currentLens==='rec')?'rec':'exp'; }catch(_){ return 'exp'; } }
+  function gcls(g){ try{ return (typeof gradeClass==='function')?gradeClass(g):''; }catch(_){ return ''; } }
+  function rank(g){ var i=ORDER.indexOf(String(g||'').trim()); return i<0?99:i; }
+  function money(v){ if(v==null||!isFinite(v)||v<=0) return '—'; var a=Math.abs(v); return '$'+(a>=1e12?(a/1e12).toFixed(2)+'T':a>=1e9?(a/1e9).toFixed(1)+'B':a>=1e6?(a/1e6).toFixed(0)+'M':Math.round(a).toLocaleString()); }
+  function dateWords(iso){ if(!iso) return ''; var m=String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/); if(!m) return String(iso); return (+m[3])+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2]-1]+' '+m[1]; }
+  function getJSON(url){ return fetch(url,{cache:'no-store'}).then(function(r){ if(!r.ok){ var e=new Error('http '+r.status); e.status=r.status; throw e; } return r.json(); }); }
+  /* ---- the feeds ---- */
+  function index(cb){
+    if(S.index){ cb(S.index); return; } if(S.indexErr){ cb(null); return; }
+    if(S.indexWait){ S.indexWait.push(cb); return; } S.indexWait=[cb];
+    var done=function(j){ var w=S.indexWait||[]; S.indexWait=null; if(j&&j.funds) S.index=j; else S.indexErr=true; w.forEach(function(f){ try{ f(S.index); }catch(_){} }); if(S.index) decorateScorecard(); };
+    getJSON(BASE+'/etf_holdings.json').then(done,function(){ done(null); });
+  }
+  function facts(cb){
+    if(S.facts){ cb(S.facts); return; } if(S.factsWait){ S.factsWait.push(cb); return; } S.factsWait=[cb];
+    var done=function(j){ var w=S.factsWait||[]; S.factsWait=null; S.facts=(j&&j.funds)?j:{funds:{}}; w.forEach(function(f){ try{ f(S.facts); }catch(_){} }); };
+    getJSON(BASE+'/etf_info.json').then(done,function(){ done(null); });
+  }
+  function fund(sym,cb){
+    if(S.funds[sym]){ cb(S.funds[sym]); return; }
+    if(S.wait[sym]){ S.wait[sym].push(cb); return; } S.wait[sym]=[cb];
+    var done=function(j){ var w=S.wait[sym]||[]; delete S.wait[sym]; S.funds[sym]=j; w.forEach(function(f){ try{ f(j); }catch(_){} }); };
+    getJSON(BASE+'/etf_holdings/'+encodeURIComponent(sym)+'.json').then(function(j){ done((j&&j.sym)?j:{err:'bad'}); },function(e){ done({err:(e&&e.status===404)?'none':'down', status:e&&e.status}); });
+  }
+  function aumOf(sym,p){ var f=S.facts&&S.facts.funds&&S.facts.funds[sym]; var v=f&&f.aum; if(v==null&&p) v=p.netAssets; return (v!=null&&isFinite(v)&&v>0)?v:null; }
+  /* ---- the maths ---- */
+  function isEq(h){ return !!(h&&h.pct>0&&(h.cat==='EC'||h.cat==='EP'||h.cat==='RF'||h.cat==null)); }
+  function equities(h){ return (h||[]).filter(isEq); }
+  function blend(hold,l){
+    l=l||lens(); var top=equities(hold).slice(0,TOP), wTop=0, wG=0, acc=0, names=[]; var data=D();
+    top.forEach(function(x){ wTop+=x.pct; var d=x.ticker&&data[x.ticker], g=d&&(l==='rec'?d.rec:d.exp), r=rank(g); if(r<99){ wG+=x.pct; acc+=r*x.pct; names.push({ticker:x.ticker, g:g, pct:x.pct}); } });
+    if(!top.length) return {letter:null, n:0, of:0, share:0, wG:0, wTop:0, names:names, why:'no equity holdings'};
+    if(!names.length) return {letter:null, n:0, of:top.length, share:0, wG:0, wTop:wTop, names:names, why:'none of its top '+top.length+' is graded'};
+    var r=acc/wG, letter=ORDER[Math.max(0,Math.min(12,Math.round(r)))], share=wTop>0?wG/wTop:0;
+    return {letter:letter, rank:r, n:names.length, of:top.length, share:share, wG:wG, wTop:wTop, names:names, thin:(names.length<3||share<0.3)};
+  }
+  function donut(parts,centre,sub,ariaLabel){
+    var R=52, r=34, cx=60, cy=60, tot=0, s='', a0=-Math.PI/2, i;
+    parts.forEach(function(x){ tot+=x.pct; }); if(!(tot>0)) return '';
+    for(i=0;i<parts.length;i++){ var a1=a0+2*Math.PI*parts[i].pct/tot, big=(a1-a0)>Math.PI?1:0, col=parts[i].col;
+      if(a1-a0>=2*Math.PI-1e-6) s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+((R+r)/2)+'" fill="none" stroke="'+col+'" stroke-width="'+(R-r)+'"/>';
+      else { var x0=cx+R*Math.cos(a0), y0=cy+R*Math.sin(a0), x1=cx+R*Math.cos(a1), y1=cy+R*Math.sin(a1), xi0=cx+r*Math.cos(a1), yi0=cy+r*Math.sin(a1), xi1=cx+r*Math.cos(a0), yi1=cy+r*Math.sin(a0);
+        s+='<path d="M'+x0.toFixed(2)+','+y0.toFixed(2)+' A'+R+','+R+' 0 '+big+',1 '+x1.toFixed(2)+','+y1.toFixed(2)+' L'+xi0.toFixed(2)+','+yi0.toFixed(2)+' A'+r+','+r+' 0 '+big+',0 '+xi1.toFixed(2)+','+yi1.toFixed(2)+' Z" fill="'+col+'" data-slice="'+esc(parts[i].key||'')+'"><title>'+esc(parts[i].label)+' '+parts[i].pct.toFixed(1)+'%</title></path>'; }
+      a0=a1; }
+    s+='<text x="'+cx+'" y="'+(cy+(sub?-2:5))+'" text-anchor="middle" class="glh-dn">'+esc(centre)+'</text>'+(sub?'<text x="'+cx+'" y="'+(cy+12)+'" text-anchor="middle" class="glh-dl">'+esc(sub)+'</text>':'');
+    return '<svg class="glh-donut" viewBox="0 0 120 120" role="img" aria-label="'+esc(ariaLabel||'Holdings')+'">'+s+'</svg>';
+  }
+  function gradeChip(g,sm){ return g?'<span class="cb glh-cb'+(sm?' sm':'')+' '+gcls(g)+'">'+esc(g)+'</span>':''; }
+  function gradeLine(b,l){
+    if(!b.of) return '<p class="glh-grade glh-none">No equity grade — the fund holds no graded equities.</p>';
+    if(!b.letter) return '<p class="glh-grade glh-none">No holdings grade yet — '+esc(b.why)+'.</p>';
+    return '<p class="glh-grade'+(b.thin?' glh-thin':'')+'"><span class="glh-gl">Holdings grade</span>'+gradeChip(b.letter)+'<span class="glh-gw">'+(b.thin?'thin read — ':'')+b.n+' of its top '+b.of+' graded · '+Math.round(b.share*100)+'% of that weight · '+(l==='rec'?'Recession':'Expansion')+' lens</span></p>';
+  }
+  function labelOf(h){ return h.ticker||h.name||'—'; }
+  function blockHTML(sym,p,ix){
+    /* p = the fund's own payload (whole portfolio) or null; ix = the index entry (top 25) or null */
+    var kind=(p&&p.kind)||(ix&&ix.kind)||'fund', hold=(p&&p.holdings)||(ix&&ix.top)||[], period=(p&&p.period)||(ix&&ix.period)||null;
+    var count=(p&&p.count)!=null?p.count:(ix&&ix.count)!=null?ix.count:hold.length, l=lens(), aum=aumOf(sym,p||ix), f=FU()[sym]||{};
+    var h='<div class="glh-head"><b>Holdings</b><span class="glh-facts">'+(aum?'<i title="Assets under management — the money in the fund">'+money(aum)+' in the fund</i>':'')+(count?'<i>'+count+' holding'+(count===1?'':'s')+'</i>':'')+(period?'<i>filed for '+esc(dateWords(period))+'</i>':'')+'</span></div>';
+    if(kind==='trust'){
+      return h+'<p class="glh-one">Holds one asset. '+esc(f.note||f.role||'')+' A grantor trust or commodity pool files no portfolio with the SEC, so there is no holdings list and no equity grade.</p>';
+    }
+    if(!hold.length) return h+'<p class="glh-one">The fund\'s portfolio is not published yet.</p>';
+    var eq=equities(hold), n=S.n, top=eq.slice(0,n), rest=eq.slice(n), other=hold.filter(function(x){ return !isEq(x); }), b=blend(hold,l), data=D();
+    var topW=0; top.forEach(function(x){ topW+=x.pct; }); var restW=0; rest.forEach(function(x){ restW+=x.pct; }); var otherW=0; other.forEach(function(x){ otherW+=x.pct; });
+    var parts=top.map(function(x,i){ return {key:labelOf(x), label:labelOf(x)+(x.ticker&&x.name?' · '+x.name:''), pct:x.pct, col:COL[i%COL.length]}; });
+    var tail=restW+otherW+Math.max(0,100-topW-restW-otherW); if(tail>0.05) parts.push({key:'rest', label:'everything else', pct:tail, col:'rgba(255,255,255,.14)'});
+    h+=gradeLine(b,l);
+    h+='<div class="glh-seg-row"><span class="glh-segl">Top</span><div class="gl-seg glh-seg" role="tablist" aria-label="How many holdings the donut shows">'+[10,15,20].map(function(k){ return '<button type="button" role="tab" data-glholdn="'+k+'"'+(k===n?' class="on"':'')+'>'+k+'</button>'; }).join('')+'</div><span class="glh-segh">'+Math.round(topW)+'% of the fund in its top '+top.length+'</span></div>';
+    h+='<div class="glh-grid"><div class="glh-dwrap">'+donut(parts,b.letter||String(count),b.letter?'top '+b.of:'holdings','Top '+top.length+' holdings of '+sym)+'</div><ol class="glh-legend">';
+    top.forEach(function(x,i){ var d=x.ticker&&data[x.ticker], g=d&&(l==='rec'?d.rec:d.exp);
+      h+='<li'+(x.ticker&&d?' data-glholdtk="'+esc(x.ticker)+'" class="glh-graded"':'')+'><i style="background:'+COL[i%COL.length]+'"></i><span class="glh-tk">'+esc(labelOf(x))+'</span><span class="glh-nm">'+esc(x.ticker&&x.name?x.name:(x.us===false&&x.exch?x.exch:''))+'</span><b>'+x.pct.toFixed(1)+'%</b>'+(rank(g)<99?gradeChip(g,true):'<span class="glh-nog">'+(x.cat==='RF'?'fund':'—')+'</span>')+'</li>'; });
+    h+='</ol></div>';
+    if(rest.length||other.length){
+      h+='<details class="glh-rest"><summary>'+(rest.length?'+'+rest.length+' more equit'+(rest.length===1?'y':'ies')+' · '+restW.toFixed(1)+'%':'')+(rest.length&&other.length?' · ':'')+(other.length?other.length+' other position'+(other.length===1?'':'s')+' (cash, bonds, derivatives) · '+otherW.toFixed(1)+'%':'')+'</summary><ul class="glh-restlist">';
+      rest.concat(other).forEach(function(x){ var d=x.ticker&&data[x.ticker], g=d&&(l==='rec'?d.rec:d.exp); h+='<li><span class="glh-tk">'+esc(labelOf(x))+'</span><span class="glh-nm">'+esc(x.ticker&&x.name?x.name:(x.cat&&!isEq(x)?x.cat:''))+'</span><b>'+(x.pct!=null?x.pct.toFixed(2)+'%':'—')+'</b>'+(rank(g)<99?gradeChip(g,true):'')+'</li>'; });
+      h+='</ul></details>'; }
+    h+='<p class="glh-src">The portfolio as the fund filed it with the SEC (Form N-PORT'+(period?', for '+esc(dateWords(period)):'')+'); weights are % of net assets then. Grades are the registry\'s for the names it grades; a fund is never graded on a guess.'+(p&&p.stale?' This copy is older than usual — the last refresh failed.':'')+'</p>';
+    return h;
+  }
+  /* ---- mounting ---- */
+  function paint(el){
+    var sym=el.getAttribute('data-glhold'); if(!sym) return;
+    var p=S.funds[sym], ix=S.index&&S.index.funds&&S.index.funds[sym];
+    if(p&&!p.err) el.innerHTML=blockHTML(sym,p,ix||null);
+    else if(ix) el.innerHTML=blockHTML(sym,null,ix);
+    else if(p&&p.err==='none') el.innerHTML='<div class="glh-head"><b>Holdings</b></div><p class="glh-one">The SEC lists no portfolio for this symbol — it is not a 1940-Act fund, or not a fund at all.</p>';
+    else if(p&&p.err) el.innerHTML='<div class="glh-head"><b>Holdings</b></div><p class="glh-one">The holdings feed is not answering right now.</p>';
+    else el.innerHTML='<div class="glh-head"><b>Holdings</b></div><p class="glh-one glh-load">Reading the fund\'s filed portfolio…</p>';
+    el.setAttribute('data-glholdstate',(p&&!p.err)?'full':ix?'index':(p&&p.err)||'loading');
+    headChips(el,sym);
+  }
+  function headChips(el,sym){
+    /* the card's head tags: "Cataloged, not graded" becomes the holdings grade + the assets, once known */
+    var body=el.closest('#sheetBody'); if(!body) return; var tags=body.querySelector('.sh-head .sh-tags'); if(!tags) return;
+    var p=S.funds[sym], ix=S.index&&S.index.funds&&S.index.funds[sym], hold=(p&&!p.err&&p.holdings)||(ix&&ix.top)||null; if(!hold) return;
+    var b=blend(hold,lens()), aum=aumOf(sym,(p&&!p.err)?p:ix);
+    var old=tags.querySelector('[data-glholdtag]'); if(old) old.parentNode.removeChild(old);
+    var ng=null; [].forEach.call(tags.querySelectorAll('.tag'),function(t){ if(/not graded/i.test(t.textContent)) ng=t; });
+    var span=document.createElement('span'); span.className='tag glh-tag'; span.setAttribute('data-glholdtag','1');
+    span.innerHTML=(b.letter?'Holdings grade '+gradeChip(b.letter,true)+(b.thin?' <small>thin</small>':''):'No holdings grade')+(aum?' <small>· '+esc(money(aum))+' in the fund</small>':'');
+    if(ng){ ng.parentNode.replaceChild(span,ng); } else tags.appendChild(span);
+  }
+  function mount(el,sym){
+    if(!el||!sym) return; sym=String(sym).toUpperCase(); el.setAttribute('data-glhold',sym); el.classList.add('glh'); paint(el);
+    facts(function(){ paint(el); });
+    index(function(){ paint(el); });
+    fund(sym,function(){ paint(el); });
+  }
+  function repaintAll(){ [].forEach.call(document.querySelectorAll('[data-glhold]'),paint); decorateScorecard(true); }
+  /* the card: a fund's sheet gets the block under its technicals (wraps openSheet after fund.js's wrapper; the stock DOM is untouched) */
+  function mountCard(disp){
+    if(!gl()) return; var lk=null; try{ lk=window.lookup(disp); }catch(_){} if(!lk||lk.type!=='fund') return;
+    var body=document.getElementById('sheetBody'); if(!body||body.querySelector('[data-glhold]')) return;
+    var sec=document.createElement('section'); sec.className='glh glh-card';
+    var after=body.querySelector('.aibo-box')||body.querySelector('.sh-head');
+    if(after&&after.nextSibling) body.insertBefore(sec,after.nextSibling); else body.appendChild(sec);
+    mount(sec,lk.key);
+  }
+  var _open=window.openSheet;
+  if(typeof _open==='function') window.openSheet=function(disp){ var r=_open.apply(this,arguments); try{ mountCard(disp); }catch(_){} return r; };
+  /* the Scorecard's funds table: Grade (holdings) + Assets, sortable through scsort.js */
+  function decorateScorecard(repaint){
+    if(!gl()) return; var m=document.getElementById('scMount'); if(!m) return; var tbl=m.querySelector('table.sc-dtable'); if(!tbl||!tbl.tHead||!tbl.tBodies[0]) return;
+    if(!S.index) { index(function(){}); facts(function(){}); return; }
+    var hr=tbl.tHead.rows[0]; if(!hr) return; var l=(m.getAttribute('data-lens')==='rec')?'rec':'exp';
+    var added=false;
+    if(!hr.querySelector('[data-glholdcol]')){ added=true;
+      var th1=document.createElement('th'); th1.setAttribute('data-glholdcol','grade'); th1.setAttribute('data-glfdesc','0'); th1.innerHTML='Grade <small>holdings</small>'; th1.title='The holdings grade: the fund\'s largest 15 equities, each graded name weighted by its share';
+      var th2=document.createElement('th'); th2.setAttribute('data-glholdcol','aum'); th2.setAttribute('data-glfdesc','1'); th2.innerHTML='Assets <small>AUM</small>'; th2.title='Assets under management — the money in the fund';
+      hr.insertBefore(th1,hr.children[2]||null); hr.insertBefore(th2,hr.children[3]||null);
+    }
+    [].forEach.call(tbl.tBodies[0].rows,function(tr){
+      if(tr.classList.contains('gl-scempty')) return;
+      var sym=(tr.children[0]&&tr.children[0].textContent||'').trim().toUpperCase(); if(!sym) return;
+      var g=tr.querySelector('[data-glholdcell="grade"]'), a=tr.querySelector('[data-glholdcell="aum"]');
+      if(!g){ g=document.createElement('td'); g.setAttribute('data-glholdcell','grade'); g.className='glh-gcell'; tr.insertBefore(g,tr.children[2]||null); }
+      if(!a){ a=document.createElement('td'); a.setAttribute('data-glholdcell','aum'); a.className='glh-acell'; tr.insertBefore(a,tr.children[3]||null); }
+      var ix=S.index.funds[sym], p=S.funds[sym]; var hold=(p&&!p.err&&p.holdings)||(ix&&ix.top)||null; if(hold&&!hold.length) hold=null;
+      if(hold){ var b=blend(hold,l); g.innerHTML=b.letter?gradeChip(b.letter,true)+(b.thin?'<small title="thin read: fewer than 3 graded names or under 30% of the top-15 weight">~</small>':''):'<span class="glh-nog" title="'+esc(b.why||'')+'">—</span>'; g.setAttribute('data-sortv',b.letter?String(b.rank):'99'); g.title=b.letter?(b.n+' of its top '+b.of+' graded · '+Math.round(b.share*100)+'% of that weight'):(b.why||''); }
+      else if(ix&&ix.kind==='trust'){ g.innerHTML='<span class="glh-nog" title="holds one asset">one asset</span>'; g.setAttribute('data-sortv','99'); }
+      else { g.innerHTML='<span class="glh-nog">—</span>'; g.setAttribute('data-sortv','99'); }
+      var aum=aumOf(sym,(p&&!p.err)?p:ix); a.textContent=aum?money(aum):'—'; a.setAttribute('data-sortv',aum?String(aum):'-1');
+    });
+    if((added||repaint!==true)&&window.GLScSort&&GLScSort.funds){ try{ GLScSort.funds(); }catch(_){} }   /* the new heads get their sort stamps (data-glfsort) and the rows re-read — also when the build and its lens attribute land in one mutation batch */
+  }
+  function armScorecard(){
+    var m=document.getElementById('scMount'); if(!m||!window.MutationObserver) return;
+    new MutationObserver(function(muts){ var lensChange=muts.some(function(x){ return x.type==='attributes'; }); if(m.querySelector('table.sc-dtable')) decorateScorecard(lensChange); }).observe(m,{childList:true,attributes:true,attributeFilter:['data-lens']});
+    if(m.querySelector('table.sc-dtable')) decorateScorecard();
+  }
+  document.addEventListener('click',function(e){
+    if(!gl()) return; var b=e.target&&e.target.closest&&e.target.closest('[data-glholdn]'); if(!b) return;
+    var k=+b.getAttribute('data-glholdn'); if(k!==10&&k!==15&&k!==20) return; S.n=k; try{ localStorage.setItem(LSN,String(k)); }catch(_){} repaintAll();
+  },true);
+  /* the lens switch repaints every mounted block (the Scorecard observes its own data-lens) */
+  document.addEventListener('click',function(e){ if(!gl()) return; var t=e.target&&e.target.closest&&e.target.closest('[data-gllens],[data-l]'); if(t) setTimeout(repaintAll,0); },true);
+  function arm(){ if(!gl()) return; armScorecard(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',arm); else arm();
+  window.GLHold={mount:mount, blend:blend, equities:equities, index:function(cb){ index(cb||function(){}); return S.index; }, fund:function(sym,cb){ fund(String(sym).toUpperCase(),cb||function(){}); return S.funds[String(sym).toUpperCase()]||null; }, facts:function(cb){ facts(cb||function(){}); return S.facts; }, n:function(k){ if(k===10||k===15||k===20){ S.n=k; try{ localStorage.setItem(LSN,String(k)); }catch(_){} repaintAll(); } return S.n; }, repaint:repaintAll, state:S, TOP:TOP};
 })();
 
 </script>
@@ -14202,6 +14450,7 @@ html[data-gl] .glfn-lnk{background:none;border:1px solid rgba(167,139,250,.5);co
   }
   function fundFaceHTML(k,rec,err){
     var f=FU()[k]||{}, h='<div class="glfn-etfhead"><b>'+esc(f.role||'Fund')+'</b>'+(f.note?'<span>'+esc(f.note)+'</span>':'')+'</div>';
+    h+='<section class="glh glh-face" data-glhold="'+esc(k)+'"></section>';   /* 11-05: the holdings (etfhold.js fills it: donut, list, the holdings grade, AUM) */
     if(rec){ var secs=(rec.sectors||[]).slice(); var top=secs.slice(0,9), rest=secs.slice(9), other=0; rest.forEach(function(x){ other+=x.pct; }); if(other>0) top.push({name:'Other', pct:other});
       top.forEach(function(x,i){ x.col=DONUT_C[i%DONUT_C.length]; });
       h+='<div class="glfn-etfgrid"><div class="glfn-etfdonut">'+donutSVG(top,rec.holdingsCount)+'</div><ul class="glfn-etflegend">'+top.map(function(x){ return '<li><i style="background:'+x.col+'"></i><span>'+esc(x.name)+'</span><b>'+x.pct.toFixed(1)+'%</b></li>'; }).join('')+'</ul></div>';
@@ -14212,6 +14461,7 @@ html[data-gl] .glfn-lnk{background:none;border:1px solid rgba(167,139,250,.5);co
     if(window.GL48&&typeof window.GL48.go==='function') h+='<p class="glfn-etflink"><button type="button" class="glfn-lnk" data-finexpo>Holdings exposure → the names you hold through funds and outright (Studio)</button></p>';
     return h;
   }
+  function mountHold(box,k){ try{ var el=box.querySelector('[data-glhold]'); if(el&&window.GLHold&&GLHold.mount) GLHold.mount(el,k); }catch(_){} }
   function mountFundFace(){
     var body=root.querySelector('[data-finbody]'); if(!body) return;
     if(S.fund&&S.fund.detach){ S.fund.detach(); S.fund=null; }
@@ -14219,8 +14469,8 @@ html[data-gl] .glfn-lnk{background:none;border:1px solid rgba(167,139,250,.5);co
     var old=body.querySelector('.glf'); if(old) old.parentNode.removeChild(old);
     var ob=body.querySelector('.glfn-etf'); if(ob) ob.parentNode.removeChild(ob);
     var box=document.createElement('section'); box.className='glf-page glfn-etf'; box.setAttribute('data-finetf',S.cur); body.insertBefore(box,body.firstChild); body.scrollTop=0; S.etfBox=box;
-    var k=S.cur; box.innerHTML=fundFaceHTML(k,null,false);
-    etfFeed(function(j){ if(S.cur!==k||S.etfBox!==box) return; var rec=(j&&j.funds&&j.funds[k])||null; box.innerHTML=fundFaceHTML(k,rec,!rec); });
+    var k=S.cur; box.innerHTML=fundFaceHTML(k,null,false); mountHold(box,k);
+    etfFeed(function(j){ if(S.cur!==k||S.etfBox!==box) return; var rec=(j&&j.funds&&j.funds[k])||null; box.innerHTML=fundFaceHTML(k,rec,!rec); mountHold(box,k); });
   }
   function mountFund(){
     S.etfBox=null; var ob=root.querySelector('[data-finbody] .glfn-etf'); if(ob) ob.parentNode.removeChild(ob);
