@@ -18550,7 +18550,8 @@ window.GLW_DATA={"baked":"2026-10-08","worlds":{"index":["Whole market","#7C8AA5
 /* stage48/flowmap.css — THE MAP (11-03, the owner's final design). Everything under html[data-gl]; with the theme off the stock Flow chart
    and the worlds overlay draw as before. flowmap.js marks #flowWrap[data-glmap="1"] once it has mounted: the stock stage and the
    worlds' outer box step aside (display:none — they stay in the DOM, the suites and own.js still see them), #glmapOuter is the
-   poster (scaled to fit, or 100% with a sideways pan), #glmapTiers is the phone's tier view (≤900px, the "Flow" view). */
+   poster (scaled to fit, or 100% with a sideways pan). 11-05 (the owner: "full map across-the-board"): the phone's tier view (#glmapTiers, the
+   "Flow" view) is no longer built — the rules below stay for the record and match nothing. */
 html[data-gl] #flowWrap[data-glmap="1"] > #glwOuter,
 html[data-gl] #flowWrap[data-glmap="1"] > #flowStage{display:none!important;}
 html[data-gl] #glmapOuter{position:relative;transform-origin:top left;width:1800px;}
@@ -18637,8 +18638,6 @@ html[data-gl] .glmap-cn span{font-size:9.5px;font-style:italic;color:var(--ink);
 html[data-gl] #glmapTiers .glmap-tlegend{margin:16px 16px 0;}
 html[data-gl] #glmapTiers .glmap-tlegend .lrow{width:100%;}
 @media (max-width:900px){
-  html[data-gl] .glmap-ctl{display:inline-flex!important;}
-  html[data-gl] span.glmap-ctl{display:inline!important;}
   html[data-gl] #flowWrap[data-glmap="1"][data-glmapview="flow"]{overflow:visible!important;height:auto!important;padding-left:0;padding-right:0;}
   html[data-gl] #flowWrap[data-glmap="1"][data-glmapview="flow"] > #glmapOuter{display:none;}
   html[data-gl] #flowWrap[data-glmap="1"][data-glmapview="flow"] > #glmapTiers{display:block;}
@@ -18845,7 +18844,9 @@ window.GLMAP_DATA = (function () {
    Pulse: a card tints by its own funds (GLPulse.group) when the feed covers them, else by the month of its names (GLPulse.section).
    The Money world's four lit cells and the pay ribbons follow the funding feed (FlowView.applyFunding is wrapped).
    Scope · Empty sections · Pulse are the worlds' own toolbar buttons (worlds.js keeps the state; this module re-renders after it).
-   The phone's Flow | Poster seg is this module's. */
+   The phone's Flow | Poster seg was this module's — 11-05 (the owner: "on the iPhone and the iPad I need it to be full map … I don't like the
+   column version, that kind of defeats the purpose … full map across-the-board"): the tier view is GONE. Every device gets the poster,
+   scaled to fit the width (Fit) or at 100% with the pan; pinch to zoom into a sector. No seg, no tiers, nothing saved. */
 (function(){
   'use strict';
   var D=window.GLMAP_DATA, W=window.GLW_DATA; if(!D||!W||typeof FlowView==='undefined'||!FlowView.run) return;
@@ -18857,8 +18858,7 @@ window.GLMAP_DATA = (function () {
   function hexRgb(h){ var n=parseInt(String(h).slice(1),16); return (n>>16&255)+','+(n>>8&255)+','+(n&255); }
   function WS(){ return (window.GLWorlds&&GLWorlds.state)||{scope:'wl',ghost:true,custom:null}; }
   function GP(){ return window.GLPulse||null; }
-  var st={view:'flow', open:{}, custom:null, built:false, k:1, stageH:0, laid:{}, lastW:0};
-  try{ var v=localStorage.getItem('aibo.gl.map.view'); if(v==='poster'||v==='flow') st.view=v; }catch(_){}
+  var st={view:'poster', open:{}, custom:null, built:false, k:1, stageH:0, laid:{}, lastW:0};   /* 11-05: the poster everywhere — the old 'aibo.gl.map.view' pref is ignored */
 
   /* ---- the sector table → the card that absorbs a section ---- */
   var SEC2CARD={}, HOME={}, TWIN=W.twins||{}, byId={}, CRYPTO={}, SPACE={};
@@ -18983,10 +18983,7 @@ window.GLMAP_DATA = (function () {
     wrap=$('flowWrap'); if(!wrap) return false;
     if(!outer){
       outer=document.createElement('div'); outer.id='glmapOuter'; outer.innerHTML='<div class="glmap-zones"></div><svg class="glmap-wires"></svg><div class="glmap-labels"></div>';
-      tiers=document.createElement('div'); tiers.id='glmapTiers';
-      wrap.appendChild(outer); wrap.appendChild(tiers);
-      var tb=document.querySelector('#flowView .eq-only .toolbar'), z=$('zoomSeg');
-      if(tb&&z&&!$('glmapView')){ z.insertAdjacentHTML('afterend','<span class="tl glmap-ctl">View</span><div class="seg glmap-ctl" id="glmapView"><button type="button" data-glpv="flow">Flow</button><button type="button" data-glpv="poster">Poster</button></div>'); }
+      wrap.appendChild(outer);   /* 11-05: no #glmapTiers, no View seg — the poster is the map on every device */
     }
     wrap.setAttribute('data-glmap','1'); wrap.setAttribute('data-glmapview',st.view);
     /* the head copy is the design's, not the stock chart's */
@@ -18996,7 +18993,7 @@ window.GLMAP_DATA = (function () {
       if(notes) notes.innerHTML='ribbon width &asymp; relative money &middot; italic chip = fund<br>lit = in the AI build-out &middot; dim = the rest of the sector'; }
     return true;
   }
-  function viewMode(){ return (phone()&&st.view==='flow')?'flow':'poster'; }
+  function viewMode(){ return 'poster'; }   /* 11-05 (the owner): full map across the board — the tier view is gone */
   function render(){
     if(!outer) return;
     st.renderedMode=viewMode(); wrap.setAttribute('data-glmapview',st.renderedMode);   /* measured visible: a hidden poster lays every card at zero */
@@ -19050,8 +19047,8 @@ window.GLMAP_DATA = (function () {
       if(r.label){ var t=(r.lt!=null)?r.lt:.5, pt=cubicAt(S.c,ln.c1,ln.c2,T.c,t), L=document.createElement('div'); L.className='glmap-rl'+(kind==='data'?' data':'')+(r.rain?' rain':'')+((r.rain||r.lv)?' vert':''); L.textContent=r.label; L.style.left=pt.x+'px'; L.style.top=pt.y+'px'; labels.appendChild(L);
         var lw=L.offsetWidth||0; if(lw){ var cx=pt.x; if(r.rain){ var cl=D.cols.L, cr=D.cols.R; if((r.se||'L')==='L'&&cl) cx=Math.min(cx,cl.x-6-lw/2); else if(cr) cx=Math.max(cx,cr.x+cr.w+6+lw/2); } cx=Math.max(lw/2+6,Math.min(D.stageW-lw/2-6,cx)); if(cx!==pt.x) L.style.left=cx+'px'; } }
     });
-    /* the phone's tiers */
-    tiers.innerHTML='';
+    /* the phone's tiers (11-05: never built — `tiers` stays null; D.tiers is kept in the data for the record) */
+    if(tiers){ tiers.innerHTML='';
     (D.tiers||[]).forEach(function(tier,i){
       var sec=document.createElement('section'); sec.className='glmap-tier'; sec.innerHTML='<div class="tier-h"><span class="tn">'+(i+1)+'</span><b>'+E(tier.label)+'</b>'+(tier.sub?'<span class="ts">'+E(tier.sub)+'</span>':'')+'</div>';
       var row=document.createElement('div'); row.className='glmap-row'+(tier.cards.length===1?' one':''); tier.cards.forEach(function(id){ if(byId[id]) row.appendChild(cardEl(byId[id],G[id],ghost,true)); }); sec.appendChild(row);
@@ -19061,8 +19058,8 @@ window.GLMAP_DATA = (function () {
         else cn.innerHTML='<div class="glmap-cn"><i style="--c1:#8f89ab;--c2:#8f89ab"></i><span>then</span></div>';
         sec.appendChild(cn); }
       tiers.appendChild(sec);
-    });
-    var tl=document.createElement('div'); tl.id='glmapTLegend'; tl.className='glmap-tlegend'; tl.innerHTML='<div class="legtitle">How to read this map</div><div class="legitems">'+legendItems()+'</div>'; tl.style.cssText='background:linear-gradient(180deg,rgba(20,28,40,.95),rgba(15,21,33,.95));border:1px solid var(--hair);border-radius:14px;padding:13px 16px;'; tiers.appendChild(tl);
+    }); }
+    if(tiers){ var tl=document.createElement('div'); tl.id='glmapTLegend'; tl.className='glmap-tlegend'; tl.innerHTML='<div class="legtitle">How to read this map</div><div class="legitems">'+legendItems()+'</div>'; tl.style.cssText='background:linear-gradient(180deg,rgba(20,28,40,.95),rgba(15,21,33,.95));border:1px solid var(--hair);border-radius:14px;padding:13px 16px;'; tiers.appendChild(tl); }
     outer.setAttribute('data-count',Object.keys(G).reduce(function(n,k){ return n+G[k].length; },0));
     pulse(); fit(); try{ if(window.GLOwn&&GLOwn.mark) GLOwn.mark(); }catch(_){}
   }
