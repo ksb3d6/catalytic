@@ -19574,7 +19574,8 @@ window.GLMAP_DATA = (function () {
       ch.title=sym+' · '+(p.s>0?'+':'')+(p.s*100).toFixed(1)+'% vs the market this month'+(p.turn?(p.turn==='up'?' · turning up':' · turning down'):'');
     });
     clearTimeout(st.pnT);
-    if(on&&!(P.candlesReady&&P.candlesReady())&&(st.pnTries||0)<30){ st.pnTries=(st.pnTries||0)+1; st.pnT=setTimeout(pulseNames,2000); } else st.pnTries=0;
+    var fv=document.getElementById('flowView'), shown=!!(fv&&!fv.classList.contains('hidden'));   /* 11-05: no retries while the map is off screen (the Tape is up) */
+    if(shown&&on&&!(P.candlesReady&&P.candlesReady())&&(st.pnTries||0)<30){ st.pnTries=(st.pnTries||0)+1; st.pnT=setTimeout(pulseNames,2000); } else st.pnTries=0;
   }
 
   /* ---- fit: the poster scales to the wrap (Fit width) or sits at 100% with a sideways pan ---- */
@@ -21807,7 +21808,12 @@ html[data-gl="light"] .gl-sccats button.on{background:#e8ebf0;border-color:#c9cf
     paintViewSegs(); paintFaceSegs(); paintLens(); mirrorTape(); refreshOwnEmpty(); dressFlowZoom();
     fitTape();                                             /* filters / universe can re-wrap the controls above the table */
     var key=door+'|'+v+'|'+p+'|'+((($('#uniSeg .on')||{}).dataset||{}).u||'');
-    if(key===lastKey) return; var first=!lastKey; lastKey=key; if(first) return;
+    if(key===lastKey) return; var prevV=lastKey?lastKey.split('|')[1]:null; var first=!lastKey; lastKey=key;
+    /* 11-05 (the owner: "after going back to the Tape from the map, everything's glitchy and none of the buttons work" — not reproducible in emulation):
+       leaving the map FORCES the zoom reset (the pinch the map invites must never ride into the Tape; the gate on visualViewport.scale is skipped,
+       the meta pulse is harmless at scale 1) and squares the page's sideways scroll (the poster is 1800px wide in layout; a pan must not outlive it). */
+    if(prevV==='flow'&&v!=='flow'){ try{ resetZoom(true); }catch(_){} try{ if(window.scrollX) window.scrollTo(0,window.scrollY||0); var tw=topWin(); if(tw!==window&&tw.scrollX) tw.scrollTo(0,tw.scrollY||0); }catch(_){} }
+    if(first) return;
     var el=inStudio()?$('#studioView'):null;
     if(!el) for(var i=0;i<VIEWS.length;i++){ var c=document.getElementById(VIEWS[i]); if(c&&c.getClientRects().length){el=c;break;} }   /* 10-07 sweep: offsetParent is null for a fixed view — never a visibility test */
     /* OPACITY ONLY. A transform or filter here would make this element the containing block for
