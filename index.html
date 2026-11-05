@@ -12672,8 +12672,8 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
     var chips='<button type="button" data-glsccat="" class="on" title="Every graded name">All</button>'+cats.map(function(c){ return '<button type="button" data-glsccat="'+esc(c)+'" title="'+esc(c)+'">'+esc(shortOf(c))+'<small>'+counts[c]+'</small></button>'; }).join('');
     d.innerHTML='<div class="gl-scfind"><input type="search" data-glscfind placeholder="Search a category \u2014 semiconductors, defense, power\u2026" aria-label="Search the grades by category, ticker or name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button type="button" data-glscclear aria-label="Clear the search" hidden>\u00d7</button><span class="gl-scfind-n" data-glscn></span></div>'
       +'<div class="gl-sccats" role="group" aria-label="The wheel\u2019s categories">'+chips+'</div>'
-      +'<span class="gl-scsort-l">Group by</span><div class="gl-seg gl-scseg" role="tablist" aria-label="Group the grades">'
-      +'<button type="button" role="tab" data-glscgroup="layer">Layer</button>'+(hasMap?'<button type="button" role="tab" data-glscgroup="map">Map section</button>':'')+'<button type="button" role="tab" data-glscgroup="none">None</button></div>'
+      +'<span class="gl-scsort-l">Group the names by</span><div class="gl-seg gl-scseg" role="tablist" aria-label="Group the names">'   /* 11-05 (the owner: "layer / map section / none is confusing"): plain words */
+      +'<button type="button" role="tab" data-glscgroup="layer" title="The grade wheel\u2019s value-chain layers">Wheel layer</button>'+(hasMap?'<button type="button" role="tab" data-glscgroup="map" title="The map\u2019s cards \u2014 Defense, Compute &amp; accelerators, Energy &amp; power\u2026">Map card</button>':'')+'<button type="button" role="tab" data-glscgroup="none" title="No groups: every graded name in one list">One list</button></div>'
       +'<span class="gl-scsort-h">Tap a column head to sort by it; tap again for the other way.</span>';
     wrap.parentNode.insertBefore(d,wrap);
     if(st.group==='map'&&!hasMap) st.group='layer';
@@ -13634,6 +13634,12 @@ html[data-gl] .glfs-spk{display:block;color:rgba(var(--gl-ink-rgb,234,238,245),.
   html[data-gl] .glf-page .glfs-tbl td{min-width:74px;}
   html[data-gl] .glf-page .glfs-tbl{font-size:12px;}
 }
+/* 11-05 the freshness pill (fund.js freshHtml): the newest quarter, its filing day, its age in words; red past 120 days */
+html[data-gl] .glf-fresh{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;max-width:100%;padding:3px 9px;border-radius:999px;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.12);background:rgba(var(--gl-wh-rgb,255,255,255),.05);font:600 10.5px/1.2 ui-monospace,"SF Mono",Menlo,monospace;color:rgba(var(--gl-ink-rgb,234,238,245),.7);white-space:nowrap;letter-spacing:.02em;}
+html[data-gl] .glf-fresh b{color:var(--ink);font-weight:800;}
+html[data-gl] .glf-fresh em{font-style:normal;color:var(--gl-up,#39d07f);}
+html[data-gl] .glf-fresh.old{border-color:rgba(var(--gl-dn-rgb,240,104,95),.5);} html[data-gl] .glf-fresh.old em{color:var(--gl-dn,#f0685f);}
+html[data-gl] .glf-head .glf-fresh{order:1;}
 
 </style>
 <script id="gl48Fund">
@@ -13889,8 +13895,22 @@ html[data-gl] .glfs-spk{display:block;color:rgba(var(--gl-ink-rgb,234,238,245),.
     return '<div class="gl-seg glf-per"><button type="button" data-per="q"'+(S.per==='q'?' class="on"':'')+'>Quarterly</button><button type="button" data-per="a"'+(S.per==='a'?' class="on"':'')+'>Annual</button></div>'
       +'<div class="gl-seg glf-rng">'+[[20,'5Y'],[40,'10Y'],[60,'15Y']].map(function(r){ return '<button type="button" data-rng="'+r[0]+'"'+(S.range===r[0]?' class="on"':'')+'>'+r[1]+'</button>'; }).join('')+'</div>';
   }
-  function headHtml(opts){
-    return '<div class="glf-head">'+ttlHtml(opts)+''+segHtml()
+  /* 11-05 (the owner: "under the fundamentals card, as well as the fundamentals piece under research, a little pill that says when they were last taken
+     and how fresh they are — a date, and how many days, weeks or months old"): the newest quarter the feed carries (its period end + the day it was
+     filed) and that filing's age in plain words; the pull time rides the title. Red when the newest filing is older than 120 days (a quarter missed). */
+  function ageWords(iso){ if(!iso) return null; var ms=Date.now()-new Date(String(iso).slice(0,10)+'T12:00:00Z').getTime(); if(!isFinite(ms)) return null; var d=Math.max(0,Math.round(ms/864e5));
+    if(d===0) return 'today'; if(d===1) return '1 day old'; if(d<14) return d+' days old'; if(d<60){ var w=Math.round(d/7); return w+' week'+(w===1?'':'s')+' old'; } var m=Math.round(d/30.4); return m+' month'+(m===1?'':'s')+' old'; }
+  function dateWords(iso){ var m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/); if(!m) return String(iso||''); return (+m[3])+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2]-1]+' '+m[1]; }
+  function freshHtml(d){
+    var q=null; try{ var rows=d&&d.statements&&d.statements.income&&d.statements.income.q; if(rows&&rows.length) q=rows[rows.length-1]; }catch(_){ q=null; }
+    var per=q&&q.date, filed=q&&(q.filingDate||q.fillingDate), basis=filed||per; if(!basis) return '';
+    var age=ageWords(basis), old=(Date.now()-new Date(String(basis).slice(0,10)).getTime())>120*864e5, pulled='';
+    try{ var m=Math.round((Date.now()-new Date(d.asOf).getTime())/6e4); pulled=' · pulled '+(m<90?m+' min':Math.round(m/60)+' h')+' ago'; }catch(_){}
+    return '<span class="glf-fresh'+(old?' old':'')+'" data-glffresh title="The newest quarter in the feed'+(per?': the period ending '+esc(dateWords(per)):'')+(filed?', filed '+esc(dateWords(filed)):'')+esc(pulled)+'">'
+      +(q&&q.period?'<b>'+esc(q.period)+(q.fiscalYear||q.calendarYear?' '+esc(q.fiscalYear||q.calendarYear):'')+'</b>':'')+(filed?'filed '+esc(dateWords(filed)):'to '+esc(dateWords(per)))+(age?' · <em>'+esc(age)+'</em>':'')+'</span>';
+  }
+  function headHtml(opts,d){
+    return '<div class="glf-head">'+ttlHtml(opts)+(d?freshHtml(d):'')+segHtml()
       +'<button type="button" class="glc-info" data-finfo="1" aria-label="Source and freshness">i</button>'
       +'<div class="glf-note" hidden></div></div>';   /* the (i) note wraps to a full row of the head: it opens under the button, in view (the page head is sticky) */
   }
@@ -13899,7 +13919,7 @@ html[data-gl] .glfs-spk{display:block;color:rgba(var(--gl-ink-rgb,234,238,245),.
        On touch, pointerleave fires BEFORE the click of a tap — without this the second tap re-opened a freshly hidden note. */
     var was=box.querySelector('.glf-note'), keep=(was&&!was.hidden)?was.innerHTML:null, skeep=stmtKeep(box);
     var tiles=TILES.map(function(k){ return tile(d,k,opts); }).join('');
-    box.innerHTML=headHtml(opts)+statsBlock(d)+'<div class="glf-grid">'+tiles+segBlock(d,opts)+'</div>'+streetBlock(d,opts)+stmtHtml(d,opts,sState(box,opts));
+    box.innerHTML=headHtml(opts,d)+statsBlock(d)+'<div class="glf-grid">'+tiles+segBlock(d,opts)+'</div>'+streetBlock(d,opts)+stmtHtml(d,opts,sState(box,opts));
     box.setAttribute('data-glfpref',S.per+':'+S.range);            /* which shared prefs this paint reflects — repaint() compares against it */
     if(keep!=null){ var n=box.querySelector('.glf-note'); if(n){ n.innerHTML=keep; n.hidden=false; } }
     stmtScroll(box,skeep);
@@ -16653,7 +16673,11 @@ html[data-gl] #mkBody tr.glp-turn-up .mk-udot{animation:glpDotUp 1.1s ease-in-ou
     return namesGroup((names||[]).map(function(x){ return String(x).replace(/[~*()]/g,''); }).filter(function(x){ return /^[A-Z][A-Z0-9.$-]{0,9}$/.test(x); })); }
   W.GLPulse={section:section, load:load, feed:function(){ return S.data; }, adopt:adopt, on:function(){ return S.on; }, set:set, world:function(w,t){ return S.on?group(WORLDS[w],t):null; }, group:group, fund:fundState, rowPulse:rowPulse, mount:mount, paint:paintCard,
     asOf:function(){ return S.data&&S.data.asOf||null; }, onChange:function(f){ S.subs.push(f); }, state:function(){ return {on:S.on, loaded:!!S.data, n:S.n, err:S.err, at:S.at, funds:S.data?Object.keys(S.data.daily).length:0}; },
-    worlds:WORLDS, fam:FAM, decorateTape:decorateTape};
+    worlds:WORLDS, fam:FAM, decorateTape:decorateTape,
+    /* 11-05 (the owner: "in the map view … pulse the individual names … a halo around each name … a pulse with a green or red color"): ONE NAME's read from
+       its own daily closes (the US 500 candles or the graded name's frame) — {s, hue, turn} or null; candlesReady says whether the Tape's candles have landed */
+    name:function(sym){ if(!S.on) return null; var cl=null; try{ cl=closesOf(String(sym||'').toUpperCase(),'mk'); }catch(_){} return cl?rowPulse(cl):null; },
+    candlesReady:function(){ try{ var M=W.MktView&&MktView.market; return !!(M&&M.candles&&M.candles.mk&&M.candles.mk.data&&M.candles.mk.data.rows); }catch(_){ return false; } }};
 })();
 
 </script>
@@ -19075,6 +19099,14 @@ html[data-gl] #glmapTiers .glmap-tlegend .lrow{width:100%;}
   html[data-gl] #flowWrap[data-glmap="1"][data-glmapview="flow"] > #glmapTiers{display:block;}
   html[data-gl] #flowView .toolbar .tl.glmap-hide,html[data-gl] #flowView .toolbar #zoomSeg.glmap-hide{display:none!important;}
 }
+/* 11-05 THE NAMES' PULSE (flowmap.js pulseNames): a halo per name chip = its own month against the market; a turn blinks the halo. An OUTLINE, so
+   the chokepoint's gold glow and the sole-US ring (box-shadows) stay underneath. */
+html[data-gl] #flowView .card.glmap .chip[data-glpn]{--pw:0;--hc:var(--gl-up-rgb,57,208,127);outline:1.5px solid rgba(var(--hc),calc(.3 + var(--pw) * .7));outline-offset:1px;}
+html[data-gl] #flowView .card.glmap .chip[data-glpn="dn"]{--hc:var(--gl-dn-rgb,240,104,95);}
+html[data-gl] #flowView .card.glmap .grp.dim .chip[data-glpn],html[data-gl] #flowView .card.glmap .cell.dim .chip[data-glpn]{opacity:.85;}
+@keyframes glpnBlink{0%,100%{outline-offset:1px;outline-width:1.5px;outline-color:rgba(var(--hc),.35);}50%{outline-offset:3px;outline-width:2px;outline-color:rgba(var(--hc),1);}}
+html[data-gl] #flowView .card.glmap .chip.glpn-turn-up,html[data-gl] #flowView .card.glmap .chip.glpn-turn-dn{animation:glpnBlink 1.1s ease-in-out infinite;}
+@media (prefers-reduced-motion:reduce){ html[data-gl] #flowView .card.glmap .chip.glpn-turn-up,html[data-gl] #flowView .card.glmap .chip.glpn-turn-dn{animation:none;outline-width:2.5px;} }
 
 </style>
 <script id="gl48Map">
@@ -19506,7 +19538,8 @@ window.GLMAP_DATA = (function () {
       +'<div class="lrow">'+chipsOf('IREN*')+' Outlined chip = lives in two places</div>'
       +'<div class="lrow">'+chipsOf('ASML')+' Gold glow = chokepoint (cornered market)</div>'
       +'<div class="lrow">'+chipsOf('MU')+' Red / white / blue ring = sole US name in its market</div>'
-      +'<div class="lrow"><span class="swatch up"></span><span class="swatch dn"></span> Pulse — a card\'s tint is its month against the market; the line under the title says via which fund</div>';
+      +'<div class="lrow"><span class="swatch up"></span><span class="swatch dn"></span> Pulse — a card\'s tint is its month against the market; the line under the title says via which fund</div>'
+      +'<div class="lrow"><span class="chip" data-glpn="up" style="--pw:.8;font-size:10px;padding:3px 7px"><span class="ct">NVDA</span></span><span class="chip glpn-turn-dn" data-glpn="dn" style="--pw:.5;font-size:10px;padding:3px 7px;margin-left:6px"><span class="ct">XYZ</span></span> Halo on a name = its own month against the market (green ahead, red behind, brighter the further); a blinking halo = it just turned</div>';
   }
   function legendHTML(){ return '<div class="legtitle">How to read this map</div><div class="legitems">'+legendItems()+'</div>'; }
 
@@ -19524,6 +19557,24 @@ window.GLMAP_DATA = (function () {
       if(!line){ line=document.createElement('div'); line.className='glmap-pulse'; var d=e.querySelector('.desc'); if(d) d.insertAdjacentElement('afterend',line); else e.insertBefore(line,e.firstChild.nextSibling); }
       line.innerHTML='<b>'+(up?'+':'')+(p.s*100).toFixed(1)+'%</b> vs the market · '+(p.turn?(p.turn==='up'?'turning up':'turning down'):(p.label||''))+' · '+(p.via==='names'?(p.n+' name'+(p.n===1?'':'s')):('via '+(p.via||'')));
     });
+    pulseNames();
+  }
+  /* ---- 11-05 (the owner: "when we're pulsing, pulse the individual names if it's worthy of a pulse … a halo around each name that has whether it's
+     outperforming or underperforming, and if it's shifting or moving, a pulse with a green or red color"): every name chip on the map (a hand-built
+     chip = data-tk, a US 500 fill chip = data-glwsym) gets its OWN read from its own daily closes (GLPulse.name: the month against the market,
+     the turn by the Tape row's rule) — a HALO (an outline, green ahead / red behind, brighter the further from the market) and, on a turn, the
+     outline BLINKS. Funds and names without candles get nothing. The Tape's candles land after the map on a cold start: retried for a minute. ---- */
+  function pulseNames(){
+    var P=GP(), root=wrap; if(!root) return; var on=!!(P&&P.on()&&P.name);
+    root.querySelectorAll('.chip[data-tk],.chip[data-glwsym]').forEach(function(ch){
+      var sym=String(ch.getAttribute('data-glwsym')||ch.getAttribute('data-tk')||'').toUpperCase().replace(/[~*()?]/g,''), p=null;
+      if(on&&/^[A-Z][A-Z0-9.\-]{0,9}$/.test(sym)&&!ch.classList.contains('etf')){ try{ p=P.name(sym); }catch(_){ p=null; } }
+      if(!p){ if(ch.hasAttribute('data-glpn')){ ch.removeAttribute('data-glpn'); ch.style.removeProperty('--pw'); ch.classList.remove('glpn-turn-up','glpn-turn-dn'); ch.removeAttribute('title'); } return; }
+      ch.setAttribute('data-glpn',p.s>0?'up':'dn'); ch.style.setProperty('--pw',(p.hue||0).toFixed(2)); ch.classList.toggle('glpn-turn-up',p.turn==='up'); ch.classList.toggle('glpn-turn-dn',p.turn==='dn');
+      ch.title=sym+' · '+(p.s>0?'+':'')+(p.s*100).toFixed(1)+'% vs the market this month'+(p.turn?(p.turn==='up'?' · turning up':' · turning down'):'');
+    });
+    clearTimeout(st.pnT);
+    if(on&&!(P.candlesReady&&P.candlesReady())&&(st.pnTries||0)<30){ st.pnTries=(st.pnTries||0)+1; st.pnT=setTimeout(pulseNames,2000); } else st.pnTries=0;
   }
 
   /* ---- fit: the poster scales to the wrap (Fit width) or sits at 100% with a sideways pan ---- */
