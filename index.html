@@ -15614,6 +15614,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
         newest daily bar's day (tech.asof) and this file counts bars with the same calendar the backend uses (NYSE sessions for stocks and
         funds, every day for coins). Signed in: GET/PUT /me/drawings.json (backend v4.43 jobs/drawings.py: rev / baseRev / 409 / 422), and the
         bell on a drawing is a server-side break alert that lands in the Alerts bell. Signed out: this device only ('aibo.gl.lines.v1'), no alerts.
+        11-05: armPx + createdAt / movedAt = when the watch started (a move re-arms it, both sides); the BROKE / HIT reading is judged from there.
    Colours: everything the theme's — the lines in --gl-acc (the chart blue in Light), a selected line --gl-acci, bars in the app's up / down.
    Contract: window.GLLines = {list(sym), set(sym, items), open(), close(), read(bars,tail,cur,asof), reload()}. Theme off = nothing mounts. */
 (function(){
@@ -15733,12 +15734,28 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     var off=P[2]-base(X[2]), lo3=Math.min(X[0],X[1]), hi3=Math.max(X[0],X[1]), sp3=function(x){ return x>=lo3-1e-9&&x<=hi3+1e-9; };
     return [{at:function(x){ return sp3(x)?base(x):null; }, n:'channel'},{at:function(x){ return sp3(x)?base(x)+off:null; }, n:'channel far side'},{at:function(x){ return sp3(x)?base(x)+off/2:null; }, n:'channel midline', mid:true}];
   }
-  function breakState(d,bars,FC){ var n=bars.length; if(n<2) return null; var c1=bars[n-1].c, c0=bars[n-2].c, out=null;
-    if(d.type==='vline') return null;
-    edgesIdx(d,FC,true).forEach(function(e){ var v1=e.at(n-1), v0=e.at(n-2); if(v1==null) return;
-      if(v0!=null){ var s1=Math.sign(c1-v1), s0=Math.sign(c0-v0); if(s1!==s0&&s1!==0&&!(out&&out.v)) out={v:s1, t:s1>0?'BROKE ▲':'BROKE ▼'}; }
-      if(!out&&Math.abs(c1-v1)/v1<.005) out={v:0, t:'at a line'}; });
+  /* 11-05 (the owner: "every time I take geometry and I move it, I would like the alarm to reset"): a break is judged SINCE the drawing was placed or
+     last moved — armPx (the newest close at that moment) against the edge at that bar, the newest close against the edge now; a flip = BROKE (the
+     nearest flipped edge decides the arrow). A fib names the level reached instead ("HIT 61.8%", the owner: "instead of saying broke say hit and then
+     whatever the fib point was"). A drawing from before this (no armPx) keeps the old reading: the last two closes straddling an edge. */
+  function fibName(r){ return r===0?'0%':r===1?'100%':(r*100).toFixed(1)+'%'; }
+  function armBar(d,FC){ var at=d.movedAt||d.createdAt; if(!at) return null; var ms=Date.parse(at); if(!isFinite(ms)) return null; var pt={d:sessionDate(ms,FC.kind)}; if(FC.intr) pt.t=new Date(ms).toISOString().slice(0,16);
+    var i=anchorIdx(FC,pt); if(i==null||!isFinite(i)) return null; return Math.max(0,Math.min(FC.n-1,Math.floor(i+1e-9))); }
+  function hitLabel(d,e,s){ return d.type==='fib'?{v:s, t:'HIT '+fibName(e.r)}:{v:s, t:s>0?'BROKE ▲':'BROKE ▼'}; }
+  function breakState(d,bars,FC){ var n=bars.length; if(n<2||d.type==='vline') return null; var c1=bars[n-1].c, es=edgesIdx(d,FC,true), out=null, near=function(v){ return Math.abs(c1-v)/Math.abs(v||1)<.005; };
+    var ia=isFinite(+d.armPx)&&d.armPx!==null&&d.armPx!==''?armBar(d,FC):null;
+    if(ia!=null){ var a=+d.armPx, hit=null;
+      es.forEach(function(e){ var v1=e.at(n-1), v0=e.at(ia); if(v1==null||v0==null) return; var s1=Math.sign(c1-v1), s0=Math.sign(a-v0); if(s1&&s0&&s1!==s0&&(!hit||Math.abs(c1-v1)<hit.dist)) hit={e:e, s:s1, dist:Math.abs(c1-v1)}; });
+      if(hit) return hitLabel(d,hit.e,hit.s);
+      es.forEach(function(e){ var v1=e.at(n-1); if(v1!=null&&!out&&near(v1)) out={v:0, t:'at a line'}; }); return out; }
+    var c0=bars[n-2].c;
+    es.forEach(function(e){ var v1=e.at(n-1), v0=e.at(n-2); if(v1==null) return;
+      if(v0!=null){ var s1=Math.sign(c1-v1), s0=Math.sign(c0-v0); if(s1!==s0&&s1!==0&&!(out&&out.v)) out=hitLabel(d,e,s1); }
+      if(!out&&near(v1)) out={v:0, t:'at a line'}; });
     return out; }
+  function lastClose(){ var F=S.F, b=F&&F.B[F.N-1]; return b&&isFinite(+b.c)?+b.c:null; }
+  /* a moved drawing starts its watch over: the arm price + time move to now, the server-side side / closeDay are forgotten (backend v4.47 does the same on a changed point) */
+  function rearm(d){ var o=Object.assign({},d,{movedAt:new Date().toISOString().slice(0,19)+'Z', side:null, closeDay:null}); var c=lastClose(); if(c!=null) o.armPx=c; return o; }
   function read(bars,tail,cur,asof,tf){ if(!cur||!cur.key) return null; var items=list(cur.key); if(!items.length) return {v:0, t:'tap to draw'}; tf=tf||'d';
     var FC=bars&&bars.length>=2?fc(tf,bars.length,asof,kindOf(cur),S.clockBy[cur.key]||null):null; if(!FC||(!FC.times&&(FC.intr||!asof))) return {v:0, t:items.length+(items.length===1?' line':' lines')};
     var st=null; for(var i=0;i<items.length;i++){ var s=breakState(items[i],bars,FC); if(s&&(!st||(s.v&&!st.v))) st=s; }
@@ -15753,8 +15770,8 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     var over=''; try{ over=overlay(bars,w,h,tail,o,line); }catch(_){ over=''; }
     if(o&&o.sym){ S.last={sym:o.sym, kind:o.kind, fam:o.fam, asof:o.asof}; S.clockBy[o.sym]=o.clock||null; }
     if(o&&o.el){ var FCe=fc(o.tf,bars.length,o.asof,kindOf(o),o.clock); o.el.setAttribute('data-gls',(FCe.times||(!FCe.intr&&o.asof))?o.tf:'x'); }
-    var glyph='<g class="gls-x" transform="translate('+(w-17)+',4)"><rect width="13" height="13" rx="3"/><path d="M7.5 2.5h3v3M5.5 10.5h-3v-3M10.5 2.5 7 6M2.5 10.5 6 7"/></g>';
-    return svg.replace(/<\/svg>\s*$/,over+glyph+'</svg>');
+    var glyph='<g class="gls-x" transform="translate(4,4)"><rect width="13" height="13" rx="3"/><path d="M7.5 2.5h3v3M5.5 10.5h-3v-3M10.5 2.5 7 6M2.5 10.5 6 7"/></g>';
+    return svg.replace(/<\/svg>\s*$/,over+glyph+'</svg>');   /* 11-05 (the owner): the glyph top-LEFT — top-right it obscured where price is developing */
   };
   function overlay(bars,w,h,tailN,o,line){
     if(!o||!o.sym) return ''; var items=list(o.sym); if(!items.length) return '';
@@ -15802,7 +15819,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     if(S.root) return S.root; if(!H.getAttribute('data-gl')) return null;
     var r=document.createElement('div'); r.id='glLines'; r.hidden=true; r.setAttribute('role','dialog'); r.setAttribute('aria-modal','true'); r.setAttribute('aria-label','Line structure, full screen');
     var tools=['pan','line','ray','level','channel','box','fib','vline'].map(function(t){ return '<button type="button" data-glltool="'+t+'"><svg viewBox="0 0 24 24" aria-hidden="true">'+ICON[t]+'</svg>'+(t==='pan'?'Pan':t==='line'?'Line':t==='fib'?'Fib':t==='vline'?'Vert':NAMES[t])+'</button>'; }).join('');
-    r.innerHTML='<div class="gll-top"><button type="button" data-gllx aria-label="Back to Technicals">‹ Back</button><div class="gll-ttl"><b data-gllsym></b><div class="gl-seg gll-tfs" role="tablist" aria-label="Timeframe" data-glltfs><button type=\"button\" role=\"tab\" data-glltf=\"h\">1H</button><button type=\"button\" role=\"tab\" data-glltf=\"h4\">4H</button><button type=\"button\" role=\"tab\" data-glltf=\"d\">D</button><button type=\"button\" role=\"tab\" data-glltf=\"w\">W</button><button type=\"button\" role=\"tab\" data-glltf=\"m\">M</button></div></div><button type="button" data-gllfit>Fit</button></div>'
+    r.innerHTML='<div class="gll-top"><button type="button" data-gllx aria-label="Back to Technicals">‹ Back</button><div class="gll-ttl"><b data-gllsym></b><div class="gl-seg gll-tfs" role="tablist" aria-label="Timeframe" data-glltfs><button type=\"button\" role=\"tab\" data-glltf=\"m\">M</button><button type=\"button\" role=\"tab\" data-glltf=\"w\">W</button><button type=\"button\" role=\"tab\" data-glltf=\"d\">D</button><button type=\"button\" role=\"tab\" data-glltf=\"h4\">4H</button><button type=\"button\" role=\"tab\" data-glltf=\"h\">1H</button></div></div><button type="button" data-gllfit>Fit</button></div>'
       +'<div class="gll-wrap"><div class="gll-host" data-gllhost></div><canvas class="gll-over" data-gllc aria-label="Your drawings over the daily bars"></canvas><div class="gll-axis" data-gllaxis aria-label="Drag to stretch or scrunch the price axis"></div><div class="gll-sel" data-gllsel hidden><span data-gllname></span><button type="button" data-gllbell></button><button type="button" class="del" data-glldel>Delete</button></div><div class="gll-toast" data-glltoast aria-live="polite"></div></div>'
       +'<div class="gll-tools">'+tools+'<button type="button" class="danger" data-gllcancel><svg viewBox="0 0 24 24" aria-hidden="true">'+ICON.cancel+'</svg>Cancel</button><button type="button" class="danger" data-gllclear><svg viewBox="0 0 24 24" aria-hidden="true">'+ICON.clear+'</svg>Clear</button></div>';
     B.appendChild(r);
@@ -15815,7 +15832,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     window.addEventListener('keydown',function(e){ if(!S.root||S.root.hidden) return; if(e.key==='Escape'){ e.preventDefault(); e.stopImmediatePropagation(); close(); } },true);
     var rs=function(){ if(!S.F||!S.F.open) return; resize(); }; window.addEventListener('resize',rs); window.addEventListener('orientationchange',function(){ setTimeout(rs,120); });
     if(window.ResizeObserver){ try{ new ResizeObserver(rs).observe(r.querySelector('.gll-wrap')); }catch(_){} }
-    bindOverlay(r.querySelector('[data-gllc]')); bindAxis(r.querySelector('[data-gllaxis]')); bindLongPress(r.querySelector('.gll-wrap'));
+    bindOverlay(r.querySelector('[data-gllc]')); bindAxis(r.querySelector('[data-gllaxis]')); bindPan(r.querySelector('[data-gllhost]')); bindLongPress(r.querySelector('.gll-wrap'));
     S.root=r; return r;
   }
   /* ---------- 11-05 (the owner: "the TradingView chart kind of have a standalone… switch between one hour four hour daily weekly and monthly
@@ -15869,7 +15886,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     var chart=LW.createChart(host,{autoSize:true,
       layout:{background:{type:'solid', color:C.bg}, textColor:C.muted, fontFamily:'ui-monospace,Menlo,Consolas,monospace', fontSize:11, attributionLogo:true},
       grid:{vertLines:{color:'rgba(128,128,128,.10)'}, horzLines:{color:'rgba(128,128,128,.14)'}},
-      rightPriceScale:{borderVisible:false, scaleMargins:{top:.08, bottom:.08}}, timeScale:{borderVisible:false, rightOffset:6, barSpacing:7, minBarSpacing:1.5, fixLeftEdge:false, fixRightEdge:false, timeVisible:!!F.FC.intr, secondsVisible:false,
+      rightPriceScale:{borderVisible:false, scaleMargins:{top:SM.top, bottom:SM.bottom}}, timeScale:{borderVisible:false, rightOffset:6, barSpacing:7, minBarSpacing:1.5, fixLeftEdge:false, fixRightEdge:false, timeVisible:!!F.FC.intr, secondsVisible:false,
         tickMarkFormatter:function(t){ return tickLabel(t); }}, localization:{priceFormatter:fmt, timeFormatter:function(t){ return tickLabel(t,true); }},
       crosshair:{mode:(window.matchMedia&&matchMedia('(pointer:coarse)').matches)?LW.CrosshairMode.Hidden:LW.CrosshairMode.Normal}, handleScroll:{mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:false},
       handleScale:{axisPressedMouseMove:true, mouseWheel:true, pinch:true}, kineticScroll:{touch:true, mouse:false}});
@@ -15892,13 +15909,23 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   function resize(){ var c=cv(), F=S.F; if(!c||!F) return; var r=c.parentElement.getBoundingClientRect(); F.DPR=Math.min(3,window.devicePixelRatio||1); F.W=r.width; F.H=r.height; c.width=Math.round(F.W*F.DPR); c.height=Math.round(F.H*F.DPR);
     var ax=S.root.querySelector('[data-gllaxis]'); if(ax&&F.chart){ var pb=paneBox(); ax.style.width=Math.max(30,F.W-pb.w)+'px'; ax.style.bottom=Math.max(0,F.H-pb.h)+'px'; } draw(); }
   function reautoscale(){ var F=S.F; try{ var ps=F.chart.priceScale('right'); ps.applyOptions({autoScale:false}); ps.applyOptions({autoScale:true}); }catch(_){} }
-  function yStretch(f){ var F=S.F, pb=paneBox(); if(!F.chart||!pb.h) return; var top=F.yr?F.yr.hi:Pr(0), bot=F.yr?F.yr.lo:Pr(pb.h); if(!isFinite(top)||!isFinite(bot)) return; var mid=(top+bot)/2, half=Math.abs(top-bot)/2*f; if(half<=0) return; F.yr={lo:mid-half, hi:mid+half}; reautoscale(); draw(); }
+  function yStretch(f){ var F=S.F, pb=paneBox(); if(!F.chart||!pb.h) return; var cr=curRange(), top=cr.hi, bot=cr.lo; if(!isFinite(top)||!isFinite(bot)) return; var mid=(top+bot)/2, half=Math.abs(top-bot)/2*f; if(half<=0) return; F.yr={lo:mid-half, hi:mid+half}; reautoscale(); draw(); }
   function bindAxis(el){ var st=null;
-    el.addEventListener('pointerdown',function(e){ e.preventDefault(); e.stopPropagation(); try{ el.setPointerCapture(e.pointerId); }catch(_){} var F=S.F; if(!F) return; var pb=paneBox(); st={y:e.clientY, top:F.yr?F.yr.hi:Pr(0), bot:F.yr?F.yr.lo:Pr(pb.h), t:Date.now(), moved:false}; });
+    el.addEventListener('pointerdown',function(e){ e.preventDefault(); e.stopPropagation(); try{ el.setPointerCapture(e.pointerId); }catch(_){} var F=S.F; if(!F) return; var cr=curRange(); st={y:e.clientY, top:cr.hi, bot:cr.lo, t:Date.now(), moved:false}; });
     el.addEventListener('pointermove',function(e){ var F=S.F; if(!st||!F) return; var dy=e.clientY-st.y; if(Math.abs(dy)>2) st.moved=true; if(!isFinite(st.top)||!isFinite(st.bot)) return;
       var f=Math.exp(dy/320), mid=(st.top+st.bot)/2, half=Math.abs(st.top-st.bot)/2*f;   /* 11-05 (the owner): half as strong */ F.yr={lo:mid-half, hi:mid+half}; reautoscale(); draw(); });   /* thumb down = a wider range = everything scrunched; up = expanded */
     var end=function(e){ if(!st) return; var tap=!st.moved&&Date.now()-st.t<400; st=null; if(tap){ var now=Date.now(); if(now-(el._lt||0)<350){ var F=S.F; if(F){ F.yr=null; reautoscale(); draw(); } el._lt=0; } else el._lt=now; } };   /* a double-tap on the numbers = back to auto */
     el.addEventListener('pointerup',end); el.addEventListener('pointercancel',end); }
+  /* 11-05 (the owner: "a single finger drag up or down will move the chart up or down in the pan window"): the library drops a vertical drag while
+     the price scale autoscales — and ours always does (F.yr rides on the autoscale provider) — so one finger on the bars pans the range here; the
+     library keeps the horizontal scroll of the same drag. Two fingers = its pinch, untouched. Fit / a double-tap on the numbers = auto again. */
+  var SM={top:.08, bottom:.08};   /* the library's price-scale margins: a manual range (F.yr) fills the pane's inner 84%, so the range READ back comes from those rows */
+  function curRange(){ var F=S.F, pb=paneBox(), h=pb.h, k=1-SM.top-SM.bottom; var hi=F.yr?F.yr.hi:Pr(SM.top*h), lo=F.yr?F.yr.lo:Pr((1-SM.bottom)*h); return {hi:hi, lo:lo, ppp:(hi-lo)/((k*h)||1)}; }
+  function bindPan(el){ var P={}, st=null;
+    el.addEventListener('pointerdown',function(e){ var F=S.F; if(!F||!F.open||(e.pointerType==='mouse'&&e.button!==0)) return; if(e.isPrimary!==false) P={}; P[e.pointerId]=1; if(Object.keys(P).length!==1){ st=null; return; } var cr=curRange(); st={id:e.pointerId, y:e.clientY, top:cr.hi, bot:cr.lo, ppp:cr.ppp}; });
+    el.addEventListener('pointermove',function(e){ var F=S.F; if(!st||!F||e.pointerId!==st.id||Object.keys(P).length!==1||!isFinite(st.top)||!isFinite(st.bot)||!isFinite(st.ppp)) return; var dp=(e.clientY-st.y)*st.ppp; if(!dp) return; F.yr={lo:st.bot+dp, hi:st.top+dp}; reautoscale(); draw(); });
+    var end=function(e){ delete P[e.pointerId]; if(st&&e.pointerId===st.id) st=null; };
+    window.addEventListener('pointerup',end,true); window.addEventListener('pointercancel',end,true); }
   function paneBox(){ var F=S.F, pw=F.W, ph=F.H; try{ pw=F.W-(F.chart.priceScale('right').width()||0); ph=F.H-(F.chart.timeScale().height()||0); }catch(_){} return {w:Math.max(0,pw), h:Math.max(0,ph)}; }
   /* the library's logicalToCoordinate answers WHOLE bar indices only (a fraction → 0), so the overlay maps linearly from bar 0 by the bar spacing */
   function tsBase(){ var F=S.F; if(!F.chart) return null; try{ var ts=F.chart.timeScale(), l0=ts.logicalToCoordinate(0), bs=ts.options().barSpacing; return (l0==null||!bs)?null:{l0:l0, bs:bs}; }catch(_){ return null; } }
@@ -16027,7 +16054,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
     function end(e){ var F=S.F; if(!F||!F.open) return; var had=!!F.ptrs[e.pointerId]; delete F.ptrs[e.pointerId]; if(!had) return; var D=F.drag;
       if(F.inspect&&F.press){ var ip=F.press; F.press=null; if(!ip.moved&&Date.now()-ip.t<600) inspectEnd(); else draw(); return; }
       if(F.tool!=='pan'&&F.press){ var pr=F.press; F.press=null; if(!pr.moved&&Date.now()-pr.t<600&&F.ret) place(F.ret.pt); draw(); return; }
-      if(D&&(D.kind==='anchor'||D.kind==='body')){ if(F.work&&F.moved){ commit(F.work); toast(NAMES[F.work[D.k!=null?D.k:F.ret.grab.k].type]+' moved'); } F.work=null; }
+      if(D&&(D.kind==='anchor'||D.kind==='body')){ if(F.work&&F.moved){ var mk=D.k!=null?D.k:F.ret.grab.k; F.work[mk]=rearm(F.work[mk]); commit(F.work); toast(NAMES[F.work[mk].type]+(F.work[mk].alert?' moved · its alert starts over from here':' moved')); } F.work=null; }
       F.ret=null; F.drag=null; F.hover=null; draw(); }
     c.addEventListener('pointerup',end); c.addEventListener('pointercancel',end);
     c.addEventListener('pointerleave',function(){ var F=S.F; if(F&&F.open){ F.hover=null; if(!F.drag) draw(); } });
@@ -16035,7 +16062,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   function moveCursor(x,y){ var F=S.F, pb=paneBox(); F.cur={x:Math.max(0,Math.min(pb.w,x)), y:Math.max(0,Math.min(pb.h,y))}; F.ret=snapPoint(F.cur.x,F.cur.y); draw(); }
   function showCursor(){ var F=S.F, pb=paneBox(); if(!F.cur) F.cur={x:pb.w*.5, y:pb.h*.45}; moveCursor(F.cur.x,F.cur.y); }
   function place(pt){ var F=S.F; if(!F.placing||!pt||!pt.d) return; if(!canPlace()) return; F.placing.pts.push(pt); var need=TYPES[F.placing.type];
-    if(F.placing.pts.length>=need){ var items=list(F.sym).slice(), d={id:'d'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36), type:F.placing.type, kind:F.kind, pts:F.placing.pts, alert:false, createdAt:new Date().toISOString().slice(0,19)+'Z'};
+    if(F.placing.pts.length>=need){ var items=list(F.sym).slice(), d={id:'d'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36), type:F.placing.type, kind:F.kind, pts:F.placing.pts, alert:false, armPx:lastClose(), createdAt:new Date().toISOString().slice(0,19)+'Z'};
       items.push(d); commit(items); toast(NAMES[d.type]+' placed'); setTool('pan'); F.sel=items.length-1; showSel(); capture(); try{ F.chart.clearCrosshairPosition(); }catch(_){} draw(); }
     else toast(F.placing.type==='channel'&&F.placing.pts.length===2?'Now the channel width — drag the bull’s-eye, tap to lock':'Now the second point — drag the bull’s-eye, tap to lock'); }
   function setTool(t){ var F=S.F, r=S.root; if(!F||!r) return; if(F.inspect) inspectEnd(); F.tool=t; F.placing=t==='pan'?null:{type:t, pts:[]}; F.press=null; if(t!=='pan'){ F.sel=-1; showSel(); }
