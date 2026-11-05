@@ -4018,7 +4018,7 @@ const DonutView = (function(){
     built=true;
   }
 
-  return { render };
+  return { render, layers: LAYER_META };   /* 11-05: the wheel's layer table, read by stage48/scsort.js for the Scorecard's category search */
 })();
 
 /* ====================================================================== */
@@ -11550,6 +11550,25 @@ html[data-gl][data-glhidetotal="1"] #hudTotal,html[data-gl][data-glhidetotal="1"
 html[data-gl] .gl-scsort{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:10px 0 2px;}
 html[data-gl] .gl-scsort .gl-scsort-l{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
 html[data-gl] .gl-scsort .gl-scsort-h{font-size:11px;color:var(--muted);opacity:.8;flex-basis:100%;}
+/* 11-05 THE CATEGORY SEARCH (scsort.js): a search box + the wheel's layers as chips over the Scorecard's table */
+html[data-gl] .gl-scfind{display:flex;align-items:center;gap:8px;flex-basis:100%;}
+html[data-gl] .gl-scfind input{flex:1 1 220px;min-width:0;max-width:440px;appearance:none;-webkit-appearance:none;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.12);background:rgba(var(--gl-wh-rgb,255,255,255),.06);color:var(--ink,var(--gl-ink,#eaeef5));border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;outline:none;}
+html[data-gl] .gl-scfind input::placeholder{color:var(--muted);opacity:.8;}
+html[data-gl] .gl-scfind input:focus{border-color:rgba(var(--gl-acc-rgb,167,139,250),.7);box-shadow:0 0 0 3px rgba(var(--gl-acc-rgb,167,139,250),.18);}
+html[data-gl] .gl-scfind input::-webkit-search-cancel-button,html[data-gl] .gl-scfind input::-webkit-search-decoration{-webkit-appearance:none;appearance:none;}
+html[data-gl] .gl-scfind [data-glscclear]{appearance:none;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.12);background:rgba(var(--gl-wh-rgb,255,255,255),.08);color:var(--ink,var(--gl-ink,#eaeef5));border-radius:999px;width:28px;height:28px;font-size:16px;line-height:1;cursor:pointer;flex:0 0 auto;}
+html[data-gl] .gl-scfind-n{font-size:11px;color:var(--muted);white-space:nowrap;}
+html[data-gl] .gl-sccats{display:flex;flex-wrap:wrap;gap:6px;flex-basis:100%;}
+html[data-gl] .gl-sccats button{appearance:none;border:1px solid rgba(var(--gl-wh-rgb,255,255,255),.1);background:rgba(var(--gl-wh-rgb,255,255,255),.05);color:var(--muted);border-radius:999px;padding:5px 10px;font:inherit;font-size:10.5px;font-weight:700;letter-spacing:.06em;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;}
+html[data-gl] .gl-sccats button small{font-size:10px;font-weight:600;letter-spacing:0;opacity:.7;}
+html[data-gl] .gl-sccats button:hover{color:var(--ink);border-color:rgba(var(--gl-wh-rgb,255,255,255),.2);}
+html[data-gl] .gl-sccats button.on{background:rgba(var(--gl-acc-rgb,167,139,250),.22);border-color:rgba(var(--gl-acc-rgb,167,139,250),.6);color:var(--gl-ink,#fff);}
+html[data-gl] .sc-root tr.gl-scempty td{text-transform:none;letter-spacing:0;font-weight:600;color:var(--muted);}
+@media (max-width:600px){
+  html[data-gl] .gl-sccats{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 0 2px;}   /* a scroll strip on a phone, one row; no negative margin (a 4px page overflow pushed the strip icons out of the phone viewport in the nav suite) */
+  html[data-gl] .gl-sccats::-webkit-scrollbar{display:none;}
+  html[data-gl] .gl-scfind input{max-width:none;font-size:16px;}   /* 16px = no iOS zoom on focus */
+}
 html[data-gl] .sc-root thead th[data-glsort],html[data-gl] .sc-root thead th[data-glfsort]{cursor:pointer;user-select:none;-webkit-user-select:none;}
 html[data-gl] .sc-root thead th[data-glsort]:hover,html[data-gl] .sc-root thead th[data-glfsort]:hover{color:var(--ink);}
 html[data-gl] .sc-root thead th.gl-on{color:rgb(var(--gl-acc-rgb,167,139,250));}
@@ -12534,12 +12553,17 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
    the names by the stock value-chain Layer (the default, as before), by the MAP's card (the AI Capital Flow sections — Defense, Compute
    & accelerators, Energy & power… via GLMap.cardOf) or not at all (one flat list). The funds table sorts by its heads too. Rows keep
    their pairs (the grade row + the note row under it); the stock click-to-open still works (the rows are the same nodes). Kept on this
-   device: 'aibo.gl.sc.sort' = {group, col, dir}. Glass only; theme off = the stock page, untouched. */
+   device: 'aibo.gl.sc.sort' = {group, col, dir}. Glass only; theme off = the stock page, untouched.
+   11-05 THE CATEGORY SEARCH (the owner: "search by categories … like how they're broken down in the grade wheel … search semiconductors, it'll
+   show all the grades there"): the wheel's layer table (DonutView.layers — name, short label, the wheel's order) becomes a row of chips over
+   the table, and a search box matches a category by its name, its short label or a plain word (semiconductors, chips, nuclear, power,
+   cloud…), the map's section, the ticker or the company name; the funds table follows the typed word (role, name, ticker). A chip = that
+   layer alone; typing = every matching name; × = everything again. The pick is not kept across reloads. */
 (function(){
   'use strict';
   var H=document.documentElement, LS='aibo.gl.sc.sort';
   function gl(){ return H.hasAttribute('data-gl'); }
-  var st={group:'layer', col:null, dir:1, fcol:null, fdir:1, orig:null, labels:{}};
+  var st={group:'layer', col:null, dir:1, fcol:null, fdir:1, orig:null, labels:{}, q:'', cat:''};
   try{ var j=JSON.parse(localStorage.getItem(LS)||'null'); if(j&&typeof j==='object'){ if(j.group) st.group=j.group; if(j.col!=null) st.col=j.col; if(j.dir) st.dir=j.dir; } }catch(_){}
   function save(){ try{ localStorage.setItem(LS,JSON.stringify({group:st.group,col:st.col,dir:st.dir})); }catch(_){} }
   var ORDER=['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F'];
@@ -12556,14 +12580,58 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
   }
   function avgLetter(rows){ var s=0,n=0; rows.forEach(function(r){ var k=gradeRank(r.children[2]&&r.children[2].textContent); if(k<99){ s+=k; n++; } }); return n?ORDER[Math.max(0,Math.min(12,Math.round(s/n)))]:'—'; }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-  function apply(){
-    var m=document.getElementById('scMount'); if(!m) return; var tbl=m.querySelector('.sc-tablewrap table:not(.sc-dtable)'); if(!tbl) return; var tb=tbl.tBodies[0]; if(!tb) return;
+  /* 11-05 the category search */
+  var WORDS=[   /* a plain word → the layers it means (the second pattern is tested on the layer's full name) */
+    [/^(semi|semis|semiconductors?|chips?|silicon)$/, /Semi|GPU|Silicon|Memory|EDA|Analog/],
+    [/^(nuclear|uranium|fuel)$/, /Nuclear|Uranium/],
+    [/^(energy|oil|gas)$/, /Energy/],
+    [/^(power|electric(al|ity)?|grid)$/, /Power/],
+    [/^(utilit(y|ies))$/, /Utilities/],
+    [/^(clouds?|hyperscalers?|neoclouds?)$/, /Hyperscaler|Neocloud/],
+    [/^(software|saas|data)$/, /Software/],
+    [/^(defen[cs]e|military|aerospace)$/, /Defense/],
+    [/^(crypto|bitcoin|miners?|mining)$/, /Crypto/],
+    [/^(hardware|networking|network|optics?|optical|photonics)$/, /Optical|Networking/],
+    [/^(robots?|robotics|automation)$/, /Robotics/],
+    [/^(drones?|autonomous)$/, /Drone/],
+    [/^(space|rockets?|satellites?)$/, /Space/],
+    [/^(quantum)$/, /Quantum/],
+    [/^(cyber|security|cybersecurity)$/, /Cyber/],
+    [/^(materials?|rare earths?|industrials?|metals?)$/, /Materials/],
+    [/^(staples|consumer|defensives?)$/, /Staples|Energy Majors/],
+    [/^(memory|storage|dram|nand)$/, /Memory/],
+    [/^(foundry|foundries|fabs?|equipment|lithography)$/, /Foundry/],
+    [/^(gpus?|accelerators?|compute)$/, /GPU/],
+    [/^(asics?|custom)$/, /Custom Silicon/],
+    [/^(datacenters?|data ?centers?|cooling)$/, /Datacenter/],
+    [/^(mega ?caps?|big tech|platforms?)$/, /Mega-Cap/],
+    [/^(eda|design)$/, /EDA/]
+  ];
+  function wheel(){ try{ if(typeof DonutView!=='undefined'&&DonutView&&DonutView.layers) return DonutView.layers; }catch(_){} return []; }
+  var OFF_WHEEL={'Alternative Asset Mgmt / Private Credit (the funders)':'FUNDERS'};   /* layers the wheel leaves out (the funders sit in the capital layer of the other views) */
+  function shortOf(cat){ var w=wheel(); for(var i=0;i<w.length;i++) if(w[i].cat===cat) return w[i].short; return OFF_WHEEL[cat]||cat; }
+  function wheelRank(cat){ var w=wheel(); for(var i=0;i<w.length;i++) if(w[i].cat===cat) return i; return 99; }
+  function norm(s){ return String(s||'').toLowerCase().replace(/[\u2014\u2013]/g,'-').replace(/\s+/g,' ').trim(); }
+  function catMatches(q,cat){ if(!q) return true; var c=norm(cat), s=norm(shortOf(cat)); if(c.indexOf(q)>=0||s.indexOf(q)>=0) return true;
+    var q1=q.replace(/s$/,''); if(q1.length>=3&&(c.indexOf(q1)>=0||s.indexOf(q1)>=0)) return true;
+    for(var i=0;i<WORDS.length;i++) if(WORDS[i][0].test(q)&&WORDS[i][1].test(cat)) return true; return false; }
+  function rowMatches(it){ if(st.cat) return it.layer===st.cat; var q=norm(st.q); if(!q) return true;
+    if(catMatches(q,it.layer)) return true; var tk=it.row.getAttribute('data-tk')||'', nm=it.row.querySelector('.nm');
+    if(norm(tk).indexOf(q)===0) return true; if(nm&&norm(nm.textContent).indexOf(q)>=0) return true;
+    try{ if(window.GLMap&&GLMap.cardOf&&catMatches(q,cardTitle(tk))) return true; }catch(_){} return false; }
+  function filtered(){ return !!(st.cat||norm(st.q)); }
+  function collect(){
+    var m=document.getElementById('scMount'); if(!m) return null; var tbl=m.querySelector('.sc-tablewrap table:not(.sc-dtable)'); if(!tbl) return null; var tb=tbl.tBodies[0]; if(!tb) return null;
     if(!st.orig){ /* remember the stock order + each name's layer label, once */
       st.orig=[]; var cur='';
       [].forEach.call(tb.children,function(tr){ if(tr.classList.contains('sc-cluster')){ cur=(tr.firstChild&&tr.firstChild.firstChild&&tr.firstChild.firstChild.nodeType===3)?tr.firstChild.firstChild.textContent.trim():(tr.textContent||'').replace(/·.*$/,'').trim(); return; }
         if(tr.classList.contains('sc-name')){ var nt=tr.nextElementSibling; st.orig.push({row:tr, note:(nt&&nt.classList.contains('sc-thesis'))?nt:null, layer:cur}); } });
     }
-    var items=st.orig.slice();
+    return {m:m, tbl:tbl, tb:tb};
+  }
+  function apply(){
+    var c0=collect(); if(!c0) return; var m=c0.m, tbl=c0.tbl, tb=c0.tb;
+    var items=st.orig.slice(), filt=filtered(); if(filt) items=items.filter(rowMatches);
     var groups=[], byG={};
     items.forEach(function(it){ var g=st.group==='layer'?it.layer:st.group==='map'?cardTitle(it.row.getAttribute('data-tk')):''; if(!byG[g]){ byG[g]=[]; groups.push(g); } byG[g].push(it); });
     if(st.col!=null) groups.forEach(function(g){ byG[g].sort(function(a,b){ return cmp(a.row,b.row,st.col,st.dir); }); });
@@ -12572,7 +12640,12 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
     groups.forEach(function(g){ var list=byG[g];
       if(st.group!=='none'){ var tr=document.createElement('tr'); tr.className='sc-cluster'; tr.innerHTML='<td colspan="12">'+esc(g)+'<span class="cavg">· '+list.length+' name'+(list.length===1?'':'s')+' · avg '+avgLetter(list.map(function(x){ return x.row; }))+' recession</span></td>'; frag.appendChild(tr); }
       list.forEach(function(it){ frag.appendChild(it.row); if(it.note) frag.appendChild(it.note); }); });
+    if(filt&&!items.length){ var tr0=document.createElement('tr'); tr0.className='sc-cluster gl-scempty'; tr0.innerHTML='<td colspan="12">Nothing graded matches \u201c'+esc(st.q)+'\u201d \u2014 try a category chip.</td>'; frag.appendChild(tr0); }
     while(tb.firstChild) tb.removeChild(tb.firstChild); tb.appendChild(frag);
+    /* the search row + the chips say what is showing */
+    [].forEach.call(m.querySelectorAll('[data-glsccat]'),function(b){ var c=b.getAttribute('data-glsccat'); b.classList.toggle('on',c?c===st.cat:!filt); });
+    var clr=m.querySelector('[data-glscclear]'); if(clr) clr.hidden=!filt;
+    var cnt=m.querySelector('[data-glscn]'); if(cnt) cnt.textContent=filt?(items.length+' name'+(items.length===1?'':'s')+(st.group!=='none'&&groups.length?' in '+groups.length+' group'+(groups.length===1?'':'s'):'')):'';
     /* the heads say which column leads */
     [].forEach.call(tbl.tHead?tbl.tHead.querySelectorAll('th'):[],function(th,i){ th.setAttribute('data-glsort',i); th.classList.toggle('gl-on',st.col===i); th.classList.toggle('gl-desc',st.col===i&&st.dir<0); th.title=(st.col===i?'Sorted by this column · tap for the other way':'Tap to sort by this column'); });
     var seg=m.querySelector('.gl-scsort'); if(seg) [].forEach.call(seg.querySelectorAll('[data-glscgroup]'),function(b){ b.classList.toggle('on',b.getAttribute('data-glscgroup')===st.group); });
@@ -12580,34 +12653,48 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
   function applyFunds(){
     var m=document.getElementById('scMount'); if(!m) return; var tbl=m.querySelector('table.sc-dtable'); if(!tbl||!tbl.tBodies[0]) return; var tb=tbl.tBodies[0];
     if(!st.forig) st.forig=[].slice.call(tb.children);
-    var rows=st.forig.slice();
+    var rows=st.forig.slice(), q=norm(st.q);
+    if(q&&!st.cat) rows=rows.filter(function(r){ var t=norm(r.textContent); if(t.indexOf(q)>=0) return true; var role=r.children[2]?r.children[2].textContent:''; for(var i=0;i<WORDS.length;i++) if(WORDS[i][0].test(q)&&WORDS[i][1].test(role)) return true; return false; });
     if(st.fcol!=null) rows.sort(function(a,b){ var x=(a.children[st.fcol]||{}).textContent||'', y=(b.children[st.fcol]||{}).textContent||''; x=x.trim().toUpperCase(); y=y.trim().toUpperCase(); return x===y?0:(x<y?-1:1)*st.fdir; });
+    while(tb.firstChild) tb.removeChild(tb.firstChild);
     rows.forEach(function(r){ tb.appendChild(r); });
+    if(q&&!st.cat&&!rows.length){ var tr0=document.createElement('tr'); tr0.className='gl-scempty'; tr0.innerHTML='<td colspan="4">No fund matches \u201c'+esc(st.q)+'\u201d.</td>'; tb.appendChild(tr0); }
     [].forEach.call(tbl.tHead?tbl.tHead.querySelectorAll('th'):[],function(th,i){ th.setAttribute('data-glfsort',i); th.classList.toggle('gl-on',st.fcol===i); th.classList.toggle('gl-desc',st.fcol===i&&st.fdir<0); th.title=(st.fcol===i?'Sorted by this column · tap for the other way':'Tap to sort by this column'); });
   }
   function bar(){
     var m=document.getElementById('scMount'); if(!m||m.querySelector('.gl-scsort')) return; var wrap=m.querySelector('.sc-tablewrap'); if(!wrap) return;
     var d=document.createElement('div'); d.className='gl-scsort';
     var hasMap=!!(window.GLMap&&GLMap.cardOf);
-    d.innerHTML='<span class="gl-scsort-l">Group by</span><div class="gl-seg gl-scseg" role="tablist" aria-label="Group the grades">'
+    collect(); var counts={}; (st.orig||[]).forEach(function(it){ counts[it.layer]=(counts[it.layer]||0)+1; });
+    var cats=Object.keys(counts).sort(function(a,b){ return (wheelRank(a)-wheelRank(b))||(a<b?-1:a>b?1:0); });
+    var chips='<button type="button" data-glsccat="" class="on" title="Every graded name">All</button>'+cats.map(function(c){ return '<button type="button" data-glsccat="'+esc(c)+'" title="'+esc(c)+'">'+esc(shortOf(c))+'<small>'+counts[c]+'</small></button>'; }).join('');
+    d.innerHTML='<div class="gl-scfind"><input type="search" data-glscfind placeholder="Search a category \u2014 semiconductors, defense, power\u2026" aria-label="Search the grades by category, ticker or name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button type="button" data-glscclear aria-label="Clear the search" hidden>\u00d7</button><span class="gl-scfind-n" data-glscn></span></div>'
+      +'<div class="gl-sccats" role="group" aria-label="The wheel\u2019s categories">'+chips+'</div>'
+      +'<span class="gl-scsort-l">Group by</span><div class="gl-seg gl-scseg" role="tablist" aria-label="Group the grades">'
       +'<button type="button" role="tab" data-glscgroup="layer">Layer</button>'+(hasMap?'<button type="button" role="tab" data-glscgroup="map">Map section</button>':'')+'<button type="button" role="tab" data-glscgroup="none">None</button></div>'
       +'<span class="gl-scsort-h">Tap a column head to sort by it; tap again for the other way.</span>';
     wrap.parentNode.insertBefore(d,wrap);
     if(st.group==='map'&&!hasMap) st.group='layer';
   }
   document.addEventListener('click',function(e){
-    if(!gl()) return; var t=e.target&&e.target.closest&&e.target.closest('[data-glscgroup],th[data-glsort],th[data-glfsort]'); if(!t||!t.closest('#scMount')) return;
+    if(!gl()) return; var t=e.target&&e.target.closest&&e.target.closest('[data-glscgroup],[data-glsccat],[data-glscclear],th[data-glsort],th[data-glfsort]'); if(!t||!t.closest('#scMount')) return;
     if(t.hasAttribute('data-glscgroup')){ st.group=t.getAttribute('data-glscgroup'); save(); apply(); return; }
+    if(t.hasAttribute('data-glsccat')){ var c=t.getAttribute('data-glsccat'); setFind('', (c&&c!==st.cat)?c:''); return; }
+    if(t.hasAttribute('data-glscclear')){ setFind('',''); return; }
     if(t.hasAttribute('data-glsort')){ var c=+t.getAttribute('data-glsort'); if(st.col===c) st.dir=-st.dir; else { st.col=c; st.dir=(c===0)?1:1; } save(); apply(); return; }
     if(t.hasAttribute('data-glfsort')){ var f=+t.getAttribute('data-glfsort'); if(st.fcol===f) st.fdir=-st.fdir; else { st.fcol=f; st.fdir=1; } applyFunds(); return; }
   },true);
+  function setFind(q,cat){ st.q=q||''; st.cat=cat||''; var inp=document.querySelector('#scMount [data-glscfind]'); if(inp&&inp.value!==st.q) inp.value=st.q; apply(); applyFunds(); }
+  document.addEventListener('input',function(e){ if(!gl()) return; var t=e.target; if(!t||!t.hasAttribute||!t.hasAttribute('data-glscfind')||!t.closest('#scMount')) return; setFind(t.value,''); },true);
+  document.addEventListener('keydown',function(e){ if(!gl()) return; var t=e.target; if(!t||!t.hasAttribute||!t.hasAttribute('data-glscfind')) return; if(e.key==='Escape'){ e.preventDefault(); setFind('',''); t.blur(); } else if(e.key==='Enter'){ e.preventDefault(); t.blur(); } },true);
   function arm(){
     if(!gl()||!window.MutationObserver) return; var m=document.getElementById('scMount'); if(!m) return;
     var seen=false; function go(){ if(seen||!m.querySelector('.sc-tablewrap')) return; seen=true; bar(); apply(); applyFunds(); }
     new MutationObserver(go).observe(m,{childList:true}); go();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',arm); else arm();
-  window.GLScSort={state:st, apply:apply, group:function(g){ if(g==='layer'||g==='map'||g==='none'){ st.group=g; save(); apply(); } return st.group; }, sort:function(col,dir){ st.col=col; st.dir=dir||1; save(); apply(); }};
+  window.GLScSort={state:st, apply:apply, group:function(g){ if(g==='layer'||g==='map'||g==='none'){ st.group=g; save(); apply(); } return st.group; }, sort:function(col,dir){ st.col=col; st.dir=dir||1; save(); apply(); },
+    find:function(q){ setFind(q,''); return st.q; }, cat:function(c){ setFind('',c); return st.cat; }, matches:catMatches};
 })();
 
 </script>
@@ -20419,6 +20506,10 @@ html[data-gl="light"] #flowView .card.vivid{box-shadow:0 0 0 1px rgba(var(--fc-r
 html[data-gl="light"] #flowView .card.feature{box-shadow:0 0 0 1px rgba(var(--fc-rgb),.3),0 0 20px rgba(var(--fc-rgb),.18),0 10px 26px rgba(0,0,0,.09);background:linear-gradient(180deg,rgba(var(--fc-rgb),.11),rgba(255,255,255,0)),#ffffff;}
 html[data-gl="light"] #flowView .grp .lab{color:#6b7280;}
 html[data-gl="light"] #flowLegend{background:#ffffff;box-shadow:0 10px 30px rgba(0,0,0,.08);}
+/* 11-05 the Scorecard's category search (scsort.js) in light */
+html[data-gl="light"] .gl-scfind input{background:#ffffff;border-color:#d2d7df;color:#1c2128;}
+html[data-gl="light"] .gl-scfind [data-glscclear],html[data-gl="light"] .gl-sccats button{background:#f3f4f7;border-color:#e4e7ec;color:#6b7280;}
+html[data-gl="light"] .gl-sccats button.on{background:#e8ebf0;border-color:#c9cfd8;color:#1c2128;}
 
 </style>
 <script id="gl48Shim">
