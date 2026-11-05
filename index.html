@@ -14615,7 +14615,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
   /* 11-03 RSI DIVERGENCE (the owner: "add divergence and hidden divergence to the RSI indicator, modelled on the TradingView indicator I use"):
      TradingView's built-in RSI divergence indicator, ported bar for bar — pivots on the RSI series only (5 bars left, 5 right; an equal
      value on the left still counts, an equal value on the right disqualifies), confirmed five bars after the pivot; price read on the WICKS
-     at the RSI pivot bars (the low for the bullish pair, the high for the bearish; the close when a frame has no wicks); the two pivots
+     at the price pivots nearest each RSI pivot (11-05, see below; TradingView itself reads the RSI pivot's own bar — the low for the bullish pair, the high for the bearish; the close when a frame has no wicks); the two pivots
      compared are consecutive and 5 to 60 bars apart (bars strictly between). Regular bullish: price lower low, RSI higher low. Hidden
      bullish: price higher low, RSI lower low. Regular bearish: price higher high, RSI lower high. Hidden bearish: price lower high, RSI
      higher high. Drawn on the RSI pane (a line between the two RSI pivots) AND, from 11-04, on the Divergence row between the two price pivots —
@@ -14631,12 +14631,21 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
       for(j=1;j<=R&&(isL||isH);j++){ var b=r[i+j]; if(b==null){ isL=isH=false; break; } if(b<=v) isL=false; if(b>=v) isH=false; }
       if(isL) lows.push(i); if(isH) highs.push(i);
     }
-    for(i=1;i<lows.length;i++){ var q=lows[i-1], p=lows[i], g=p-q-1; if(g<minG||g>maxG) continue;
-      if(r[p]>r[q]&&lo(p)<lo(q)) out.push({type:'bull', hidden:false, q:q, p:p, at:p+R});
-      else if(r[p]<r[q]&&lo(p)>lo(q)) out.push({type:'bull', hidden:true, q:q, p:p, at:p+R}); }
-    for(i=1;i<highs.length;i++){ var q2=highs[i-1], p2=highs[i], g2=p2-q2-1; if(g2<minG||g2>maxG) continue;
-      if(r[p2]<r[q2]&&hi(p2)>hi(q2)) out.push({type:'bear', hidden:false, q:q2, p:p2, at:p2+R});
-      else if(r[p2]>r[q2]&&hi(p2)<hi(q2)) out.push({type:'bear', hidden:true, q:q2, p:p2, at:p2+R}); }
+    /* 11-05 (the owner: "I still need the anchor points of the divergence to be on the actual price pivots … they're kind of floating all over"):
+       TradingView reads price AT the RSI pivot's bar — on the corpus that bar is the local price top / bottom only one time in six, so the
+       wedge hung off the real pivot, and one pair in ten even ran the wrong way once you looked at the real tops. Now each RSI pivot's PRICE
+       pivot is the wick extreme within the same ±L bars that define the pivot (the newer one capped at the confirmation bar, so it stays
+       causal; when the two windows meet they split at the midpoint, so the two price pivots never cross), and the pair is compared — and
+       anchored — on those. pq / pp = the price pivot bars. */
+    function argLo(a,b){ var k=a; for(var j=a;j<=b;j++){ if(lo(j)<lo(k)) k=j; } return k; }
+    function argHi(a,b){ var k=a; for(var j=a;j<=b;j++){ if(hi(j)>hi(k)) k=j; } return k; }
+    function win(q,p){ var a0=Math.max(0,q-L), a1=q+L, b0=Math.max(0,p-L), b1=p+R; if(a1>=b0){ var mid=Math.floor((q+p)/2); a1=mid; b0=mid+1; } return [a0,a1,b0,b1]; }
+    for(i=1;i<lows.length;i++){ var q=lows[i-1], p=lows[i], g=p-q-1; if(g<minG||g>maxG) continue; var W=win(q,p), pq=argLo(W[0],W[1]), pp=argLo(W[2],W[3]);
+      if(r[p]>r[q]&&lo(pp)<lo(pq)) out.push({type:'bull', hidden:false, q:q, p:p, pq:pq, pp:pp, at:p+R});
+      else if(r[p]<r[q]&&lo(pp)>lo(pq)) out.push({type:'bull', hidden:true, q:q, p:p, pq:pq, pp:pp, at:p+R}); }
+    for(i=1;i<highs.length;i++){ var q2=highs[i-1], p2=highs[i], g2=p2-q2-1; if(g2<minG||g2>maxG) continue; var W2=win(q2,p2), pq2=argHi(W2[0],W2[1]), pp2=argHi(W2[2],W2[3]);
+      if(r[p2]<r[q2]&&hi(pp2)>hi(pq2)) out.push({type:'bear', hidden:false, q:q2, p:p2, pq:pq2, pp:pp2, at:p2+R});
+      else if(r[p2]>r[q2]&&hi(pp2)<hi(pq2)) out.push({type:'bear', hidden:true, q:q2, p:p2, pq:pq2, pp:pp2, at:p2+R}); }
     out.sort(function(a,b){ return a.p-b.p; });
     return out;
   }
@@ -14650,7 +14659,8 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
      Consecutive swing highs (lows) are compared exactly as the pivot pairs are (regular / hidden, wicks), no gap floor, the same 60-bar
      ceiling, confirmed at the reversal bar. allDivs() = the pivot pairs PLUS every swing pair whose newer RSI extreme the pivot rule did not
      already pair (same type, hidden flag and newer bar) — one list for the pane, the row, the pill and the census. Every pair carries
-     q / p (the RSI bars) and pq / pp (the price bars; = q / p for a pivot pair) and src 'tv' | 'swing'. */
+     q / p (the RSI bars) and pq / pp (the price pivot bars — for a pivot pair the wick extreme within ±5 bars of the RSI pivot, see
+     rsiDivs) and src 'tv' | 'swing'. */
   function swingDivs(bars,r,D,maxG){
     D=D||10; maxG=(maxG==null)?60:maxG;
     var n=r.length, i0=-1, i, j;
@@ -14683,7 +14693,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
   }
   function allDivs(bars,r){
     var tv=rsiDivs(bars,r), seen={}, out=[], i, d;
-    for(i=0;i<tv.length;i++){ d=tv[i]; d.pq=d.q; d.pp=d.p; d.src='tv'; seen[d.type+(d.hidden?'h':'')+d.p]=1; out.push(d); }
+    for(i=0;i<tv.length;i++){ d=tv[i]; d.src='tv'; seen[d.type+(d.hidden?'h':'')+d.p]=1; out.push(d); }
     var sw=swingDivs(bars,r);
     for(i=0;i<sw.length;i++){ d=sw[i]; if(!seen[d.type+(d.hidden?'h':'')+d.p]) out.push(d); }
     out.sort(function(a,b){ return a.p-b.p||a.q-b.q||(a.type<b.type?-1:a.type>b.type?1:0)||((a.hidden?1:0)-(b.hidden?1:0)); });
@@ -14707,7 +14717,9 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
     var call=window.tfCloses(bars), r=window.tfRsi(call,14), N=call.length, tail=Math.min(tailN||60,N), off=N-tail, c=call.slice(-tail), rr=r.slice(-tail), n=tail, p=2, i;
     var stripH=Math.max(3,Math.round(h*0.15)), ph=h-stripH-2, live=divPairs(bars,n);
     function lo(i){ var b=bars[i]; return (b&&b.l!=null&&isFinite(+b.l))?+b.l:+b.c; } function hi(i){ var b=bars[i]; return (b&&b.h!=null&&isFinite(+b.h))?+b.h:+b.c; }
-    var ext=c.slice(); live.forEach(function(d){ var f=d.type==='bull'?lo:hi; if(d.pq>=off) ext.push(f(d.pq)); ext.push(f(d.pp)); });
+    /* 11-05 (the owner: anchors "on the actual price pivots"): the row's scale covers the wicks in view, and a faint high–low envelope sits under the
+       close line, so every wedge anchor — the wick top of a bearish pair, the wick bottom of a bullish one — lands ON drawn price, never in the air. */
+    var ext=c.slice(); for(i=off;i<N;i++){ ext.push(hi(i)); ext.push(lo(i)); }
     var e=extOf(ext); if(!e) return ''; var rg=e[1]-e[0]||1;
     function X(i){ return 1+(i+.5)*(w-2)/n; } function Y(v){ return (ph-p)-(v-e[0])*(ph-2*p)/rg; }
     var Ks=[4,8,14], lane=[], li, L2;
@@ -14717,8 +14729,9 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
         if(a2>0.003&&b3<-0.015) dis=Math.min(1,(a2*45)*(-b3*9)); else if(a2<-0.003&&b3>0.015) dis=-Math.min(1,(-a2*45)*(b3*9));
         if(Math.abs(dis)>Math.abs(best)) best=dis; }
       lane.push(best); }
-    var pts=''; for(i=0;i<n;i++) pts+=(pts?' ':'')+X(i).toFixed(1)+','+Y(c[i]).toFixed(1);
-    var s='<polyline points="'+pts+'" fill="none" stroke="'+C_FL+'" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>';
+    var pts='', env='', envB=''; for(i=0;i<n;i++){ pts+=(pts?' ':'')+X(i).toFixed(1)+','+Y(c[i]).toFixed(1); env+=(i?' L':'M')+X(i).toFixed(1)+','+Y(hi(off+i)).toFixed(1); envB=' L'+X(i).toFixed(1)+','+Y(lo(off+i)).toFixed(1)+envB; }
+    var s='<path data-env="1" d="'+env+envB+' Z" fill="'+C_FL+'" opacity=".09"/>';
+    s+='<polyline points="'+pts+'" fill="none" stroke="'+C_FL+'" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>';
     for(var sg=1;sg<n;sg++){ var lv=Math.abs(lane[sg])>=0.12?lane[sg]:0; if(!lv) continue;
       s+='<line x1="'+X(sg-1).toFixed(1)+'" y1="'+Y(c[sg-1]).toFixed(1)+'" x2="'+X(sg).toFixed(1)+'" y2="'+Y(c[sg]).toFixed(1)+'" stroke="'+(lv>0?C_DN:C_UP)+'" stroke-width="1.5" stroke-linecap="round"/>'; }
     live.forEach(function(d,k){ var f=d.type==='bull'?lo:hi, cc=d.type==='bull'?C_UP:C_DN, op=(k===live.length-1)?1:.6;
