@@ -10335,7 +10335,11 @@ window.MktView = (function(){
       +'<option value="mcap">Mkt Cap</option><option value="vol">1D Vol</option>'
       +'<option value="chg1h">1H %</option><option value="chg24">1D %</option><option value="chg7">7D %</option>'
       +'<option value="tech">Tech</option>'
-      +'<option value="sent">Sent</option><option value="range">30d position</option></select>'
+      +'<option value="sent">Sent</option><option value="range">30d position</option>'
+      /* 11-05 (the owner: "sort based off the far left area … over or under performing the market … the pulse dot"): the pulse's two reads, as
+         sorts — Vs market = the name's month against the market (▼ leaders first, ▲ laggards first); Turn = the pulse dot (▼ just turned
+         up first, then quiet, then just turned down). Values come from stage48/pulse.js (r.pulse, r.turn); rows without a read sort last. */
+      +'<option value="pulse">Vs market</option><option value="turn">Turn</option></select>'
       +'<button type="button" class="mk-ico" id="mkSortDir" aria-label="Flip sort direction">▼</button>'
       +'</span></div>'
       /* round 7 §31: the daily-candles coverage line (US 500 / Coins 500 only; hidden otherwise) */
@@ -10476,7 +10480,9 @@ window.MktView = (function(){
       var marks=document.getElementById('mkMarks'), cat=document.getElementById('mkCat'),
           q=document.getElementById('mkQ'),
           uni=document.getElementById('mkUni'), scope=document.getElementById('mkScope'), type=document.getElementById('mkType');
+      var sortSel=document.getElementById('mkSortSel'), sortDir=document.getElementById('mkSortDir'), sortSlot=document.getElementById('mkSlotSort');
       if(mql.matches){
+        if(sortSlot&&sortSel){ sortSlot.appendChild(sortSel); sortSlot.appendChild(sortDir); }   /* 11-05: back into the sheet's Sort row */
         document.getElementById('mkSlotUni').appendChild(uni);
         document.getElementById('mkSlotType').appendChild(type); typeDD.classList.remove('open');
         document.getElementById('mkSlotMarks').appendChild(marks);
@@ -10489,6 +10495,7 @@ window.MktView = (function(){
         var inl=document.getElementById('mkInline');
         uniDD.appendChild(uni); typeDD.appendChild(type);
         inl.appendChild(marks); inl.appendChild(cat); inl.appendChild(q); inl.appendChild(scope);
+        if(sortSel){ inl.appendChild(sortSel); inl.appendChild(sortDir); }   /* 11-05: the Sort select + its arrow sit inline above 900px (the pulse sorts have no column head) */
         deck.classList.remove('mk-searching'); sheet.classList.remove('open');
       }
     }
@@ -10678,6 +10685,11 @@ window.MktView = (function(){
   return { render: render, lists: LISTS_API,
            /* §19: the Market feed — reload(force) refetches, forget() drops memory + localStorage, state = MK */
            market: { reload: function(f){ mkLoad(f!==false); }, forget: mkForget, state: MK,
+                     /* 11-05: resort() re-applies the current sort (pulse.js calls it once the pulse reads land on the rows); sortKey() = the current key */
+                     resort: function(){ applySort(); }, sortKey: function(){ return state.sort; },
+                     /* 11-05: setPulse(map) stamps the pulse reads on the ROW RECORDS (order() hands out copies): map[sym] = {s, turn} or null;
+                        rows the map does not name keep no read (null → sorted last). Returns true when any record changed. */
+                     setPulse: function(map){ var ch=false, i; for(i=0;i<ROWS.length;i++){ var r=ROWS[i], p=map&&map[r.sym], s=p?p.s:null, t=p?p.turn:null; if(r.pulse!==s||r.turn!==t){ r.pulse=s; r.turn=t; ch=true; } } return ch; },
                      /* §31: the daily candles — reloadCandles(force) refetches the current chip's family, candles = per-family state */
                      reloadCandles: function(f){ if(isMkUni()) mkCdLoad(state.uni,f!==false); }, candles: MK_CD,
                      /* §41: the auto grades — reloadGrades(force) refetches (US 500 chip up), grades = its state */
@@ -10852,7 +10864,7 @@ html[data-gl] .gl-seg button{appearance:none;border:0;background:transparent;fle
 html[data-gl] .gl-seg button.on{background:rgba(var(--gl-wh-rgb,255,255,255),.16);color:var(--gl-ink,#fff);box-shadow:0 1px 3px rgba(0,0,0,.35);}
 
 /* new chrome is mounted only when the shim turns Glass on, and only where the stock mobile chrome lives */
-#glDock,#glSub,#glMk,.gl-uni,.gl-gface-row,.gl-tctl,.gl-colhelp,#glProbe{display:none;}
+#glDock,#glSub,#glMk,#glRs,.gl-uni,.gl-gface-row,.gl-tctl,.gl-colhelp,#glProbe{display:none;}
 /* ?probe=1 — what the phone measured, in a corner (shim.js) */
 /* §39: the lines wrap (the fit numbers run long) and, while pinched, shim.js maps the box onto the VISUAL viewport with inline styles so a zoomed
    screenshot still shows it */
@@ -10988,10 +11000,10 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
   /* ---- §82 (round 13) the Grading face seg — Grade wheel | Scorecard — heads #donutView / #scView under the Research door, above the lens row
      (shim.js builds it; .gl-gface-row is display:none at the top of this file like every Glass row). The company page's Financials | Technicals
      grammar (fin.css .glfn-seg): 11.5px labels (the §82 cap), 7px pads, ≤360px wide, centred. Two labels fit at 360 with room to spare. ---- */
-  html[data-gl] body.gl-chrome.gl-mk .gl-gface-row{display:flex;justify-content:center;align-items:center;padding:8px 12px 0;}   /* 10-11: the faces are Markets ▸ Grades */
+  html[data-gl] body.gl-chrome:is(.gl-mk,.gl-research) .gl-gface-row{display:flex;justify-content:center;align-items:center;padding:8px 12px 0;}   /* 10-11: the faces are Markets ▸ Grades; 11-05: Research ▸ Grades */
   html[data-gl] .gl-gface-row .gl-seg{flex:1 1 auto;max-width:360px;margin:0 auto;}
   html[data-gl] .gl-gface-row .gl-seg button{font-size:11.5px;padding:7px 2px;white-space:nowrap;}
-  html[data-gl] body.gl-mk .gl-gface-row + .gl-uni{padding-top:6px;}   /* the two segs read as one head */
+  html[data-gl] body:is(.gl-mk,.gl-research) .gl-gface-row + .gl-uni{padding-top:6px;}   /* the two segs read as one head */
   html[data-gl] body.deck-studio .gl-gface-row,html[data-gl] body:is(.gl-cal,.gl-fin,.gl-tech,.gl-settings) .gl-gface-row{display:none;}
 
   /* Studio's four panes: a segmented control under the strip (they used to BE the dock) */
@@ -11002,6 +11014,20 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
   /* the Calendar / Financials / Grid are fixed layers under the strip: entered from the Studio deck, the pane seg must not float over them */
   html[data-gl] body:is(.gl-cal,.gl-fin) #glSub{display:none!important;}
   html[data-gl] body:is(.gl-cal,.gl-fin,.gl-tech,.gl-rot,.gl-macro,.gl-settings) #glMk{display:none!important;}   /* 10-11: a page over the views takes the Markets seg with it, click or no click */
+  /* 11-05 THE RESEARCH SEG — Overview | Fundamentals | Technicals | Grades — the Markets seg's twin, under the strip while the Research door is
+     up (body.gl-research, shim.js sync()): over the company page, over its Technicals face, and over the Grades views. The page layers under it
+     start 48px lower; the in-page face segs (fin.js's old Financials | Technicals | Card, techlab's mirror) are gone / hidden — one seg. */
+  html[data-gl] body.gl-chrome.gl-research:not(.gl-settings) #glRs:not([hidden]){display:block;position:fixed;top:calc(40px + var(--gl-safe-t,0px));left:0;right:0;z-index:60;
+    padding:7px 10px 8px;background:rgba(var(--gl-bg-rgb),.72);-webkit-backdrop-filter:blur(26px) saturate(1.5);backdrop-filter:blur(26px) saturate(1.5);
+    border-bottom:1px solid rgba(var(--gl-wh-rgb,255,255,255),.08);transition:transform .18s ease;}
+  html[data-gl] #glRs .gl-seg{max-width:440px;}
+  html[data-gl] #glRs .gl-seg button{white-space:nowrap;}
+  @media (max-width:420px){ html[data-gl] #glRs .gl-seg button{font-size:11px;padding:7px 2px;} }
+  html[data-gl] #mStrip.m-hide ~ #glRs{transform:translateY(calc(-40px - var(--gl-safe-t,0px)));}
+  html[data-gl] body:is(.gl-cal,.gl-rot,.gl-macro,.gl-settings) #glRs{display:none!important;}
+  html[data-gl] body.gl-chrome.gl-research :is(#donutView,#scView){padding-top:48px;}
+  html[data-gl] body.gl-chrome.gl-research #glFin,html[data-gl] body.gl-chrome.gl-research #glTech{padding-top:48px;}
+  html[data-gl] body.gl-research .glt-head.fin .glt-face,html[data-gl] body.gl-research .glt-head.fin .glt-face button{display:none!important;}   /* the techlab face's own Financials | Technicals | Card mirror: the strip seg is the one seg now */
   html[data-gl] body.gl-chrome.deck-studio:not(.gl-settings) #studioView{padding-top:48px;}
   /* 10-11 Portfolio's seg has SIX segments (Risk + Trades) — SEVEN since 10-12 (Presets): the labels stay on one line at 360 */
   @media (max-width:420px){ html[data-gl] #glSub .gl-seg button{font-size:11px;padding:7px 2px;flex:1 1 auto;} }   /* 10-12: seven labels — each cell sized to its word, so Exposure and Holdings keep their gap at 390 */
@@ -11012,7 +11038,7 @@ html[data-gl] .gl-lensrow .gl-seg{max-width:none;margin:0;flex:1 1 auto;width:10
     border-bottom:1px solid rgba(var(--gl-wh-rgb,255,255,255),.08);transition:transform .18s ease;}
   html[data-gl] #glMk .gl-seg{max-width:360px;}
   html[data-gl] #mStrip.m-hide ~ #glMk{transform:translateY(calc(-40px - var(--gl-safe-t,0px)));}
-  html[data-gl] body.gl-chrome.gl-mk :is(#mktView,#flowView,#donutView,#scView){padding-top:48px;}
+  html[data-gl] body.gl-chrome.gl-mk :is(#mktView,#flowView){padding-top:48px;}
   html[data-gl] body.gl-chrome.gl-mk #mktView{padding-top:46px;}   /* the table starts right under the seg (the §18 rule's 2px, kept) */
 
   /* Settings is a DOOR now, so it is a page — not a sheet floating over a Studio you never asked for */
@@ -11107,10 +11133,10 @@ html[data-gl] body.gl-chrome #mktView .twrap{max-height:calc(100dvh - var(--gl-t
   html[data-gl] .gl-ibtn{width:28px;height:28px;}   /* 10-11 the strip icons pack sideways like the doors */
   /* §82 sideways (§20/§70 spirit: one head line): the Grading face seg rides the LEFT of the lens row — the row keeps no height of its own,
      the seg is absolute over the .gl-uni line (centred lens seg 240px wide leaves ≥190px each side from 667px up), 11px labels like fin.css */
-  html[data-gl] body.gl-chrome.gl-mk .gl-gface-row{position:relative;height:0;padding:0;overflow:visible;z-index:2;}
-  html[data-gl] body.gl-mk .gl-gface-row .gl-seg{position:absolute;left:10px;top:7px;flex:none;width:auto;max-width:none;margin:0;}
-  html[data-gl] body.gl-mk .gl-gface-row .gl-seg button{flex:none;font-size:11px;padding:5px 9px;}
-  html[data-gl] body.gl-mk .gl-gface-row + .gl-uni{padding-top:8px;}
+  html[data-gl] body.gl-chrome:is(.gl-mk,.gl-research) .gl-gface-row{position:relative;height:0;padding:0;overflow:visible;z-index:2;}
+  html[data-gl] body:is(.gl-mk,.gl-research) .gl-gface-row .gl-seg{position:absolute;left:10px;top:7px;flex:none;width:auto;max-width:none;margin:0;}
+  html[data-gl] body:is(.gl-mk,.gl-research) .gl-gface-row .gl-seg button{flex:none;font-size:11px;padding:5px 9px;}
+  html[data-gl] body:is(.gl-mk,.gl-research) .gl-gface-row + .gl-uni{padding-top:8px;}
 
   /* Two stock gaps a sideways phone falls into, fixed under EVERY door layout. At 844px wide it is past the
      app's 740px phone breakpoint, so it got the DESKTOP filter row squeezed until its controls overlapped; and
@@ -11565,12 +11591,22 @@ html[data-gl] .sc-root thead th.gl-on.gl-desc::after{content:" \25BE";}
     <button type="button" role="tab" data-glpane="presets">Presets</button>
   </div>
 </div>
-<!-- Markets' views: the Tape lands; Map = the flow chart; Grades = the wheel | scorecard (its own face seg rides those views) -->
+<!-- Markets' views: the Tape lands; Map = the flow chart. 11-05 (the owner): Grades moved to Research -->
 <div id="glMk" role="tablist" aria-label="Markets" hidden>
   <div class="gl-seg">
     <button type="button" role="tab" data-glmk="mkt">Tape</button>
     <button type="button" role="tab" data-glmk="flow">Map</button>
-    <button type="button" role="tab" data-glmk="grades">Grades</button>
+  </div>
+</div>
+<!-- Research's panes (11-05, the owner: "four sub categories … the card, fundamentals, technicals, grades … call it overview"): Overview = the asset
+     card as its OWN page (never a pop-up), Fundamentals = the filings block, Technicals = the techlab face, Grades = the wheel | scorecard
+     (moved here from Markets; their face seg still rides the views). shim.js lights it (body.gl-research) and routes go('fin', pane). -->
+<div id="glRs" role="tablist" aria-label="Research" hidden>
+  <div class="gl-seg">
+    <button type="button" role="tab" data-glrs="overview">Overview</button>
+    <button type="button" role="tab" data-glrs="fund">Fundamentals</button>
+    <button type="button" role="tab" data-glrs="tech">Technicals</button>
+    <button type="button" role="tab" data-glrs="grades">Grades</button>
   </div>
 </div>
 
@@ -13777,9 +13813,17 @@ html[data-gl] body.gl-fin #aibo-live-chip{display:none!important;}      /* it re
 /* ---- head: the two-way face seg (§74), who + close, the search (the only picker, §71) ---- */
 html[data-gl] .glfn-head{position:relative;flex:none;padding:8px 10px 0;border-bottom:1px solid rgba(var(--gl-wh-rgb,255,255,255),.07);}
 html[data-gl] .glfn-row{display:flex;align-items:center;gap:8px;min-height:36px;margin-bottom:6px;}
-html[data-gl] .glfn-seg{min-height:0;margin-bottom:8px;}
-html[data-gl] .glfn-seg .gl-seg{flex:1 1 auto;max-width:360px;margin:0 auto;}
-html[data-gl] .glfn-seg .gl-seg button{font-size:12px;padding:7px 2px;white-space:nowrap;}
+/* 11-05: the head's own Financials | Technicals | Card seg is gone — the Research seg under the strip (skin.css #glRs) is the one seg.
+   THE OVERVIEW FACE: the asset card's content as this page's body — the card's own classes (.sh-head, .sh-rolls, .aibo-box …) are global
+   Stage 43 rules, so it reads exactly as the sheet did, just on a page: centred, the sheet's 560px measure stretched a little. */
+html[data-gl] .glfn-over{max-width:720px;margin:0 auto;padding:6px 0 28px;}
+html[data-gl] .glfn-over[hidden]{display:none;}
+html[data-gl] .glfn-over .glfn-card{padding:2px 2px 10px;}
+html[data-gl] .glfn-over .sh-head{padding-top:4px;}
+html[data-gl] .glfn-over .sh-head .sh-tk,html[data-gl] .glfn-over .sh-head .sh-name{display:none;}   /* the page head already names the company; the card's tags (layer, provenance) stay */
+html[data-gl] .glfn-over .sh-head .sh-meta{margin:0;}
+html[data-gl] .glfn-over .glfn-nofund{margin:18px 2px;}
+html[data-gl] #glFin .glf-page[hidden]{display:none;}
 html[data-gl] .glfn-who{display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
 html[data-gl] .glfn-who .t{font:800 19px/1 ui-monospace,"SF Mono",Menlo,monospace;color:var(--gl-ink,#fff);letter-spacing:.01em;flex:none;}
 html[data-gl] .glfn-who .n{font-size:13px;font-weight:500;color:rgba(var(--gl-ink-rgb,234,238,245),.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto;}
@@ -13863,9 +13907,6 @@ html[data-gl] .glf-page .glfs{margin-top:22px;padding-top:16px;}
   html[data-gl] .glfn-head{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;padding:3px 8px;}
   html[data-gl] .glfn-head > *{max-width:none;margin:0;}
   html[data-gl] .glfn-row{min-height:0;margin:0;}
-  html[data-gl] .glfn-seg{order:1;flex:0 0 auto;}
-  html[data-gl] .glfn-seg .gl-seg{flex:none;width:auto;max-width:none;margin:0;}
-  html[data-gl] .glfn-seg .gl-seg button{font-size:11px;padding:5px 9px;}
   html[data-gl] .glfn-main,html[data-gl] .glfn-find{display:contents;}
   html[data-gl] .glfn-who{display:none;}
   html[data-gl] .glfn-x{order:9;width:28px;height:28px;font-size:18px;}
@@ -13951,7 +13992,13 @@ html[data-gl] .glfn-lnk{background:none;border:1px solid rgba(167,139,250,.5);co
   if(typeof window.lookup!=='function') return;
   var LS='aibo.gl.fin.last', DEF='NVDA', H=document.documentElement, B=document.body;
   var root=document.createElement('section'); root.id='glFin'; root.setAttribute('aria-label','Financials'); B.appendChild(root);
-  var S={cur:null, q:'', built:false, list:[], byCap:false, fund:null, open:false, qopen:false, qt:0, pobs:null};   /* open = fin.js's OWN openness: the shim sets body.gl-fin before calling show(), so the class cannot tell a reopen from a re-show */
+  var S={cur:null, q:'', built:false, list:[], byCap:false, fund:null, open:false, qopen:false, qt:0, pobs:null, face:'overview'};
+  /* 11-05 (the owner: "four sub categories … the card, fundamentals, technicals, grades … I don't want the card to pop up … genuinely its own
+     piece … call it overview"): the page has two faces of its own — OVERVIEW (the asset card's content, rendered INLINE as this page's body:
+     coSheet() for a graded company, the fund face for a fund) and FUNDAMENTALS (the filings block; a fund has no filings and says so).
+     Technicals and Grades are the Research seg's other two panes (shim.js). The face is remembered for the session; Overview first. */
+  var FACE_KEY='aibo.gl.fin.face';
+  try{ var sf=sessionStorage.getItem(FACE_KEY); if(sf==='fund'||sf==='overview') S.face=sf; }catch(_){}   /* open = fin.js's OWN openness: the shim sets body.gl-fin before calling show(), so the class cannot tell a reopen from a re-show */
   var SEARCH='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
   /* DATA is a top-level `const` in the app: shared global lexical scope, NOT a window property */
   function D(){ try{ return (typeof DATA!=='undefined'&&DATA)||window.DATA||{}; }catch(_){ return window.DATA||{}; } }
@@ -13987,7 +14034,6 @@ html[data-gl] .glfn-lnk{background:none;border:1px solid rgba(167,139,250,.5);co
   function build(){
     if(S.built) return; S.built=true;
     root.innerHTML='<div class="glfn-head">'
-      +'<div class="glfn-row glfn-seg"><div class="gl-seg glfn-face" role="tablist" aria-label="Company view"><button type="button" role="tab" data-finface="fin" class="on" aria-selected="true">Financials</button><button type="button" role="tab" data-finface="tech" aria-selected="false">Technicals</button><button type="button" role="tab" data-finface="card" aria-selected="false" title="The asset card the Tape opens for this name">Card</button></div></div>'
       +'<div class="glfn-row glfn-main"><div class="glfn-who" data-finwho></div><button type="button" class="glfn-x" data-finclose aria-label="Close Financials">×</button></div>'
       +'<div class="glfn-row glfn-find"><label class="glfn-search">'+SEARCH
       +'<input type="search" data-finq placeholder="Find a company or fund" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"></label>'
@@ -13995,11 +14041,10 @@ html[data-gl] .glfn-lnk{background:none;border:1px solid rgba(167,139,250,.5);co
       +'<div class="glfn-prefs" data-finprefs aria-label="Period and range"><div class="gl-seg"><button type="button" data-finper="q">Quarterly</button><button type="button" data-finper="a">Annual</button></div>'
       +'<div class="gl-seg"><button type="button" data-finrng="20">5Y</button><button type="button" data-finrng="40">10Y</button><button type="button" data-finrng="60">15Y</button></div></div>'
       +'</div>'
-      +'<div class="glfn-body" data-finbody><div class="glfn-end"></div></div>';
+      +'<div class="glfn-body" data-finbody><section class="glfn-over" data-finover hidden></section><div class="glfn-end"></div></div>';
     root.addEventListener('click',function(e){ var b;
       if((b=e.target.closest('[data-finclose]'))){ hide(); return; }
       if((b=e.target.closest('[data-finco]'))){ pick(b.getAttribute('data-finco')); closeFind(); return; }
-      if((b=e.target.closest('[data-finface]'))){ var fc=b.getAttribute('data-finface'); if(fc==='tech') toTech(); else if(fc==='card') toCard(); return; }
       if((b=e.target.closest('[data-finexpo]'))){ try{ window.GL48.go('studio','exposure'); }catch(_){} return; }
       if((b=e.target.closest('[data-finper]'))){ fwdPref('[data-per="'+b.getAttribute('data-finper')+'"]'); return; }
       if((b=e.target.closest('[data-finrng]'))){ fwdPref('[data-rng="'+b.getAttribute('data-finrng')+'"]'); return; } });
@@ -14104,25 +14149,41 @@ html[data-gl] .glfn-lnk{background:none;border:1px solid rgba(167,139,250,.5);co
     } else box.innerHTML='<div class="glf-load">Fundamentals are unavailable in this build.</div>';
     syncPrefs();
   }
-  function pick(key){ var k=resolve(key); if(!k||k===S.cur){ if(k) paintList(false); return; } S.cur=k; remember(k); paintWho(); paintList(false); mountFund(); }
-  /* §74: the Technicals face — the techlab page for this company OVER this page (body.gl-fin stays: the door stays lit, the × uncovers us) */
-  /* 11-03 (the owner: "the Research tab should open to the asset card the Tape opens, or jump back and forth"): the third face opens
-     THE SAME card the Tape opens for this name — the stock sheet for a graded name, the US 500 card otherwise — over this page, so
-     closing the card lands back here; the card's own fundamentals block links back to Financials (fund.js → GL48.openFin). */
-  function toCard(){
-    if(!S.cur) return; var k=S.cur; closeFind();
-    try{ if(typeof DATA!=='undefined'&&DATA&&DATA[k]&&typeof openSheet==='function'){ openSheet(k); return; } }catch(_){}
-    try{ if(window.MktView&&MktView.market&&typeof MktView.market.openCard==='function'){ MktView.market.openCard(k); return; } }catch(_){}
-    try{ if(typeof openSheet==='function') openSheet(k); }catch(_){}
+  function pick(key){ var k=resolve(key); if(!k||k===S.cur){ if(k) paintList(false); return; } S.cur=k; remember(k); paintWho(); paintList(false); mountFund(); var ov=root.querySelector('[data-finover]'); if(ov) ov.removeAttribute('data-finoverkey'); paintFaces(); }
+  /* ---- 11-05 THE OVERVIEW FACE: the asset card's own content, inline. coSheet(rec) is the Stage 43 builder the Tape's sheet uses (head, the live
+     strip + minis, chokepoint / sole-US, about, grades + pillars, note) — rendered into this page's body, no sheet, no scrim; a fund's Overview
+     is the fund face (donut + facts), its Fundamentals a one-line note. ---- */
+  function overviewHTML(k){
+    if(isFund(k)) return '';
+    var lk=null; try{ lk=window.lookup(k); }catch(_){}
+    if(lk&&lk.type==='co'&&typeof window.coSheet==='function'){ try{ return window.coSheet(lk.rec); }catch(e){ return '<p class="glfn-etfsrc">The overview could not be drawn ('+esc(e&&e.message||e)+').</p>'; } }
+    return '<p class="glfn-etfsrc">No overview for this name yet.</p>';
   }
+  function paintFaces(){
+    var body=root.querySelector('[data-finbody]'), over=root.querySelector('[data-finover]'); if(!body||!over) return;
+    var fundK=isFund(S.cur), face=S.face;   /* A = the filings block (a company's section.glf-page) or the fund face (section.glf-page.glfn-etf) */
+    var showA=fundK?(face==='overview'):(face==='fund');
+    [].forEach.call(body.querySelectorAll('.glf-page'),function(sec){ var etf=sec.classList.contains('glfn-etf'); sec.hidden=!showA||(fundK?!etf:etf); });   /* a stale section of the other kind (mountFund / mountFundFace leave the shell) stays hidden */
+    over.hidden=showA;
+    root.setAttribute('data-finface',face);
+    if(!showA){
+      if(fundK){ over.innerHTML='<p class="glfn-etfsrc glfn-nofund">A fund carries no filings — its sector mix and facts are on Overview.</p>'; over.removeAttribute('data-finoverkey'); }
+      else if(over.getAttribute('data-finoverkey')!==S.cur){ over.innerHTML='<div class="glfn-card">'+overviewHTML(S.cur)+'</div>'; over.setAttribute('data-finoverkey',S.cur); }
+      body.scrollTop=0; }
+  }
+  function setFace(f,quiet){ f=(f==='fund'||f==='fundamentals')?'fund':'overview'; var ch=f!==S.face; S.face=f; try{ sessionStorage.setItem(FACE_KEY,f); }catch(_){}
+    if(S.built&&S.open) paintFaces(); if(ch&&!quiet&&window.GL48&&typeof window.GL48.sync==='function'){ try{ window.GL48.sync(); }catch(_){} } }
+  /* §74: the Technicals face — the techlab page for this company OVER this page (body.gl-fin stays: the door stays lit, the × uncovers us).
+     11-05: reached from the Research seg (shim.js go('fin','tech') → GLFin.toTech); the 11-03 Card face is gone — the card IS the Overview face. */
   function toTech(){
     if(!S.cur||!window.GLTech||typeof window.GLTech.show!=='function') return;
     var r=D()[S.cur]||{}; closeFind();
     window.GLTech.show(S.cur,{door:'fin', name:r.name||S.cur, kind:'eq'});
   }
 
-  function show(key){
+  function show(key,opt){
     if(!H.getAttribute('data-gl')) return;                                   /* theme off = exact Stage 43 */
+    if(opt&&opt.face) setFace(opt.face,true);
     var k=resolve(key)||fundKey(key);
     if(!k&&key!=null&&S.open) return;                                       /* an explicit name the page cannot show (a flag) while it is open: stay put, no silent fallback */
     k=k||resolve(last())||resolve(DEF)||(Object.keys(D())[0]||null); if(!k) return;   /* no key (the dock, the Atlas row) or a closed page: the remembered / default company */
@@ -14136,6 +14197,8 @@ html[data-gl] .glfn-lnk{background:none;border:1px solid rgba(167,139,250,.5);co
     if(isFund(k)){ if(!same||!S.etfBox) mountFundFace(); }
     else if(!same||!S.fund) mountFund();
     else if(S.fund.repaint){ S.fund.repaint(); syncPrefs(); }               /* same company, still mounted: catch up with a Quarterly|Annual / range change made in the card while hidden */
+    if(!same){ var ov=root.querySelector('[data-finover]'); if(ov) ov.removeAttribute('data-finoverkey'); }   /* a new name: the overview is drawn afresh */
+    paintFaces();
   }
   function hide(){
     /* every close leaves a fresh picker. This runs BEFORE the class guard: the shim's leaveFin() strips body.gl-fin first and then calls us */
@@ -14146,7 +14209,7 @@ html[data-gl] .glfn-lnk{background:none;border:1px solid rgba(167,139,250,.5);co
     if(window.GL48&&typeof window.GL48.sync==='function'){ try{ window.GL48.sync(); }catch(_){} }   /* our own × / Escape: no click reaches the shim, so tell the dock */
   }
   function current(){ return S.cur; }
-  window.GLFin={show:show, hide:hide, current:current};
+  window.GLFin={show:show, hide:hide, current:current, face:function(){ return S.face; }, setFace:setFace, toTech:toTech};
 })();
 
 </script>
@@ -16198,10 +16261,15 @@ html[data-gl] #mkBody tr.glp-turn-up .mk-udot{animation:glpDotUp 1.1s ease-in-ou
   var tapeT=0;
   function decorateTape(){ var tb=D.getElementById('mkBody'); if(!tb) return; if(S.on&&!S.data&&!S.fetching) load(false); var M=W.MktView&&MktView.market, order=null; try{ order=M&&M.order?M.order():null; }catch(_){} if(!order) return;
     var trs=[].filter.call(tb.children,function(tr){ return tr.tagName==='TR'&&!tr.classList.contains('mk-empty')&&tr.style.display!=='none'; }); if(trs.length!==order.length) return;
-    trs.forEach(function(tr,i){ var r=order[i], fam=(r.kind==='mkc'||r.kind==='cr')?'mkc':'mk', p=S.on?rowPulse(closesOf(r.sym,fam)):null;   /* graded rows too: their candles sit in the same US 500 / Coins 500 files */
+    var pmap={}; trs.forEach(function(tr,i){ var r=order[i], fam=(r.kind==='mkc'||r.kind==='cr')?'mkc':'mk', p=S.on?rowPulse(closesOf(r.sym,fam)):null;   /* graded rows too: their candles sit in the same US 500 / Coins 500 files */
+      /* 11-05 (the owner): the two reads as SORT KEYS — pmap[sym] = {s: the month vs the market, turn: +1 turning up / 0 / -1 turning down}; stamped on the row RECORDS below (order() hands out copies) */
+      pmap[r.sym]=p?{s:p.s, turn:(p.turn==='up'?1:p.turn==='dn'?-1:0)}:null;
       if(!p){ if(tr.hasAttribute('data-glp')){ tr.removeAttribute('data-glp'); tr.style.removeProperty('--pw'); tr.classList.remove('glp-turn-up','glp-turn-dn'); } return; }
       tr.setAttribute('data-glp',p.s>0?'up':'dn'); tr.style.setProperty('--pw',p.hue.toFixed(2)); tr.classList.toggle('glp-turn-up',p.turn==='up'); tr.classList.toggle('glp-turn-dn',p.turn==='dn');
-      var nm=tr.querySelector('.mk-nmtxt'); if(nm&&!nm.hasAttribute('data-glptitle')) nm.setAttribute('data-glptitle','1'); tr.title=(r.sym+' · '+pct(p.s)+' vs the market this month'+(p.turn?(p.turn==='up'?' · turning up':' · turning down'):'')); }); }
+      var nm=tr.querySelector('.mk-nmtxt'); if(nm&&!nm.hasAttribute('data-glptitle')) nm.setAttribute('data-glptitle','1'); tr.title=(r.sym+' · '+pct(p.s)+' vs the market this month'+(p.turn?(p.turn==='up'?' · turning up':' · turning down'):'')); });
+    /* 11-05: the Tape is sorted on a pulse key and the reads just changed -> re-sort once (the re-sort re-orders the tbody, which lands here
+       again with the same signature and stops) */
+    try{ var changed=!!(M&&M.setPulse&&M.setPulse(pmap)), sk=M&&M.sortKey?M.sortKey():null; if(changed&&(sk==='pulse'||sk==='turn')&&M.resort) M.resort(); }catch(_){} }
   function tapeSoon(){ clearTimeout(tapeT); tapeT=setTimeout(decorateTape,250); }
   function watchTape(){ var tb=D.getElementById('mkBody'); if(!tb||tb._glp) return; tb._glp=1; try{ new MutationObserver(tapeSoon).observe(tb,{childList:true}); }catch(_){} tapeSoon(); }
 
@@ -20766,11 +20834,11 @@ html[data-gl="light"] #flowLegend{background:#ffffff;box-shadow:0 10px 30px rgba
      Research (fin) · Portfolio (studio) · Macro · Calendar. "Atlas" is retired: the flow chart is Markets ▸ Map, the wheel + scorecard are
      Markets ▸ Grades, Flashcards sit behind the ? (Learn), Settings behind the You icon, Alerts behind the bell — the three icons live at
      the right of the strip (#glIcons, built below once the strip is known). Every older GL48.go() route still lands (the table in go()). ---- */
-  var dock=$('#glDock'), sub=$('#glSub'), mk=$('#glMk'); if(!dock||!sub) return;
+  var dock=$('#glDock'), sub=$('#glSub'), mk=$('#glMk'), rs=$('#glRs'); if(!dock||!sub) return;   /* 11-05: rs = the Research seg (Overview | Fundamentals | Technicals | Grades) */
   var ICON={tape:'#mDock [data-mv="mkt"] svg', studio:'#mDock [data-mstudio] svg'};
   Object.keys(ICON).forEach(function(k){
     var src=$(ICON[k]), slot=dock.querySelector('[data-gldoor="'+k+'"] i'); if(src&&slot) slot.appendChild(src.cloneNode(true)); });
-  dock.hidden=false; sub.hidden=false; if(mk) mk.hidden=false; B.classList.add('gl-chrome');
+  dock.hidden=false; sub.hidden=false; if(mk) mk.hidden=false; if(rs) rs.hidden=false; B.classList.add('gl-chrome');
 
   var origin=null;                                        /* where Settings was opened from */
   function inStudio(){return B.classList.contains('deck-studio');}
@@ -20798,12 +20866,15 @@ html[data-gl="light"] #flowLegend{background:#ffffff;box-shadow:0 10px 30px rgba
   function gfaceSave(f){ try{ sessionStorage.setItem(GFACE_KEY,f); }catch(_){} }
   /* ---- THE RESEARCH DOOR IS THE COMPANY PAGE (10-11, the owner: "I like how we have fundamentals, technicals and grade just by asset"). No sheet:
      the door opens fin.js on the last company (fin.js remembers it; NVDA at first); its own head is the Financials | Technicals face seg. ---- */
-  function enterFin(key){
-    if(window.GLFin&&window.GLFin.show){ B.classList.add('gl-fin'); window.GLFin.show(key); }
-    else log('openFin: GLFin not mounted',key);
+  /* 11-05 (the owner: Research = Overview · Fundamentals · Technicals · Grades): enterFin(opt) takes a PANE name (overview | fund) or a company /
+     fund key; the pane is remembered by fin.js for the session. openFin(key) — the card's "→ Fundamentals" link (fund.js) — lands on Fundamentals. */
+  function enterFin(opt){
+    var face=(opt==='overview'||opt==='fund'||opt==='fundamentals')?(opt==='fundamentals'?'fund':opt):null, key=face?null:opt;
+    if(window.GLFin&&window.GLFin.show){ B.classList.add('gl-fin'); window.GLFin.show(key,face?{face:face}:null); }
+    else log('openFin: GLFin not mounted',opt);
     sync(); resetZoom();
   }
-  function openFin(key){ go('fin',key); }
+  function openFin(key){ go('fin',key); if(window.GLFin&&window.GLFin.setFace){ try{ window.GLFin.setFace('fund'); }catch(_){} sync(); } }
   window.GL48.finDoor=function(){ return {up:B.classList.contains('gl-fin'), sub:'company', prev:null, sheet:false, face:gfaceSaved()}; };   /* the name is kept for the suites; there is no sheet any more */
   window.GL48.research=function(){ go('fin'); };
   function openSettings(fromCal){
@@ -20875,8 +20946,8 @@ html[data-gl="light"] #flowLegend{background:#ffffff;box-shadow:0 10px 30px rgba
   /* the tour and the glossary are sub-views of the same sheet: the rows fold away, a ‹ Learn line brings them back */
   var tourStep=0;
   var TOUR=[
-    ['Markets','The Tape is the front door: every name you follow, its price, the day\'s moves and its grade. Map draws where the AI build-out\'s money flows. Grades ranks the whole list on one scorecard, or the wheel.','tape'],
-    ['Research','One company at a time: fifteen years of financials and the technicals, one tap apart. Tap any name anywhere in the app and you land here.','fin'],
+    ['Markets','The Tape is the front door: every name you follow, its price, the day\'s moves and its grade. Map draws where the AI build-out\'s money flows.','tape'],
+    ['Research','One name at a time: its Overview, fifteen years of Fundamentals and the Technicals, one tap apart — and Grades ranks the whole list on one scorecard, or the wheel. Tap any name anywhere in the app and you land here.','fin'],
     ['Portfolio','Your framework. Overview sets the sleeves, Build fills them with names, Exposure shows what you really hold once the funds are opened up, Holdings is the book, Risk and Trades read it.','studio'],
     ['Macro','The economy in ten cards: rates, rotation, fear, money, crowding. Each card says its read in one line, then shows the chart behind it.','macro'],
     ['Calendar','Opens on Today: what reports today, the market in a line, your alerts, the week ahead. Month and Agenda hold the rest.','calendar'],
@@ -20933,10 +21004,16 @@ html[data-gl="light"] #flowLegend{background:#ffffff;box-shadow:0 10px 30px rgba
   function go(door,opt){
     closeLearn(); closeSearch(); leaveRot(); leaveMacro(); leaveTech();         /* every door leaves the pages and sheets that sit over the views */
     if(door==='atlas'){ if(opt==='yd'){ door='macro'; opt='yc'; } else { door='tape'; opt=opt||'map'; } }
-    if(door==='fin'&&(opt==='grading'||opt==='donut'||opt==='sc')){ door='tape'; opt=(opt==='grading')?'grades':opt; }
+    if(door==='tape'&&(opt==='grades'||opt==='donut'||opt==='sc')) door='fin';   /* 11-05: the wheel + scorecard are Research ▸ Grades now (every older route still lands) */
     if(door==='settings'){ var wasCal=B.classList.contains('gl-cal'); leaveCalendar(); leaveFin(); openSettings(wasCal); sync(); resetZoom(); return; }
     leaveSettings();
-    if(door==='fin'){ leaveCalendar(); enterFin(opt); return; }
+    if(door==='fin'){
+      leaveCalendar();
+      if(opt==='grades'||opt==='grading'||opt==='donut'||opt==='sc'){   /* Research ▸ Grades: the wheel | scorecard views under the Research seg (the fin page folds) */
+        leaveFin(); toAtlasDeck(); var gv=(opt==='donut'||opt==='sc')?opt:gfaceSaved(); if(opt==='donut'||opt==='sc') gfaceSave(opt);
+        fwd('#viewSeg [data-v="'+gv+'"]'); sync(); resetZoom(); return; }
+      if(opt==='tech'){ enterFin(); if(window.GLFin&&window.GLFin.toTech){ try{ window.GLFin.toTech(); }catch(_){} } sync(); resetZoom(); return; }   /* Research ▸ Technicals: the techlab face over the page */
+      enterFin(opt); return; }
     if(door==='calendar'){ leaveFin(); openCalendar(opt); sync(); resetZoom(); return; }
     leaveCalendar(); leaveFin();
     if(door==='tape'){ toAtlasDeck(); var v='mkt';
@@ -20967,7 +21044,7 @@ html[data-gl="light"] #flowLegend{background:#ffffff;box-shadow:0 10px 30px rgba
     var door=(i<0?s:s.slice(0,i)).toLowerCase(), opt=(i<0||i>=s.length-1)?undefined:s.slice(i+1);
     door=({markets:'tape',research:'fin',portfolio:'studio',today:'calendar'})[door]||door;
     if(['tape','fin','studio','macro','calendar','alerts','settings','atlas'].indexOf(door)<0) return;
-    function keyReady(){ if(door!=='fin'||!opt) return true; var up=String(opt).toUpperCase().replace(/^\$/,''), lk=null; try{ lk=window.lookup(opt); }catch(_){}
+    function keyReady(){ if(door!=='fin'||!opt) return true; if(/^(grades|grading|donut|sc|overview|fund|fundamentals|tech)$/i.test(String(opt))) return true; var up=String(opt).toUpperCase().replace(/^\$/,''), lk=null; try{ lk=window.lookup(opt); }catch(_){}
       return !!((lk&&lk.type==='co')||(typeof FUNDS!=='undefined'&&FUNDS&&FUNDS[up])); }
     var tries=0; (function land(){
       if(!H.getAttribute('data-gl')||!window.GL48||!window.GL48.sync||(!keyReady()&&tries<80)){ if(tries++<80) setTimeout(land,250); return; }
@@ -20988,6 +21065,8 @@ html[data-gl="light"] #flowLegend{background:#ffffff;box-shadow:0 10px 30px rgba
     leaveMacro(); fwd('#stSeg [data-pane="'+p+'"]'); });
   if(mk) mk.addEventListener('click',function(e){
     var b=e.target.closest('[data-glmk]'); if(!b) return; go('tape',b.getAttribute('data-glmk')); });
+  if(rs) rs.addEventListener('click',function(e){
+    var b=e.target.closest('[data-glrs]'); if(!b) return; go('fin',b.getAttribute('data-glrs')); });   /* 11-05: Overview | Fundamentals | Technicals | Grades */
 
   /* Settings closed with its own X means "go back where I came from". Any OTHER close (picking a
      portfolio, reset...) is the app deliberately landing on the Cockpit, and is left alone.
@@ -21127,8 +21206,8 @@ html[data-gl="light"] #flowLegend{background:#ffffff;box-shadow:0 10px 30px rgba
     if(B.classList.contains('gl-macro')){ var ms=macroSet(); return (ms==='risk'||ms==='trades')?'Portfolio':'Macro desk'; }   /* 10-06 the desk; under Portfolio the layer's own head says Risk / Trades */
     if(door==='studio') return 'Portfolio';                        /* §76 (the owner 09-26): the door reads Portfolio; the id stays */
     if(B.classList.contains('gl-fin')) return companyTitle();      /* §74c: the company's name */
-    if(door==='fin') return 'Research';
     var cr=B.classList.contains('uni-crypto')?' · Crypto':'';
+    if(door==='fin') return (v==='donut'||v==='sc')?'Grades'+cr:'Research';   /* 11-05: the Grades views are Research's */
     if(v==='yd') return 'Yield curves'; if(v==='flow') return 'Map'; if(v==='donut'||v==='sc') return 'Grades'+cr; if(v==='mkt') return 'Tape';
     var b=$('#viewSeg .on'); return (b?b.textContent.trim():'Markets')+cr;
   }
@@ -21314,17 +21393,22 @@ html[data-gl="light"] #flowLegend{background:#ffffff;box-shadow:0 10px 30px rgba
     var door=B.classList.contains('gl-settings')?'settings':B.classList.contains('gl-cal')?'calendar':
              (B.classList.contains('gl-fin')||techFin())?'fin':
              ms?((ms==='risk'||ms==='trades')?'studio':ms==='alerts'?'alerts':'macro'):
-             B.classList.contains('gl-rot')?'macro':inStudio()?'studio':v==='yd'?'macro':v==='cards'?'learn':'tape';
+             B.classList.contains('gl-rot')?'macro':inStudio()?'studio':v==='yd'?'macro':v==='cards'?'learn':(v==='donut'||v==='sc')?'fin':'tape';   /* 11-05: the wheel + scorecard are Research ▸ Grades */
     [].forEach.call(dock.querySelectorAll('[data-gldoor]'),function(b){
       var k=b.getAttribute('data-gldoor'), on=k===door; b.classList.toggle('on',on); if(on) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
     if(icons) [].forEach.call(icons.querySelectorAll('[data-glicon]'),function(b){
       var k=b.getAttribute('data-glicon'), on=k==='learn'?learnUp():k==='search'?searchUp():k==='alerts'?door==='alerts':door==='settings'; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); });
     [].forEach.call(sub.querySelectorAll('[data-glpane]'),function(b){
       var k=b.getAttribute('data-glpane'), on=ms?(k===ms):(k===p); b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false');});
-    var mkOn=door==='tape'&&!B.classList.contains('gl-tech')&&/^(mkt|flow|donut|sc)$/.test(v);
+    var mkOn=door==='tape'&&!B.classList.contains('gl-tech')&&/^(mkt|flow)$/.test(v);
     if(mk) [].forEach.call(mk.querySelectorAll('[data-glmk]'),function(b){
-      var k=b.getAttribute('data-glmk'), on=mkOn&&((k==='mkt'&&v==='mkt')||(k==='flow'&&v==='flow')||(k==='grades'&&(v==='donut'||v==='sc'))); b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); });
+      var k=b.getAttribute('data-glmk'), on=mkOn&&((k==='mkt'&&v==='mkt')||(k==='flow'&&v==='flow')); b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); });
     B.classList.toggle('gl-mk',mkOn);                                                 /* the Markets seg rides under the strip (skin.css) */
+    /* 11-05 the Research seg: lit on the pane that is up — the techlab face over the page = Technicals, the page = its own face (fin.js), the wheel / scorecard = Grades */
+    var rsOn=door==='fin'&&!B.classList.contains('gl-settings'), rsPane='';
+    if(rsOn){ if(techFin()) rsPane='tech'; else if(B.classList.contains('gl-fin')) rsPane=(window.GLFin&&typeof window.GLFin.face==='function')?(window.GLFin.face()||'overview'):'overview'; else if(v==='donut'||v==='sc') rsPane='grades'; }
+    if(rs) [].forEach.call(rs.querySelectorAll('[data-glrs]'),function(b){ var on=rsOn&&b.getAttribute('data-glrs')===rsPane; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); });
+    B.classList.toggle('gl-research',rsOn);   /* NOT 'gl-rs' — that class is the retired Research sheet's (skin.css hides it) */
     if(title){ var t=titleFor(door,v); if(title.textContent!==t) title.textContent=t; }
     B.classList.toggle('gl-tape',door==='tape'&&v==='mkt'&&!B.classList.contains('gl-tech'));   /* §18: the Tape's controls ride the strip (skin.css) */
     paintBadge(); paintLearn();
