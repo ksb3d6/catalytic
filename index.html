@@ -8332,7 +8332,7 @@ window.MktView = (function(){
   }
   function mkAssemble(){
     var d=MK.data, out=[]; if(!d) return out;
-    mkCdFromCache('mk'); mkCdFromCache('mkc'); mkAgFromCache(); mkFrFromCache();   /* §31/§41/§56: a reload builds the rows from the market cache BEFORE the chip handler runs — the day's candles, auto grades and frames page 1 must ride along */
+    mkCdFromCache('mk'); mkCdFromCache('mkc'); mkAgFromCache(); mkFrFromCache('mkc'); mkFrFromCache('mk');   /* §31/§41/§56: a reload builds the rows from the market cache BEFORE the chip handler runs — the day's candles, auto grades and frames page 1 must ride along */
     var er=(d.equities&&Array.isArray(d.equities.rows))?d.equities.rows:[];
     var gEq=mkGradedIndex('mk'), eqSyms={};
     /* 10-05 shared lists: a ticker added a moment ago is not in /market.json until the backend's next pass — it rides here on the quote
@@ -8347,14 +8347,17 @@ window.MktView = (function(){
       var g=gEq[sym]||null;
       if(!g&&Object.prototype.hasOwnProperty.call(MK_EQ_ALIAS,sym)){ var al=MK_EQ_ALIAS[sym]; if(gEq[al]&&!eqSyms[al]) g=gEq[al]; }
       if(g){ out.push(mkGradedClone(g,'mk',x,sym)); return; }
-      var tf=mkCdTf('mk',sym), h1=h1FreshInfo(x.chg1hAsOf);   /* 10-21: the 1H move rides /market.json (backend v4.32) */
+      var fx=mkFrRow(sym,'mk'), ftf=fx?mkFrTf(fx):null, te=(ftf&&fx.tech&&typeof fx.tech==='object'&&!Array.isArray(fx.tech))?fx.tech:null;   /* 11-06: on the US 500 frames page (backend v4.49) — five frames + the tech read, like a curated row */
+      var tf=ftf||mkCdTf('mk',sym), h1=h1FreshInfo(x.chg1hAsOf);   /* 10-21: the 1H move rides /market.json (backend v4.32) */
+      var c1=mkNum(x.chg1h), hs1=h1.stale, hl1=h1.label;
+      if(c1==null&&ftf){ var Pf=tfParse(ftf), hf1=hFreshInfo(ftf,'eq'); c1=Pf?lastPct(Pf.h,1):null; hs1=hf1?hf1.stale:false; hl1=hf1?hf1.label:''; }   /* 11-06: no feed 1H yet → the page's H frame (the same read mkPatchFrames makes when the page lands later) */
       out.push({
         kind:'mk', key:sym, sym:sym, name:String(x.name||sym), cat:null, tint:null,
         choke:false, us:false, gExp:null, gRec:null, grade:null, tok:null,
         px:mkNum(x.px), pxStale:st, pxTitle:x.listed?'price from when this was added to a list — live prices follow at the next market pass':(st?'carried from an earlier pull — this quote did not refresh':null),
-        chg1h:mkNum(x.chg1h), hStale:h1.stale, hLabel:h1.label, chg24:mkNum(x.chg1d), chg24Note:null, chg7:mkNum(x.chg7d),
+        chg1h:c1, hStale:hs1, hLabel:hl1, chg24:mkNum(x.chg1d), chg24Note:null, chg7:mkNum(x.chg7d),
         mcap:mkNum(x.mcap), mcapSub:ex||null, mcapTitle:'market cap from the quote feed'+(ex?' · '+ex:''),
-        vol:null, vol20:null, tech:null, sentO:null, range:tf?rangePos(tfParse(tf),mkNum(x.px)):null, tf:tf,
+        fr:!!ftf, frTech:te, vol:null, vol20:te?te.vol_vs_20d_pct:null, tech:te?techScore(te):null, sentO:null, range:tf?rangePos(tfParse(tf),mkNum(x.px)):null, tf:tf,
         auto:mkAgOf(sym)   /* §41: the auto grade (US 500 only), or null */
       });
     });
@@ -8376,7 +8379,7 @@ window.MktView = (function(){
       /* round 9b §56: a symbol on a landed frames page carries the served five frames + tech (r.fr) — the row renders like a curated
          coin's (line frames, the bullet, the tech gauge, 1H from the H frame, the thin card); otherwise the daily-candles frame (§31).
          A later twin (dup) reads none of it — those are the first coin's charts; it shows "no chart" (10-07). */
-      var fx=dup?null:mkFrRow(sym), ftf=fx?mkFrTf(fx):null, te=(ftf&&fx.tech&&typeof fx.tech==='object'&&!Array.isArray(fx.tech))?fx.tech:null;
+      var fx=dup?null:mkFrRow(sym,'mkc'), ftf=fx?mkFrTf(fx):null, te=(ftf&&fx.tech&&typeof fx.tech==='object'&&!Array.isArray(fx.tech))?fx.tech:null;
       var tf=ftf||(dup?null:mkCdTf('mkc',sym)), P=tf?tfParse(tf):null, px=mkNum(x.usd), hf=ftf?hFreshInfo(tf,'cr'):null;
       var c7=mkNum(x.chg7d); if(c7==null&&ftf&&P) c7=lastPct(P.d,7);
       out.push({
@@ -8520,6 +8523,41 @@ window.MktView = (function(){
      a failed pull backs off five minutes. A kind 'mk' row wears r.auto={exp,rec,period}; graded clones (kind 'eq') never do —
      a curated name that strays into the file is ignored; Coins 500 never asks (no filings, no grades). Missing file ->
      the rows keep "—" and the note says so. Never invented: a row whose letters are not in the grade table is no grade. */
+  /* ---------- 11-06 (the owner: "a description for all 500 US stocks … the same convention as the watchlist ones"): THE CARD COPY ----------
+     GET <backend>/copy.json (backend v4.35 jobs/copy.py; v4.49 ships a 518-name hand-written seed) — {schemaVersion:1, asOf, count,
+     names:{SYM:{does, why, note, writtenAt}}}. Fetched once per UTC day when a US 500 card (or a US 500 name's Research overview) first
+     opens — memory, then localStorage 'aibo.mk.copy.v1' — and the open card's description block redraws when it lands. Never invented:
+     a name the feed lacks shows one honest line. */
+  var MK_CP_LS='aibo.mk.copy.v1', MK_CP=mkCdBlank();
+  function mkCpShapeOk(j){ return !!(j&&j.schemaVersion===1&&j.names&&typeof j.names==='object'&&!Array.isArray(j.names)); }
+  function mkCpFromCache(){ var S=MK_CP; if(S.data||S.cacheRead) return; S.cacheRead=true;
+    try{ var j=JSON.parse(localStorage.getItem(MK_CP_LS)||'null'); if(j&&j.day===mkCdDay()&&mkCpShapeOk(j.data)){ S.data=j.data; S.day=j.day; S.at=(+j.at>0)?+j.at:0; } }catch(_){} }
+  function mkCpOf(sym){ mkCpFromCache(); var d=MK_CP.data, x=d&&d.names&&d.names[String(sym||'').toUpperCase()]; if(!x||typeof x!=='object') return null;
+    var does=typeof x.does==='string'?x.does.trim():''; if(!does) return null;
+    return {does:does, why:typeof x.why==='string'?x.why.trim():'', note:typeof x.note==='string'?x.note.trim():'', at:typeof x.writtenAt==='string'?x.writtenAt:''}; }
+  function mkCpLoad(force){ var S=MK_CP; mkCpFromCache(); if(S.busy) return; if(!force&&mkCacheFresh(S,24*60*60*1000)) return; if(!force&&S.triedAt&&(Date.now()-S.triedAt<MK_CD_BACKOFF)) return;
+    S.busy=true; S.err=null; S.triedAt=Date.now();
+    var ctl=('AbortController' in window)?new AbortController():null, to=ctl?setTimeout(function(){ try{ ctl.abort(); }catch(_){} },MK_FETCH_MS):null, p;
+    var done=function(){ if(to){ clearTimeout(to); to=null; } S.busy=false; };
+    try{ p=fetch(MK_BASE+'/copy.json',{cache:'no-store', signal: ctl&&ctl.signal}); }catch(e){ p=Promise.reject(e); }
+    p.then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(j){
+      if(!mkCpShapeOk(j)) throw new Error('unexpected copy shape');
+      S.data=j; S.day=mkCdDay(); S.at=Date.now(); S.err=null; try{ localStorage.setItem(MK_CP_LS,JSON.stringify({day:S.day,at:S.at,data:j})); }catch(_){}
+      done(); mkEqDescRefresh();
+    }).catch(function(e){ S.err=String(e&&e.message||e||'unreachable'); if(/failed to fetch|networkerror|load failed|typeerror|abort/i.test(S.err)) S.err='feed unreachable'; done(); mkEqDescRefresh(); }); }
+  function mkCpReset(){ var b=mkCdBlank(); Object.keys(b).forEach(function(k){ MK_CP[k]=b[k]; }); try{ localStorage.removeItem(MK_CP_LS); }catch(_){} }
+  /* the description block — the curated card's own grammar (details.sh-desc: the does line + caret, why + note inside) */
+  function mkEqDesc(sym){
+    var c=mkCpOf(sym);
+    if(c) return '<details class="sh-desc mk-eq-about" data-mkeqdesc="'+esc(sym)+'"><summary><div class="sh-about-does">'+esc(c.does)+'</div><span class="sd-car">\u25B8</span></summary>'
+      +(c.why?'<div class="sh-about-why"><span class="wl">Why it matters</span> '+esc(c.why)+'</div>':'')+(c.note?'<div class="sh-note sh-note-in">'+esc(c.note)+'</div>':'')+'</details>';
+    var S=MK_CP, t=S.data?'No description for this name yet.':(S.busy||!S.triedAt?'Loading the description\u2026':'Description unavailable \u2014 '+(S.err||'not loaded'));
+    return '<div class="mk-eq-legend mk-eq-nodesc" data-mkeqdesc="'+esc(sym)+'">'+esc(t)+'</div>';
+  }
+  function mkEqDescRefresh(){
+    document.querySelectorAll('[data-mkeqdesc]').forEach(function(el){ var sym=el.getAttribute('data-mkeqdesc'), h=mkEqDesc(sym), w=document.createElement('div'); w.innerHTML=h; var nu=w.firstChild; if(nu&&nu.outerHTML!==el.outerHTML) el.replaceWith(nu); });
+    try{ document.dispatchEvent(new CustomEvent('aibo:copy')); }catch(_){}
+  }
   var MK_AG_LS='aibo.mk.grades.v1', MK_AG=mkCdBlank();
   function mkAgReset(){ var b=mkCdBlank(); Object.keys(b).forEach(function(k){ MK_AG[k]=b[k]; }); }
   function mkAgShapeOk(j){ return !!(j&&j.schemaVersion===1&&j.rows&&typeof j.rows==='object'&&!Array.isArray(j.rows)); }
@@ -8578,8 +8616,9 @@ window.MktView = (function(){
     if(S.data){
       var d=S.data, c=d.coverage||{}, n=Object.keys(d.rows||{}).length;
       var cov=(c.graded!=null&&c.n!=null)?(c.graded+' of '+c.n):(n+' names');
-      var at=mkFmtD(d.asOf);
-      return 'auto grades · '+cov+(at?' · as of '+at:'');
+      var at=mkFmtD(d.asOf), ix='';
+      try{ ix=(window.GLIdx&&typeof GLIdx.note==='function')?GLIdx.note():''; }catch(_){ ix=''; }   /* 11-06: the index grade (stage48/idxgrade.js) */
+      return 'auto grades · '+cov+(at?' · as of '+at:'')+(ix?' · '+ix:'');
     }
     if(S.busy) return 'auto grades loading…';
     if(S.err) return 'auto grades unavailable — '+S.err;
@@ -8596,23 +8635,33 @@ window.MktView = (function(){
      drawn as LINES — §54), tech, 1H from the H frame — it renders like a curated coin row; the rest keep the daily-candles frame (§31).
      Rows re-render as pages land (mkApply). Never invented: a page's row must parse (tfParse) or it is no row. */
   var MK_FR_LS='aibo.mk.frames.v1', MK_FR_PAGES=5, MK_FR_MAX=9, MK_FR_PER=100;   /* 10-07: every page loop runs to mkFrPagesN() (the served `pages`, ≤ the route's 9) — a hard 5 dropped ranks 501+ silently */
-  var MK_FR={pages:{}, wanted:{}};   /* pages[n] = one mkCdBlank() state per page; wanted[n] = the reader reached this page's ranks */
-  function mkFrPage(n){ var S=MK_FR.pages[n]; if(!S){ S=MK_FR.pages[n]=mkCdBlank(); } return S; }
+  /* 11-06 (the owner: "for the tape view mini charts I really want to see the monthly weekly daily four-hour and hourly"): ONE state per family —
+     the Coins 500 pages (backend v4.7, /market_frames_cr_p<N>.json) and the US 500 pages (backend v4.49, /market_frames_eq_p<N>.json, the SAME
+     contract, cut from the pre-build sweep's technicals at zero calls). Every helper below takes `fam` ('mkc' | 'mk'; omitted = 'mkc', so the
+     coin call sites read as before); MK_FR stays the coins' state (mkCtDeep, framesState). A US 500 row on a landed page carries r.fr like a
+     coin's: five minis (mkMiniRow), the tech gauge, the bullet from its D frame — and still opens its US 500 card (§65). */
+  var MK_FRS={mkc:{pages:{}, wanted:{}}, mk:{pages:{}, wanted:{}}};
+  var MK_FR=MK_FRS.mkc;   /* pages[n] = one mkCdBlank() state per page; wanted[n] = the reader reached this page's ranks */
+  function mkFrSt(fam){ return MK_FRS[fam==='mk'?'mk':'mkc']; }
+  function mkFrLsKey(fam){ return MK_FR_LS+(fam==='mk'?'.eq':''); }
+  function mkFrUrl(fam,n){ return MK_BASE+(fam==='mk'?'/market_frames_eq_p':'/market_frames_cr_p')+n+'.json'; }
+  function mkFrPage(n,fam){ var M=mkFrSt(fam), S=M.pages[n]; if(!S){ S=M.pages[n]=mkCdBlank(); } return S; }
   function mkFrShapeOk(j){ return !!(j&&j.schemaVersion===1&&j.rows&&typeof j.rows==='object'&&!Array.isArray(j.rows)); }
-  function mkFrPagesN(){ var S=MK_FR.pages[1], p1=S&&S.data, n=p1&&+p1.pages; return (n>=1)?Math.min(MK_FR_MAX,Math.floor(n)):MK_FR_PAGES; }   /* reads only — never creates a page state */
-  function mkFrHas(){ for(var n=1,N=mkFrPagesN();n<=N;n++){ var S=MK_FR.pages[n]; if(S&&S.data) return true; } return false; }
-  function mkFrFromCache(){
-    var S=mkFrPage(1); if(S.data||S.cacheRead) return;   /* one localStorage read per page life (forget() re-arms it) */
+  function mkFrPagesN(fam){ var S=mkFrSt(fam).pages[1], p1=S&&S.data, n=p1&&+p1.pages; return (n>=1)?Math.min(MK_FR_MAX,Math.floor(n)):MK_FR_PAGES; }   /* reads only — never creates a page state */
+  function mkFrHas(fam){ var M=mkFrSt(fam); for(var n=1,N=mkFrPagesN(fam);n<=N;n++){ var S=M.pages[n]; if(S&&S.data&&S.data.rows&&Object.keys(S.data.rows).length) return true; } return false; }   /* 11-06: a landed page WITH rows — an empty page must not re-show the Tech column */
+  function mkFrFromCache(fam){
+    var S=mkFrPage(1,fam); if(S.data||S.cacheRead) return;   /* one localStorage read per page life (forget() re-arms it) */
     S.cacheRead=true;
     try{
-      var j=JSON.parse(localStorage.getItem(MK_FR_LS+'.p1')||'null');
+      var j=JSON.parse(localStorage.getItem(mkFrLsKey(fam)+'.p1')||'null');
       if(j&&j.day===mkCdDay()&&mkFrShapeOk(j.data)){ S.data=j.data; S.day=j.day; S.at=(+j.at>0)?+j.at:0; }   /* §64 */
     }catch(_){}
   }
   /* the served row for a symbol on any landed page, or null */
-  function mkFrRow(sym){
-    for(var n=1,N=mkFrPagesN();n<=N;n++){
-      var S=MK_FR.pages[n]; if(!S||!S.data) continue;
+  function mkFrRow(sym,fam){
+    var M=mkFrSt(fam);
+    for(var n=1,N=mkFrPagesN(fam);n<=N;n++){
+      var S=M.pages[n]; if(!S||!S.data) continue;
       var x=S.data.rows[sym]; if(x&&typeof x==='object'&&x.tf&&typeof x.tf==='object') return x;
     }
     return null;
@@ -8628,10 +8677,10 @@ window.MktView = (function(){
     if(t.ema&&typeof t.ema==='object'&&!Array.isArray(t.ema)) tf.ema=t.ema;   /* round 10 §62: the EMA sidecar (backend v4.8) — tfParse keeps only the aligned keys */
     return tfParse(tf)?tf:null;
   }
-  function mkFrLoad(n,force){
-    n=+n; if(!(n>=1&&n<=mkFrPagesN())) return;
-    var S=mkFrPage(n);
-    if(n===1) mkFrFromCache();
+  function mkFrLoad(n,force,fam){
+    fam=fam==='mk'?'mk':'mkc'; n=+n; if(!(n>=1&&n<=mkFrPagesN(fam))) return;
+    var S=mkFrPage(n,fam);
+    if(n===1) mkFrFromCache(fam);
     var today=mkCdDay();
     if(S.busy) return;
     if(!force&&mkCacheFresh(S)) return;   /* §64: today's and under an hour old */
@@ -8642,16 +8691,16 @@ window.MktView = (function(){
     var to=ctl?setTimeout(function(){ try{ ctl.abort(); }catch(_){} },MK_FETCH_MS):null;
     var done=function(){ if(to){ clearTimeout(to); to=null; } S.busy=false; };
     var p;
-    try{ p=fetch(MK_BASE+'/market_frames_cr_p'+n+'.json',{cache:'no-store', signal: ctl&&ctl.signal}); }catch(e){ p=Promise.reject(e); }
+    try{ p=fetch(mkFrUrl(fam,n),{cache:'no-store', signal: ctl&&ctl.signal}); }catch(e){ p=Promise.reject(e); }
     p.then(function(r){
       if(!r.ok) throw new Error(r.status===503?'not built yet (503)':(r.status===404?'not published yet (404)':'HTTP '+r.status));
       return r.json();
     }).then(function(j){
       if(!mkFrShapeOk(j)) throw new Error('unexpected frames shape');
       S.data=j; S.day=today; S.at=Date.now(); S.err=null;
-      if(n===1){ try{ localStorage.setItem(MK_FR_LS+'.p1',JSON.stringify({day:today,at:S.at,data:j})); }catch(_){} }
+      if(n===1){ try{ localStorage.setItem(mkFrLsKey(fam)+'.p1',JSON.stringify({day:today,at:S.at,data:j})); }catch(_){} }
       done(); MK_REV++;   /* §68: the technicals page re-fits its plots on the revision */
-      if(built&&MK.data) mkPatchFrames(); else if(built) renderStats();   /* §77 */
+      if(built&&MK.data) mkPatchFrames(fam); else if(built) renderStats();   /* §77 */
     }).catch(function(e){
       S.err=String(e&&e.message||e||'unreachable');
       if(/failed to fetch|networkerror|load failed|typeerror|abort/i.test(S.err)) S.err='feed unreachable';
@@ -8661,30 +8710,30 @@ window.MktView = (function(){
   /* lazy pages 2..N: the highest cap rank in (or within 600px of) the viewport says which pages the reader has reached — runs on
      every fillVisible pass (scroll, filter, sort, rebuild) under the Coins 500 chip; page 1 first (it carries `pages`) */
   function mkFrWant(){
-    var p1=MK_FR.pages[1]; if(!built||state.uni!=='mkc'||!p1||!p1.data) return;   /* reads only: a scroll pass must not create a page state (forget() leaves pages empty) */
+    var fam=state.uni, p1=isMkUni()?mkFrSt(fam).pages[1]:null; if(!built||!p1||!p1.data) return;   /* reads only: a scroll pass must not create a page state (forget() leaves pages empty) */
     var tw=document.querySelector('#mktView .twrap'); if(!tw) return;
     var twr=tw.getBoundingClientRect(); if(twr.width===0&&twr.height===0) return;
     var top=Math.max(twr.top,0)-600, bot=Math.min(twr.bottom,(document.documentElement.clientHeight||twr.bottom))+600, maxRank=0;   /* 10-07: layout height — iOS innerHeight is the pinched view and read the rank low */
     ROWS.forEach(function(r){
-      if(!(r.kind==='mkc'||r.mkFam==='mkc')||r.rank==null||!r.tr||r.tr.style.display==='none') return;
+      if(!(r.kind===fam||r.mkFam===fam)||r.rank==null||!r.tr||r.tr.style.display==='none') return;
       var b=r.tr.getBoundingClientRect();
       if(b.bottom>top&&b.top<bot&&r.rank>maxRank) maxRank=r.rank;
     });
-    var need=Math.min(mkFrPagesN(),Math.ceil(maxRank/MK_FR_PER));
-    for(var n=2;n<=need;n++){ MK_FR.wanted[n]=1; mkFrLoad(n,false); }
+    var need=Math.min(mkFrPagesN(fam),Math.ceil(maxRank/MK_FR_PER)), M=mkFrSt(fam);
+    for(var n=2;n<=need;n++){ M.wanted[n]=1; mkFrLoad(n,false,fam); }
   }
-  function mkFrReload(force){ mkFrLoad(1,force); Object.keys(MK_FR.wanted).forEach(function(n){ mkFrLoad(+n,force); }); }
+  function mkFrReload(force,fam){ var M=mkFrSt(fam); mkFrLoad(1,force,fam); Object.keys(M.wanted).forEach(function(n){ mkFrLoad(+n,force,fam); }); }
   function mkFrTick(){
-    if(!built||state.uni!=='mkc') return;
-    for(var n=1,N=mkFrPagesN();n<=N;n++){ var S=MK_FR.pages[n]; if(S&&S.data&&!S.busy&&!mkCacheFresh(S)) mkFrLoad(n,false); }   /* §64: the day rolled over or the hour passed under the chip — the backoff paces failures */
+    if(!built||!isMkUni()) return; var fam=state.uni, M=mkFrSt(fam);
+    for(var n=1,N=mkFrPagesN(fam);n<=N;n++){ var S=M.pages[n]; if(S&&S.data&&!S.busy&&!mkCacheFresh(S)) mkFrLoad(n,false,fam); }   /* §64: the day rolled over or the hour passed under the chip — the backoff paces failures */
   }
-  function mkFrReset(){ MK_FR.pages={}; MK_FR.wanted={}; try{ localStorage.removeItem(MK_FR_LS+'.p1'); }catch(_){} }
+  function mkFrReset(){ ['mkc','mk'].forEach(function(f){ var M=MK_FRS[f]; M.pages={}; M.wanted={}; try{ localStorage.removeItem(mkFrLsKey(f)+'.p1'); }catch(_){} }); }
   /* the honest coverage line: "frames · 98 of 100 on this page · as of Sep 25" (two pages: "… on 2 pages …"; loading / unavailable); Coins 500 only */
   function mkFrNote(){
-    if(state.uni!=='mkc') return '';
+    if(!isMkUni()) return ''; var fam=state.uni, M=mkFrSt(fam);
     var loaded=0, busy=false, err=null, withF=0, n=0, at='';
-    for(var p=1,N=mkFrPagesN();p<=N;p++){
-      var S=MK_FR.pages[p]; if(!S) continue;
+    for(var p=1,N=mkFrPagesN(fam);p<=N;p++){
+      var S=M.pages[p]; if(!S) continue;
       if(S.data){
         loaded++; var c=S.data.coverage||{}, rowsN=Object.keys(S.data.rows||{}).length;
         withF+=(c.withFrames!=null?+c.withFrames:rowsN); n+=(c.n!=null?+c.n:rowsN);
@@ -8751,7 +8800,7 @@ window.MktView = (function(){
       applySort(); rebuildCats(); applyFilter();
       if(isMkUni()) mkCdLoad(state.uni,false);   /* §31: rows rebuilt under a Market chip (Retry, a refresh, a reload) ask for today's candles; fresh = no-op, a failure backs off */
       if(state.uni==='mk') mkAgLoad(false);       /* §41: …and the US 500 chip asks for today's auto grades the same way */
-      if(state.uni==='mkc') mkFrLoad(1,false);    /* §56: …and the Coins 500 chip asks for the first frames page (pages 2–5 follow the reader's scroll — mkFrWant) */
+      if(isMkUni()) mkFrLoad(1,false,state.uni);    /* §56: …and either Market chip asks for its first frames page (pages 2–5 follow the reader's scroll — mkFrWant); 11-06: the US 500 pages too */
       syncMarketCls();                            /* §56: the mk-cfr flag (the Tech column returns on wide once frames are on board) */
       if(tw){ if(tw.scrollTop!==st) tw.scrollTop=st; if(tw.scrollLeft!==sl) tw.scrollLeft=sl; }
       if((window.scrollY||0)!==wy) try{ window.scrollTo(window.scrollX||0,wy); }catch(_){}
@@ -8858,15 +8907,15 @@ window.MktView = (function(){
   /* a frames page landed (§56): the Coins 500 rows it names become framed rows IN PLACE — five frames, the
      served tech read, 1H from the H frame, 7D from the D frame, the bullet, the mk-cfr class. A page never
      un-frames a row, so this is the false -> true step only. */
-  function mkPatchFrames(){
-    if(!built||!MK.data) return;
-    mkLand('fr',function(r){
-      if(r.kind!=='mkc'||r.fr||r.dup) return false;   /* 10-07: …nor its frames */
-      var fx=mkFrRow(r.sym), ftf=fx?mkFrTf(fx):null; if(!ftf) return false;
+  function mkPatchFrames(fam){
+    fam=fam==='mk'?'mk':'mkc'; if(!built||!MK.data) return;
+    mkLand('fr.'+fam,function(r){
+      if(r.kind!==fam||r.fr||r.dup) return false;   /* 10-07: …nor its frames */
+      var fx=mkFrRow(r.sym,fam), ftf=fx?mkFrTf(fx):null; if(!ftf) return false;
       var te=(fx.tech&&typeof fx.tech==='object'&&!Array.isArray(fx.tech))?fx.tech:null;
-      var P=tfParse(ftf), hf=hFreshInfo(ftf,'cr'), c;
+      var P=tfParse(ftf), hf=hFreshInfo(ftf,fam==='mk'?'eq':'cr'), c;
       r.fr=true; r.frTech=te; r.tf=ftf;
-      r.chg1h=P?lastPct(P.h,1):null; r.hStale=hf?hf.stale:false; r.hLabel=hf?hf.label:'';
+      if(fam==='mkc'||r.chg1h==null){ r.chg1h=P?lastPct(P.h,1):null; r.hStale=hf?hf.stale:false; r.hLabel=hf?hf.label:''; }   /* 11-06: a US 500 row keeps the feed's own 1H (backend v4.32) */
       if(r.chg7==null&&P) r.chg7=lastPct(P.d,7);
       r.tech=techScore(te); r.vol20=te?te.vol_vs_20d_pct:null; r.range=P?rangePos(P,r.px):null;
       if(r.tr){ r.tr.classList.remove('mk-row'); r.tr.classList.add('mk-cfr'); }
@@ -8926,6 +8975,7 @@ window.MktView = (function(){
     ['mk','mkc'].forEach(function(f){ MK_CD[f]=mkCdBlank(); try{ localStorage.removeItem(MK_CD_LS+'.'+f); }catch(_){} });
     mkAgReset(); try{ localStorage.removeItem(MK_AG_LS); }catch(_){}   /* §41 */
     mkFrReset();   /* §56: the frames pages + page 1's cache */
+    mkCpReset();   /* 11-06: the card copy + its cache */
     mkTeReset();   /* §65: the on-demand tech payloads + their localStorage map */
     mkCtReset();   /* §68: the deep coin technicals + their localStorage map */
     if(built){
@@ -8963,7 +9013,7 @@ window.MktView = (function(){
   }
   function syncMarketCls(){
     var mk=isMkUni(), tw=document.querySelector('#mktView .twrap');
-    if(tw){ tw.classList.toggle('mk-market',mk); tw.classList.toggle('mk-cfr',state.uni==='mkc'&&mkFrHas()); }   /* §56: mk-cfr = Coins 500 with served frames on board */
+    if(tw){ tw.classList.toggle('mk-market',mk); tw.classList.toggle('mk-cfr',isMkUni()&&mkFrHas(state.uni)); }   /* §56: mk-cfr = Coins 500 with served frames on board */
     /* R12: Market rows carry no marks (choke:false, us:false on every row) — under either Market chip
        the two mark buttons are disabled (dimmed + titled) rather than cleared: their state is kept,
        ignored by visible() and the Filters badge, and comes back untouched with the graded universes */
@@ -9487,7 +9537,7 @@ window.MktView = (function(){
       var nAu=0; vis.forEach(function(r){ if(r.kind==='mk'&&gradeOf(r)) nAu++; });
       if(nAu) parts.push(['<span class="st-au">· <b>'+nAu+'</b> auto</span>', '· '+nAu+' auto']);
       /* round 9b §56: how many visible Coins 500 names carry served frames (five line frames + the tech read) */
-      var nFr=0; vis.forEach(function(r){ if(r.kind==='mkc'&&r.fr) nFr++; });
+      var nFr=0; vis.forEach(function(r){ if(isMk(r)&&r.fr) nFr++; });
       if(nFr) parts.push(['<span class="st-fr">· <b>'+nFr+'</b> with frames</span>', '· '+nFr+' with frames']);
       if(state.own&&heldNotGraded) parts.push(['<span class="st-ng">· <b>'+heldNotGraded+'</b> not listed</span>', '· '+heldNotGraded+' not listed']);
       parts.push(['<span class="st-uni">· '+mkFamTag()+'</span>', '· '+mkFamTag()]);
@@ -9767,6 +9817,9 @@ window.MktView = (function(){
   +'#sheet .mk-thin .aibo-strip .mk-ct-load{font-style:italic;flex-basis:100%}'   /* round 12 §68: the thin coin card's "loading full history…" / honest line */
   +'#sheet .mk-thin .aibo-strip .mk-ct-load.err{font-style:normal}'
   +'#sheet .mk-eq .mk-eq-fund{margin:14px 4px 0}'
+  +'.mk-eq .mk-eq-desc{margin:0 4px}.mk-eq .mk-eq-nodesc{margin:14px 4px 2px;font-style:italic}'
+  +'.mk-eq details.mk-eq-grades{margin:16px 4px 4px}.mk-eq details.mk-eq-grades .mk-eq-rolls{margin:0}.mk-eq details.mk-eq-grades .mk-eq-legend{margin:4px 0 0}'
+  +'.mk-eq-over .sh-head{margin-bottom:6px}'
   +'#sheet .mk-eq .mk-eq-fund .mk-eq-legend{margin:0}'
   /* phone deck: phone-only chips appear, inline slot retires to the sheet.
      Stage 48 (the owner 09-23): the pattern runs to 900px (iPad portrait, sideways
@@ -10088,7 +10141,7 @@ window.MktView = (function(){
   function mkCtSource(sym){ var S=MK_CT[sym], c=S&&S.data&&S.data.coverage; return (c&&typeof c.source==='string'&&c.source)?c.source:null; }
   /* the deep source the landed pages name for a coin ('kraken' | 'coingecko'), or null = no deep history to ask for */
   function mkCtDeep(sym){
-    for(var n=1,N=mkFrPagesN();n<=N;n++){
+    for(var n=1,N=mkFrPagesN('mkc');n<=N;n++){
       var S=MK_FR.pages[n], d=S&&S.data, c=d&&d.coverage, m=c&&c.deep;
       if(!m||typeof m!=='object'||Array.isArray(m)) continue;
       var v=m[sym]; if(typeof v==='string'&&v) return v;
@@ -10154,15 +10207,19 @@ window.MktView = (function(){
       return '<div class="pcell'+(nm[2]?' disc':'')+'">'+mkEqPill(rec[k],'pc',human?'not judged — a human pillar, never invented for a Market name':'no filing score for this pillar')
         +'<div><div class="pn">'+esc(nm[0])+'</div><div class="ps">'+esc(nm[1])+'</div></div></div>';
     };
-    return '<div class="sh-rolls mk-eq-rolls">'
+    /* 11-06 (the owner: "on the regular card it just shows expansion grade and recession grade and you expand to show the other pillars … homogeneity"):
+       the curated card's details.sh-grades — the two rolls on the summary, the pillars + the legend behind the caret */
+    return '<details class="sh-grades mk-eq-grades" data-mkeqgrades><summary><div class="sh-rolls mk-eq-rolls">'
       +'<div class="roll"><div class="rl">Expansion grade</div><div class="rg">'+mkEqPill(a&&a.exp,'big')+'<span class="mk-eq-auto">auto</span></div></div>'
       +'<div class="roll"><div class="rl">Recession grade</div><div class="rg">'+mkEqPill(a&&a.rec,'big')+'<span class="mk-eq-auto">auto</span></div></div></div>'
+      +'<span class="sg-hint">pillars \u00b7 what the engine scored <b class="sd-car">\u25B8</b></span></summary>'
       +'<div class="mk-eq-legend">'+esc(legend)+'</div>'
       +'<div class="sg-cols"><div class="sg-col"><div class="sh-sech">Growth-phase pillars</div>'+cell('G')+cell('P')+cell('M')+cell('F')+'</div>'
-      +'<div class="sg-col"><div class="sh-sech">Discipline pillars</div>'+cell('C')+cell('A')+cell('B')+'</div></div>';
+      +'<div class="sg-col"><div class="sh-sech">Discipline pillars</div>'+cell('C')+cell('A')+cell('B')+'</div></div></details>';
   }
   function mkEqStrip(r){
     var sym=r.sym, tt=mkTeTf(sym), S=MK_TE[sym], te=tt?mkTeReads(sym):null, tf=tt||r.tf||null, five=!!tt;   /* mkTeTf first — it reads the cache and creates the state */
+    var paged=!tt&&!!(r.fr&&tf&&tf.m&&tf.w&&tf.h); if(paged){ five=true; te=te||(r.frTech&&typeof r.frTech==='object'?r.frTech:null); }   /* 11-06: the Tape's own frames page (backend v4.49) already carries the five frames + the tech read — no "unavailable" while they draw */
     var cell=function(lbl,val){
       if(val==null||!isFinite(+val)) return '';
       var c=(+val)>=0?'up':'dn', s=(+val)>=0?'+':'';
@@ -10186,7 +10243,7 @@ window.MktView = (function(){
       +'<span class="as-px">'+fmtPrice(r.px)+'</span>'
       +'<span class="as-chg '+pctCls(r.chg24)+'">'+fmtPct(r.chg24)+' <i style="font-style:normal;opacity:.6;font-size:10px">1D</i></span>'
       +(minis||'<span class="as-gap">no chart — no daily candles for this name yet</span>')+mas+status
-      +'<span class="as-t'+(r.pxStale?' st':'')+'" title="quote from the Market feed · '+(five?'five frames from the on-demand technicals pull':'the daily frame from the candles file')+'">'+(r.pxStale?'CARRIED':'FEED')+(at?' · frames '+esc(at):'')+'</span>'
+      +'<span class="as-t'+(r.pxStale?' st':'')+'" title="quote from the Market feed · '+(paged?'five frames from the Tape\'s US 500 frames page (the pre-build sweep\'s technicals)':five?'five frames from the on-demand technicals pull':'the daily frame from the candles file')+'">'+(r.pxStale?'CARRIED':'FEED')+(at?' · frames '+esc(at):'')+'</span>'
       +ah+vb+'</div>';
   }
   function mkEqTechBtn(tf){
@@ -10199,6 +10256,29 @@ window.MktView = (function(){
       +tfs.map(function(t){ return '<i'+(P[t[0]]?'':' class="off"')+'>'+t[1]+'</i>'; }).join('')+'</em><b class="go" aria-hidden="true">↗</b></button>';
   }
   function mkEqTechHtml(r){ return mkEqStrip(r)+mkEqTechBtn(mkTeTf(r.sym)||r.tf); }
+  /* 11-06: the Research › Overview face for a US 500 name (fin.js) — the card's head, strip, description and folded grades, no sheet; null when
+     the name is not on the Market feed (the feed row carries the price, the cap and the exchange). The feed is read cache-first. */
+  function mkEqRecord(sym){
+    sym=String(sym==null?'':sym).toUpperCase(); if(!sym) return null;
+    for(var i=0;i<ROWS.length;i++){ var r=ROWS[i]; if(r.kind==='mk'&&String(r.sym).toUpperCase()===sym) return r; }
+    mkFromCache(); var d=MK.data, er=(d&&d.equities&&Array.isArray(d.equities.rows))?d.equities.rows:[], x=null, rank=0;
+    for(var j=0;j<er.length;j++){ if(er[j]&&String(er[j].sym||'').toUpperCase()===sym){ x=er[j]; rank=j+1; break; } }
+    if(!x) return null;
+    var ex=x.exch?String(x.exch):'';
+    return {kind:'mk', sym:sym, name:String(x.name||sym), rank:rank||null, px:mkNum(x.px), pxStale:!!x.stale, chg24:mkNum(x.chg1d), mcap:mkNum(x.mcap), mcapSub:ex||null, tf:mkFramesOf('mk',sym), auto:mkAgOf(sym)};
+  }
+  function mkEqOverviewHtml(sym){
+    var r=mkEqRecord(sym); if(!r) return null;
+    mkCpLoad(false); mkTeLoad(r.sym,false);
+    if(typeof liveStripCSS==='function') try{ liveStripCSS(); }catch(_){}
+    return '<div class="mk-thin mk-eq mk-eq-over" data-sym="'+esc(r.sym)+'">'
+      +'<div class="sh-head"><div class="sh-tk">'+esc(r.sym)+'</div><div class="sh-meta"><div class="sh-name">'+esc(r.name)+'</div>'
+      +'<div class="sh-tags"><span class="tag">US 500'+(r.rank!=null?' \u00b7 #'+r.rank:'')+'</span>'+(r.mcapSub?'<span class="tag">'+esc(r.mcapSub)+'</span>':'')+'<span class="tag" title="the four filings pillars, rolled by the engine \u2014 no human judgment">auto grade</span></div></div></div>'
+      +'<div class="mk-eq-tech">'+mkEqStrip(r)+'</div>'
+      +'<div class="mk-eq-desc">'+mkEqDesc(r.sym)+'</div>'
+      +'<div class="mk-eq-gradewrap">'+mkEqGrades(r)+'</div>'
+      +'<p class="mk-thin-note">Market name \u2014 auto grade, no thesis</p></div>';
+  }
   function mkEqBind(root,r){
     var b=root.querySelector('[data-mkthintech]');
     if(b) b.addEventListener('click',function(ev){
@@ -10221,7 +10301,8 @@ window.MktView = (function(){
       +'<div class="sh-head"><div class="sh-tk">'+esc(r.sym)+'</div><div class="sh-meta"><div class="sh-name">'+esc(r.name)+'</div>'
       +'<div class="sh-tags"><span class="tag">US 500'+(r.rank!=null?' · #'+r.rank:'')+'</span>'+(r.mcapSub?'<span class="tag">'+esc(r.mcapSub)+'</span>':'')+'<span class="tag" title="the four filings pillars, rolled by the engine — no human judgment">auto grade</span></div></div></div>'
       +'<div class="mk-eq-tech"></div>'
-      +'<div class="mk-eq-grades">'+mkEqGrades(r)+'</div>'
+      +'<div class="mk-eq-desc">'+mkEqDesc(r.sym)+'</div>'   /* 11-06: the description, the curated card's grammar */
+      +'<div class="mk-eq-gradewrap">'+mkEqGrades(r)+'</div>'
       +'<section class="mk-eq-fund" id="mkFund"></section>'
       +'<p class="mk-thin-note">Market name — auto grade, no thesis</p></div>';
     var c=body.querySelector('#mkCard'); c._row=r;
@@ -10232,6 +10313,7 @@ window.MktView = (function(){
       catch(_){ fb.innerHTML='<div class="mk-eq-legend">Fundamentals charts could not start for this name.</div>'; }
     } else fb.innerHTML='<div class="mk-eq-legend">Fundamentals charts live under the Glass theme — none here.</div>';
     mkTeLoad(r.sym,false);   /* the five frames on demand — a fresh cache is a no-op; the strip redraws when the pull lands */
+    mkCpLoad(false);         /* 11-06: the card copy, once a day */
     document.querySelectorAll('.chip.sel').forEach(function(ch){ ch.classList.remove('sel'); });
     sh.scrollTop=0;
     if(sc) sc.classList.add('show');
@@ -10245,26 +10327,27 @@ window.MktView = (function(){
      file carries `e`). rowOf(fam, sym) -> {sym, name, px, kind} for the page head: the live row when the Tape has built
      it (kind 'cr' / 'eq' for a graded clone, 'mkc' / 'mk' otherwise), else the cached Market payload, else null. */
   function mkFrEnsure(sym){
-    var p1=MK_FR.pages[1]; if(!p1||!p1.data){ mkFrLoad(1,false); return; }
+    var p1=MK_FR.pages[1]; if(!p1||!p1.data){ mkFrLoad(1,false,'mkc'); return; }
     mkFromCache(); var d=MK.data, cr=(d&&d.crypto&&Array.isArray(d.crypto.rows))?d.crypto.rows:[], caps=[];
     cr.forEach(function(x){ var c=mkNum(x&&x.mcap); if(x&&x.sym&&c!=null) caps.push([String(x.sym).toUpperCase(),c]); });
     caps.sort(function(a,b){ return b[1]-a[1]; });
     var rank=0; for(var i=0;i<caps.length;i++){ if(caps[i][0]===sym){ rank=i+1; break; } }
     if(!rank) return;
-    var n=Math.min(mkFrPagesN(),Math.ceil(rank/MK_FR_PER)); if(n>=2){ MK_FR.wanted[n]=1; mkFrLoad(n,false); }
+    var n=Math.min(mkFrPagesN('mkc'),Math.ceil(rank/MK_FR_PER)); if(n>=2){ MK_FR.wanted[n]=1; mkFrLoad(n,false,'mkc'); }
   }
   function mkFramesOf(fam,sym){
     sym=String(sym==null?'':sym).replace(/^\$/,'').toUpperCase(); if(!sym) return null;
     if(fam==='mkc'){
-      mkFrFromCache();
+      mkFrFromCache('mkc');
       var ct=mkCtTf(sym); if(ct) return ct;   /* §68: the deep technicals once a card / the technicals page pulled them (24h cache) */
-      var x=mkFrRow(sym), t=x?mkFrTf(x):null;
+      var x=mkFrRow(sym,'mkc'), t=x?mkFrTf(x):null;
       if(t){ mkCtLoad(sym,false); return t; }   /* §68: the technicals page is open on this coin — ask for its deep history (coverage.deep gates it; a fresh cache / a backoff / a pull in flight is a no-op); the light page frames meanwhile */
       try{ mkFrEnsure(sym); }catch(_){}
       mkCdFromCache('mkc'); return mkCdTf('mkc',sym);
     }
     if(fam==='mk'){
       var tt=mkTeTf(sym); if(tt) return tt;   /* §65: the on-demand five frames once a card pulled them (24h cache); never fetched from here */
+      mkFrFromCache('mk'); var ex=mkFrRow(sym,'mk'), et=ex?mkFrTf(ex):null; if(et) return et;   /* 11-06: the US 500 frames page (backend v4.49) — the Tape's own minis */
       mkCdFromCache('mk'); return mkCdTf('mk',sym);
     }
     return null;
@@ -10387,7 +10470,7 @@ window.MktView = (function(){
         syncUniUI();
         document.getElementById('mkUniDD').classList.remove('open'); document.getElementById('mkTypeDD').classList.remove('open');
         syncMarketCls();
-        if(isMkUni()){ mkLoad(false); mkCdLoad(state.uni,false); if(state.uni==='mk') mkAgLoad(false); if(state.uni==='mkc') mkFrLoad(1,false); }   /* §19/§21: cache first (memory, then localStorage), fetch when stale — one fetch feeds both chips; §31: this family's daily candles, once per UTC day; §41: US 500's auto grades likewise; §56: Coins 500's first frames page likewise (pages 2–5 follow the scroll) */
+        if(isMkUni()){ mkLoad(false); mkCdLoad(state.uni,false); if(state.uni==='mk') mkAgLoad(false); mkFrLoad(1,false,state.uni); }   /* §19/§21: cache first (memory, then localStorage), fetch when stale — one fetch feeds both chips; §31: this family's daily candles, once per UTC day; §41: US 500's auto grades likewise; §56: Coins 500's first frames page likewise (pages 2–5 follow the scroll) */
         rebuildCats(); applyFilter();
       });
     });
@@ -10677,7 +10760,7 @@ window.MktView = (function(){
       syncUniUI();
       var dd=document.getElementById('mkUniDD'); if(dd) dd.classList.remove('open');
       syncMarketCls();
-      mkLoad(false); mkCdLoad(fam,false); if(fam==='mk') mkAgLoad(false); if(fam==='mkc') mkFrLoad(1,false);
+      mkLoad(false); mkCdLoad(fam,false); if(fam==='mk') mkAgLoad(false); mkFrLoad(1,false,fam);
       rebuildCats(); applyFilter(); return true; },
     reapply:function(){ if(built&&MK.data) mkApply(); },
     built:function(){ return built; }
@@ -10695,9 +10778,11 @@ window.MktView = (function(){
                      /* §41: the auto grades — reloadGrades(force) refetches (US 500 chip up), grades = its state */
                      reloadGrades: function(f){ if(state.uni==='mk') mkAgLoad(f!==false); }, grades: MK_AG,
                      /* §56: the frames pages — reloadFrames(force) refetches page 1 + every page the reader has reached (Coins 500 chip up); framesState = the per-page state */
-                     reloadFrames: function(f){ if(state.uni==='mkc') mkFrReload(f!==false); }, framesState: MK_FR,
+                     reloadFrames: function(f){ if(isMkUni()) mkFrReload(f!==false,state.uni); }, framesState: MK_FR, framesStateEq: MK_FRS.mk,   /* 11-06: the US 500 pages' state */
                      /* §56 THE CONTRACT for the technicals page (see mkFramesOf / mkRowOf): frames(fam, sym) -> tf object or null; rowOf(fam, sym) -> {sym,name,px,kind} or null */
                      frames: mkFramesOf, rowOf: mkRowOf,
+                     /* 11-06: the US 500 name's Overview face for Research (fin.js) and its copy (the description feed) */
+                     eqOverviewHtml: mkEqOverviewHtml, copyOf: mkCpOf, reloadCopy: function(f){ mkCpLoad(f!==false); }, copyState: MK_CP,
                      /* 10-21 (the owner: "scroll from side to side while remaining in the technicals window … through however the tape menu is categorized"):
                         order() = the Tape's CURRENT order — its Market rows exactly as shown (the sort and every filter applied), for the Technicals page to walk */
                      order: function(){ var out=[], tb=document.getElementById('mkBody'); if(!tb) return out; var trs=tb.children, i, j;
@@ -12533,12 +12618,15 @@ html[data-gl="light"] #glAccount .gla-how[data-how="file"]{color:#8a5a00;}
   function row(){
     var card=document.getElementById('glAppearance'); if(!card||card.querySelector('.gl-totalrow')) return;
     var d=document.createElement('div'); d.className='st8-row st8-static gl-totalrow';
-    d.innerHTML='<label style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;cursor:pointer"><span><b style="display:block;font-weight:600">Show the book total in the top bar</b><span style="font-size:11px;color:var(--muted)">Off hides the figure and its bar on every screen; the Console still opens from the same spot.</span></span><input type="checkbox" data-glshowtotal '+(st.hide?'':'checked')+'></label>';
-    var foot=card.querySelector('.gl-foot'); if(foot&&foot.parentNode===card) card.insertBefore(d,foot); else card.appendChild(d);
+    /* 11-06 (the owner: "I still don't see a toggle in the settings for turning on and off the visibility of your portfolio total"): the row sits FIRST
+       in Appearance, named for what it hides, with an On / Off word beside the switch. ?go=settings opens the page. */
+    d.innerHTML='<label style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;cursor:pointer"><span><b style="display:block;font-weight:600">Portfolio total in the top bar</b><span style="font-size:11px;color:var(--muted)">The book\u2019s total next to the logo, on every screen. Switch it off when someone can see your screen; the Console still opens from the same spot.</span></span><span style="display:flex;align-items:center;gap:8px;flex:none"><b data-glshowtotalword style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">'+(st.hide?'Off':'On')+'</b><input type="checkbox" data-glshowtotal '+(st.hide?'':'checked')+'></span></label>';
+    if(card.firstChild) card.insertBefore(d,card.firstChild); else card.appendChild(d);
   }
   document.addEventListener('change',function(e){
     var c=e.target&&e.target.matches&&e.target.matches('input[data-glshowtotal]'); if(!c) return;
     st.hide=!e.target.checked; try{ localStorage.setItem(LS,st.hide?'1':'0'); }catch(_){} apply();
+    var w=document.querySelector('[data-glshowtotalword]'); if(w) w.textContent=st.hide?'Off':'On';
   });
   function arm(){ if(!gl()||!window.MutationObserver) return; var sh=document.getElementById('dkSheet')||document.body; new MutationObserver(function(){ row(); }).observe(sh,{childList:true,subtree:true}); row(); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',arm); else arm();
@@ -12943,6 +13031,84 @@ html[data-gl] .sc-root .sc-dtable th small{font-weight:600;text-transform:none;l
   function arm(){ if(!gl()) return; armScorecard(); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',arm); else arm();
   window.GLHold={mount:mount, blend:blend, equities:equities, index:function(cb){ index(cb||function(){}); return S.index; }, fund:function(sym,cb){ fund(String(sym).toUpperCase(),cb||function(){}); return S.funds[String(sym).toUpperCase()]||null; }, facts:function(cb){ facts(cb||function(){}); return S.facts; }, n:function(k){ if(k===10||k===15||k===20){ S.n=k; try{ localStorage.setItem(LSN,String(k)); }catch(_){} repaintAll(); } return S.n; }, repaint:repaintAll, state:S, TOP:TOP};
+})();
+
+</script>
+<script id="gl48Idx">
+/* stage48/idxgrade.js — THE INDEX GRADE (11-06, the owner: "the grading of the index is still something I would like to have").
+   One letter for the whole US 500, each lens: every name on the Market feed weighted by its market cap, a curated name counted at its
+   hand grade (DATA), every other name at the engine's auto grade (/market_grades.json, the four filings pillars) — the same weighted mean
+   the fund holdings grade uses (etfhold.js), over 500 names instead of 15. Shown as a block atop the Scorecard (Research › Grades,
+   ?go=research/grades): the two letters, the coverage ("415 of 503 names graded · 96% of the index's cap"), and the cap by letter band;
+   the Tape's US 500 grades note carries the expansion letter. Reads the Tape's own caches (MktView.market.state / .grades) and asks the
+   two feeds itself only when neither has landed (an hour's memory). Never a guess: fewer than 20 graded names or under half the cap = "thin". */
+(function(){
+  'use strict';
+  var H=document.documentElement, ORDER=['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F'];
+  var S={own:{market:null, grades:null, at:0, busy:false}, last:null, timer:0};
+  function gl(){ return H.hasAttribute('data-gl'); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function D(){ try{ return (typeof DATA!=='undefined'&&DATA)||window.DATA||{}; }catch(_){ return window.DATA||{}; } }
+  function rank(g){ var i=ORDER.indexOf(String(g||'').trim()); return i<0?99:i; }
+  function gcls(g){ try{ if(typeof window.gradeClass==='function') return window.gradeClass(g); }catch(_){} return ''; }
+  function base(){ return String(window.AIBO_LIVE_URL||'https://api.bullwhistle.com').replace(/\/$/,''); }
+  function rows(){ try{ var mv=window.MktView&&MktView.market, d=mv&&mv.state&&mv.state.data, er=d&&d.equities&&d.equities.rows; if(er&&er.length) return er; }catch(_){} var o=S.own.market; return (o&&o.equities&&o.equities.rows&&o.equities.rows.length)?o.equities.rows:null; }
+  function autoRows(){ try{ var mv=window.MktView&&MktView.market, g=mv&&mv.grades, d=g&&g.data; if(d&&d.rows) return d; }catch(_){} return S.own.grades||null; }
+  function band(g){ var c=String(g||'')[0]; return (c==='A'||c==='B'||c==='C')?c:'D'; }
+  function acc(){ return {wG:0, sum:0, n:0, hand:0, bands:{A:0,B:0,C:0,D:0}}; }
+  function add(a,g,w,hand){ var r=rank(g); if(r>=99) return; a.n++; if(hand) a.hand++; a.wG+=w; a.sum+=r*w; a.bands[band(g)]+=w; }
+  function finish(a,N,W){ a.N=N; a.W=W; a.share=W>0?a.wG/W:0; a.letter=(a.wG>0&&a.n>0)?ORDER[Math.max(0,Math.min(12,Math.round(a.sum/a.wG)))]:null; a.thin=a.n<20||a.share<0.5; return a; }
+  function compute(){
+    var er=rows(); if(!er) return null; var ag=autoRows(), agr=ag&&ag.rows||{}, data=D(), out={exp:acc(), rec:acc()}, N=0, W=0, seen={};
+    er.forEach(function(x){ var sym=String(x&&x.sym||'').toUpperCase(); if(!sym||seen[sym]) return; seen[sym]=1; var w=+x.mcap; if(!(w>0)) w=0; N++; W+=w;
+      var g=data[sym], hand=!!(g&&(g.exp||g.rec)), a=!hand&&agr[sym]; var e=hand?g.exp:(a&&a.exp), r=hand?g.rec:(a&&a.rec);
+      add(out.exp,e,w,hand); add(out.rec,r,w,hand); });
+    finish(out.exp,N,W); finish(out.rec,N,W);
+    return {exp:out.exp, rec:out.rec, N:N, W:W, agAt:ag&&ag.asOf||null, hasAuto:!!ag, at:Date.now()};
+  }
+  function fmtB(v){ if(!(v>0)) return '—'; return v>=1e12?'$'+(v/1e12).toFixed(1)+'T':v>=1e9?'$'+(v/1e9).toFixed(0)+'B':'$'+(v/1e6).toFixed(0)+'M'; }
+  function chip(g){ return g?'<span class="cb gli-cb '+esc(gcls(g))+'">'+esc(g)+'</span>':'<span class="cb gli-cb gli-na">—</span>'; }
+  function bar(a){ var W=a.wG||1, keys=['A','B','C','D'], labs={A:'A',B:'B',C:'C',D:'D–F'}, s='';
+    keys.forEach(function(k){ var p=a.bands[k]/W*100; if(p<0.5) return; s+='<i class="gli-b gli-b-'+k+'" style="width:'+p.toFixed(1)+'%" title="'+labs[k]+' names · '+p.toFixed(0)+'% of the graded cap"><b>'+labs[k]+'</b></i>'; });
+    return '<div class="gli-bar" role="img" aria-label="Share of the graded market cap by letter band">'+s+'</div>'; }
+  function html(c){
+    if(!c) return '<div class="gli-head"><h3>US 500 index grade</h3><span class="gli-sub">'+(S.own.busy?'reading the Market feed…':'The Market feed has not landed yet — open the Tape’s US 500 once, or wait a moment.')+'</span></div>';
+    var e=c.exp, r=c.rec, cov=e.n+' of '+c.N+' names graded ('+e.hand+' by hand, '+(e.n-e.hand)+' by the engine’s filings pillars) · '+Math.round(e.share*100)+'% of the index’s cap ('+fmtB(e.wG)+' of '+fmtB(c.W)+')';
+    return '<div class="gli-head"><h3>US 500 index grade</h3><span class="gli-sub">cap-weighted · every name at its own grade'+(c.agAt?' · auto grades as of '+esc(String(c.agAt).slice(0,10)):'')+'</span></div>'
+      +'<div class="gli-rolls"><div class="gli-roll"><span class="gli-rl">Expansion</span>'+chip(e.letter)+'</div><div class="gli-roll"><span class="gli-rl">Recession</span>'+chip(r.letter)+'</div>'
+      +(e.thin?'<span class="gli-thin">thin read — too few names graded yet</span>':'')+'</div>'
+      +'<p class="gli-cov">'+esc(cov)+'</p>'+bar(e)
+      +'<p class="gli-foot">The mean of the names’ grades weighted by market cap, the fund holdings grade’s maths over the whole index. Valuation is never folded in. Names the engine has not graded yet (too little filing history) are left out of the weight, never guessed.</p>';
+  }
+  function mount(){
+    if(!gl()) return; var m=document.getElementById('scMount'); if(!m) return; if(!m.children.length) return;
+    var sec=m.querySelector('section.gl-idx'); if(!sec){ sec=document.createElement('section'); sec.className='gl-idx'; sec.setAttribute('data-glidx',''); m.insertBefore(sec,m.firstChild); }
+    var c=compute(); S.last=c; sec.innerHTML=html(c); sec.setAttribute('data-glidxstate',c?(c.exp.letter?'ok':'none'):'wait');
+    if(!c||!c.hasAuto) own();
+  }
+  /* neither cache has landed (the Scorecard opened before the Tape's US 500): read the two feeds once an hour */
+  function own(){ var o=S.own; if(o.busy||(o.at&&Date.now()-o.at<60*60e3)) return; o.busy=true;
+    var b=base(), get=function(u){ return fetch(b+u,{cache:'no-store'}).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }); };
+    Promise.all([rows()?Promise.resolve(null):get('/market.json'), autoRows()?Promise.resolve(null):get('/market_grades.json')]).then(function(a){ o.busy=false; o.at=Date.now(); if(a[0]&&a[0].equities) o.market=a[0]; if(a[1]&&a[1].rows) o.grades=a[1]; mount(); }); }
+  function note(){ var c=S.last||compute(); if(!c||!c.exp.letter) return ''; return 'index grade '+c.exp.letter+(c.exp.thin?' (thin)':''); }
+  function arm(){ if(!gl()||!window.MutationObserver) return; var m=document.getElementById('scMount'); if(!m) return;
+    new MutationObserver(function(ms){ for(var i=0;i<ms.length;i++){ var t=ms[i].target; if(t===m||(t.closest&&!t.closest('section.gl-idx'))){ clearTimeout(S.timer); S.timer=setTimeout(mount,60); return; } } }).observe(m,{childList:true, subtree:true});
+    mount();
+    setInterval(function(){ var sec=m.querySelector('section.gl-idx'); if(!sec||!sec.offsetParent) return; var c=compute(); var sig=c?c.exp.letter+'|'+c.exp.n+'|'+c.N+'|'+c.hasAuto:''; var was=S.last?S.last.exp.letter+'|'+S.last.exp.n+'|'+S.last.N+'|'+S.last.hasAuto:''; if(sig!==was) mount(); },15000);
+    var st=document.createElement('style'); st.id='gl48IdxCss';
+    st.textContent='html[data-gl] #scMount section.gl-idx{margin:0 0 14px;padding:12px 14px 10px;border:1px solid var(--hair);border-radius:12px;background:rgba(255,255,255,.025)}'
+      +'html[data-gl] .gl-idx .gli-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}html[data-gl] .gl-idx h3{margin:0;font-size:13px;font-weight:700;letter-spacing:.02em}html[data-gl] .gl-idx .gli-sub{font-size:11px;color:var(--muted)}'
+      +'html[data-gl] .gl-idx .gli-rolls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;margin:10px 0 6px}html[data-gl] .gl-idx .gli-roll{display:flex;align-items:center;gap:10px}html[data-gl] .gl-idx .gli-rl{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}'
+      +'html[data-gl] .gl-idx .gli-cb{font-size:18px;padding:4px 12px;border-radius:9px;font-weight:800}html[data-gl] .gl-idx .gli-na{opacity:.6}html[data-gl] .gl-idx .gli-thin{font-size:11px;color:var(--muted);font-style:italic}'
+      +'html[data-gl] .gl-idx .gli-cov{margin:4px 0 8px;font-size:11.5px;color:var(--ink,inherit)}html[data-gl] .gl-idx .gli-bar{display:flex;height:16px;border-radius:6px;overflow:hidden;gap:1px}'
+      +'html[data-gl] .gl-idx .gli-b{display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:#0b1220;min-width:0;overflow:hidden}html[data-gl] .gl-idx .gli-b b{font-weight:800}'
+      +'html[data-gl] .gl-idx .gli-b-A{background:#39d07f}html[data-gl] .gl-idx .gli-b-B{background:#9ed062}html[data-gl] .gl-idx .gli-b-C{background:#ffd86b}html[data-gl] .gl-idx .gli-b-D{background:#f0685f}'
+      +'html[data-gl] .gl-idx .gli-foot{margin:8px 0 0;font-size:10.5px;line-height:1.45;color:var(--muted)}'
+      +'@media(max-width:480px){html[data-gl] #scMount section.gl-idx{margin:0 0 10px;padding:10px 12px 8px}html[data-gl] .gl-idx .gli-cb{font-size:16px}}';
+    document.head.appendChild(st);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',arm); else arm();
+  window.GLIdx={compute:compute, mount:mount, note:note, state:S, ORDER:ORDER};
 })();
 
 </script>
@@ -14514,8 +14680,12 @@ html[data-gl] .glfn-lnk{background:none;border:1px solid rgba(167,139,250,.5);co
     if(isFund(k)) return '';
     var lk=null; try{ lk=window.lookup(k); }catch(_){}
     if(lk&&lk.type==='co'&&typeof window.coSheet==='function'){ try{ return window.coSheet(lk.rec); }catch(e){ return '<p class="glfn-etfsrc">The overview could not be drawn ('+esc(e&&e.message||e)+').</p>'; } }
+    /* 11-06 (the owner: "the same convention as the watchlist ones"): a US 500 name's overview = its Market card's head, strip, description and folded grades */
+    try{ var mv=window.MktView&&MktView.market, h=mv&&typeof mv.eqOverviewHtml==='function'?mv.eqOverviewHtml(k):null; if(h) return h; }catch(_){}
     return '<p class="glfn-etfsrc">No overview for this name yet.</p>';
   }
+  /* the copy feed landed after the overview drew: redraw the face once (the description block fills in) */
+  document.addEventListener('aibo:copy',function(){ var over=root&&root.querySelector('[data-finover]'); if(over&&!over.hidden&&over.getAttribute('data-finoverkey')&&!isFund(S.cur)){ over.removeAttribute('data-finoverkey'); try{ paintFaces(); }catch(_){} } });
   function paintFaces(){
     var body=root.querySelector('[data-finbody]'), over=root.querySelector('[data-finover]'); if(!body||!over) return;
     var fundK=isFund(S.cur), face=S.face;   /* A = the filings block (a company's section.glf-page) or the fund face (section.glf-page.glfn-etf) */
@@ -14940,7 +15110,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
       d:['Four exponential moving averages of the close — 8, 13, 21 and 40 periods — drawn as a cloud under the price line.',
          'The strong band is the gap between the 21 and the 40; the lighter band is the gap between the 13 and the 21; the thin line is the 8. A band is green while the faster average is above the slower one (trend up) and red while it is below (trend down). A wide band is a strong trend; a band that pinches shut is a trend running out or turning.',
          'The label says where the last close sits: above the band, inside it, or below — and by how much. It is a rule read from the averages, not advice.']},
-    {id:'div',    s:'DIVERGENCE',       r:['DIVERGENCE'],      l:'Divergence', min:30, fn:'tfDivSVG',    why:'every RSI-14 divergence in the window, the same pairs the RSI pane draws (TradingView’s pivot rules + the swing read, regular + hidden): the price line between the two tops or bottoms, the dashed ghost at the RSI’s own angle, the badge at the newer one · the lane below = momentum pressure, price and RSI pulling apart over 4 / 8 / 14 bars, shaded by strength · the pill = the newest pair · bars since',
+    {id:'div',    s:'DIVERGENCE',       r:['DIVERGENCE'],      l:'Divergence', min:30, fn:'tfDivSVG',    why:'every RSI-14 divergence whose two pivots both sit in the window, the same pairs the RSI pane draws (TradingView’s pivot rules + the swing read, regular + hidden): the price line between the two tops or bottoms of the close line, the badge at the newer one · the lane below = momentum pressure, price and RSI pulling apart over 4 / 8 / 14 bars, shaded by strength · the pill = the newest pair · bars since',
       d:['Divergence is price and momentum disagreeing. Momentum here is the 14-period RSI.',
          'How it is found: the swing highs and swing lows of the RSI are located (a bar higher, or lower, than the three bars either side of it). Two neighbouring swings 5 to 60 bars apart are compared. BEARISH: price made a higher high while the RSI made a lower high — the rise is losing force. BULLISH: price made a lower low while the RSI made a higher low — the fall is losing force.',
          'How it is drawn: a solid line joins the two price points, a dashed line from the same start shows the slope the RSI took instead, and an arrow marks the newest one (red pointing down = bearish, green pointing up = bullish).',
@@ -15059,13 +15229,18 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
        anchored — on those. pq / pp = the price pivot bars. */
     function argLo(a,b){ var k=a; for(var j=a;j<=b;j++){ if(lo(j)<lo(k)) k=j; } return k; }
     function argHi(a,b){ var k=a; for(var j=a;j<=b;j++){ if(hi(j)>hi(k)) k=j; } return k; }
+    /* 11-06 (the owner: "make sure the points are connected to the pivot points of the lines"): the row draws the CLOSE line, so each pair also
+       carries the close extreme of the same windows (cq / cp) — the point of the drawn line the wedge is anchored on. Detection stays on the wicks. */
+    function cl(i){ var b=bars[i]; return b?+b.c:NaN; }
+    function argLoC(a,b){ var k=a; for(var j=a;j<=b;j++){ if(cl(j)<cl(k)) k=j; } return k; }
+    function argHiC(a,b){ var k=a; for(var j=a;j<=b;j++){ if(cl(j)>cl(k)) k=j; } return k; }
     function win(q,p){ var a0=Math.max(0,q-L), a1=q+L, b0=Math.max(0,p-L), b1=p+R; if(a1>=b0){ var mid=Math.floor((q+p)/2); a1=mid; b0=mid+1; } return [a0,a1,b0,b1]; }
-    for(i=1;i<lows.length;i++){ var q=lows[i-1], p=lows[i], g=p-q-1; if(g<minG||g>maxG) continue; var W=win(q,p), pq=argLo(W[0],W[1]), pp=argLo(W[2],W[3]);
-      if(r[p]>r[q]&&lo(pp)<lo(pq)) out.push({type:'bull', hidden:false, q:q, p:p, pq:pq, pp:pp, at:p+R});
-      else if(r[p]<r[q]&&lo(pp)>lo(pq)) out.push({type:'bull', hidden:true, q:q, p:p, pq:pq, pp:pp, at:p+R}); }
-    for(i=1;i<highs.length;i++){ var q2=highs[i-1], p2=highs[i], g2=p2-q2-1; if(g2<minG||g2>maxG) continue; var W2=win(q2,p2), pq2=argHi(W2[0],W2[1]), pp2=argHi(W2[2],W2[3]);
-      if(r[p2]<r[q2]&&hi(pp2)>hi(pq2)) out.push({type:'bear', hidden:false, q:q2, p:p2, pq:pq2, pp:pp2, at:p2+R});
-      else if(r[p2]>r[q2]&&hi(pp2)<hi(pq2)) out.push({type:'bear', hidden:true, q:q2, p:p2, pq:pq2, pp:pp2, at:p2+R}); }
+    for(i=1;i<lows.length;i++){ var q=lows[i-1], p=lows[i], g=p-q-1; if(g<minG||g>maxG) continue; var W=win(q,p), pq=argLo(W[0],W[1]), pp=argLo(W[2],W[3]), cq=argLoC(W[0],W[1]), cp=argLoC(W[2],W[3]);
+      if(r[p]>r[q]&&lo(pp)<lo(pq)) out.push({type:'bull', hidden:false, q:q, p:p, pq:pq, pp:pp, cq:cq, cp:cp, at:p+R});
+      else if(r[p]<r[q]&&lo(pp)>lo(pq)) out.push({type:'bull', hidden:true, q:q, p:p, pq:pq, pp:pp, cq:cq, cp:cp, at:p+R}); }
+    for(i=1;i<highs.length;i++){ var q2=highs[i-1], p2=highs[i], g2=p2-q2-1; if(g2<minG||g2>maxG) continue; var W2=win(q2,p2), pq2=argHi(W2[0],W2[1]), pp2=argHi(W2[2],W2[3]), cq2=argHiC(W2[0],W2[1]), cp2=argHiC(W2[2],W2[3]);
+      if(r[p2]<r[q2]&&hi(pp2)>hi(pq2)) out.push({type:'bear', hidden:false, q:q2, p:p2, pq:pq2, pp:pp2, cq:cq2, cp:cp2, at:p2+R});
+      else if(r[p2]>r[q2]&&hi(pp2)<hi(pq2)) out.push({type:'bear', hidden:true, q:q2, p:p2, pq:pq2, pp:pp2, cq:cq2, cp:cp2, at:p2+R}); }
     out.sort(function(a,b){ return a.p-b.p; });
     return out;
   }
@@ -15101,13 +15276,16 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
     }
     function pmax(a,b){ var k=a; for(j=a;j<=b;j++){ if(hi(j)>hi(k)) k=j; } return k; }
     function pmin(a,b){ var k=a; for(j=a;j<=b;j++){ if(lo(j)<lo(k)) k=j; } return k; }
+    function cl(i){ var b=bars[i]; return b?+b.c:NaN; }   /* 11-06: the close pivots (cq / cp) — the drawn line's own points, never crossing */
+    function cmax(a,b){ var k=a; for(j=a;j<=b;j++){ if(cl(j)>cl(k)) k=j; } return k; }
+    function cmin(a,b){ var k=a; for(j=a;j<=b;j++){ if(cl(j)<cl(k)) k=j; } return k; }
     var H=turns.filter(function(t){ return t.k==='H'; }), Lw=turns.filter(function(t){ return t.k==='L'; }), out=[];
-    for(i=1;i<H.length;i++){ var a=H[i-1], b=H[i], q=a.i, p=b.i; if(p-q-1>maxG) continue; var pq=pmax(a.s,a.at), pp=pmax(b.s,b.at);
-      if(r[p]<r[q]&&hi(pp)>hi(pq)) out.push({type:'bear', hidden:false, q:q, p:p, pq:pq, pp:pp, at:b.at, src:'swing'});
-      else if(r[p]>r[q]&&hi(pp)<hi(pq)) out.push({type:'bear', hidden:true, q:q, p:p, pq:pq, pp:pp, at:b.at, src:'swing'}); }
-    for(i=1;i<Lw.length;i++){ var a2=Lw[i-1], b2=Lw[i], q2=a2.i, p2=b2.i; if(p2-q2-1>maxG) continue; var pq2=pmin(a2.s,a2.at), pp2=pmin(b2.s,b2.at);
-      if(r[p2]>r[q2]&&lo(pp2)<lo(pq2)) out.push({type:'bull', hidden:false, q:q2, p:p2, pq:pq2, pp:pp2, at:b2.at, src:'swing'});
-      else if(r[p2]<r[q2]&&lo(pp2)>lo(pq2)) out.push({type:'bull', hidden:true, q:q2, p:p2, pq:pq2, pp:pp2, at:b2.at, src:'swing'}); }
+    for(i=1;i<H.length;i++){ var a=H[i-1], b=H[i], q=a.i, p=b.i; if(p-q-1>maxG) continue; var pq=pmax(a.s,a.at), pp=pmax(b.s,b.at), cq=cmax(a.s,a.at), cp=cmax(Math.min(b.at,Math.max(b.s,cq+1)),b.at);
+      if(r[p]<r[q]&&hi(pp)>hi(pq)) out.push({type:'bear', hidden:false, q:q, p:p, pq:pq, pp:pp, cq:cq, cp:cp, at:b.at, src:'swing'});
+      else if(r[p]>r[q]&&hi(pp)<hi(pq)) out.push({type:'bear', hidden:true, q:q, p:p, pq:pq, pp:pp, cq:cq, cp:cp, at:b.at, src:'swing'}); }
+    for(i=1;i<Lw.length;i++){ var a2=Lw[i-1], b2=Lw[i], q2=a2.i, p2=b2.i; if(p2-q2-1>maxG) continue; var pq2=pmin(a2.s,a2.at), pp2=pmin(b2.s,b2.at), cq2=cmin(a2.s,a2.at), cp2=cmin(Math.min(b2.at,Math.max(b2.s,cq2+1)),b2.at);
+      if(r[p2]>r[q2]&&lo(pp2)<lo(pq2)) out.push({type:'bull', hidden:false, q:q2, p:p2, pq:pq2, pp:pp2, cq:cq2, cp:cp2, at:b2.at, src:'swing'});
+      else if(r[p2]<r[q2]&&lo(pp2)>lo(pq2)) out.push({type:'bull', hidden:true, q:q2, p:p2, pq:pq2, pp:pp2, cq:cq2, cp:cp2, at:b2.at, src:'swing'}); }
     out.sort(function(a,b){ return a.p-b.p||a.q-b.q; });
     return out;
   }
@@ -15125,22 +15303,22 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
      are the same") → 11-05 (the owner: "I didn't want you to take away any functionality … the lines had different shades of red and the bar of
      different shades underneath … the dotted line with the differing angle — keep that"): under Glass the Divergence row is the STOCK row's
      look, exactly — the ink price line, the pressure lane below (the strongest price-vs-RSI slope disagreement over 4 / 8 / 14 bars, shaded
-     by strength) and the price line coloured by that lane while momentum leaks, the wedge (solid price trendline + the dashed RSI-slope ghost
-     at the RSI's own angle + the ▲ / ▼ badge) — but the wedges come from allDivs(), the same list the RSI pane draws (pivot rules + the swing
+     by strength) and the price line coloured by that lane while momentum leaks, the wedge (solid price trendline + the ▲ / ▼ badge; 11-06 the owner:
+     the dashed RSI-angle ghost and the 11-05 wick envelope are gone, and both pivots must sit inside the window) — but the wedges come from allDivs(), the same list the RSI pane draws (pivot rules + the swing
      read, regular + hidden), and EVERY live pair is drawn, not only the newest (older ones a little dimmer). A hidden pair's price line is
      dotted, like the pane's. ?gl=off still runs the stock renderer untouched. window.tfDivPairs(bars,tail) = the pairs a row of that window
-     draws (the census, the suites): the newer RSI pivot AND the newer price pivot inside the window, confirmed. */
+     draws (the census, the suites): BOTH RSI pivots and both price pivots inside the window (11-06), confirmed. */
   function extOf(a){ var lo=Infinity, hi=-Infinity, i; for(i=0;i<a.length;i++){ var v=a[i]; if(v==null||!isFinite(v)) continue; if(v<lo) lo=v; if(v>hi) hi=v; } return lo<=hi?[lo,hi]:null; }
-  function divPairs(bars,tail){ var cl=window.tfCloses(bars), r=window.tfRsi(cl,14), evs=allDivs(bars,r), N=cl.length, n=Math.min(tail||60,N), off=N-n; return evs.filter(function(d){ return d.p>=off&&d.pp>=off&&d.at<=N-1; }); }
+  function divPairs(bars,tail){ var cl=window.tfCloses(bars), r=window.tfRsi(cl,14), evs=allDivs(bars,r), N=cl.length, n=Math.min(tail||60,N), off=N-n; return evs.filter(function(d){ return d.q>=off&&d.pq>=off&&(d.cq==null||d.cq>=off)&&d.at<=N-1; }); }   /* 11-06 (the owner): BOTH pivots inside the window — nothing is pulled in from off screen */
   function glassDivSVG(bars,w,h,tailN){
     if(!bars||bars.length<30) return '';
     var call=window.tfCloses(bars), r=window.tfRsi(call,14), N=call.length, tail=Math.min(tailN||60,N), off=N-tail, c=call.slice(-tail), rr=r.slice(-tail), n=tail, p=2, i;
     var stripH=Math.max(3,Math.round(h*0.15)), ph=h-stripH-2, live=divPairs(bars,n);
-    function lo(i){ var b=bars[i]; return (b&&b.l!=null&&isFinite(+b.l))?+b.l:+b.c; } function hi(i){ var b=bars[i]; return (b&&b.h!=null&&isFinite(+b.h))?+b.h:+b.c; }
-    /* 11-05 (the owner: anchors "on the actual price pivots"): the row's scale covers the wicks in view, and a faint high–low envelope sits under the
-       close line, so every wedge anchor — the wick top of a bearish pair, the wick bottom of a bullish one — lands ON drawn price, never in the air. */
-    var ext=c.slice(); for(i=off;i<N;i++){ ext.push(hi(i)); ext.push(lo(i)); }
-    var e=extOf(ext); if(!e) return ''; var rg=e[1]-e[0]||1;
+    /* 11-06 (the owner: "the shaded area is actual price … take that out", "the points connected to the pivot points of the lines", "we don't need
+       the second line that's dotted"): the 11-05 high–low envelope is gone (it was the bars' wick range drawn as a faint band under the close
+       line), the RSI-angle ghost is gone, and every wedge is anchored on the CLOSE line's own points — the close extreme inside each pivot's
+       window (cq / cp) — so the line starts and ends on the drawn price. The scale is the closes in view again. */
+    var e=extOf(c); if(!e) return ''; var rg=e[1]-e[0]||1;
     function X(i){ return 1+(i+.5)*(w-2)/n; } function Y(v){ return (ph-p)-(v-e[0])*(ph-2*p)/rg; }
     var Ks=[4,8,14], lane=[], li, L2;
     for(li=0;li<n;li++){ var best=0;
@@ -15149,17 +15327,13 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
         if(a2>0.003&&b3<-0.015) dis=Math.min(1,(a2*45)*(-b3*9)); else if(a2<-0.003&&b3>0.015) dis=-Math.min(1,(-a2*45)*(b3*9));
         if(Math.abs(dis)>Math.abs(best)) best=dis; }
       lane.push(best); }
-    var pts='', env='', envB=''; for(i=0;i<n;i++){ pts+=(pts?' ':'')+X(i).toFixed(1)+','+Y(c[i]).toFixed(1); env+=(i?' L':'M')+X(i).toFixed(1)+','+Y(hi(off+i)).toFixed(1); envB=' L'+X(i).toFixed(1)+','+Y(lo(off+i)).toFixed(1)+envB; }
-    var s='<path data-env="1" d="'+env+envB+' Z" fill="'+C_FL+'" opacity=".09"/>';
-    s+='<polyline points="'+pts+'" fill="none" stroke="'+C_FL+'" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>';
+    var pts=''; for(i=0;i<n;i++){ pts+=(pts?' ':'')+X(i).toFixed(1)+','+Y(c[i]).toFixed(1); }
+    var s='<polyline points="'+pts+'" fill="none" stroke="'+C_FL+'" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>';
     for(var sg=1;sg<n;sg++){ var lv=Math.abs(lane[sg])>=0.12?lane[sg]:0; if(!lv) continue;
       s+='<line x1="'+X(sg-1).toFixed(1)+'" y1="'+Y(c[sg-1]).toFixed(1)+'" x2="'+X(sg).toFixed(1)+'" y2="'+Y(c[sg]).toFixed(1)+'" stroke="'+(lv>0?C_DN:C_UP)+'" stroke-width="1.5" stroke-linecap="round"/>'; }
-    live.forEach(function(d,k){ var f=d.type==='bull'?lo:hi, cc=d.type==='bull'?C_UP:C_DN, op=(k===live.length-1)?1:.6;
-      var x1=X(d.pq-off), y1=Y(f(d.pq)), x2=X(d.pp-off), y2=Y(f(d.pp));
-      s+='<g opacity="'+op+'"><line data-div="'+(d.hidden?'h':'')+d.type+'" data-q="'+d.q+'" data-p="'+d.p+'" data-pq="'+d.pq+'" data-pp="'+d.pp+'" data-src="'+d.src+'" x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+cc+'" stroke-width="1.4" stroke-linecap="round"'+(d.hidden?' stroke-dasharray="0.1 3.4"':'')+'/>';
-      var rs1=r[d.q], rs2=r[d.p];
-      if(rs1!=null&&rs2!=null){ var dy=(rs1-rs2)/100*(ph-2*p);
-        s+='<line data-ghost="1" x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+(y1+dy).toFixed(1)+'" stroke="'+cc+'" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".75"/>'; }
+    live.forEach(function(d,k){ var cc=d.type==='bull'?C_UP:C_DN, op=(k===live.length-1)?1:.6, aq=(d.cq!=null?d.cq:d.pq), ap=(d.cp!=null?d.cp:d.pp);
+      var x1=X(aq-off), y1=Y(c[aq-off]), x2=X(ap-off), y2=Y(c[ap-off]);
+      s+='<g opacity="'+op+'"><line data-div="'+(d.hidden?'h':'')+d.type+'" data-q="'+d.q+'" data-p="'+d.p+'" data-pq="'+d.pq+'" data-pp="'+d.pp+'" data-cq="'+aq+'" data-cp="'+ap+'" data-src="'+d.src+'" x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+cc+'" stroke-width="1.4" stroke-linecap="round"'+(d.hidden?' stroke-dasharray="0.1 3.4"':'')+'/>';
       var by=d.type==='bear'?Math.max(4,y2-5):Math.min(ph-2,y2+5);
       s+='<path data-badge="'+d.type+'" d="M'+(x2-2.8).toFixed(1)+','+by.toFixed(1)+' L'+(x2+2.8).toFixed(1)+','+by.toFixed(1)+' L'+x2.toFixed(1)+','+(d.type==='bear'?by+4.2:by-4.2).toFixed(1)+' Z" fill="'+cc+'"/></g>'; });
     var bwv=(w-2*p)/n, y0=h-stripH;
@@ -15228,7 +15402,7 @@ window.GLIndInfo={"candle": {"html": "<svg class=\"gdv-plot\" viewBox=\"0 0 320 
        drawn at every pane size (the census proved the row and the pane differ at tiny sizes with a gate).
        data-q / data-p = the two pivots' absolute bar indexes, so the census (tools/div_census.py) can prove the row and the pane agree. */
     if(rsiDivOn()){ var off=r.length-n, divs=allDivs(bars,r), dv, k;   /* 11-05: pivot pairs + the swing read */   /* 11-04: no size gate any more — no words to fit, and the row draws at every size */
-      for(k=0;k<divs.length;k++){ dv=divs[k]; if(dv.at>r.length-1) continue; var kp=dv.p-off, kq=dv.q-off; if(kp<0||dv.pp<off) continue;   /* 11-05: the same window rule as divPairs — the newer RSI pivot AND the newer price pivot inside */
+      for(k=0;k<divs.length;k++){ dv=divs[k]; if(dv.at>r.length-1) continue; var kp=dv.p-off, kq=dv.q-off; if(kq<0||dv.pq<off||(dv.cq!=null&&dv.cq<off)) continue;   /* 11-06 (the owner: "we don't need to pull divergences that are out of the screen"): the same window rule as divPairs — BOTH RSI pivots and both price pivots inside */
         var col=dv.type==='bull'?C_UP:C_DN, x1=X(kq), y1=Y(r[dv.q]), x2=X(kp), y2=Y(r[dv.p]);
         s+='<line data-div="'+(dv.hidden?'h':'')+dv.type+'" data-q="'+dv.q+'" data-p="'+dv.p+'" data-pq="'+dv.pq+'" data-pp="'+dv.pp+'" data-src="'+dv.src+'" x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+col+'" stroke-width="'+(dv.hidden?1.6:1.8)+'" stroke-linecap="round" opacity="'+(dv.hidden?'.75':'.7')+'"'+(dv.hidden?' stroke-dasharray="0.1 3.4"':'')+'/>';
         s+='<circle cx="'+x2.toFixed(1)+'" cy="'+y2.toFixed(1)+'" r="2" fill="'+col+'" opacity=".85"/>'; } }
@@ -16108,7 +16282,7 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
   function fmt(p){ return p>=1000?p.toFixed(0):p>=100?p.toFixed(1):p>=1?p.toFixed(2):p.toFixed(4); }
 
   /* ---------- the store ---------- */
-  var S={doc:null, local:null, loaded:false, busy:false, timer:0, dirty:{}, conf:0, last:null, F:null, clockBy:{}, deep:{}, deepBusy:{}};
+  var S={doc:null, local:null, loaded:false, busy:false, timer:0, dirty:{}, conf:0, last:null, F:null, clockBy:{}, deep:{}, deepBusy:{}, deepFail:{}};
   function tok(){ try{ var A=window.AIBO_ACCOUNT; return (A&&A.token&&A.token())||null; }catch(_){ return null; } }
   function localDoc(){ if(!S.local){ try{ S.local=JSON.parse(localStorage.getItem(LSK)||'null'); }catch(_){ S.local=null; } if(!S.local||typeof S.local!=='object'||!S.local.syms) S.local={syms:{}}; } return S.local; }
   function doc(){ return (tok()&&S.doc)?S.doc:localDoc(); }
@@ -16261,13 +16435,21 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
      re-mounts on it when it lands; the 1H · 4H · D · W · M seg in the head switches frames inside the view. The drawings are frame-free
      (day + price anchors + the clock), so a line drawn on any frame is the same line on all five. ---------- */
   function deepUrl(sym,kind){ return BASE+'/chart/'+(kind==='cr'?'%24':'')+encodeURIComponent(sym)+'.json'; }
-  function loadDeep(sym,kind){ var k=(kind==='cr'?'$':'')+sym, have=S.deep[k]; if(have&&Date.now()-have.at<10*60e3) return; if(S.deepBusy[k]) return; S.deepBusy[k]=true;
-    var ctl=('AbortController' in window)?new AbortController():null, t=setTimeout(function(){ if(ctl) ctl.abort(); },25000);
-    fetch(deepUrl(sym,kind),{cache:'no-store', signal:ctl?ctl.signal:undefined}).then(function(r){ clearTimeout(t); return r.ok?r.json():null; }).then(function(j){ S.deepBusy[k]=false;
-      var P=j&&j.tf&&typeof window.tfParse==='function'?window.tfParse(j.tf):null; if(!P) return;
-      S.deep[k]={P:P, at:Date.now(), asOf:j.asOf||null, stale:!!(j.coverage&&j.coverage.stale)};
+  /* 11-06 (the owner: "still missing the bars within the day, four-hour and hourly sections"): the deep fetch now SAYS why when it cannot deliver —
+     the budget guard (503), the paused gate (403), a timeout, a server error — instead of leaving the row's capped frames with no word; a
+     failed name is not asked again for two minutes (S.deepFail). Backend v4.49 serves the D frame over the WHOLE listing and the hourly window
+     over ~2 years (jobs/chart.py). */
+  function loadDeep(sym,kind){ var k=(kind==='cr'?'$':'')+sym, have=S.deep[k]; if(have&&Date.now()-have.at<10*60e3) return; if(S.deepBusy[k]) return; var fl=S.deepFail[k]; if(fl&&Date.now()-fl<2*60e3) return; S.deepBusy[k]=true;
+    var ctl=('AbortController' in window)?new AbortController():null, timedOut=false, t=setTimeout(function(){ timedOut=true; if(ctl) ctl.abort(); },40000);
+    var say=function(m){ var F=S.F; if(F&&F.open&&F.sym===sym) toast(m); };
+    fetch(deepUrl(sym,kind),{cache:'no-store', signal:ctl?ctl.signal:undefined}).then(function(r){ clearTimeout(t); if(r.ok) return r.json();
+        return r.text().then(function(tx){ var j=null; try{ j=JSON.parse(tx); }catch(_){} var note=j&&(j.note||j.error)?String(j.note||j.error):'';
+          throw new Error(r.status===503?'budget':r.status===403?'paused':r.status===404?'unknown':('HTTP '+r.status+(note?' · '+note:''))); }); }).then(function(j){ S.deepBusy[k]=false;
+      var P=j&&j.tf&&typeof window.tfParse==='function'?window.tfParse(j.tf):null; if(!P){ S.deepFail[k]=Date.now(); say('The full history came back empty — the row’s bars stay'); return; }
+      S.deep[k]={P:P, at:Date.now(), asOf:j.asOf||null, stale:!!(j.coverage&&j.coverage.stale), bars:j.bars||null};
       var F=S.F; if(F&&F.open&&F.sym===sym){ useFrame(F.tf,true); toast(S.deep[k].stale?'The full history (an older copy)':'The full history is in'); } },
-      function(){ S.deepBusy[k]=false; }); }
+      function(e){ S.deepBusy[k]=false; S.deepFail[k]=Date.now(); var m=String(e&&e.message||e||'');
+        say(timedOut?'The full history is taking too long — the row’s bars stay for now; reopen in a minute':m==='budget'?'The full history is held back today — the data feed’s daily call budget is spent; the row’s bars stay':m==='paused'?'The data feed is paused — the row’s bars stay':m==='unknown'?'No full history is served for this name — the row’s bars stay':'The full history could not be fetched ('+(m||'network')+') — the row’s bars stay'); }); }
   function source(){ var F=S.F, k=(F.kind==='cr'?'$':'')+F.sym, d=S.deep[k]; return d?{P:d.P, src:'deep'}:{P:F.P0, src:'capped'}; }
   function open(tf){
     var r=root(); if(!r) return false; var fr=null; try{ fr=window.GLTech&&GLTech.frames&&GLTech.frames(); }catch(_){ fr=null; }
@@ -16341,10 +16523,23 @@ html[data-gl] .gll-tools button[disabled]{opacity:.35;}
      library keeps the horizontal scroll of the same drag. Two fingers = its pinch, untouched. Fit / a double-tap on the numbers = auto again. */
   var SM={top:.08, bottom:.08};   /* the library's price-scale margins: a manual range (F.yr) fills the pane's inner 84%, so the range READ back comes from those rows */
   function curRange(){ var F=S.F, pb=paneBox(), h=pb.h, k=1-SM.top-SM.bottom; var hi=F.yr?F.yr.hi:Pr(SM.top*h), lo=F.yr?F.yr.lo:Pr((1-SM.bottom)*h); return {hi:hi, lo:lo, ppp:(hi-lo)/((k*h)||1)}; }
-  function bindPan(el){ var P={}, st=null;
-    el.addEventListener('pointerdown',function(e){ var F=S.F; if(!F||!F.open||(e.pointerType==='mouse'&&e.button!==0)) return; if(e.isPrimary!==false) P={}; P[e.pointerId]=1; if(Object.keys(P).length!==1){ st=null; return; } var cr=curRange(); st={id:e.pointerId, y:e.clientY, top:cr.hi, bot:cr.lo, ppp:cr.ppp}; });
-    el.addEventListener('pointermove',function(e){ var F=S.F; if(!st||!F||e.pointerId!==st.id||Object.keys(P).length!==1||!isFinite(st.top)||!isFinite(st.bot)||!isFinite(st.ppp)) return; var dp=(e.clientY-st.y)*st.ppp; if(!dp) return; F.yr={lo:st.bot+dp, hi:st.top+dp}; reautoscale(); draw(); });
-    var end=function(e){ delete P[e.pointerId]; if(st&&e.pointerId===st.id) st=null; };
+  /* 11-06 (the owner: "pinch up and down to zoom the Y axis"): two fingers whose SPREAD changes mostly vertically zoom the price range about the
+     price under their midpoint (fingers apart = a narrower range = zoomed in; together = zoomed out); the library's own pinch (time) is frozen
+     for that gesture and handed back on lift. A spread that changes mostly sideways is left to the library — its time zoom, untouched.
+     The decision is made once per gesture, after 8px of spread change either way. */
+  function bindPan(el){ var P={}, st=null, pz=null;
+    el.addEventListener('pointerdown',function(e){ var F=S.F; if(!F||!F.open||(e.pointerType==='mouse'&&e.button!==0)) return; if(e.isPrimary!==false) P={}; P[e.pointerId]={x:e.clientX, y:e.clientY}; var ids=Object.keys(P);
+      if(ids.length===2&&F.tool==='pan'&&F.sel<0&&!F.inspect){ st=null; var a=P[ids[0]], b=P[ids[1]], cr=curRange(); pz={ids:ids, dy0:Math.abs(a.y-b.y), dx0:Math.abs(a.x-b.x), top:cr.hi, bot:cr.lo, mode:null, midY:(a.y+b.y)/2}; return; }
+      if(ids.length!==1){ st=null; if(pz&&pz.mode==='y') scrollOn(true); pz=null; return; } var cr1=curRange(); st={id:e.pointerId, y:e.clientY, top:cr1.hi, bot:cr1.lo, ppp:cr1.ppp}; });
+    el.addEventListener('pointermove',function(e){ var F=S.F; if(!F) return; if(P[e.pointerId]){ P[e.pointerId].x=e.clientX; P[e.pointerId].y=e.clientY; }
+      if(pz){ var a=P[pz.ids[0]], b=P[pz.ids[1]]; if(!a||!b) return; var dy=Math.abs(a.y-b.y), dx=Math.abs(a.x-b.x);
+        if(!pz.mode){ var ddy=Math.abs(dy-pz.dy0), ddx=Math.abs(dx-pz.dx0); if(ddy<8&&ddx<8) return; pz.mode=(ddy>ddx*1.2)?'y':'x'; if(pz.mode==='y') scrollOn(false); }
+        if(pz.mode!=='y'||!isFinite(pz.top)||!isFinite(pz.bot)||!F.chart) return;
+        var f=Math.max(.05,Math.min(20,Math.max(8,pz.dy0)/Math.max(8,dy))), pb=paneBox(), h=pb.h||1, k=1-SM.top-SM.bottom, hostTop=el.getBoundingClientRect().top;
+        var frac=Math.max(0,Math.min(1,((pz.midY-hostTop)-SM.top*h)/(k*h))), pMid=pz.top-(pz.top-pz.bot)*frac, span=(pz.top-pz.bot)*f;   /* the price under the fingers' midpoint stays put */
+        F.yr={hi:pMid+span*frac, lo:pMid-span*(1-frac)}; reautoscale(); draw(); return; }
+      if(!st||e.pointerId!==st.id||Object.keys(P).length!==1||!isFinite(st.top)||!isFinite(st.bot)||!isFinite(st.ppp)) return; var dp=(e.clientY-st.y)*st.ppp; if(!dp) return; F.yr={lo:st.bot+dp, hi:st.top+dp}; reautoscale(); draw(); });
+    var end=function(e){ delete P[e.pointerId]; if(st&&e.pointerId===st.id) st=null; if(pz&&(String(e.pointerId)===pz.ids[0]||String(e.pointerId)===pz.ids[1])){ if(pz.mode==='y') scrollOn(true); pz=null; } };
     window.addEventListener('pointerup',end,true); window.addEventListener('pointercancel',end,true); }
   function paneBox(){ var F=S.F, pw=F.W, ph=F.H; try{ pw=F.W-(F.chart.priceScale('right').width()||0); ph=F.H-(F.chart.timeScale().height()||0); }catch(_){} return {w:Math.max(0,pw), h:Math.max(0,ph)}; }
   /* the library's logicalToCoordinate answers WHOLE bar indices only (a fraction → 0), so the overlay maps linearly from bar 0 by the bar spacing */
@@ -18397,6 +18592,8 @@ html[data-gl] .glm-owner .oe{font-size:11px;color:rgba(var(--gl-ink-rgb,234,238,
   function alertSeen(id){ var list=alertsList().map(function(a){ return a.id===id&&a.state==='fired'?Object.assign({},a,{state:'seen'}):a; }); notesPut({alerts:list}); }
   function priceRules(){ var q=null; try{ q=(window.MktView&&MktView.market&&MktView.market.state&&MktView.market.state.data)||null; }catch(_){}
     return alertsList().map(function(a){ var on=a.state==='fired'||a.state==='seen', when=a.firedAt?new Date(a.firedAt):null;
+      /* 11-06 (backend v4.50 jobs/listing_watch): a DELISTING lands as a fired entry with dir 'delisted' — "SYM delisted", the note as its line */
+      if(a.dir==='delisted'||a.kind==='delist') return {id:'px-'+a.id, px:true, a:a, on:true, t:a.sym+' delisted'+(a.delistedDate?' · '+fmtDay(String(a.delistedDate).slice(0,10)):''), s:String(a.note||'left its exchange'), v:a.firedAt||'1'};
       return {id:'px-'+a.id, px:true, a:a, on:on, t:a.sym+' '+(on?'crossed':'at')+' '+(a.dir==='above'?'above ':'below ')+num(a.level,a.level<1?4:2),
         s:'level alert · '+(on?('fired '+(when&&!isNaN(when)?when.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'')+' at '+num(a.firedPx,a.firedPx<1?4:2)):('armed since '+fmtDay(String(a.createdAt||'').slice(0,10))+' · from '+num(a.px0,a.px0<1?4:2))), v:a.firedAt||'1'}; }); }
 
